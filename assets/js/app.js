@@ -413,47 +413,73 @@ function medNS(t,a={}){ const e=document.createElementNS('http://www.w3.org/2000
 // ── NEUMÁTICO — diseño minimalista ──
 function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
   const col=mTireColor(pos), isSel=medSelPos===pos, a=mLast(pos);
-  const R=4; // border-radius del rectángulo
-  const tx=cx-TW/2, ty=cy-TH/2;
   const g=medNS('g',{cursor:'pointer'});
   g.addEventListener('click',()=>medSelectTire(pos));
 
-  // Glow exterior al seleccionar
+  const RX=TW/2, RY=TH/2; // radios del neumático (vista de perfil oval)
+
+  // Sombra suave
+  g.appendChild(medNS('ellipse',{
+    cx:cx+1, cy:cy+2, rx:RX, ry:RY,
+    fill:'rgba(0,0,0,0.10)'
+  }));
+
+  // Halo de selección
   if(isSel){
-    g.appendChild(medNS('rect',{
-      x:tx-5,y:ty-5,width:TW+10,height:TH+10,rx:R+4,
-      fill:'none',stroke:col.stroke,'stroke-width':'2',opacity:'0.5'
+    g.appendChild(medNS('ellipse',{
+      cx, cy, rx:RX+5, ry:RY+5,
+      fill:'none', stroke:col.stroke, 'stroke-width':'2', opacity:'0.4'
     }));
   }
 
-  // Carcasa — negro con borde según estado
-  g.appendChild(medNS('rect',{
-    x:tx,y:ty,width:TW,height:TH,rx:R,
-    fill:'#18181A',
-    stroke:col.stroke,'stroke-width': isSel?'2':'1.5'
+  // Carcasa del neumático — goma oscura
+  g.appendChild(medNS('ellipse',{
+    cx, cy, rx:RX, ry:RY,
+    fill:'#2C2B18',
+    stroke: isSel ? col.stroke : 'rgba(44,43,24,0.6)',
+    'stroke-width': isSel ? '2' : '1'
   }));
 
-  // Relleno interior de color (estado)
-  const pad=3;
-  g.appendChild(medNS('rect',{
-    x:tx+pad,y:ty+pad,width:TW-pad*2,height:TH-pad*2,rx:R-1,
-    fill:col.fill
+  // Banda de rodadura — zona de contacto con color de estado
+  const treadRX=RX*0.72, treadRY=RY*0.72;
+  g.appendChild(medNS('ellipse',{
+    cx, cy, rx:treadRX, ry:treadRY,
+    fill:col.fill, opacity:'0.92'
   }));
 
-  // Hub — círculo central sutil
-  const hr=isSingle?4:3;
-  g.appendChild(medNS('circle',{cx,cy,r:hr,
-    fill:'#18181A',stroke:col.stroke,'stroke-width':'1',opacity:'0.7'
+  // Surcos de rodadura — líneas horizontales (perpendiculares al avance)
+  const nGrooves=isSingle?3:2;
+  const grooveSpacing=treadRY*2/(nGrooves+1);
+  for(let i=1;i<=nGrooves;i++){
+    const gy=cy-treadRY+grooveSpacing*i;
+    const dx=treadRX*Math.sqrt(1-Math.pow((gy-cy)/treadRY,2))*0.92;
+    g.appendChild(medNS('line',{
+      x1:cx-dx, y1:gy, x2:cx+dx, y2:gy,
+      stroke:'rgba(0,0,0,0.18)', 'stroke-width':'1', 'stroke-linecap':'round'
+    }));
+  }
+
+  // Llanta / aro — círculo interior
+  const rimR=isSingle?RX*0.38:RX*0.35;
+  g.appendChild(medNS('circle',{
+    cx, cy, r:rimR,
+    fill:'#E8E4D4', stroke:'rgba(44,43,24,0.3)', 'stroke-width':'0.8'
   }));
 
-  // Valor mm — dentro del neumático, tipografía limpia
+  // Centro del aro
+  g.appendChild(medNS('circle',{
+    cx, cy, r:isSingle?2.5:2,
+    fill:'#2C2B18'
+  }));
+
+  // Valor mm — sobre la llanta
   if(a!==null){
-    const fs=isSingle?8:6.5;
+    const fs=isSingle?7.5:6;
     const vl=medNS('text',{
-      x:cx, y:cy+(fs*0.38),
-      'text-anchor':'middle','dominant-baseline':'middle',
-      'font-size':fs,'font-family':"'Inter',sans-serif",
-      'font-weight':'700',fill:col.text,
+      x:cx, y:cy+fs*0.38,
+      'text-anchor':'middle', 'dominant-baseline':'middle',
+      'font-size':fs, 'font-family':"'Inter',sans-serif",
+      'font-weight':'700', fill: a>=8?'#1a5c2a': a>=5?'#7a3600':'#8b1a12',
       'letter-spacing':'-0.02em'
     });
     vl.textContent=a.toFixed(1);
@@ -461,13 +487,14 @@ function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
   }
 
   // Label posición — fuera del neumático
-  const gap=TH/2+9;
-  const ly=isAbove ? cy-gap : cy+gap+3;
+  const labelGap=RY+8;
+  const ly=isAbove ? cy-labelGap : cy+labelGap+3;
   const pl=medNS('text',{
-    x:cx,y:ly,'text-anchor':'middle',
-    'font-size':'8.5','font-family':"'Inter',sans-serif",
-    'font-weight': isSel?'600':'400',
-    fill: isSel?col.stroke:'rgba(255,255,255,0.35)'
+    x:cx, y:ly, 'text-anchor':'middle',
+    'font-size':'8', 'font-family':"'Inter',sans-serif",
+    'font-weight': isSel?'700':'500',
+    fill: isSel ? col.stroke : 'rgba(44,43,24,0.45)',
+    'letter-spacing':'0.02em'
   });
   pl.textContent=`P${pos}`;
   g.appendChild(pl);
@@ -502,92 +529,83 @@ function medDrawTruck(){
   // ── DEFS ──
   const defs=medNS('defs',{});
 
-  // Gradiente sutil del cuerpo (top-down depth)
+  // Gradiente cuerpo — brand color (acento oscuro)
   const gBody=medNS('linearGradient',{id:'trBody',x1:'0',y1:'0',x2:'0',y2:'1'});
-  [{off:'0%',c:'#2C2C2E'},{off:'50%',c:'#242424'},{off:'100%',c:'#2C2C2E'}]
+  [{off:'0%',c:'#4a4930'},{off:'45%',c:'#3D3C20'},{off:'100%',c:'#2e2d17'}]
     .forEach(({off,c})=>{ const s=medNS('stop',{offset:off,'stop-color':c}); gBody.appendChild(s); });
   defs.appendChild(gBody);
 
-  // Gradiente cabina (ligeramente más clara)
+  // Gradiente cabina (un tono más claro)
   const gCab=medNS('linearGradient',{id:'trCab',x1:'0',y1:'0',x2:'0',y2:'1'});
-  [{off:'0%',c:'#38383A'},{off:'100%',c:'#2E2E30'}]
+  [{off:'0%',c:'#5a5938'},{off:'100%',c:'#46452a'}]
     .forEach(({off,c})=>{ const s=medNS('stop',{offset:off,'stop-color':c}); gCab.appendChild(s); });
   defs.appendChild(gCab);
 
-  svg.appendChild(defs);
+  // Filtro de sombra sutil
+  const flt=medNS('filter',{id:'trShadow',x:'-5%',y:'-10%',width:'110%',height:'130%'});
+  const fe=medNS('feDropShadow',{dx:'0',dy:'3','stdDeviation':'4','flood-color':'rgba(0,0,0,0.15)'});
+  flt.appendChild(fe); defs.appendChild(flt);
 
-  // ── SOMBRA DEL CUERPO ──
-  svg.appendChild(medNS('rect',{
-    x:bodyX1+2,y:bodyTop+3,width:bodyW,height:bodyH,rx:12,
-    fill:'rgba(0,0,0,0.5)'
-  }));
+  svg.appendChild(defs);
 
   // ── CUERPO PRINCIPAL ──
   svg.appendChild(medNS('rect',{
-    x:bodyX1,y:bodyTop,width:bodyW,height:bodyH,rx:12,
-    fill:'url(#trBody)',stroke:'rgba(255,255,255,0.07)','stroke-width':'1'
+    x:bodyX1, y:bodyTop, width:bodyW, height:bodyH, rx:10,
+    fill:'url(#trBody)', stroke:'rgba(201,185,106,0.2)', 'stroke-width':'1',
+    filter:'url(#trShadow)'
   }));
 
   // ── CABINA (zona frontal) ──
-  // Máscara de la cabina con clip (rx sólo en la izquierda)
-  const cabPath=`M${bodyX1+12},${bodyTop} L${cabX2},${bodyTop} L${cabX2},${bodyBot} L${bodyX1+12},${bodyBot} Q${bodyX1},${bodyBot} ${bodyX1},${bodyBot-12} L${bodyX1},${bodyTop+12} Q${bodyX1},${bodyTop} ${bodyX1+12},${bodyTop} Z`;
-  svg.appendChild(medNS('path',{d:cabPath,fill:'url(#trCab)'}));
+  const cabPath=`M${bodyX1+10},${bodyTop} L${cabX2},${bodyTop} L${cabX2},${bodyBot} L${bodyX1+10},${bodyBot} Q${bodyX1},${bodyBot} ${bodyX1},${bodyBot-10} L${bodyX1},${bodyTop+10} Q${bodyX1},${bodyTop} ${bodyX1+10},${bodyTop} Z`;
+  svg.appendChild(medNS('path',{d:cabPath, fill:'url(#trCab)'}));
 
   // Línea divisoria cabina / carga
   svg.appendChild(medNS('line',{
-    x1:cabX2,y1:bodyTop+8,x2:cabX2,y2:bodyBot-8,
-    stroke:'rgba(255,255,255,0.1)','stroke-width':'1.5','stroke-dasharray':'4 3'
+    x1:cabX2, y1:bodyTop+10, x2:cabX2, y2:bodyBot-10,
+    stroke:'rgba(201,185,106,0.25)', 'stroke-width':'1.5', 'stroke-dasharray':'4 3'
   }));
 
-  // ── TECHO / LUZ SUPERIOR ──
-  // Línea de highlight en el borde superior del cuerpo
+  // Highlight superior del cuerpo
   svg.appendChild(medNS('line',{
-    x1:bodyX1+14,y1:bodyTop+1,x2:bodyX2-8,y2:bodyTop+1,
-    stroke:'rgba(255,255,255,0.1)','stroke-width':'1'
+    x1:bodyX1+12, y1:bodyTop+1.5, x2:bodyX2-8, y2:bodyTop+1.5,
+    stroke:'rgba(255,255,255,0.12)', 'stroke-width':'1'
   }));
 
-  // ── FRENTE DEL CAMIÓN ──
-  // Nariz (path curvo limpio)
-  const nx=bodyX1, n=14;
+  // ── FRENTE — nariz curva ──
+  const nx=bodyX1, n=10;
   svg.appendChild(medNS('path',{
-    d:`M${nx},${bodyTop+n} Q${nx-12},${midY} ${nx},${bodyBot-n}`,
-    fill:'none',stroke:'rgba(255,255,255,0.06)','stroke-width':'1'
+    d:`M${nx},${bodyTop+n} Q${nx-10},${midY} ${nx},${bodyBot-n}`,
+    fill:'none', stroke:'rgba(201,185,106,0.15)', 'stroke-width':'1'
   }));
 
-  // Faros — dos píldoras pequeñas, dorado
-  [[bodyTop+10,8],[bodyBot-18,8]].forEach(([fy,fh])=>{
-    svg.appendChild(medNS('rect',{
-      x:bodyX1-10,y:fy,width:8,height:fh,rx:3,
-      fill:'#C9B96A',opacity:'0.9'
-    }));
+  // Faros — píldoras doradas
+  [[bodyTop+9,7],[bodyBot-16,7]].forEach(([fy,fh])=>{
+    svg.appendChild(medNS('rect',{x:bodyX1-9,y:fy,width:7,height:fh,rx:3,fill:'#C9B96A',opacity:'0.95'}));
   });
 
-  // ── PARTE TRASERA — luces rojas ──
-  [[bodyTop+10,14],[bodyBot-24,14]].forEach(([ry,rh])=>{
-    svg.appendChild(medNS('rect',{
-      x:bodyX2+2,y:ry,width:5,height:rh,rx:2,
-      fill:'#ff3b30',opacity:'0.75'
-    }));
+  // Luces traseras rojas
+  [[bodyTop+10,12],[bodyBot-22,12]].forEach(([ry,rh])=>{
+    svg.appendChild(medNS('rect',{x:bodyX2+1,y:ry,width:5,height:rh,rx:2,fill:'#ff3b30',opacity:'0.8'}));
   });
 
   // ── EJES ──
   axleXs.forEach(ax=>{
     svg.appendChild(medNS('line',{
-      x1:ax,y1:bodyTop-3,x2:ax,y2:bodyBot+3,
-      stroke:'rgba(255,255,255,0.12)','stroke-width':'1.5','stroke-linecap':'round'
+      x1:ax, y1:bodyTop-2, x2:ax, y2:bodyBot+2,
+      stroke:'rgba(201,185,106,0.2)', 'stroke-width':'1.5', 'stroke-linecap':'round'
     }));
   });
 
-  // Línea de transmisión central (muy sutil)
+  // Línea central de transmisión
   svg.appendChild(medNS('line',{
-    x1:axleXs[0],y1:midY,x2:axleXs[axleXs.length-1],y2:midY,
-    stroke:'rgba(255,255,255,0.05)','stroke-width':'1','stroke-dasharray':'5 4'
+    x1:axleXs[0], y1:midY, x2:axleXs[axleXs.length-1], y2:midY,
+    stroke:'rgba(201,185,106,0.1)', 'stroke-width':'1', 'stroke-dasharray':'5 4'
   }));
 
   // Etiqueta FRENTE
-  const fl=medNS('text',{x:bodyX1-2,y:bodyTop-7,'text-anchor':'middle',
-    'font-size':'8','font-family':"'Inter',sans-serif",'font-weight':'600',
-    fill:'rgba(255,255,255,0.25)','letter-spacing':'0.08em'});
+  const fl=medNS('text',{x:bodyX1-2, y:bodyTop-8, 'text-anchor':'middle',
+    'font-size':'7.5', 'font-family':"'Inter',sans-serif", 'font-weight':'600',
+    fill:'rgba(61,60,32,0.35)', 'letter-spacing':'0.1em'});
   fl.textContent='FRENTE';
   svg.appendChild(fl);
 
