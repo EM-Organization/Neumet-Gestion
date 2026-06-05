@@ -381,20 +381,9 @@ document.getElementById('med-vehiculo-select').addEventListener('change',async f
   medTireData={}; medSelPos=null;
   const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
   if(error){ showToast('Error: '+error.message,true); document.getElementById('med-loading').style.display='none'; return; }
-  // Agrupar por segundo y filtrar sesiones incompletas
-  const sesMap={};
-  (data||[]).forEach(r=>{
-    const sec=new Date(r.created_at).toISOString().slice(0,19);
-    if(!sesMap[sec]) sesMap[sec]=[];
-    sesMap[sec].push(r);
-  });
-  const tipoRuedas=parseInt(medTipoRuedas)||10;
-  const sesCompletas=Object.values(sesMap).filter(rows=>{
-    const positions=new Set(rows.map(r=>r.posicion)).size;
-    return positions>=tipoRuedas;
-  });
+  // Agrupar historial por posición (últimas 10 lecturas por rueda)
   const grp={};
-  sesCompletas.flat().forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
+  (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
   Object.keys(grp).forEach(p=>{ medTireData[parseInt(p)]=grp[p].slice(-10); });
   document.getElementById('med-loading').style.display='none';
   document.getElementById('med-truck-card').style.display='block';
@@ -410,91 +399,75 @@ function medNS(t,a={}){ const e=document.createElementNS('http://www.w3.org/2000
 // frente = izquierda (x pequeño), trasera = derecha (x grande)
 // lado izquierdo del vehículo = arriba (y pequeño), derecho = abajo
 
-// ── NEUMÁTICO — diseño minimalista ──
+// ── NEUMÁTICO — plano arquitectónico, vista superior ──
+// ── NEUMÁTICO — plano técnico, contorno de estado ──
+// TW = espesor (perpendicular al bus). TH = largo de goma (paralelo al bus).
+// Se dibuja rotado 90°: RW=TH (horizontal), RH=TW (vertical).
 function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
   const col=mTireColor(pos), isSel=medSelPos===pos, a=mLast(pos);
   const g=medNS('g',{cursor:'pointer'});
   g.addEventListener('click',()=>medSelectTire(pos));
 
-  const RX=TW/2, RY=TH/2; // radios del neumático (vista de perfil oval)
+  // Girar 90°: el lado largo queda horizontal (paralelo al bus)
+  const RW=TH, RH=TW;
+  const rx=3;
+  const x=cx-RW/2, y=cy-RH/2;
+  const hasData=a!==null;
 
-  // Sombra suave
-  g.appendChild(medNS('ellipse',{
-    cx:cx+1, cy:cy+2, rx:RX, ry:RY,
-    fill:'rgba(0,0,0,0.10)'
+  // Fondo claro con tinte de estado
+  g.appendChild(medNS('rect',{
+    x, y, width:RW, height:RH, rx,
+    fill: hasData ? col.fill : 'rgba(61,60,32,0.04)'
   }));
 
-  // Halo de selección
-  if(isSel){
-    g.appendChild(medNS('ellipse',{
-      cx, cy, rx:RX+5, ry:RY+5,
-      fill:'none', stroke:col.stroke, 'stroke-width':'2', opacity:'0.4'
-    }));
-  }
-
-  // Carcasa del neumático — goma oscura
-  g.appendChild(medNS('ellipse',{
-    cx, cy, rx:RX, ry:RY,
-    fill:'#2C2B18',
-    stroke: isSel ? col.stroke : 'rgba(44,43,24,0.6)',
-    'stroke-width': isSel ? '2' : '1'
+  // Contorno de estado — línea principal
+  g.appendChild(medNS('rect',{
+    x, y, width:RW, height:RH, rx,
+    fill:'none',
+    stroke: hasData ? col.stroke : 'rgba(61,60,32,0.22)',
+    'stroke-width': isSel ? '2.5' : '1.8'
   }));
 
-  // Banda de rodadura — zona de contacto con color de estado
-  const treadRX=RX*0.72, treadRY=RY*0.72;
-  g.appendChild(medNS('ellipse',{
-    cx, cy, rx:treadRX, ry:treadRY,
-    fill:col.fill, opacity:'0.92'
+  // Línea interior paralela (doble contorno estilo plano técnico)
+  const inset=3;
+  g.appendChild(medNS('rect',{
+    x:x+inset, y:y+inset, width:RW-inset*2, height:RH-inset*2, rx:Math.max(1,rx-2),
+    fill:'none',
+    stroke: hasData ? col.stroke : 'rgba(61,60,32,0.10)',
+    'stroke-width':'0.6',
+    opacity:'0.5'
   }));
 
-  // Surcos de rodadura — líneas horizontales (perpendiculares al avance)
-  const nGrooves=isSingle?3:2;
-  const grooveSpacing=treadRY*2/(nGrooves+1);
-  for(let i=1;i<=nGrooves;i++){
-    const gy=cy-treadRY+grooveSpacing*i;
-    const dx=treadRX*Math.sqrt(1-Math.pow((gy-cy)/treadRY,2))*0.92;
-    g.appendChild(medNS('line',{
-      x1:cx-dx, y1:gy, x2:cx+dx, y2:gy,
-      stroke:'rgba(0,0,0,0.18)', 'stroke-width':'1', 'stroke-linecap':'round'
-    }));
-  }
-
-  // Llanta / aro — círculo interior
-  const rimR=isSingle?RX*0.38:RX*0.35;
-  g.appendChild(medNS('circle',{
-    cx, cy, r:rimR,
-    fill:'#E8E4D4', stroke:'rgba(44,43,24,0.3)', 'stroke-width':'0.8'
-  }));
-
-  // Centro del aro
-  g.appendChild(medNS('circle',{
-    cx, cy, r:isSingle?2.5:2,
-    fill:'#2C2B18'
-  }));
-
-  // Valor mm — sobre la llanta
-  if(a!==null){
-    const fs=isSingle?7.5:6;
-    const vl=medNS('text',{
-      x:cx, y:cy+fs*0.38,
+  // Valor mm — centrado dentro
+  if(hasData){
+    const fs=isSingle?7.5:6.5;
+    const t=medNS('text',{
+      x:cx, y:cy,
       'text-anchor':'middle', 'dominant-baseline':'middle',
       'font-size':fs, 'font-family':"'Inter',sans-serif",
-      'font-weight':'700', fill: a>=8?'#1a5c2a': a>=5?'#7a3600':'#8b1a12',
-      'letter-spacing':'-0.02em'
+      'font-weight':'700', fill:col.text
     });
-    vl.textContent=a.toFixed(1);
-    g.appendChild(vl);
+    t.textContent=a.toFixed(1);
+    g.appendChild(t);
   }
 
-  // Label posición — fuera del neumático
-  const labelGap=RY+8;
-  const ly=isAbove ? cy-labelGap : cy+labelGap+3;
+  // Indicador de selección — borde externo punteado
+  if(isSel){
+    g.appendChild(medNS('rect',{
+      x:x-4, y:y-4, width:RW+8, height:RH+8, rx:rx+3,
+      fill:'none', stroke:col.stroke, 'stroke-width':'1.2',
+      'stroke-dasharray':'3 2', opacity:'0.6'
+    }));
+  }
+
+  // Label posición — encima o debajo del neumático
+  const ly=isAbove ? y-7 : y+RH+11;
   const pl=medNS('text',{
     x:cx, y:ly, 'text-anchor':'middle',
-    'font-size':'8', 'font-family':"'Inter',sans-serif",
-    'font-weight': isSel?'700':'500',
-    fill: isSel ? col.stroke : 'rgba(44,43,24,0.45)',
-    'letter-spacing':'0.02em'
+    'font-size':'7.5', 'font-family':"'Inter',sans-serif",
+    'font-weight': isSel?'700':'400',
+    fill: isSel ? col.stroke : 'rgba(61,60,32,0.38)',
+    'letter-spacing':'0.04em'
   });
   pl.textContent=`P${pos}`;
   g.appendChild(pl);
@@ -502,134 +475,189 @@ function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
   svg.appendChild(g);
 }
 
-// ── CAMIÓN — diseño flat moderno ──
+// ── VEHÍCULO — plano técnico, vista superior ──
 function medDrawTruck(){
   const key=String(medTipoRuedas);
   const svg=document.getElementById('med-truck-svg');
   svg.innerHTML='';
   const cfg=MED_CFG[key]; if(!cfg) return;
 
-  const W=600, H=270;
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  svg.setAttribute('width','100%');
-  svg.setAttribute('height','270');
+  // ── Dimensiones de neumáticos ──
+  const TW_s=20, TH_s=54;   // simple: perfil delgado, ancho largo
+  const TW_d=15, TH_d=38;   // dual: más compacto
+  const GAP_D=5;             // espacio entre par de duales
+  const BGAP=12;             // gap carrocería → neumático
 
-  const midY=135, bodyH=76;
-  const bodyTop=midY-bodyH/2, bodyBot=midY+bodyH/2;
-
+  // ── Posición de ejes según tipo ──
   let axleXs, bodyX1, bodyX2;
   if(key==='10'){
-    axleXs=[122,362,464]; bodyX1=52; bodyX2=544;
+    axleXs=[150, 440, 580]; bodyX1=64; bodyX2=730;
   } else {
-    axleXs=[98,252,330,408,480]; bodyX1=40; bodyX2=556;
+    axleXs=[120, 310, 420, 530, 640]; bodyX1=50; bodyX2=780;
   }
-  const bodyW=bodyX2-bodyX1;
-  const cabW=88, cabX2=bodyX1+cabW;
 
-  // ── DEFS ──
+  // Altura del canvas: rotado 90°, el lado que "sale" del bus es TW (el corto)
+  const outerR_d = BGAP + TW_d + GAP_D + TW_d; // distancia máxima desde borde cuerpo (dual)
+  const outerR_s = BGAP + TW_s;                 // distancia máxima (simple)
+  const outerR   = Math.max(outerR_d, outerR_s);
+  const labelExtra = 22;
+  const bodyH = 86;
+  const margin = 28;
+  const H = bodyH + (outerR + labelExtra + margin) * 2;
+  const W = key==='10' ? 860 : 900;
+  const midY = H / 2;
+  const bodyTop = midY - bodyH/2, bodyBot = midY + bodyH/2;
+  const bodyW = bodyX2 - bodyX1;
+
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height',String(Math.round(H)));
+
+  const INK  = 'rgba(50,49,25,';   // color base de tinta del plano
+  const INK2 = '#3D3C20';
+
+  // ── DEFS: patrón de líneas finas (fondo plano técnico) ──
   const defs=medNS('defs',{});
 
-  // Gradiente cuerpo — brand color (acento oscuro)
-  const gBody=medNS('linearGradient',{id:'trBody',x1:'0',y1:'0',x2:'0',y2:'1'});
-  [{off:'0%',c:'#4a4930'},{off:'45%',c:'#3D3C20'},{off:'100%',c:'#2e2d17'}]
-    .forEach(({off,c})=>{ const s=medNS('stop',{offset:off,'stop-color':c}); gBody.appendChild(s); });
-  defs.appendChild(gBody);
-
-  // Gradiente cabina (un tono más claro)
-  const gCab=medNS('linearGradient',{id:'trCab',x1:'0',y1:'0',x2:'0',y2:'1'});
-  [{off:'0%',c:'#5a5938'},{off:'100%',c:'#46452a'}]
-    .forEach(({off,c})=>{ const s=medNS('stop',{offset:off,'stop-color':c}); gCab.appendChild(s); });
-  defs.appendChild(gCab);
-
-  // Filtro de sombra sutil
-  const flt=medNS('filter',{id:'trShadow',x:'-5%',y:'-10%',width:'110%',height:'130%'});
-  const fe=medNS('feDropShadow',{dx:'0',dy:'3','stdDeviation':'4','flood-color':'rgba(0,0,0,0.15)'});
-  flt.appendChild(fe); defs.appendChild(flt);
+  // Patrón de cuadrícula muy sutil
+  const pat=medNS('pattern',{id:'grid',width:'20',height:'20',patternUnits:'userSpaceOnUse'});
+  pat.appendChild(medNS('path',{d:'M 20 0 L 0 0 0 20',fill:'none',stroke:INK+'0.06)',
+    'stroke-width':'0.5'}));
+  defs.appendChild(pat);
 
   svg.appendChild(defs);
 
-  // ── CUERPO PRINCIPAL ──
-  svg.appendChild(medNS('rect',{
-    x:bodyX1, y:bodyTop, width:bodyW, height:bodyH, rx:10,
-    fill:'url(#trBody)', stroke:'rgba(201,185,106,0.2)', 'stroke-width':'1',
-    filter:'url(#trShadow)'
-  }));
+  // Fondo con grid técnico muy tenue
+  svg.appendChild(medNS('rect',{x:0,y:0,width:W,height:H,fill:'url(#grid)'}));
 
-  // ── CABINA (zona frontal) ──
-  const cabPath=`M${bodyX1+10},${bodyTop} L${cabX2},${bodyTop} L${cabX2},${bodyBot} L${bodyX1+10},${bodyBot} Q${bodyX1},${bodyBot} ${bodyX1},${bodyBot-10} L${bodyX1},${bodyTop+10} Q${bodyX1},${bodyTop} ${bodyX1+10},${bodyTop} Z`;
-  svg.appendChild(medNS('path',{d:cabPath, fill:'url(#trCab)'}));
-
-  // Línea divisoria cabina / carga
-  svg.appendChild(medNS('line',{
-    x1:cabX2, y1:bodyTop+10, x2:cabX2, y2:bodyBot-10,
-    stroke:'rgba(201,185,106,0.25)', 'stroke-width':'1.5', 'stroke-dasharray':'4 3'
-  }));
-
-  // Highlight superior del cuerpo
-  svg.appendChild(medNS('line',{
-    x1:bodyX1+12, y1:bodyTop+1.5, x2:bodyX2-8, y2:bodyTop+1.5,
-    stroke:'rgba(255,255,255,0.12)', 'stroke-width':'1'
-  }));
-
-  // ── FRENTE — nariz curva ──
-  const nx=bodyX1, n=10;
-  svg.appendChild(medNS('path',{
-    d:`M${nx},${bodyTop+n} Q${nx-10},${midY} ${nx},${bodyBot-n}`,
-    fill:'none', stroke:'rgba(201,185,106,0.15)', 'stroke-width':'1'
-  }));
-
-  // Faros — píldoras doradas
-  [[bodyTop+9,7],[bodyBot-16,7]].forEach(([fy,fh])=>{
-    svg.appendChild(medNS('rect',{x:bodyX1-9,y:fy,width:7,height:fh,rx:3,fill:'#C9B96A',opacity:'0.95'}));
-  });
-
-  // Luces traseras rojas
-  [[bodyTop+10,12],[bodyBot-22,12]].forEach(([ry,rh])=>{
-    svg.appendChild(medNS('rect',{x:bodyX2+1,y:ry,width:5,height:rh,rx:2,fill:'#ff3b30',opacity:'0.8'}));
-  });
-
-  // ── EJES ──
-  axleXs.forEach(ax=>{
+  // ── LÍNEAS DE EJE — atraviesan todo el canvas de arriba a abajo ──
+  axleXs.forEach((ax,i)=>{
+    // Línea de eje de punta a punta
     svg.appendChild(medNS('line',{
-      x1:ax, y1:bodyTop-2, x2:ax, y2:bodyBot+2,
-      stroke:'rgba(201,185,106,0.2)', 'stroke-width':'1.5', 'stroke-linecap':'round'
+      x1:ax, y1:margin/2, x2:ax, y2:H-margin/2,
+      stroke:INK+'0.14)', 'stroke-width':'1',
+      'stroke-dasharray':'8 5', 'stroke-linecap':'round'
+    }));
+    // Trazo sólido dentro del cuerpo
+    svg.appendChild(medNS('line',{
+      x1:ax, y1:bodyTop, x2:ax, y2:bodyBot,
+      stroke:INK+'0.28)', 'stroke-width':'1.2'
+    }));
+    // Pequeño círculo en la intersección eje / borde cuerpo (arriba y abajo)
+    [bodyTop, bodyBot].forEach(ey=>{
+      svg.appendChild(medNS('circle',{cx:ax,cy:ey,r:'2.5',
+        fill:'white',stroke:INK+'0.30)','stroke-width':'0.8'}));
+    });
+  });
+
+  // Línea de simetría longitudinal
+  svg.appendChild(medNS('line',{
+    x1:bodyX1-20, y1:midY, x2:bodyX2+20, y2:midY,
+    stroke:INK+'0.10)', 'stroke-width':'0.8', 'stroke-dasharray':'10 6'
+  }));
+
+  // ── CARROCERÍA — cuerpo principal ──
+  // Sombra muy sutil
+  svg.appendChild(medNS('rect',{
+    x:bodyX1+2, y:bodyTop+2, width:bodyW, height:bodyH, rx:6,
+    fill:'rgba(0,0,0,0.05)'
+  }));
+
+  // Relleno del cuerpo — color brand muy claro
+  svg.appendChild(medNS('rect',{
+    x:bodyX1, y:bodyTop, width:bodyW, height:bodyH, rx:6,
+    fill:'rgba(61,60,32,0.07)', stroke:INK2,
+    'stroke-width':'1.5'
+  }));
+
+  // Línea de pared interior (doble contorno estilo arquitectónico)
+  const wallInset=5;
+  svg.appendChild(medNS('rect',{
+    x:bodyX1+wallInset, y:bodyTop+wallInset,
+    width:bodyW-wallInset*2, height:bodyH-wallInset*2, rx:3,
+    fill:'none', stroke:INK+'0.20)', 'stroke-width':'0.7'
+  }));
+
+  // ── FRENTE (izquierda) — parabrisa y detalles ──
+  const cabW=90;
+  // Zona de cabina con relleno más marcado
+  svg.appendChild(medNS('rect',{
+    x:bodyX1, y:bodyTop, width:cabW, height:bodyH, rx:6,
+    fill:'rgba(61,60,32,0.10)',
+    stroke:'none'
+  }));
+  // Borde derecho de cabina
+  svg.appendChild(medNS('line',{
+    x1:bodyX1+cabW, y1:bodyTop+wallInset+2,
+    x2:bodyX1+cabW, y2:bodyBot-wallInset-2,
+    stroke:INK+'0.25)', 'stroke-width':'0.8', 'stroke-dasharray':'4 3'
+  }));
+  // Parabrisa — arco esquemático
+  svg.appendChild(medNS('path',{
+    d:`M ${bodyX1+6} ${bodyTop+14} Q ${bodyX1+3} ${midY} ${bodyX1+6} ${bodyBot-14}`,
+    fill:'none', stroke:INK+'0.35)', 'stroke-width':'1.2'
+  }));
+
+  // ── LUCES delanteras ──
+  [[bodyTop+10, 10],[bodyBot-20, 10]].forEach(([fy,fh])=>{
+    svg.appendChild(medNS('rect',{
+      x:bodyX1-5, y:fy, width:5, height:fh, rx:2,
+      fill:'rgba(61,60,32,0.55)', stroke:INK2, 'stroke-width':'0.6'
     }));
   });
 
-  // Línea central de transmisión
-  svg.appendChild(medNS('line',{
-    x1:axleXs[0], y1:midY, x2:axleXs[axleXs.length-1], y2:midY,
-    stroke:'rgba(201,185,106,0.1)', 'stroke-width':'1', 'stroke-dasharray':'5 4'
-  }));
+  // ── LUCES traseras ──
+  [[bodyTop+12, 14],[bodyBot-26, 14]].forEach(([ry,rh])=>{
+    svg.appendChild(medNS('rect',{
+      x:bodyX2, y:ry, width:5, height:rh, rx:2,
+      fill:'rgba(61,60,32,0.25)', stroke:INK2, 'stroke-width':'0.6'
+    }));
+  });
 
-  // Etiqueta FRENTE
-  const fl=medNS('text',{x:bodyX1-2, y:bodyTop-8, 'text-anchor':'middle',
-    'font-size':'7.5', 'font-family':"'Inter',sans-serif", 'font-weight':'600',
-    fill:'rgba(61,60,32,0.35)', 'letter-spacing':'0.1em'});
-  fl.textContent='FRENTE';
-  svg.appendChild(fl);
+  // ── ETIQUETAS ──
+  // "FRENTE"
+  const labelF=medNS('text',{
+    x:bodyX1+cabW/2, y:bodyTop-12,
+    'text-anchor':'middle', 'font-size':'7',
+    'font-family':"'Inter',sans-serif", 'font-weight':'500',
+    fill:INK+'0.35)', 'letter-spacing':'0.14em'
+  });
+  labelF.textContent='FRENTE';
+  svg.appendChild(labelF);
+
+  // Número de eje sobre cada línea de eje
+  axleXs.forEach((ax,i)=>{
+    const t=medNS('text',{
+      x:ax, y:bodyTop-12,
+      'text-anchor':'middle', 'font-size':'7',
+      'font-family':"'Inter',sans-serif", 'font-weight':'400',
+      fill:INK+'0.28)', 'letter-spacing':'0.06em'
+    });
+    t.textContent=`EJE ${i+1}`;
+    svg.appendChild(t);
+  });
 
   // ── NEUMÁTICOS ──
-  const TW_s=20, TH_s=46;
-  const TW_d=14, TH_d=32;
-  const gap_d=5, bGap=9;
-
   cfg.forEach((axle,ai)=>{
-    const ax=axleXs[ai]; if(!ax) return;
+    const ax=axleXs[ai]; if(ax===undefined) return;
     if(axle.single){
       const L=axle.positions.find(p=>p.side==='L');
       const R=axle.positions.find(p=>p.side==='R');
-      if(L) medDrawTire(svg,ax,bodyTop-bGap-TH_s/2,L.pos,TW_s,TH_s,true,true);
-      if(R) medDrawTire(svg,ax,bodyBot+bGap+TH_s/2,R.pos,TW_s,TH_s,true,false);
+      // Rotado 90°: el lado que separa del bus es TW_s (el corto)
+      const cyL=bodyTop-BGAP-TW_s/2;
+      const cyR=bodyBot+BGAP+TW_s/2;
+      if(L) medDrawTire(svg,ax,cyL,L.pos,TW_s,TH_s,true,true);
+      if(R) medDrawTire(svg,ax,cyR,R.pos,TW_s,TH_s,true,false);
     } else {
       const LL=axle.positions.find(p=>p.side==='LL');
       const LR=axle.positions.find(p=>p.side==='LR');
       const RL=axle.positions.find(p=>p.side==='RL');
       const RR=axle.positions.find(p=>p.side==='RR');
-      const cyLI=bodyTop-bGap-TH_d/2;
-      const cyLO=cyLI-TH_d-gap_d;
-      const cyRI=bodyBot+bGap+TH_d/2;
-      const cyRO=cyRI+TH_d+gap_d;
+      // Rotado 90°: el lado que separa del bus es TW_d (el corto)
+      const cyLI=bodyTop-BGAP-TW_d/2;
+      const cyLO=cyLI-TW_d-GAP_D;
+      const cyRI=bodyBot+BGAP+TW_d/2;
+      const cyRO=cyRI+TW_d+GAP_D;
       if(LR) medDrawTire(svg,ax,cyLI,LR.pos,TW_d,TH_d,false,true);
       if(LL) medDrawTire(svg,ax,cyLO,LL.pos,TW_d,TH_d,false,true);
       if(RL) medDrawTire(svg,ax,cyRI,RL.pos,TW_d,TH_d,false,false);
