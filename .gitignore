@@ -19,3 +19,4 @@ Thumbs.db
 # Build output
 dist/
 build/
+servidor.ps1

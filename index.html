@@ -14,9 +14,8 @@
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-box">
-    <div class="login-brand" style="flex-direction:column;gap:12px">
-      <img src="assets/img/logo.png" alt="NEUMET" style="width:60px;height:60px;object-fit:contain"/>
-      <span class="neumet-wordmark" style="font-size:36px;color:var(--accent-dark)">NEUMET</span>
+    <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
+      <img src="assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:120px;height:120px;object-fit:contain;border-radius:18px"/>
     </div>
     <div class="login-title">Bienvenido</div>
     <div class="login-sub">Iniciá sesión para continuar</div>
@@ -26,7 +25,6 @@
       <div class="field"><label>Contraseña</label><input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password"/></div>
       <button type="submit" class="login-btn" id="login-btn">Iniciar sesión</button>
     </form>
-    <div class="login-footer">NEUMET · SISTEMA DE GESTIÓN</div>
   </div>
 </div>
 
@@ -34,10 +32,11 @@
 <div class="app hidden" id="app">
   <aside class="sidebar">
     <div class="brand">
-      <img src="assets/img/logo.png" alt="NEUMET" class="brand-logo"/>
+      <div style="width:32px;height:28px;overflow:hidden;border-radius:6px;flex-shrink:0">
+        <img src="assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:32px;height:42px;object-fit:cover;object-position:center top"/>
+      </div>
       <div>
-        <span class="neumet-wordmark brand-name">NEUMET</span>
-        <div class="brand-sub">admin · v10</div>
+        <div class="brand-sub" style="color:rgba(255,255,255,0.6);font-size:12px">admin · v10</div>
       </div>
     </div>
     <div class="nav-section">Workspace</div>
@@ -517,6 +516,10 @@
         <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
       </div>
       <div class="field">
+        <label>Número de coche <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+        <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
+      </div>
+      <div class="field">
         <label>Cantidad de ruedas</label>
         <select id="vf-ruedas">
           <option value="10">10 ruedas</option>
@@ -640,6 +643,7 @@
   <span id="toast-msg">OK</span>
 </div>
 
-<script type="module" src="assets/js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>

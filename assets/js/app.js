@@ -1,10 +1,9 @@
-﻿
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿const createClient = window.supabase.createClient;
 
 const SUPABASE_URL = 'https://dqgrlflrjcarxlfetvoj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZ3JsZmxyamNhcnhsZmV0dm9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzE4MzIsImV4cCI6MjA5Mzc0NzgzMn0.i9wnVq_OmBuGtzEEyi_ix-upDpFe4T1clO7mOUnp4_E';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let clients = [], modalMode = 'create', activeId = null;
 
 const AVATARS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
@@ -37,13 +36,13 @@ function showToast(msg,err=false){
 
 // AUTH — detecta rol
 async function checkAuth(){
-  const {data:{session}}=await supabase.auth.getSession();
+  const {data:{session}}=await db.auth.getSession();
   if(!session){ showLogin(); return; }
   // Verificar si es admin (no tiene fila en clientes)
-  const {data:clienteRow}=await supabase.from('clientes').select('id').eq('auth_user_id',session.user.id).maybeSingle();
+  const {data:clienteRow}=await db.from('clientes').select('id').eq('auth_user_id',session.user.id).maybeSingle();
   if(clienteRow){
     // Es un cliente, no admin — por ahora redirigir al login con mensaje
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     showLogin();
     document.getElementById('login-error').textContent='Este acceso es solo para administradores.';
     document.getElementById('login-error').classList.add('show');
@@ -63,7 +62,7 @@ function showApp(user){
   document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();
   loadClients();
   // Chequear dispositivos no registrados al iniciar para mostrar el badge
-  supabase.rpc('get_unregistered_devices').then(({data})=>{
+  db.rpc('get_unregistered_devices').then(({data})=>{
     if(data&&data.length){
       const badge=document.getElementById('nav-unreg-badge');
       badge.textContent=data.length; badge.style.display='';
@@ -78,16 +77,16 @@ document.getElementById('login-form').addEventListener('submit',async e=>{
   const btn=document.getElementById('login-btn');
   const err=document.getElementById('login-error');
   btn.disabled=true; btn.textContent='Iniciando...'; err.classList.remove('show');
-  const {data,error}=await supabase.auth.signInWithPassword({email,password:pass});
+  const {data,error}=await db.auth.signInWithPassword({email,password:pass});
   btn.disabled=false; btn.textContent='Iniciar sesión';
   if(error){
     err.textContent=error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message;
     err.classList.add('show'); return;
   }
   // Detectar rol
-  const {data:clienteRow}=await supabase.from('clientes').select('id').eq('auth_user_id',data.user.id).maybeSingle();
+  const {data:clienteRow}=await db.from('clientes').select('id').eq('auth_user_id',data.user.id).maybeSingle();
   if(clienteRow){
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     err.textContent='Este acceso es solo para administradores.';
     err.classList.add('show'); return;
   }
@@ -95,9 +94,9 @@ document.getElementById('login-form').addEventListener('submit',async e=>{
 });
 
 document.getElementById('logout-btn').addEventListener('click',async()=>{
-  await supabase.auth.signOut(); clients=[]; showLogin();
+  await db.auth.signOut(); clients=[]; showLogin();
 });
-supabase.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') showLogin(); });
+db.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') showLogin(); });
 
 // ── MOBILE SIDEBAR ──
 const menuToggle=document.getElementById('menu-toggle');
@@ -148,7 +147,7 @@ function showToastOk(msg){ showToast(msg,false); }
 
 async function loadClients(){
   setStatus(true,'Cargando...');
-  const {data,error}=await supabase.from('clientes')
+  const {data,error}=await db.from('clientes')
     .select('id,nombre,created_at,auth_user_id, dispositivos(id,mac_address,activo), vehiculos(id)')
     .order('created_at',{ascending:false});
   if(error){ setStatus(false,'Error de conexión'); showToast('Error: '+error.message,true); return; }
@@ -156,7 +155,7 @@ async function loadClients(){
 }
 
 async function createClient_(name,email,password){
-  const {data:{session}}=await supabase.auth.getSession();
+  const {data:{session}}=await db.auth.getSession();
   const res=await fetch(`${SUPABASE_URL}/functions/v1/crear-cliente`,{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_KEY},
@@ -168,7 +167,7 @@ async function createClient_(name,email,password){
 }
 
 async function deleteClient(id){
-  const {error}=await supabase.from('clientes').delete().eq('id',id);
+  const {error}=await db.from('clientes').delete().eq('id',id);
   if(error) throw error;
 }
 
@@ -280,7 +279,7 @@ window.saveCliente=async function(){
       showToast(`${name} creado correctamente`);
     } else {
       if(!name){ showToast('Ingresá un nombre',true); return; }
-      const {data,error}=await supabase.from('clientes').update({nombre:name}).eq('id',activeId).select('id,nombre,created_at,auth_user_id, dispositivos(id,mac_address,activo), vehiculos(id)').single();
+      const {data,error}=await db.from('clientes').update({nombre:name}).eq('id',activeId).select('id,nombre,created_at,auth_user_id, dispositivos(id,mac_address,activo), vehiculos(id)').single();
       if(error) throw error;
       const idx=clients.findIndex(c=>c.id===activeId);
       if(idx>=0) clients[idx]=data;
@@ -332,7 +331,7 @@ function mTireColor(pos){
 }
 
 async function medInit(){
-  const {data}=await supabase.from('clientes').select('id,nombre').order('nombre');
+  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
   const sel=document.getElementById('med-cliente-select');
   sel.innerHTML='<option value="">— Seleccionar cliente —</option>'+(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
   document.getElementById('med-vehiculo-select').innerHTML='<option value="">— Seleccionar vehículo —</option>';
@@ -360,7 +359,7 @@ document.getElementById('med-cliente-select').addEventListener('change',async fu
   document.getElementById('med-empty').style.display='flex';
   document.getElementById('med-tire-detail').style.display='none';
   if(!cid){ vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'; vs.disabled=true; return; }
-  const {data}=await supabase.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',cid).eq('activo',true).order('nombre');
+  const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',cid).eq('activo',true).order('nombre');
   medVehs=data||[];
   vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'+medVehs.map(v=>`<option value="${v.id}">${esc(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`).join('');
   vs.disabled=false;
@@ -376,7 +375,7 @@ document.getElementById('med-vehiculo-select').addEventListener('change',async f
   document.getElementById('med-empty').style.display='none';
   document.getElementById('med-tire-detail').style.display='none';
   medTireData={}; medSelPos=null;
-  const {data,error}=await supabase.from('mediciones').select('posicion,mm1,mm2,mm3,mm4,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
+  const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,mm4,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
   if(error){ showToast('Error: '+error.message,true); document.getElementById('med-loading').style.display='none'; return; }
   const grp={};
   (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
@@ -740,8 +739,8 @@ const fmt=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',mini
 async function loadBalance(){
   setStatus(true,'Cargando...');
   const [{data:cData},{data:gData}]=await Promise.all([
-    supabase.from('clientes').select('id,nombre,precio_mensual,created_at').order('nombre'),
-    supabase.from('gastos').select('*').order('created_at',{ascending:false})
+    db.from('clientes').select('id,nombre,precio_mensual,created_at').order('nombre'),
+    db.from('gastos').select('*').order('created_at',{ascending:false})
   ]);
   setStatus(true,'Conectado');
   balanceClients=cData||[];
@@ -1047,7 +1046,7 @@ function renderBalanceChart(){
 
 window.updatePrecio=async function(clienteId,val){
   const precio=Math.max(0,parseFloat(val)||0);
-  const {error}=await supabase.from('clientes').update({precio_mensual:precio}).eq('id',clienteId);
+  const {error}=await db.from('clientes').update({precio_mensual:precio}).eq('id',clienteId);
   if(error){ showToast('Error al guardar precio',true); return; }
   const c=balanceClients.find(c=>c.id===clienteId);
   if(c) c.precio_mensual=precio;
@@ -1097,12 +1096,12 @@ window.saveGasto=async function(){
   btn.disabled=true; btn.textContent=gastoModalMode==='create'?'Creando...':'Guardando...';
   try{
     if(gastoModalMode==='create'){
-      const {data,error}=await supabase.from('gastos').insert({nombre,categoria,monto,notas,recurrente,activo}).select().single();
+      const {data,error}=await db.from('gastos').insert({nombre,categoria,monto,notas,recurrente,activo}).select().single();
       if(error) throw error;
       gastos.unshift(data);
       showToast(`Gasto "${nombre}" creado`);
     } else {
-      const {data,error}=await supabase.from('gastos').update({nombre,categoria,monto,notas,recurrente,activo}).eq('id',gastoActiveId).select().single();
+      const {data,error}=await db.from('gastos').update({nombre,categoria,monto,notas,recurrente,activo}).eq('id',gastoActiveId).select().single();
       if(error) throw error;
       const idx=gastos.findIndex(g=>g.id===gastoActiveId);
       if(idx>=0) gastos[idx]=data;
@@ -1117,7 +1116,7 @@ async function removeGasto(id){
   const g=gastos.find(g=>g.id===id);
   const ok=await confirmDialog('Eliminar gasto',`¿Eliminar "${g.nombre}" de los gastos?`);
   if(!ok) return;
-  const {error}=await supabase.from('gastos').delete().eq('id',id);
+  const {error}=await db.from('gastos').delete().eq('id',id);
   if(error){ showToast('Error: '+error.message,true); return; }
   gastos=gastos.filter(g=>g.id!==id);
   showToast('Gasto eliminado'); renderBalance();
@@ -1136,10 +1135,10 @@ async function loadDispositivos(){
     {data: dispData, error: dispErr},
     {data: unregData}
   ] = await Promise.all([
-    supabase.from('dispositivos')
+    db.from('dispositivos')
       .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)')
       .order('created_at',{ascending:false}),
-    supabase.rpc('get_unregistered_devices')
+    db.rpc('get_unregistered_devices')
   ]);
 
   if(dispErr){ setStatus(false,'Error de conexión'); showToast('Error: '+dispErr.message,true); return; }
@@ -1157,7 +1156,7 @@ async function loadDispositivos(){
   const macs=dispositivos.map(d=>d.mac_address).filter(Boolean);
   let lastMed={};
   if(macs.length){
-    const {data:meds}=await supabase
+    const {data:meds}=await db
       .from('mediciones').select('device_id,created_at')
       .in('device_id',macs).order('created_at',{ascending:false});
     (meds||[]).forEach(m=>{ if(!lastMed[m.device_id]) lastMed[m.device_id]=m.created_at; });
@@ -1257,7 +1256,7 @@ window.registrarDispositivo=function(mac){
 
 window.openDispositivoModal=async function(mode, id, prefillMac=null){
   dispModalMode=mode; dispActiveId=id;
-  const {data}=await supabase.from('clientes').select('id,nombre').order('nombre');
+  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
   document.getElementById('df-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
   const save=document.getElementById('disp-save');
 
@@ -1304,7 +1303,7 @@ window.saveDispositivo=async function(){
   btn.disabled=true; btn.textContent=dispModalMode==='create'?'Creando...':'Guardando...';
   try{
     if(dispModalMode==='create'){
-      const {data,error}=await supabase.from('dispositivos')
+      const {data,error}=await db.from('dispositivos')
         .insert({mac_address:mac,nombre,cliente_id,activo})
         .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)').single();
       if(error) throw error;
@@ -1312,7 +1311,7 @@ window.saveDispositivo=async function(){
       dispositivos.unshift(data);
       showToast(`Dispositivo ${mac} creado`);
     } else {
-      const {data,error}=await supabase.from('dispositivos')
+      const {data,error}=await db.from('dispositivos')
         .update({nombre,cliente_id,activo})
         .eq('id',dispActiveId)
         .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)').single();
@@ -1330,7 +1329,7 @@ async function removeDispositivo(id){
   const d=dispositivos.find(d=>d.id===id);
   const ok=await confirmDialog('Eliminar dispositivo',`¿Eliminar el dispositivo ${d.mac_address}?`);
   if(!ok) return;
-  const {error}=await supabase.from('dispositivos').delete().eq('id',id);
+  const {error}=await db.from('dispositivos').delete().eq('id',id);
   if(error){ showToast('Error: '+error.message,true); return; }
   dispositivos=dispositivos.filter(d=>d.id!==id);
   showToast('Dispositivo eliminado');
@@ -1346,7 +1345,7 @@ let vehiculos=[], vehModalMode='create', vehActiveId=null;
 
 async function loadVehiculos(){
   setStatus(true,'Cargando...');
-  const {data,error}=await supabase
+  const {data,error}=await db
     .from('vehiculos')
     .select('id,nombre,patente,tipo_ruedas,activo,cliente_id,clientes(nombre)')
     .order('nombre');
@@ -1410,13 +1409,14 @@ window.openVehiculoModal=async function(mode,id){
   vehModalMode=mode; vehActiveId=id;
   const save=document.getElementById('veh-save');
   // Poblar select de clientes
-  const {data}=await supabase.from('clientes').select('id,nombre').order('nombre');
+  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
   document.getElementById('vf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
   if(mode==='create'){
     document.getElementById('veh-modal-title').textContent='Nuevo vehículo';
     document.getElementById('veh-modal-sub').textContent='Completá los datos del vehículo';
     document.getElementById('vf-nombre').value='';
     document.getElementById('vf-patente').value='';
+    document.getElementById('vf-numero').value='';
     document.getElementById('vf-ruedas').value='10';
     document.getElementById('vf-activo').checked=true;
     save.textContent='Crear vehículo';
@@ -1427,6 +1427,7 @@ window.openVehiculoModal=async function(mode,id){
     document.getElementById('vf-cliente').value=v.cliente_id;
     document.getElementById('vf-nombre').value=v.nombre;
     document.getElementById('vf-patente').value=v.patente||'';
+    document.getElementById('vf-numero').value=v.numero||'';
     document.getElementById('vf-ruedas').value=String(v.tipo_ruedas);
     document.getElementById('vf-activo').checked=v.activo;
     save.textContent='Guardar';
@@ -1439,6 +1440,7 @@ window.closeVehiculoModal=()=>document.getElementById('modal-vehiculo').classLis
 window.saveVehiculo=async function(){
   const nombre=document.getElementById('vf-nombre').value.trim();
   const patente=document.getElementById('vf-patente').value.trim().toUpperCase()||null;
+  const numero=document.getElementById('vf-numero').value.trim()||null;
   const cliente_id=parseInt(document.getElementById('vf-cliente').value);
   const tipo_ruedas=parseInt(document.getElementById('vf-ruedas').value);
   const activo=document.getElementById('vf-activo').checked;
@@ -1447,12 +1449,12 @@ window.saveVehiculo=async function(){
   btn.disabled=true; btn.textContent=vehModalMode==='create'?'Creando...':'Guardando...';
   try{
     if(vehModalMode==='create'){
-      const {data,error}=await supabase.from('vehiculos').insert({nombre,patente,cliente_id,tipo_ruedas,activo}).select('id,nombre,patente,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
+      const {data,error}=await db.from('vehiculos').insert({nombre,patente,numero,cliente_id,tipo_ruedas,activo}).select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
       if(error) throw error;
       vehiculos.unshift(data);
       showToast(`${nombre} creado`);
     } else {
-      const {data,error}=await supabase.from('vehiculos').update({nombre,patente,cliente_id,tipo_ruedas,activo}).eq('id',vehActiveId).select('id,nombre,patente,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
+      const {data,error}=await db.from('vehiculos').update({nombre,patente,numero,cliente_id,tipo_ruedas,activo}).eq('id',vehActiveId).select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
       if(error) throw error;
       const idx=vehiculos.findIndex(v=>v.id===vehActiveId);
       if(idx>=0) vehiculos[idx]=data;
@@ -1467,7 +1469,7 @@ async function removeVehiculo(id){
   const v=vehiculos.find(v=>v.id===id);
   const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${v.nombre}"? Se perderán sus mediciones asociadas.`);
   if(!ok) return;
-  const {error}=await supabase.from('vehiculos').delete().eq('id',id);
+  const {error}=await db.from('vehiculos').delete().eq('id',id);
   if(error){ showToast('Error: '+error.message,true); return; }
   vehiculos=vehiculos.filter(v=>v.id!==id);
   showToast(`${v.nombre} eliminado`);
@@ -1511,11 +1513,11 @@ async function medDeviceLoadDevices(){
   document.getElementById('med-device-list').innerHTML='<div class="loading-state"><div class="spinner"></div></div>';
 
   // Todos los MACs con mediciones
-  const {data:macRows}=await supabase.from('mediciones').select('device_id').not('device_id','is',null);
+  const {data:macRows}=await db.from('mediciones').select('device_id').not('device_id','is',null);
   const allMacs=[...new Set((macRows||[]).map(m=>m.device_id))].sort();
 
   // Dispositivos registrados
-  const {data:regDevs}=await supabase.from('dispositivos')
+  const {data:regDevs}=await db.from('dispositivos')
     .select('mac_address,nombre,clientes(nombre)');
   const regMap={};
   (regDevs||[]).forEach(d=>{ regMap[d.mac_address]=d; });
@@ -1558,7 +1560,7 @@ window.medDeviceSelect=async function(mac){
   document.getElementById('med-sessions-list').innerHTML='<div class="loading-state"><div class="spinner"></div>Cargando sesiones...</div>';
   document.getElementById('med-sessions-card').style.display='flex';
 
-  const {data,error}=await supabase
+  const {data,error}=await db
     .from('mediciones')
     .select('posicion,mm1,mm2,mm3,mm4,promedio,created_at,vehiculo_id,vehiculos(nombre,patente,tipo_ruedas)')
     .eq('device_id',mac)
