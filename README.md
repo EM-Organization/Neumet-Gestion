@@ -36,8 +36,9 @@ Content-Type: application/json
 **Body:**
 ```json
 {
-  "patente": "MAJ2429",
-  "numero":  "007",
+  "device_id": "AA:BB:CC:DD:EE:FF",
+  "patente":   "MAJ2429",
+  "numero":    "",
   "montajes": [
     { "posicion": 1, "mm1": 12, "mm2": 11, "mm3": 10, "mm4": 9 },
     { "posicion": 2, "mm1": 13, "mm2": 12, "mm3": 11, "mm4": 10 }
@@ -45,13 +46,14 @@ Content-Type: application/json
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `patente` | Matrícula del vehículo (se normaliza: mayúsculas, sin espacios) |
-| `numero` | Número interno de 3 dígitos del vehículo (alternativa a patente) |
-| `montajes` | Array con una entrada por rueda medida |
-| `posicion` | Número de rueda (1 a 10 en camiones de 10 ruedas, 1 a 16 en los de 16) |
-| `mm1`–`mm4` | Las 4 lecturas de profundidad en milímetros |
+| Campo | Requerido | Descripción |
+|---|---|---|
+| `device_id` | ✓ | MAC address del dispositivo físico (ej: `AA:BB:CC:DD:EE:FF`) |
+| `patente` | ✓ (o `numero`) | Matrícula del vehículo (se normaliza: mayúsculas, sin espacios) |
+| `numero` | ✓ (o `patente`) | Número interno de 3 dígitos del vehículo (alternativa a patente) |
+| `montajes` | ✓ | Array con una entrada por rueda medida |
+| `posicion` | ✓ | Número de rueda (1 a 10 en camiones de 10 ruedas, 1 a 16 en los de 16) |
+| `mm1`–`mm4` | ✓ | Las 4 lecturas de profundidad en milímetros |
 
 > Se puede identificar el vehículo por `patente` **o** por `numero`. Si ambos vienen, se usa `patente`.
 
