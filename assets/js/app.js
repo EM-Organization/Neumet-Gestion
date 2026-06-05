@@ -341,6 +341,10 @@ async function medInit(){
   document.getElementById('med-empty').style.display='flex';
   document.getElementById('med-tire-detail').style.display='none';
   document.getElementById('med-loading').style.display='none';
+  medTireData={}; medSelPos=null; medSelDevice=null; medSelSession=null;
+  // Resetear al tab activo y recargar dispositivos siempre
+  const activeMode=document.querySelector('.med-tab.active')?.dataset?.mode||'vehiculo';
+  medSwitchMode(activeMode);
 }
 
 document.getElementById('med-cliente-search').addEventListener('input',function(){
