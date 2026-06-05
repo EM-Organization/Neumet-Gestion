@@ -320,7 +320,7 @@ const MED_CFG={
   ],
 };
 
-function mAvg(r){ const v=[r.mm1,r.mm2,r.mm3,r.mm4].filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; }
+function mAvg(r){ const v=[r.mm1,r.mm2,r.mm3].filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; }
 function mLast(pos){ const h=medTireData[pos]; return(!h||!h.length)?null:mAvg(h[h.length-1]); }
 function mTireColor(pos){
   const a=mLast(pos);
@@ -375,7 +375,7 @@ document.getElementById('med-vehiculo-select').addEventListener('change',async f
   document.getElementById('med-empty').style.display='none';
   document.getElementById('med-tire-detail').style.display='none';
   medTireData={}; medSelPos=null;
-  const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,mm4,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
+  const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
   if(error){ showToast('Error: '+error.message,true); document.getElementById('med-loading').style.display='none'; return; }
   const grp={};
   (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
@@ -634,7 +634,7 @@ function medSelectTire(pos){
   statusEl.textContent=s.txt+(a!=null?` · ${a.toFixed(1)} mm`:'');
 
   // mm values
-  const mm=['mm1','mm2','mm3','mm4'];
+  const mm=['mm1','mm2','mm3'];
   mm.forEach((m,i)=>{
     const val=lr&&lr[m]!=null?parseFloat(lr[m]):null;
     const pct=val!=null?Math.min(100,(val/12)*100):0;
@@ -661,7 +661,6 @@ function medSelectTire(pos){
         <td style="color:var(--text-secondary)">${r.mm1!=null?parseFloat(r.mm1).toFixed(1):'—'}</td>
         <td style="color:var(--text-secondary)">${r.mm2!=null?parseFloat(r.mm2).toFixed(1):'—'}</td>
         <td style="color:var(--text-secondary)">${r.mm3!=null?parseFloat(r.mm3).toFixed(1):'—'}</td>
-        <td style="color:var(--text-secondary)">${r.mm4!=null?parseFloat(r.mm4).toFixed(1):'—'}</td>
         <td style="color:${rc};font-weight:500">${pa!=null?parseFloat(pa).toFixed(1):'—'}</td>
       </tr>`;
     }).join('');
@@ -1562,7 +1561,7 @@ window.medDeviceSelect=async function(mac){
 
   const {data,error}=await db
     .from('mediciones')
-    .select('posicion,mm1,mm2,mm3,mm4,promedio,created_at,vehiculo_id,vehiculos(nombre,patente,tipo_ruedas)')
+    .select('posicion,mm1,mm2,mm3,promedio,created_at,vehiculo_id,vehiculos(nombre,patente,tipo_ruedas)')
     .eq('device_id',mac)
     .order('created_at',{ascending:false})
     .limit(2000);
