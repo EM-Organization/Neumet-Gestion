@@ -381,8 +381,20 @@ document.getElementById('med-vehiculo-select').addEventListener('change',async f
   medTireData={}; medSelPos=null;
   const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
   if(error){ showToast('Error: '+error.message,true); document.getElementById('med-loading').style.display='none'; return; }
+  // Agrupar por segundo y filtrar sesiones incompletas
+  const sesMap={};
+  (data||[]).forEach(r=>{
+    const sec=new Date(r.created_at).toISOString().slice(0,19);
+    if(!sesMap[sec]) sesMap[sec]=[];
+    sesMap[sec].push(r);
+  });
+  const tipoRuedas=parseInt(medTipoRuedas)||10;
+  const sesCompletas=Object.values(sesMap).filter(rows=>{
+    const positions=new Set(rows.map(r=>r.posicion)).size;
+    return positions>=tipoRuedas;
+  });
   const grp={};
-  (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
+  sesCompletas.flat().forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
   Object.keys(grp).forEach(p=>{ medTireData[parseInt(p)]=grp[p].slice(-10); });
   document.getElementById('med-loading').style.display='none';
   document.getElementById('med-truck-card').style.display='block';
@@ -1572,15 +1584,23 @@ window.medDeviceSelect=async function(mac){
 
   if(error){ showToast('Error: '+error.message,true); return; }
 
-  // Agrupar por (vehiculo_id + día)
+  // Agrupar por (vehiculo_id + segundo) — todos los inserts de un POST tienen el mismo timestamp
   const map={};
   (data||[]).forEach(m=>{
-    const day=new Date(m.created_at).toISOString().slice(0,10);
-    const key=`${m.vehiculo_id}-${day}`;
-    if(!map[key]) map[key]={key,firstDate:m.created_at,day,vehiculo_id:m.vehiculo_id,vehiculo:m.vehiculos,meds:[]};
+    const sec=new Date(m.created_at).toISOString().slice(0,19);
+    const key=`${m.vehiculo_id}-${sec}`;
+    if(!map[key]) map[key]={key,firstDate:m.created_at,sec,vehiculo_id:m.vehiculo_id,vehiculo:m.vehiculos,meds:[]};
     map[key].meds.push(m);
   });
-  medDeviceSessions=Object.values(map).sort((a,b)=>new Date(b.firstDate)-new Date(a.firstDate));
+  // Solo mostrar sesiones con todas las ruedas del vehículo
+  medDeviceSessions=Object.values(map)
+    .filter(s=>{
+      const expected=s.vehiculo?.tipo_ruedas;
+      if(!expected) return true;
+      const positions=new Set(s.meds.map(m=>m.posicion)).size;
+      return positions>=expected;
+    })
+    .sort((a,b)=>new Date(b.firstDate)-new Date(a.firstDate));
   medSelSession=null;
   medDeviceRenderSessions();
 };
