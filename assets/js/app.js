@@ -1364,13 +1364,18 @@ window.saveDispositivo=async function(){
   btn.disabled=true; btn.textContent=dispModalMode==='create'?'Creando...':'Guardando...';
   try{
     if(dispModalMode==='create'){
-      const {data,error}=await db.from('dispositivos')
-        .insert({mac_address:mac,nombre,cliente_id,activo})
-        .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)').single();
+      // Llama al RPC que: registra el dispositivo, re-vincula mediciones existentes
+      // al cliente asignado y crea vehículos nuevos si la patente no existe bajo ese cliente.
+      const {data:res,error}=await db.rpc('asignar_dispositivo_a_cliente',{
+        p_mac: mac,
+        p_cliente_id: cliente_id,
+        p_nombre: nombre
+      });
       if(error) throw error;
-      data._lastMed=null;
-      dispositivos.unshift(data);
-      showToast(`Dispositivo ${mac} creado`);
+      let msg=`Dispositivo ${mac} registrado`;
+      if(res.vehiculos_creados>0) msg+=` · ${res.vehiculos_creados} vehículo${res.vehiculos_creados>1?'s':''} creado${res.vehiculos_creados>1?'s':''}`;
+      if(res.mediciones_vinculadas>0) msg+=` · ${res.mediciones_vinculadas} medición${res.mediciones_vinculadas>1?'es':''} vinculadas`;
+      showToast(msg);
     } else {
       const {data,error}=await db.from('dispositivos')
         .update({nombre,cliente_id,activo})

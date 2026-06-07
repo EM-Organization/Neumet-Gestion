@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 1220" width="860" height="1220"
+     font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="a0" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#8E8E93"/></marker>
+    <marker id="ag" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#34C759"/></marker>
+    <marker id="ar" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#FF3B30"/></marker>
+    <marker id="ao" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#FF9500"/></marker>
+    <filter id="card" x="-4%" y="-4%" width="108%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.06)"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="rgba(0,0,0,0.05)"/>
+    </filter>
+    <filter id="ds" x="-12%" y="-12%" width="124%" height="136%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="rgba(0,0,0,0.07)"/>
+    </filter>
+    <linearGradient id="hg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1C1C1E"/>
+      <stop offset="100%" stop-color="#2C2C2E"/>
+    </linearGradient>
+    <linearGradient id="ph1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FF9F0A" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#FF9F0A" stop-opacity="0.03"/>
+    </linearGradient>
+    <linearGradient id="ph2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#007AFF" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#007AFF" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="860" height="1220" fill="#F2F2F7" rx="20"/>
+
+  <!-- HEADER -->
+  <rect x="0" y="0" width="860" height="72" fill="url(#hg)" rx="20"/>
+  <rect x="0" y="52" width="860" height="20" fill="url(#hg)"/>
+  <circle cx="36" cy="36" r="10" fill="#007AFF"/>
+  <circle cx="36" cy="36" r="5" fill="white" opacity="0.9"/>
+  <text x="54" y="30" font-size="11" font-weight="600" fill="rgba(255,255,255,0.45)" letter-spacing="1.2">NEUMET</text>
+  <text x="54" y="48" font-size="16" font-weight="600" fill="white" letter-spacing="-0.3">Flujo de Onboarding</text>
+  <text x="836" y="39" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.3)">Clientes · Dispositivos · Vehículos</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- FASE 1                                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="88" width="812" height="34" fill="url(#ph1)" rx="10"/>
+  <rect x="24" y="88" width="3" height="34" fill="#FF9F0A" rx="2"/>
+  <text x="38" y="102" font-size="10" font-weight="700" fill="#FF9F0A" letter-spacing="1">FASE 1</text>
+  <text x="38" y="115" font-size="11" fill="#6C6C70">El dispositivo llega al cliente y empieza a medir sin configuración previa</text>
+
+  <!-- IoT card -->
+  <rect x="280" y="136" width="300" height="68" fill="white" rx="16" filter="url(#card)"/>
+  <rect x="280" y="136" width="300" height="4" fill="#FF9F0A" rx="16"/>
+  <rect x="280" y="136" width="300" height="4" rx="0" fill="#FF9F0A"/>
+  <rect x="298" y="152" width="28" height="28" fill="rgba(255,159,10,0.10)" rx="8"/>
+  <text x="312" y="171" text-anchor="middle" font-size="14">📡</text>
+  <text x="342" y="162" font-size="13" font-weight="600" fill="#1C1C1E">Dispositivo IoT encendido</text>
+  <text x="342" y="178" font-size="11" fill="#8E8E93">Mide neumáticos · envía POST a la API</text>
+
+  <line x1="430" y1="204" x2="430" y2="232" stroke="#8E8E93" stroke-width="1.5" marker-end="url(#a0)"/>
+
+  <!-- Edge Fn card -->
+  <rect x="220" y="236" width="420" height="80" fill="white" rx="16" filter="url(#card)"/>
+  <rect x="220" y="236" width="420" height="4" fill="#AF52DE" rx="16"/>
+  <rect x="220" y="236" width="420" height="4" rx="0" fill="#AF52DE"/>
+  <rect x="238" y="252" width="28" height="28" fill="rgba(175,82,222,0.10)" rx="8"/>
+  <text x="252" y="271" text-anchor="middle" font-size="14">⚡</text>
+  <text x="280" y="262" font-size="13" font-weight="600" fill="#1C1C1E">guardar-montaje-mm</text>
+  <text x="280" y="279" font-size="11" fill="#8E8E93">Recibe device_id · patente/numero · montajes[ ]</text>
+  <text x="280" y="295" font-size="11" fill="#8E8E93">Normaliza MAC · verifica si está registrado</text>
+
+  <line x1="430" y1="316" x2="430" y2="344" stroke="#8E8E93" stroke-width="1.5" marker-end="url(#a0)"/>
+
+  <!-- Diamond: ¿Registrado? -->
+  <polygon points="430,348 540,386 430,424 320,386" fill="white" filter="url(#ds)"/>
+  <polygon points="430,348 540,386 430,424 320,386" fill="white" stroke="#E5E5EA" stroke-width="1.5"/>
+  <text x="430" y="381" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">¿Dispositivo</text>
+  <text x="430" y="397" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">registrado?</text>
+
+  <!-- ══ RAMA NO (izquierda) ══ -->
+  <line x1="320" y1="386" x2="178" y2="386" stroke="#FF3B30" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="250" y="377" text-anchor="middle" font-size="10" font-weight="700" fill="#FF3B30">NO</text>
+
+  <!-- Guarda huérfana -->
+  <rect x="24" y="360" width="154" height="52" fill="rgba(255,59,48,0.05)" rx="14" stroke="rgba(255,59,48,0.20)" stroke-width="1"/>
+  <text x="101" y="381" text-anchor="middle" font-size="11" font-weight="600" fill="#FF3B30">Guarda medición</text>
+  <text x="101" y="397" text-anchor="middle" font-size="10" fill="#8E8E93">sin cliente asignado</text>
+  <!-- small badge pill -->
+  <rect x="44" y="406" width="114" height="18" fill="rgba(255,59,48,0.08)" rx="9"/>
+  <text x="101" y="419" text-anchor="middle" font-size="9" fill="#FF3B30">patente_raw / numero_raw</text>
+
+  <line x1="101" y1="428" x2="101" y2="456" stroke="#FF3B30" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Badge panel -->
+  <rect x="24" y="460" width="154" height="52" fill="rgba(255,149,0,0.06)" rx="14" stroke="rgba(255,149,0,0.22)" stroke-width="1"/>
+  <text x="101" y="482" text-anchor="middle" font-size="11" font-weight="600" fill="#FF9500">Badge en panel</text>
+  <text x="101" y="498" text-anchor="middle" font-size="10" fill="#8E8E93">"Sin cliente asignado" 🔔</text>
+
+  <!-- ══ RAMA SI (derecha) ══ -->
+  <line x1="540" y1="386" x2="682" y2="386" stroke="#34C759" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="608" y="377" text-anchor="middle" font-size="10" font-weight="700" fill="#34C759">SI</text>
+
+  <!-- Busca bajo cliente -->
+  <rect x="682" y="360" width="154" height="52" fill="rgba(52,199,89,0.06)" rx="14" stroke="rgba(52,199,89,0.25)" stroke-width="1"/>
+  <text x="759" y="381" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">Busca vehículo</text>
+  <text x="759" y="397" text-anchor="middle" font-size="10" fill="#8E8E93">bajo cliente asignado</text>
+
+  <line x1="759" y1="412" x2="759" y2="440" stroke="#34C759" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- Diamond: ¿existe vehículo? -->
+  <polygon points="759,444 820,468 759,492 698,468" fill="white" filter="url(#ds)"/>
+  <polygon points="759,444 820,468 759,492 698,468" fill="white" stroke="#E5E5EA" stroke-width="1.5"/>
+  <text x="759" y="463" text-anchor="middle" font-size="10" font-weight="600" fill="#1C1C1E">¿Vehículo</text>
+  <text x="759" y="477" text-anchor="middle" font-size="10" font-weight="600" fill="#1C1C1E">existe?</text>
+
+  <!-- NO → crear -->
+  <line x1="698" y1="468" x2="638" y2="468" stroke="#FF9500" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="670" y="459" text-anchor="middle" font-size="9" font-weight="700" fill="#FF9500">NO</text>
+  <rect x="564" y="444" width="74" height="48" fill="rgba(255,149,0,0.07)" rx="12" stroke="rgba(255,149,0,0.22)" stroke-width="1"/>
+  <text x="601" y="464" text-anchor="middle" font-size="10" font-weight="600" fill="#FF9500">Crea</text>
+  <text x="601" y="478" text-anchor="middle" font-size="10" fill="#8E8E93">vehículo</text>
+  <line x1="601" y1="492" x2="601" y2="522" stroke="#FF9500" stroke-width="1.5"/>
+  <line x1="601" y1="522" x2="759" y2="522" stroke="#FF9500" stroke-width="1.5"/>
+
+  <!-- SI → merge -->
+  <line x1="759" y1="492" x2="759" y2="522" stroke="#34C759" stroke-width="1.5"/>
+  <text x="771" y="511" font-size="9" font-weight="700" fill="#34C759">SI</text>
+  <line x1="759" y1="522" x2="759" y2="544" stroke="#34C759" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- Agrega mediciones -->
+  <rect x="682" y="548" width="154" height="48" fill="rgba(52,199,89,0.08)" rx="14" stroke="rgba(52,199,89,0.28)" stroke-width="1"/>
+  <text x="759" y="568" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">Agrega mediciones</text>
+  <text x="759" y="584" text-anchor="middle" font-size="10" fill="#34C759">al vehículo del cliente ✓</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- FASE 2                                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="630" width="812" height="34" fill="url(#ph2)" rx="10"/>
+  <rect x="24" y="630" width="3" height="34" fill="#007AFF" rx="2"/>
+  <text x="38" y="644" font-size="10" font-weight="700" fill="#007AFF" letter-spacing="1">FASE 2</text>
+  <text x="38" y="657" font-size="11" fill="#6C6C70">Admin ve el badge y asigna el cliente al dispositivo desde el panel</text>
+
+  <!-- Flecha badge → fase 2 -->
+  <line x1="101" y1="512" x2="101" y2="648" stroke="#FF9500" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="101" y1="648" x2="290" y2="648" stroke="#FF9500" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="290" y1="648" x2="290" y2="678" stroke="#FF9500" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ao)"/>
+
+  <!-- Admin card -->
+  <rect x="180" y="678" width="500" height="68" fill="white" rx="16" filter="url(#card)"/>
+  <rect x="180" y="678" width="500" height="4" fill="#007AFF" rx="16"/>
+  <rect x="180" y="678" width="500" height="4" rx="0" fill="#007AFF"/>
+  <rect x="198" y="694" width="28" height="28" fill="rgba(0,122,255,0.10)" rx="8"/>
+  <text x="212" y="713" text-anchor="middle" font-size="14">👤</text>
+  <text x="242" y="704" font-size="13" font-weight="600" fill="#1C1C1E">Admin: clic en "Registrar"</text>
+  <text x="242" y="721" font-size="11" fill="#8E8E93">MAC pre-cargada · selecciona cliente · confirma</text>
+
+  <line x1="430" y1="746" x2="430" y2="774" stroke="#8E8E93" stroke-width="1.5" marker-end="url(#a0)"/>
+
+  <!-- RPC card -->
+  <rect x="130" y="778" width="600" height="84" fill="white" rx="16" filter="url(#card)"/>
+  <rect x="130" y="778" width="600" height="4" fill="#34C759" rx="16"/>
+  <rect x="130" y="778" width="600" height="4" rx="0" fill="#34C759"/>
+  <rect x="148" y="794" width="28" height="28" fill="rgba(52,199,89,0.10)" rx="8"/>
+  <text x="162" y="813" text-anchor="middle" font-size="14">🔗</text>
+  <text x="198" y="806" font-size="13" font-weight="600" fill="#1C1C1E">RPC: asignar_dispositivo_a_cliente</text>
+  <text x="198" y="823" font-size="11" fill="#8E8E93">① Registra el dispositivo bajo el cliente</text>
+  <text x="198" y="840" font-size="11" fill="#8E8E93">② Itera mediciones huérfanas (patente_raw/numero_raw) del device →</text>
+
+  <line x1="430" y1="862" x2="430" y2="892" stroke="#34C759" stroke-width="1.5" marker-end="url(#ag)"/>
+
+  <!-- Diamond: ¿vehículo existe bajo cliente? -->
+  <polygon points="430,896 550,932 430,968 310,932" fill="white" filter="url(#ds)"/>
+  <polygon points="430,896 550,932 430,968 310,932" fill="white" stroke="#E5E5EA" stroke-width="1.5"/>
+  <text x="430" y="926" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">¿Vehículo existe</text>
+  <text x="430" y="942" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">bajo el cliente?</text>
+
+  <!-- NO: crear vehículo -->
+  <line x1="310" y1="932" x2="206" y2="932" stroke="#FF9500" stroke-width="1.5" marker-end="url(#ao)"/>
+  <text x="260" y="922" text-anchor="middle" font-size="9" font-weight="700" fill="#FF9500">NO</text>
+  <rect x="30" y="906" width="176" height="52" fill="rgba(255,149,0,0.07)" rx="14" stroke="rgba(255,149,0,0.22)" stroke-width="1"/>
+  <text x="118" y="928" text-anchor="middle" font-size="11" font-weight="600" fill="#FF9500">Crea vehículo nuevo</text>
+  <text x="118" y="945" text-anchor="middle" font-size="10" fill="#8E8E93">usando patente_raw / numero_raw</text>
+
+  <!-- SI: vincular mediciones -->
+  <line x1="550" y1="932" x2="654" y2="932" stroke="#34C759" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="600" y="922" text-anchor="middle" font-size="9" font-weight="700" fill="#34C759">SI</text>
+  <rect x="654" y="906" width="176" height="52" fill="rgba(52,199,89,0.07)" rx="14" stroke="rgba(52,199,89,0.25)" stroke-width="1"/>
+  <text x="742" y="928" text-anchor="middle" font-size="11" font-weight="600" fill="#1C1C1E">Vincula mediciones</text>
+  <text x="742" y="945" text-anchor="middle" font-size="10" fill="#34C759">vehiculo_id + cliente_id ✓</text>
+
+  <!-- Convergen -->
+  <line x1="118" y1="958" x2="118" y2="1010" stroke="#34C759" stroke-width="1.5"/>
+  <line x1="742" y1="958" x2="742" y2="1010" stroke="#34C759" stroke-width="1.5"/>
+  <line x1="118" y1="1010" x2="742" y2="1010" stroke="#34C759" stroke-width="1.5"/>
+  <line x1="430" y1="1010" x2="430" y2="1034" stroke="#34C759" stroke-width="2" marker-end="url(#ag)"/>
+
+  <!-- Done card -->
+  <rect x="160" y="1038" width="540" height="72" fill="white" rx="18" filter="url(#card)"/>
+  <rect x="160" y="1038" width="540" height="4" fill="#34C759" rx="18"/>
+  <rect x="160" y="1038" width="540" height="4" rx="0" fill="#34C759"/>
+  <circle cx="196" cy="1074" r="14" fill="rgba(52,199,89,0.12)"/>
+  <text x="196" y="1080" text-anchor="middle" font-size="16">✓</text>
+  <text x="222" y="1068" font-size="14" font-weight="600" fill="#1C1C1E">Dispositivo operativo bajo el cliente</text>
+  <text x="222" y="1088" font-size="11" fill="#8E8E93">Mediciones históricas y futuras correctamente vinculadas</text>
+
+  <!-- Toast -->
+  <rect x="200" y="1124" width="460" height="32" fill="#1C1C1E" rx="16"/>
+  <circle cx="224" cy="1140" r="6" fill="#34C759"/>
+  <text x="240" y="1145" font-size="10" fill="rgba(255,255,255,0.82)">Dispositivo registrado · N vehículos creados · M mediciones vinculadas</text>
+
+  <!-- Footer -->
+  <text x="430" y="1210" text-anchor="middle" font-size="10" fill="#AEAEB2">github.com/EM-Organization/Neumet-Gestion</text>
+</svg>

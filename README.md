@@ -4,6 +4,36 @@ Panel de administración web para la gestión de clientes, vehículos, dispositi
 
 ---
 
+## Flujo de onboarding
+
+![Flujo de onboarding de clientes y dispositivos](assets/img/onboarding-flow.svg)
+
+El flujo está diseñado para que **el dispositivo llegue primero**: el cliente lo recibe y empieza a medir sin necesidad de configuración previa. El admin asigna el cliente desde el panel cuando ve llegar las primeras mediciones.
+
+### Fase 1 — Dispositivo llega y empieza a medir
+
+1. El dispositivo IoT se enciende y envía mediciones vía POST a `guardar-montaje-mm` con su MAC, patente/número del vehículo y las lecturas de mm.
+2. La Edge Function busca el vehículo por patente o número:
+   - Si el dispositivo **ya está registrado**: busca el vehículo **bajo el cliente asignado** a ese dispositivo.
+   - Si el dispositivo **no está registrado**: busca el vehículo en cualquier cliente y almacena la medición igual. El dispositivo aparece con un badge en la sección **"Sin cliente asignado"** del panel admin.
+
+### Fase 2 — Admin asigna el cliente
+
+Cuando el admin ve el badge de dispositivos sin registrar:
+
+1. Hace clic en **Registrar** junto al dispositivo (la MAC ya viene pre-cargada).
+2. Selecciona el cliente al que pertenece ese dispositivo y confirma.
+3. El panel llama al RPC **`asignar_dispositivo_a_cliente`** que en una sola transacción:
+   - Registra el dispositivo bajo el cliente seleccionado.
+   - Recorre todas las mediciones históricas del dispositivo y, por cada vehículo (patente/número) referenciado:
+     - Si el cliente **ya tiene** ese vehículo → vincula las mediciones a él.
+     - Si **no lo tiene** → crea el vehículo automáticamente bajo ese cliente y vincula las mediciones.
+4. El toast confirma cuántos vehículos se crearon y cuántas mediciones se vincularon.
+
+A partir de ese momento, las nuevas mediciones del dispositivo se enrutan directamente al cliente y sus vehículos.
+
+---
+
 ## Arquitectura general
 
 ```
