@@ -1915,18 +1915,20 @@ window.saveStock=async function(){
   };
   const btn=document.getElementById('stock-save');
   btn.disabled=true; btn.textContent='Guardando...';
+  // Buscar el nombre del cliente desde el select del formulario
+  const clienteNombre=document.getElementById('sf-cliente').selectedOptions[0]?.text||'';
   try{
     if(stockModalMode==='create'){
       const {data,error}=await db.from('stock_neumaticos').insert(fields)
-        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)').single();
+        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas').single();
       if(error) throw error;
-      stockItems.unshift(data);
+      stockItems.unshift({...data, clientes:{nombre:clienteNombre}});
     } else {
       const {data,error}=await db.from('stock_neumaticos').update(fields).eq('id',stockActiveId)
-        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)').single();
+        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas').single();
       if(error) throw error;
       const idx=stockItems.findIndex(x=>x.id===stockActiveId);
-      if(idx>=0) stockItems[idx]=data;
+      if(idx>=0) stockItems[idx]={...data, clientes:{nombre:clienteNombre}};
     }
     renderStock();
     closeStockModal();
