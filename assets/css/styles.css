@@ -126,6 +126,16 @@
   .dash-fleet-bar { height: 7px; border-radius: 4px; overflow: hidden; display: flex; margin-bottom: 8px; background: rgba(0,0,0,0.06); }
   .dash-fleet-bar div { height: 100%; }
   .dash-fleet-stats { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; font-weight: 500; }
+  /* Stock asignados */
+  .stock-asig-btn { display:inline-flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:2px 0;font-family:var(--font); }
+  .stock-asig-btn:hover .badge { filter:brightness(0.92); }
+  .stock-asig-btn.active .badge.green { background:var(--success);color:white; }
+  .stock-asig-expand { padding:10px 18px 12px 32px;background:linear-gradient(0deg,rgba(52,199,89,0.03),rgba(52,199,89,0.06));border-top:1px solid var(--success-border); }
+  .stock-asig-expand-title { display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px; }
+  .stock-asig-row { display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);max-width:400px; }
+  .stock-asig-row:last-child { border-bottom:none; }
+  .stock-asig-veh { font-size:13px;font-weight:500;color:var(--text-primary); }
+
   .ds-badge { display: inline-block; border-radius: 5px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
   .ds-badge.ok { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
   .ds-badge.warn { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }

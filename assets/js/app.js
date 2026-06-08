@@ -1971,10 +1971,25 @@ window.saveNeumaticos=async function(){
 // STOCK DE NEUMÁTICOS
 // ══════════════════════════════════════════════════
 let stockItems=[], stockModalMode='create', stockActiveId=null;
+let stockAssignMap={}; // stock_id → [{vehiculo_nombre, count}]
+
+async function loadStockAssignments(){
+  // Carga asignaciones de neumaticos con stock_id para el cliente actual
+  let q=db.from('neumaticos').select('stock_id,vehiculos(nombre)').not('stock_id','is',null);
+  if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
+  const {data}=await q;
+  stockAssignMap={};
+  (data||[]).forEach(n=>{
+    if(!n.stock_id) return;
+    const vnom=n.vehiculos?.nombre||'Vehículo desconocido';
+    if(!stockAssignMap[n.stock_id]) stockAssignMap[n.stock_id]={};
+    stockAssignMap[n.stock_id][vnom]=(stockAssignMap[n.stock_id][vnom]||0)+1;
+  });
+}
 
 async function loadStock(){
   const tbody=document.getElementById('tbody-stock');
-  tbody.innerHTML='<tr><td colspan="8"><div class="loading-state"><div class="spinner"></div></div></td></tr>';
+  tbody.innerHTML='<tr><td colspan="9"><div class="loading-state"><div class="spinner"></div></div></td></tr>';
   let sq=db.from('stock_neumaticos')
     .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
     .order('created_at',{ascending:false});
@@ -1988,6 +2003,7 @@ async function loadStock(){
   stockItems.forEach(s=>{ if(s.clientes) cmap.set(s.cliente_id,s.clientes.nombre); });
   sel.innerHTML='<option value="">Todos los clientes</option>'+
     [...cmap.entries()].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  await loadStockAssignments();
   renderStock();
 }
 
@@ -2002,26 +2018,72 @@ function renderStock(){
     return mq&&mc;
   });
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML=filtered.map(s=>`<tr>
-    <td><strong>${esc(s.marca)}</strong></td>
-    <td>${s.modelo?esc(s.modelo):'<span style="color:var(--text-tertiary)">—</span>'}</td>
-    <td>${s.clientes?esc(s.clientes.nombre):'—'}</td>
-    <td>${s.precio_unidad!=null?'$'+parseFloat(s.precio_unidad).toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</td>
-    <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
-    <td><span class="badge blue">${s.cantidad} ud.</span></td>
-    <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?esc(s.notas):'—'}</td>
-    <td><div class="actions">
-      <button class="icon-btn" data-sa="edit" data-sid="${s.id}" title="Editar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button class="icon-btn danger" data-sa="del" data-sid="${s.id}" title="Eliminar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-      </button>
-    </div></td>
-  </tr>`).join('');
+  tbody.innerHTML=filtered.map(s=>{
+    const assigns=stockAssignMap[s.id]||{};
+    const totalAsig=Object.values(assigns).reduce((a,b)=>a+b,0);
+    const libre=(s.cantidad||0)-totalAsig;
+    const hasAsig=totalAsig>0;
+    const asigBadge=hasAsig
+      ? `<button class="stock-asig-btn" data-sid="${s.id}" title="Ver detalle de asignación">
+           <span class="badge green">${totalAsig} asig.</span>
+           <span style="color:var(--text-tertiary);font-size:11px">/ ${s.cantidad} ud.</span>
+         </button>`
+      : `<span class="badge" style="background:var(--surface-secondary);color:var(--text-tertiary);border:1px solid var(--border)">0 / ${s.cantidad} ud.</span>`;
+    return `<tr data-srow="${s.id}">
+      <td><strong>${esc(s.marca)}</strong></td>
+      <td>${s.modelo?esc(s.modelo):'<span style="color:var(--text-tertiary)">—</span>'}</td>
+      <td>${s.clientes?esc(s.clientes.nombre):'—'}</td>
+      <td>${s.precio_unidad!=null?'$'+parseFloat(s.precio_unidad).toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</td>
+      <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
+      <td>${asigBadge}</td>
+      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?esc(s.notas):'—'}</td>
+      <td><div class="actions">
+        <button class="icon-btn" data-sa="edit" data-sid="${s.id}" title="Editar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="icon-btn danger" data-sa="del" data-sid="${s.id}" title="Eliminar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div></td>
+    </tr>
+    <tr class="stock-asig-detail" data-detail="${s.id}" style="display:none">
+      <td colspan="8" style="padding:0">
+        <div class="stock-asig-expand">
+          <div class="stock-asig-expand-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Asignado a:
+          </div>
+          ${Object.entries(assigns).map(([vnom,cnt])=>`
+            <div class="stock-asig-row">
+              <span class="stock-asig-veh">${esc(vnom)}</span>
+              <span class="badge blue">${cnt} ud.</span>
+            </div>`).join('')}
+          ${libre>0?`<div class="stock-asig-row" style="opacity:.6">
+            <span style="color:var(--text-tertiary)">Sin asignar</span>
+            <span class="badge" style="background:var(--surface-secondary);color:var(--text-tertiary);border:1px solid var(--border)">${libre} ud.</span>
+          </div>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Botón asignados: toggle detalle
+  tbody.querySelectorAll('.stock-asig-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const sid=btn.dataset.sid;
+      const detail=tbody.querySelector(`tr[data-detail="${sid}"]`);
+      const isOpen=detail.style.display!=='none';
+      // Cerrar todos
+      tbody.querySelectorAll('.stock-asig-detail').forEach(r=>r.style.display='none');
+      tbody.querySelectorAll('.stock-asig-btn').forEach(b=>b.classList.remove('active'));
+      if(!isOpen){ detail.style.display=''; btn.classList.add('active'); }
+    });
+  });
+
   tbody.querySelectorAll('button[data-sa]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.sid);
