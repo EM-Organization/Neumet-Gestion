@@ -161,6 +161,23 @@
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
   .modal-backdrop.show { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 440px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06); animation: modalIn .2s ease; }
+  .modal.modal-wide { width: 720px; max-height: 88vh; display: flex; flex-direction: column; }
+  .modal.modal-wide .modal-body { overflow-y: auto; flex: 1; }
+  .modal-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .label-opt { color: var(--text-tertiary); font-weight: 400; }
+  .field textarea { width: 100%; background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: var(--font); color: var(--text-primary); outline: none; transition: border-color .15s; box-sizing: border-box; }
+  .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+  /* Grid de neumáticos */
+  .neum-grid-header { display: grid; grid-template-columns: 36px 1fr 1fr 90px 120px 1fr; gap: 6px; padding: 6px 2px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .neum-grid-row { display: grid; grid-template-columns: 36px 1fr 1fr 90px 120px 1fr; gap: 6px; align-items: center; padding: 5px 2px; border-bottom: 1px solid var(--border); }
+  .neum-grid-row:last-child { border-bottom: none; }
+  .neum-pos-badge { width: 28px; height: 28px; border-radius: 6px; background: var(--accent-light); border: 1px solid var(--accent-border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--accent-dark); flex-shrink: 0; }
+  .neum-input { background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: var(--font); color: var(--text-primary); outline: none; width: 100%; box-sizing: border-box; transition: border-color .15s; }
+  .neum-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+  .neum-input::placeholder { color: var(--text-tertiary); }
+  .neum-num { text-align: right; }
+  .neum-date { font-size: 11px; }
   @keyframes modalIn { from { transform: scale(0.97) translateY(4px); opacity: 0 } to { transform: scale(1) translateY(0); opacity: 1 } }
   .modal-header { padding: 20px 22px 0; }
   .modal-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }

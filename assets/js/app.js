@@ -1413,7 +1413,7 @@ async function loadVehiculos(){
   setStatus(true,'Cargando...');
   const {data,error}=await db
     .from('vehiculos')
-    .select('id,nombre,patente,tipo_ruedas,activo,cliente_id,clientes(nombre)')
+    .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
     .order('nombre');
   if(error){ setStatus(false,'Error de conexión'); showToast('Error: '+error.message,true); return; }
   vehiculos=data||[];
@@ -1454,6 +1454,9 @@ function renderVehiculos(){
       <td><span class="badge blue">${v.tipo_ruedas} WHL</span></td>
       <td>${estadoBadge}</td>
       <td><div class="actions">
+        <button class="icon-btn" data-va="neum" data-vid="${v.id}" title="Neumáticos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+        </button>
         <button class="icon-btn" data-va="edit" data-vid="${v.id}" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -1466,7 +1469,9 @@ function renderVehiculos(){
   tbody.querySelectorAll('button[data-va]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.vid);
-      if(btn.dataset.va==='del') removeVehiculo(id); else openVehiculoModal('edit',id);
+      if(btn.dataset.va==='del') removeVehiculo(id);
+      else if(btn.dataset.va==='neum') openNeumaticosModal(id);
+      else openVehiculoModal('edit',id);
     });
   });
 }
@@ -1484,6 +1489,9 @@ window.openVehiculoModal=async function(mode,id){
     document.getElementById('vf-patente').value='';
     document.getElementById('vf-numero').value='';
     document.getElementById('vf-ruedas').value='10';
+    document.getElementById('vf-fecha-compra').value='';
+    document.getElementById('vf-ultimo-servicio').value='';
+    document.getElementById('vf-notas').value='';
     document.getElementById('vf-activo').checked=true;
     save.textContent='Crear vehículo';
   } else {
@@ -1495,6 +1503,9 @@ window.openVehiculoModal=async function(mode,id){
     document.getElementById('vf-patente').value=v.patente||'';
     document.getElementById('vf-numero').value=v.numero||'';
     document.getElementById('vf-ruedas').value=String(v.tipo_ruedas);
+    document.getElementById('vf-fecha-compra').value=v.fecha_compra||'';
+    document.getElementById('vf-ultimo-servicio').value=v.ultimo_servicio||'';
+    document.getElementById('vf-notas').value=v.notas||'';
     document.getElementById('vf-activo').checked=v.activo;
     save.textContent='Guardar';
   }
@@ -1510,17 +1521,22 @@ window.saveVehiculo=async function(){
   const cliente_id=parseInt(document.getElementById('vf-cliente').value);
   const tipo_ruedas=parseInt(document.getElementById('vf-ruedas').value);
   const activo=document.getElementById('vf-activo').checked;
+  const fecha_compra=document.getElementById('vf-fecha-compra').value||null;
+  const ultimo_servicio=document.getElementById('vf-ultimo-servicio').value||null;
+  const notas=document.getElementById('vf-notas').value.trim()||null;
   if(!nombre||!cliente_id){ showToast('Completá nombre y cliente',true); return; }
   const btn=document.getElementById('veh-save');
   btn.disabled=true; btn.textContent=vehModalMode==='create'?'Creando...':'Guardando...';
+  const fields={nombre,patente,numero,cliente_id,tipo_ruedas,activo,fecha_compra,ultimo_servicio,notas};
+  const sel='id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)';
   try{
     if(vehModalMode==='create'){
-      const {data,error}=await db.from('vehiculos').insert({nombre,patente,numero,cliente_id,tipo_ruedas,activo}).select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
+      const {data,error}=await db.from('vehiculos').insert(fields).select(sel).single();
       if(error) throw error;
       vehiculos.unshift(data);
       showToast(`${nombre} creado`);
     } else {
-      const {data,error}=await db.from('vehiculos').update({nombre,patente,numero,cliente_id,tipo_ruedas,activo}).eq('id',vehActiveId).select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,clientes(nombre)').single();
+      const {data,error}=await db.from('vehiculos').update(fields).eq('id',vehActiveId).select(sel).single();
       if(error) throw error;
       const idx=vehiculos.findIndex(v=>v.id===vehActiveId);
       if(idx>=0) vehiculos[idx]=data;
@@ -1529,6 +1545,83 @@ window.saveVehiculo=async function(){
     closeVehiculoModal(); renderVehiculos();
   } catch(e){ showToast('Error: '+e.message,true); }
   finally{ btn.disabled=false; btn.textContent=vehModalMode==='create'?'Crear vehículo':'Guardar'; }
+};
+
+// ── MODAL NEUMÁTICOS ──
+let neumVehiculoId=null;
+
+window.openNeumaticosModal=async function(vehiculoId){
+  neumVehiculoId=vehiculoId;
+  const v=vehiculos.find(x=>x.id===vehiculoId);
+  document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
+  document.getElementById('neum-modal-sub').textContent=
+    `${v?.tipo_ruedas||10} ruedas · ${v?.patente||v?.numero||'sin matrícula'}`;
+  document.getElementById('neum-modal-body').innerHTML=
+    '<div class="loading-state"><div class="spinner"></div></div>';
+  document.getElementById('modal-neumaticos').classList.add('show');
+
+  // Cargar registros existentes
+  const {data}=await db.from('neumaticos').select('*').eq('vehiculo_id',vehiculoId);
+  const existing={};
+  (data||[]).forEach(n=>{ existing[n.posicion]=n; });
+
+  const tipoRuedas=v?.tipo_ruedas||10;
+  renderNeumaticosForm(tipoRuedas, existing);
+};
+
+function renderNeumaticosForm(tipoRuedas, existing){
+  const body=document.getElementById('neum-modal-body');
+  // Construir filas por posición
+  let html='<div class="neum-grid-header"><span>Pos.</span><span>Marca</span><span>Modelo</span><span>Precio/ud</span><span>Fecha compra</span><span>Notas</span></div>';
+  for(let p=1;p<=tipoRuedas;p++){
+    const n=existing[p]||{};
+    html+=`<div class="neum-grid-row">
+      <div class="neum-pos-badge">P${p}</div>
+      <input class="neum-input" data-p="${p}" data-f="marca"         value="${esc(n.marca||'')}"         placeholder="Marca"/>
+      <input class="neum-input" data-p="${p}" data-f="modelo"        value="${esc(n.modelo||'')}"        placeholder="Modelo"/>
+      <input class="neum-input neum-num" data-p="${p}" data-f="precio_unidad" value="${n.precio_unidad!=null?n.precio_unidad:''}" placeholder="0.00" type="number" min="0" step="0.01"/>
+      <input class="neum-input neum-date" data-p="${p}" data-f="fecha_compra" value="${n.fecha_compra||''}" type="date"/>
+      <input class="neum-input neum-notes" data-p="${p}" data-f="notas"  value="${esc(n.notas||'')}"         placeholder="Notas"/>
+    </div>`;
+  }
+  body.innerHTML=html;
+}
+
+window.closeNeumaticosModal=()=>document.getElementById('modal-neumaticos').classList.remove('show');
+
+window.saveNeumaticos=async function(){
+  const v=vehiculos.find(x=>x.id===neumVehiculoId);
+  if(!v) return;
+  const btn=document.getElementById('neum-save');
+  btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const rows=[];
+    document.querySelectorAll('.neum-grid-row').forEach(row=>{
+      const inputs=row.querySelectorAll('.neum-input');
+      const posEl=row.querySelector('[data-f="marca"]');
+      if(!posEl) return;
+      const p=parseInt(posEl.dataset.p);
+      const get=f=>row.querySelector(`[data-f="${f}"]`)?.value.trim()||null;
+      const precio=row.querySelector('[data-f="precio_unidad"]')?.value;
+      rows.push({
+        vehiculo_id:neumVehiculoId,
+        cliente_id:v.cliente_id,
+        posicion:p,
+        marca:get('marca'),
+        modelo:get('modelo'),
+        precio_unidad:precio!==''&&precio!=null?parseFloat(precio):null,
+        fecha_compra:get('fecha_compra'),
+        notas:get('notas')
+      });
+    });
+    // Upsert: insert o actualiza según (vehiculo_id, posicion)
+    const {error}=await db.from('neumaticos')
+      .upsert(rows,{onConflict:'vehiculo_id,posicion'});
+    if(error) throw error;
+    showToast('Neumáticos guardados');
+    closeNeumaticosModal();
+  } catch(e){ showToast('Error: '+e.message,true); }
+  finally{ btn.disabled=false; btn.textContent='Guardar neumáticos'; }
 };
 
 async function removeVehiculo(id){

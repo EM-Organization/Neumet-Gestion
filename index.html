@@ -502,28 +502,51 @@
 
 <!-- Modal Vehículo -->
 <div class="modal-backdrop" id="modal-vehiculo" onclick="if(event.target===this)closeVehiculoModal()">
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
       <div class="modal-title" id="veh-modal-title">Nuevo vehículo</div>
       <div class="modal-sub" id="veh-modal-sub">Completá los datos del vehículo</div>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Cliente</label><select id="vf-cliente"></select></div>
-      <div class="field"><label>Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
-      <div class="field">
-        <label>Patente <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
-        <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
+      <!-- Sección: Datos básicos -->
+      <div class="modal-section-title">Datos del vehículo</div>
+      <div class="field-row">
+        <div class="field"><label>Cliente</label><select id="vf-cliente"></select></div>
+        <div class="field"><label>Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Patente <span class="label-opt">(opcional)</span></label>
+          <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
+        </div>
+        <div class="field">
+          <label>Número de coche <span class="label-opt">(opcional)</span></label>
+          <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Cantidad de ruedas</label>
+          <select id="vf-ruedas">
+            <option value="10">10 ruedas</option>
+            <option value="16">16 ruedas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fecha de compra del vehículo <span class="label-opt">(opcional)</span></label>
+          <input type="date" id="vf-fecha-compra"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Último servicio <span class="label-opt">(opcional)</span></label>
+          <input type="date" id="vf-ultimo-servicio"/>
+        </div>
+        <div class="field"></div>
       </div>
       <div class="field">
-        <label>Número de coche <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
-        <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
-      </div>
-      <div class="field">
-        <label>Cantidad de ruedas</label>
-        <select id="vf-ruedas">
-          <option value="10">10 ruedas</option>
-          <option value="16">16 ruedas</option>
-        </select>
+        <label>Notas internas <span class="label-opt">(opcional)</span></label>
+        <textarea id="vf-notas" placeholder="Observaciones, historial, etc." rows="2" style="resize:vertical"></textarea>
       </div>
       <div class="toggle-row">
         <span class="toggle-label">Vehículo activo</span>
@@ -537,6 +560,23 @@
     <div class="modal-footer">
       <button class="btn ghost" onclick="closeVehiculoModal()">Cancelar</button>
       <button class="btn primary" id="veh-save" onclick="saveVehiculo()">Crear vehículo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Neumáticos del vehículo -->
+<div class="modal-backdrop" id="modal-neumaticos" onclick="if(event.target===this)closeNeumaticosModal()">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="neum-modal-title">Neumáticos</div>
+      <div class="modal-sub" id="neum-modal-sub">Información de cada cubierta</div>
+    </div>
+    <div class="modal-body" id="neum-modal-body">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeNeumaticosModal()">Cerrar</button>
+      <button class="btn primary" id="neum-save" onclick="saveNeumaticos()">Guardar neumáticos</button>
     </div>
   </div>
 </div>
