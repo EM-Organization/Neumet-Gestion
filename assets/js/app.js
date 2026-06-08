@@ -34,19 +34,29 @@ function showToast(msg,err=false){
   window._tt=setTimeout(()=>t.classList.remove('show'),3000);
 }
 
+// ── MODO CLIENTE ─────────────────────────────────
+// null = admin (ve todo), número = cliente (ve solo lo suyo)
+let currentClienteId=null, currentClienteNombre='';
+
+function isClienteMode(){ return currentClienteId!==null; }
+
+function applyClienteMode(){
+  // Ocultar elementos admin-only
+  document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display='none'; });
+  // Badge dispositivos no aplica a clientes
+  document.getElementById('nav-unreg-badge').style.display='none';
+  // Mostrar nombre del cliente en el sidebar
+  document.getElementById('user-email').textContent=currentClienteNombre||'Cliente';
+}
+
 // AUTH — detecta rol
 async function checkAuth(){
   const {data:{session}}=await db.auth.getSession();
   if(!session){ showLogin(); return; }
-  // Verificar si es admin (no tiene fila en clientes)
-  const {data:clienteRow}=await db.from('clientes').select('id').eq('auth_user_id',session.user.id).maybeSingle();
+  const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',session.user.id).maybeSingle();
   if(clienteRow){
-    // Es un cliente, no admin — por ahora redirigir al login con mensaje
-    await db.auth.signOut();
-    showLogin();
-    document.getElementById('login-error').textContent='Este acceso es solo para administradores.';
-    document.getElementById('login-error').classList.add('show');
-    return;
+    currentClienteId=clienteRow.id;
+    currentClienteNombre=clienteRow.nombre;
   }
   showApp(session.user);
 }
@@ -60,14 +70,18 @@ function showApp(user){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('user-email').textContent=user.email;
   document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();
-  loadClients();
-  // Chequear dispositivos no registrados al iniciar para mostrar el badge
-  db.rpc('get_unregistered_devices').then(({data})=>{
-    if(data&&data.length){
-      const badge=document.getElementById('nav-unreg-badge');
-      badge.textContent=data.length; badge.style.display='';
-    }
-  });
+  if(isClienteMode()){
+    applyClienteMode();
+    switchView('vehiculos');
+  } else {
+    loadClients();
+    db.rpc('get_unregistered_devices').then(({data})=>{
+      if(data&&data.length){
+        const badge=document.getElementById('nav-unreg-badge');
+        badge.textContent=data.length; badge.style.display='';
+      }
+    });
+  }
 }
 
 document.getElementById('login-form').addEventListener('submit',async e=>{
@@ -83,18 +97,22 @@ document.getElementById('login-form').addEventListener('submit',async e=>{
     err.textContent=error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message;
     err.classList.add('show'); return;
   }
-  // Detectar rol
-  const {data:clienteRow}=await db.from('clientes').select('id').eq('auth_user_id',data.user.id).maybeSingle();
+  const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',data.user.id).maybeSingle();
   if(clienteRow){
-    await db.auth.signOut();
-    err.textContent='Este acceso es solo para administradores.';
-    err.classList.add('show'); return;
+    currentClienteId=clienteRow.id;
+    currentClienteNombre=clienteRow.nombre;
+  } else {
+    currentClienteId=null; currentClienteNombre='';
   }
   showApp(data.user);
 });
 
 document.getElementById('logout-btn').addEventListener('click',async()=>{
-  await db.auth.signOut(); clients=[]; showLogin();
+  await db.auth.signOut();
+  clients=[]; currentClienteId=null; currentClienteNombre='';
+  // Restaurar elementos admin-only
+  document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
+  showLogin();
 });
 db.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') showLogin(); });
 
@@ -331,18 +349,38 @@ function mTireColor(pos){
 }
 
 async function medInit(){
-  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
   const sel=document.getElementById('med-cliente-select');
-  sel.innerHTML='<option value="">— Seleccionar cliente —</option>'+(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
-  document.getElementById('med-vehiculo-select').innerHTML='<option value="">— Seleccionar vehículo —</option>';
-  document.getElementById('med-vehiculo-select').disabled=true;
+  // Panel selector de cliente: ocultar en modo cliente y auto-seleccionar
+  document.getElementById('med-panel-vehiculo').querySelector('.field')?.closest
+  const clientePanel=document.getElementById('med-cliente-select').closest('.field');
+  if(clientePanel) clientePanel.style.display=isClienteMode()?'none':'';
+  document.getElementById('med-cliente-search')?.closest('.field') &&
+    (document.getElementById('med-cliente-search').closest('.field').style.display=isClienteMode()?'none':'');
+
+  if(isClienteMode()){
+    // En modo cliente: cargar vehículos directamente sin seleccionar cliente
+    sel.innerHTML=`<option value="${currentClienteId}">${esc(currentClienteNombre)}</option>`;
+    sel.value=String(currentClienteId);
+    const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas')
+      .eq('cliente_id',currentClienteId).eq('activo',true).order('nombre');
+    medVehs=data||[];
+    const vs=document.getElementById('med-vehiculo-select');
+    vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'+
+      medVehs.map(v=>`<option value="${v.id}">${esc(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`).join('');
+    vs.disabled=false;
+  } else {
+    const {data}=await db.from('clientes').select('id,nombre').order('nombre');
+    sel.innerHTML='<option value="">— Seleccionar cliente —</option>'+
+      (data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    document.getElementById('med-vehiculo-select').innerHTML='<option value="">— Seleccionar vehículo —</option>';
+    document.getElementById('med-vehiculo-select').disabled=true;
+  }
   document.getElementById('med-truck-card').style.display='none';
   document.getElementById('med-counters-card').style.display='none';
   document.getElementById('med-empty').style.display='flex';
   document.getElementById('med-tire-detail').style.display='none';
   document.getElementById('med-loading').style.display='none';
   medTireData={}; medSelPos=null; medSelDevice=null; medSelSession=null;
-  // Resetear al tab activo y recargar dispositivos siempre
   const activeMode=document.querySelector('.med-tab.active')?.dataset?.mode||'vehiculo';
   medSwitchMode(activeMode);
 }
@@ -1191,16 +1229,16 @@ let dispositivos=[], dispModalMode='create', dispActiveId=null;
 async function loadDispositivos(){
   setStatus(true,'Cargando...');
 
-  // Cargar dispositivos registrados + no registrados en paralelo
-  const [
-    {data: dispData, error: dispErr},
-    {data: unregData}
-  ] = await Promise.all([
-    db.from('dispositivos')
-      .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)')
-      .order('created_at',{ascending:false}),
-    db.rpc('get_unregistered_devices')
-  ]);
+  // Cargar dispositivos registrados (+ no registrados solo para admin)
+  let dispQuery=db.from('dispositivos')
+    .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)')
+    .order('created_at',{ascending:false});
+  if(isClienteMode()) dispQuery=dispQuery.eq('cliente_id',currentClienteId);
+
+  const promises=[dispQuery];
+  if(!isClienteMode()) promises.push(db.rpc('get_unregistered_devices'));
+  const [{data:dispData,error:dispErr}, unregResult]=await Promise.all(promises);
+  const unregData=unregResult?.data||[];
 
   if(dispErr){ setStatus(false,'Error de conexión'); showToast('Error: '+dispErr.message,true); return; }
   dispositivos=dispData||[];
@@ -1265,8 +1303,9 @@ function renderUnregistered(list){
 }
 
 function renderDispositivos(){
+  document.getElementById('filter-cliente-disp').style.display=isClienteMode()?'none':'';
   const q=document.getElementById('search-dispositivos').value.toLowerCase();
-  const cid=document.getElementById('filter-cliente-disp').value;
+  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-disp').value;
   const tbody=document.getElementById('tbody-dispositivos');
   const filtered=dispositivos.filter(d=>{
     const matchQ=(d.mac_address||'').toLowerCase().includes(q)||(d.nombre||'').toLowerCase().includes(q);
@@ -1411,10 +1450,11 @@ let vehiculos=[], vehModalMode='create', vehActiveId=null;
 
 async function loadVehiculos(){
   setStatus(true,'Cargando...');
-  const {data,error}=await db
-    .from('vehiculos')
+  let q=db.from('vehiculos')
     .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
     .order('nombre');
+  if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
+  const {data,error}=await q;
   if(error){ setStatus(false,'Error de conexión'); showToast('Error: '+error.message,true); return; }
   vehiculos=data||[];
   setStatus(true,'Conectado');
@@ -1428,8 +1468,10 @@ async function loadVehiculos(){
 }
 
 function renderVehiculos(){
+  // En modo cliente ocultamos el filtro y columna de cliente
+  document.getElementById('filter-cliente-veh').style.display=isClienteMode()?'none':'';
   const q=document.getElementById('search-vehiculos').value.toLowerCase();
-  const cid=document.getElementById('filter-cliente-veh').value;
+  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-veh').value;
   const tbody=document.getElementById('tbody-vehiculos');
   let filtered=vehiculos.filter(v=>{
     const matchQ=v.nombre.toLowerCase().includes(q)||(v.patente||'').toLowerCase().includes(q);
@@ -1482,6 +1524,10 @@ window.openVehiculoModal=async function(mode,id){
   // Poblar select de clientes
   const {data}=await db.from('clientes').select('id,nombre').order('nombre');
   document.getElementById('vf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  // Ocultar selector de cliente en modo cliente
+  document.getElementById('vf-cliente').closest('.field').style.display=isClienteMode()?'none':'';
+  if(isClienteMode()) document.getElementById('vf-cliente').value=currentClienteId;
+
   if(mode==='create'){
     document.getElementById('veh-modal-title').textContent='Nuevo vehículo';
     document.getElementById('veh-modal-sub').textContent='Completá los datos del vehículo';
@@ -1817,9 +1863,11 @@ let stockItems=[], stockModalMode='create', stockActiveId=null;
 async function loadStock(){
   const tbody=document.getElementById('tbody-stock');
   tbody.innerHTML='<tr><td colspan="8"><div class="loading-state"><div class="spinner"></div></div></td></tr>';
-  const {data,error}=await db.from('stock_neumaticos')
+  let sq=db.from('stock_neumaticos')
     .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
     .order('created_at',{ascending:false});
+  if(isClienteMode()) sq=sq.eq('cliente_id',currentClienteId);
+  const {data,error}=await sq;
   if(error){ showToast('Error: '+error.message,true); return; }
   stockItems=data||[];
   // Poblar filtro clientes
@@ -1832,8 +1880,9 @@ async function loadStock(){
 }
 
 function renderStock(){
+  document.getElementById('filter-cliente-stock').style.display=isClienteMode()?'none':'';
   const q=document.getElementById('search-stock').value.toLowerCase();
-  const cid=document.getElementById('filter-cliente-stock').value;
+  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-stock').value;
   const tbody=document.getElementById('tbody-stock');
   const filtered=stockItems.filter(s=>{
     const mq=(s.marca||'').toLowerCase().includes(q)||(s.modelo||'').toLowerCase().includes(q);
@@ -1871,8 +1920,15 @@ function renderStock(){
 
 window.openStockModal=async function(mode,id){
   stockModalMode=mode; stockActiveId=id;
-  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-  document.getElementById('sf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  const sfClienteField=document.getElementById('sf-cliente').closest('.field');
+  if(isClienteMode()){
+    sfClienteField.style.display='none';
+    document.getElementById('sf-cliente').innerHTML=`<option value="${currentClienteId}">${esc(currentClienteNombre)}</option>`;
+  } else {
+    sfClienteField.style.display='';
+    const {data}=await db.from('clientes').select('id,nombre').order('nombre');
+    document.getElementById('sf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  }
   if(mode==='create'){
     document.getElementById('stock-modal-title').textContent='Nueva compra de neumáticos';
     document.getElementById('sf-marca').value='';
@@ -2006,13 +2062,16 @@ let medAllDevices=[], medSelDevice=null, medDeviceSessions=[], medSelSession=nul
 async function medDeviceLoadDevices(){
   document.getElementById('med-device-list').innerHTML='<div class="loading-state"><div class="spinner"></div></div>';
 
-  // Todos los MACs con mediciones
-  const {data:macRows}=await db.from('mediciones').select('device_id').not('device_id','is',null);
+  // MACs con mediciones (filtrar por cliente si aplica)
+  let macQuery=db.from('mediciones').select('device_id').not('device_id','is',null);
+  if(isClienteMode()) macQuery=macQuery.eq('cliente_id',currentClienteId);
+  const {data:macRows}=await macQuery;
   const allMacs=[...new Set((macRows||[]).map(m=>m.device_id))].sort();
 
-  // Dispositivos registrados
-  const {data:regDevs}=await db.from('dispositivos')
-    .select('mac_address,nombre,clientes(nombre)');
+  // Dispositivos registrados (filtrar por cliente si aplica)
+  let regQuery=db.from('dispositivos').select('mac_address,nombre,clientes(nombre)');
+  if(isClienteMode()) regQuery=regQuery.eq('cliente_id',currentClienteId);
+  const {data:regDevs}=await regQuery;
   const regMap={};
   (regDevs||[]).forEach(d=>{ regMap[d.mac_address]=d; });
 

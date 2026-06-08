@@ -40,11 +40,11 @@
       </div>
     </div>
     <div class="nav-section">Workspace</div>
-    <div class="nav-item" data-view="balance">
+    <div class="nav-item" data-view="balance" data-admin-only>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       Balance
     </div>
-    <div class="nav-item active" data-view="clientes">
+    <div class="nav-item active" data-view="clientes" data-admin-only>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Clientes
     </div>
@@ -352,7 +352,7 @@
             <div class="page-title">Dispositivos</div>
             <div class="page-subtitle">Medidores asignados a cada cliente (identificados por MAC).</div>
           </div>
-          <button class="btn primary" onclick="openDispositivoModal('create')">
+          <button class="btn primary" data-admin-only onclick="openDispositivoModal('create')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo dispositivo
           </button>
