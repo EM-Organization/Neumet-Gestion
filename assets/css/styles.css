@@ -168,16 +168,29 @@
   .label-opt { color: var(--text-tertiary); font-weight: 400; }
   .field textarea { width: 100%; background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: var(--font); color: var(--text-primary); outline: none; transition: border-color .15s; box-sizing: border-box; }
   .field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-  /* Grid de neumáticos */
-  .neum-grid-header { display: grid; grid-template-columns: 36px 1fr 1fr 90px 120px 1fr; gap: 6px; padding: 6px 2px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-  .neum-grid-row { display: grid; grid-template-columns: 36px 1fr 1fr 90px 120px 1fr; gap: 6px; align-items: center; padding: 5px 2px; border-bottom: 1px solid var(--border); }
-  .neum-grid-row:last-child { border-bottom: none; }
-  .neum-pos-badge { width: 28px; height: 28px; border-radius: 6px; background: var(--accent-light); border: 1px solid var(--accent-border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--accent-dark); flex-shrink: 0; }
-  .neum-input { background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; font-size: 12px; font-family: var(--font); color: var(--text-primary); outline: none; width: 100%; box-sizing: border-box; transition: border-color .15s; }
-  .neum-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
-  .neum-input::placeholder { color: var(--text-tertiary); }
-  .neum-num { text-align: right; }
-  .neum-date { font-size: 11px; }
+  /* Sub-tabs de Vehículos */
+  .sub-tabs-bar { display: flex; gap: 2px; padding: 16px 24px 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .sub-tab { display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 500; font-family: var(--font); color: var(--text-secondary); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; transition: color .15s, border-color .15s; border-radius: 6px 6px 0 0; }
+  .sub-tab:hover { color: var(--text-primary); }
+  .sub-tab.active { color: var(--accent-dark); border-bottom-color: var(--accent-dark); font-weight: 600; }
+  .sub-view { display: block; }
+
+  /* Modal neumáticos visual */
+  .modal.modal-neum { width: 960px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; }
+  .neum-assign-layout { display: grid; grid-template-columns: 1fr 260px; flex: 1; min-height: 0; overflow: hidden; }
+  .neum-svg-panel { background: var(--surface-secondary); padding: 16px 12px 8px; display: flex; flex-direction: column; gap: 6px; overflow: auto; border-right: 1px solid var(--border); }
+  .neum-svg-hint { font-size: 11px; color: var(--text-tertiary); text-align: center; }
+  .neum-detail-panel { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; }
+  .neum-no-sel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-tertiary); font-size: 13px; }
+  /* Panel detalle posición */
+  .ndp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .ndp-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .ndp-clear { background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 6px; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; transition: all .15s; }
+  .ndp-clear:hover { border-color: var(--danger); color: var(--danger); }
+  .ndp-btn { width: 100%; margin-top: 8px; }
+  .neum-detail-panel .field { margin-bottom: 8px; }
+  .neum-detail-panel .field label { font-size: 11px; }
+  .neum-detail-panel .field input, .neum-detail-panel .field select, .neum-detail-panel .field textarea { font-size: 12px; padding: 6px 8px; }
   @keyframes modalIn { from { transform: scale(0.97) translateY(4px); opacity: 0 } to { transform: scale(1) translateY(0); opacity: 1 } }
   .modal-header { padding: 20px 22px 0; }
   .modal-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }

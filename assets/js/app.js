@@ -1547,81 +1547,414 @@ window.saveVehiculo=async function(){
   finally{ btn.disabled=false; btn.textContent=vehModalMode==='create'?'Crear vehículo':'Guardar'; }
 };
 
-// ── MODAL NEUMÁTICOS ──
-let neumVehiculoId=null;
+// ══════════════════════════════════════════════════
+// MODAL NEUMÁTICOS — vista visual con SVG
+// ══════════════════════════════════════════════════
+let neumVehiculoId=null, neumSelPos=null, neumAssignments={}, neumStockCache=[];
 
-window.openNeumaticosModal=async function(vehiculoId){
-  neumVehiculoId=vehiculoId;
-  const v=vehiculos.find(x=>x.id===vehiculoId);
-  document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
-  document.getElementById('neum-modal-sub').textContent=
-    `${v?.tipo_ruedas||10} ruedas · ${v?.patente||v?.numero||'sin matrícula'}`;
-  document.getElementById('neum-modal-body').innerHTML=
-    '<div class="loading-state"><div class="spinner"></div></div>';
-  document.getElementById('modal-neumaticos').classList.add('show');
+// ── Dibujo del vehículo en modo asignación ──
+function namedNS(t,a={}){ const e=document.createElementNS('http://www.w3.org/2000/svg',t); Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v)); return e; }
 
-  // Cargar registros existentes
-  const {data}=await db.from('neumaticos').select('*').eq('vehiculo_id',vehiculoId);
-  const existing={};
-  (data||[]).forEach(n=>{ existing[n.posicion]=n; });
-
-  const tipoRuedas=v?.tipo_ruedas||10;
-  renderNeumaticosForm(tipoRuedas, existing);
-};
-
-function renderNeumaticosForm(tipoRuedas, existing){
-  const body=document.getElementById('neum-modal-body');
-  // Construir filas por posición
-  let html='<div class="neum-grid-header"><span>Pos.</span><span>Marca</span><span>Modelo</span><span>Precio/ud</span><span>Fecha compra</span><span>Notas</span></div>';
-  for(let p=1;p<=tipoRuedas;p++){
-    const n=existing[p]||{};
-    html+=`<div class="neum-grid-row">
-      <div class="neum-pos-badge">P${p}</div>
-      <input class="neum-input" data-p="${p}" data-f="marca"         value="${esc(n.marca||'')}"         placeholder="Marca"/>
-      <input class="neum-input" data-p="${p}" data-f="modelo"        value="${esc(n.modelo||'')}"        placeholder="Modelo"/>
-      <input class="neum-input neum-num" data-p="${p}" data-f="precio_unidad" value="${n.precio_unidad!=null?n.precio_unidad:''}" placeholder="0.00" type="number" min="0" step="0.01"/>
-      <input class="neum-input neum-date" data-p="${p}" data-f="fecha_compra" value="${n.fecha_compra||''}" type="date"/>
-      <input class="neum-input neum-notes" data-p="${p}" data-f="notas"  value="${esc(n.notas||'')}"         placeholder="Notas"/>
-    </div>`;
-  }
-  body.innerHTML=html;
+function neumTireColor(pos){
+  const n=neumAssignments[pos];
+  if(!n||(!n.marca&&!n.modelo)) return {fill:'rgba(61,60,32,0.04)',stroke:'rgba(61,60,32,0.22)',text:'rgba(61,60,32,0.35)'};
+  return {fill:'rgba(61,60,32,0.10)',stroke:'#3D3C20',text:'#3D3C20'};
 }
 
-window.closeNeumaticosModal=()=>document.getElementById('modal-neumaticos').classList.remove('show');
+function neumDrawTire(svg, cx, cy, pos, TW, TH, isAbove){
+  const col=neumTireColor(pos);
+  const isSel=neumSelPos===pos;
+  const n=neumAssignments[pos];
+  const RW=TH, RH=TW, rx=3;
+  const x=cx-RW/2, y=cy-RH/2;
+  const g=namedNS('g',{cursor:'pointer'});
+  g.addEventListener('click',()=>neumSelectTire(pos));
+  // fondo
+  g.appendChild(namedNS('rect',{x,y,width:RW,height:RH,rx,fill:col.fill}));
+  // borde
+  g.appendChild(namedNS('rect',{x,y,width:RW,height:RH,rx,fill:'none',
+    stroke:col.stroke,'stroke-width':isSel?'2.5':'1.8'}));
+  // doble contorno interior
+  const ins=3;
+  g.appendChild(namedNS('rect',{x:x+ins,y:y+ins,width:RW-ins*2,height:RH-ins*2,rx:Math.max(1,rx-2),
+    fill:'none',stroke:col.stroke,'stroke-width':'0.6',opacity:'0.5'}));
+  // halo selección
+  if(isSel) g.appendChild(namedNS('rect',{x:x-4,y:y-4,width:RW+8,height:RH+8,rx:rx+3,
+    fill:'none',stroke:'#3D3C20','stroke-width':'1.2','stroke-dasharray':'3 2',opacity:'0.5'}));
+  // marca abreviada o "P{n}"
+  const label=n?.marca ? n.marca.substring(0,6) : `P${pos}`;
+  const t=namedNS('text',{x:cx,y:cy,'text-anchor':'middle','dominant-baseline':'middle',
+    'font-size':'6.5','font-family':"'Inter',sans-serif",'font-weight':'600',fill:col.text});
+  t.textContent=label;
+  g.appendChild(t);
+  // label posición
+  const ly=isAbove ? y-7 : y+RH+11;
+  const pl=namedNS('text',{x:cx,y:ly,'text-anchor':'middle',
+    'font-size':'7','font-family':"'Inter',sans-serif",'font-weight':'400',
+    fill:isSel?'#3D3C20':'rgba(61,60,32,0.38)','letter-spacing':'0.04em'});
+  pl.textContent=`P${pos}`;
+  g.appendChild(pl);
+  svg.appendChild(g);
+}
+
+function neumDrawTruck(){
+  const v=vehiculos.find(x=>x.id===neumVehiculoId);
+  const key=String(v?.tipo_ruedas||10);
+  const cfg=MED_CFG[key]; if(!cfg) return;
+  const svg=document.getElementById('neum-assign-svg');
+  svg.innerHTML='';
+  const TW_s=20,TH_s=54,TW_d=15,TH_d=38,GAP_D=5,BGAP=12;
+  let axleXs,bodyX1,bodyX2;
+  if(key==='10'){ axleXs=[150,440,580]; bodyX1=64; bodyX2=730; }
+  else           { axleXs=[120,310,420,530,640]; bodyX1=50; bodyX2=780; }
+  const outerR=Math.max(BGAP+TW_d+GAP_D+TW_d, BGAP+TW_s);
+  const bodyH=86, margin=28, labelExtra=22;
+  const H=bodyH+(outerR+labelExtra+margin)*2;
+  const W=key==='10'?860:900;
+  const midY=H/2, bodyTop=midY-bodyH/2, bodyBot=midY+bodyH/2;
+  const bodyW=bodyX2-bodyX1, cabW=90;
+  const INK='rgba(50,49,25,';
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',String(Math.round(H)));
+
+  // Grid fondo
+  const defs=namedNS('defs',{});
+  const pat=namedNS('pattern',{id:'ngrid',width:'20',height:'20',patternUnits:'userSpaceOnUse'});
+  pat.appendChild(namedNS('path',{d:'M 20 0 L 0 0 0 20',fill:'none',stroke:INK+'0.06)','stroke-width':'0.5'}));
+  defs.appendChild(pat); svg.appendChild(defs);
+  svg.appendChild(namedNS('rect',{x:0,y:0,width:W,height:H,fill:'url(#ngrid)'}));
+
+  // Ejes
+  axleXs.forEach(ax=>{
+    svg.appendChild(namedNS('line',{x1:ax,y1:margin/2,x2:ax,y2:H-margin/2,
+      stroke:INK+'0.14)','stroke-width':'1','stroke-dasharray':'8 5','stroke-linecap':'round'}));
+    svg.appendChild(namedNS('line',{x1:ax,y1:bodyTop,x2:ax,y2:bodyBot,
+      stroke:INK+'0.28)','stroke-width':'1.2'}));
+    [bodyTop,bodyBot].forEach(ey=>{
+      svg.appendChild(namedNS('circle',{cx:ax,cy:ey,r:'2.5',
+        fill:'white',stroke:INK+'0.30)','stroke-width':'0.8'}));
+    });
+  });
+  // Línea central
+  svg.appendChild(namedNS('line',{x1:bodyX1-20,y1:midY,x2:bodyX2+20,y2:midY,
+    stroke:INK+'0.10)','stroke-width':'0.8','stroke-dasharray':'10 6'}));
+
+  // Carrocería
+  svg.appendChild(namedNS('rect',{x:bodyX1+2,y:bodyTop+2,width:bodyW,height:bodyH,rx:6,fill:'rgba(0,0,0,0.05)'}));
+  svg.appendChild(namedNS('rect',{x:bodyX1,y:bodyTop,width:bodyW,height:bodyH,rx:6,
+    fill:'rgba(61,60,32,0.07)',stroke:'#3D3C20','stroke-width':'1.5'}));
+  const wi=5;
+  svg.appendChild(namedNS('rect',{x:bodyX1+wi,y:bodyTop+wi,width:bodyW-wi*2,height:bodyH-wi*2,rx:3,
+    fill:'none',stroke:INK+'0.20)','stroke-width':'0.7'}));
+  // Cabina
+  svg.appendChild(namedNS('rect',{x:bodyX1,y:bodyTop,width:cabW,height:bodyH,rx:6,fill:'rgba(61,60,32,0.10)',stroke:'none'}));
+  svg.appendChild(namedNS('line',{x1:bodyX1+cabW,y1:bodyTop+wi+2,x2:bodyX1+cabW,y2:bodyBot-wi-2,
+    stroke:INK+'0.25)','stroke-width':'0.8','stroke-dasharray':'4 3'}));
+  svg.appendChild(namedNS('path',{d:`M ${bodyX1+6} ${bodyTop+14} Q ${bodyX1+3} ${midY} ${bodyX1+6} ${bodyBot-14}`,
+    fill:'none',stroke:INK+'0.35)','stroke-width':'1.2'}));
+  // Luces
+  [[bodyTop+10,10],[bodyBot-20,10]].forEach(([fy,fh])=>{
+    svg.appendChild(namedNS('rect',{x:bodyX1-5,y:fy,width:5,height:fh,rx:2,fill:'rgba(61,60,32,0.55)',stroke:'#3D3C20','stroke-width':'0.6'}));
+  });
+  [[bodyTop+12,14],[bodyBot-26,14]].forEach(([ry,rh])=>{
+    svg.appendChild(namedNS('rect',{x:bodyX2,y:ry,width:5,height:rh,rx:2,fill:'rgba(61,60,32,0.25)',stroke:'#3D3C20','stroke-width':'0.6'}));
+  });
+  // Etiqueta frente
+  const lf=namedNS('text',{x:bodyX1+cabW/2,y:bodyTop-12,'text-anchor':'middle','font-size':'7',
+    'font-family':"'Inter',sans-serif",'font-weight':'500',fill:INK+'0.35)','letter-spacing':'0.14em'});
+  lf.textContent='FRENTE'; svg.appendChild(lf);
+
+  // Neumáticos
+  cfg.forEach((axle,ai)=>{
+    const ax=axleXs[ai]; if(ax===undefined) return;
+    if(axle.single){
+      const L=axle.positions.find(p=>p.side==='L');
+      const R=axle.positions.find(p=>p.side==='R');
+      if(L) neumDrawTire(svg,ax,bodyTop-BGAP-TW_s/2,L.pos,TW_s,TH_s,true);
+      if(R) neumDrawTire(svg,ax,bodyBot+BGAP+TW_s/2,R.pos,TW_s,TH_s,false);
+    } else {
+      const LL=axle.positions.find(p=>p.side==='LL');
+      const LR=axle.positions.find(p=>p.side==='LR');
+      const RL=axle.positions.find(p=>p.side==='RL');
+      const RR=axle.positions.find(p=>p.side==='RR');
+      const cyLI=bodyTop-BGAP-TW_d/2, cyLO=cyLI-TW_d-GAP_D;
+      const cyRI=bodyBot+BGAP+TW_d/2, cyRO=cyRI+TW_d+GAP_D;
+      if(LR) neumDrawTire(svg,ax,cyLI,LR.pos,TW_d,TH_d,true);
+      if(LL) neumDrawTire(svg,ax,cyLO,LL.pos,TW_d,TH_d,true);
+      if(RL) neumDrawTire(svg,ax,cyRI,RL.pos,TW_d,TH_d,false);
+      if(RR) neumDrawTire(svg,ax,cyRO,RR.pos,TW_d,TH_d,false);
+    }
+  });
+}
+
+function neumSelectTire(pos){
+  neumSelPos=pos;
+  neumDrawTruck();
+  renderNeumDetailPanel(pos);
+}
+
+function renderNeumDetailPanel(pos){
+  const n=neumAssignments[pos]||{};
+  const stockOpts=neumStockCache.map(s=>
+    `<option value="${s.id}" ${n.stock_id===s.id?'selected':''}>
+      ${esc(s.marca)}${s.modelo?' '+esc(s.modelo):''} ${s.precio_unidad?'· $'+s.precio_unidad:''} ${s.fecha_compra?'· '+s.fecha_compra:''}
+    </option>`).join('');
+  const panel=document.getElementById('neum-detail-panel');
+  panel.innerHTML=`
+    <div class="ndp-header">
+      <div class="ndp-title">Posición <strong>P${pos}</strong></div>
+      <button class="ndp-clear" onclick="neumClearPos(${pos})" title="Quitar neumático">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label>Seleccionar del stock</label>
+      <select id="ndp-stock" onchange="neumFillFromStock(${pos})">
+        <option value="">— Ingresar manualmente —</option>
+        ${stockOpts}
+      </select>
+    </div>
+    <div class="field-row" style="gap:8px">
+      <div class="field"><label>Marca</label><input id="ndp-marca" value="${esc(n.marca||'')}" placeholder="Michelin"/></div>
+      <div class="field"><label>Modelo</label><input id="ndp-modelo" value="${esc(n.modelo||'')}" placeholder="X MultiWay"/></div>
+    </div>
+    <div class="field-row" style="gap:8px">
+      <div class="field"><label>Precio/ud</label><input id="ndp-precio" type="number" value="${n.precio_unidad??''}" placeholder="0.00" min="0" step="0.01"/></div>
+      <div class="field"><label>Fecha compra</label><input id="ndp-fecha" type="date" value="${n.fecha_compra||''}"/></div>
+    </div>
+    <div class="field"><label>Notas</label><textarea id="ndp-notas" rows="2" placeholder="Dimensión, observaciones...">${esc(n.notas||'')}</textarea></div>
+    <button class="btn primary ndp-btn" onclick="neumApplyPos(${pos})">Aplicar</button>
+  `;
+}
+
+window.neumFillFromStock=function(pos){
+  const sid=parseInt(document.getElementById('ndp-stock').value);
+  if(!sid) return;
+  const s=neumStockCache.find(x=>x.id===sid); if(!s) return;
+  document.getElementById('ndp-marca').value=s.marca||'';
+  document.getElementById('ndp-modelo').value=s.modelo||'';
+  document.getElementById('ndp-precio').value=s.precio_unidad??'';
+  document.getElementById('ndp-fecha').value=s.fecha_compra||'';
+};
+
+window.neumApplyPos=function(pos){
+  const sid=parseInt(document.getElementById('ndp-stock').value)||null;
+  const precio=document.getElementById('ndp-precio').value;
+  neumAssignments[pos]={
+    ...( neumAssignments[pos]||{} ),
+    stock_id:sid,
+    marca:document.getElementById('ndp-marca').value.trim()||null,
+    modelo:document.getElementById('ndp-modelo').value.trim()||null,
+    precio_unidad:precio!==''&&precio!=null?parseFloat(precio):null,
+    fecha_compra:document.getElementById('ndp-fecha').value||null,
+    notas:document.getElementById('ndp-notas').value.trim()||null
+  };
+  neumDrawTruck(); // actualizar colores
+  showToast(`P${pos} actualizada — guardá para confirmar`,false);
+};
+
+window.neumClearPos=function(pos){
+  delete neumAssignments[pos];
+  neumSelPos=null;
+  document.getElementById('neum-detail-panel').innerHTML=
+    '<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>';
+  neumDrawTruck();
+};
+
+window.openNeumaticosModal=async function(vehiculoId){
+  neumVehiculoId=vehiculoId; neumSelPos=null; neumAssignments={};
+  const v=vehiculos.find(x=>x.id===vehiculoId);
+  document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
+  document.getElementById('modal-neumaticos').classList.add('show');
+  document.getElementById('neum-detail-panel').innerHTML=
+    '<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>';
+
+  // Carga paralela: registros existentes + stock del cliente
+  const [{data:nData},{data:sData}]=await Promise.all([
+    db.from('neumaticos').select('*').eq('vehiculo_id',vehiculoId),
+    db.from('stock_neumaticos').select('*').eq('cliente_id',v.cliente_id).order('marca')
+  ]);
+  (nData||[]).forEach(n=>{ neumAssignments[n.posicion]=n; });
+  neumStockCache=sData||[];
+  neumDrawTruck();
+};
+
+window.closeNeumaticosModal=function(){
+  document.getElementById('modal-neumaticos').classList.remove('show');
+};
 
 window.saveNeumaticos=async function(){
-  const v=vehiculos.find(x=>x.id===neumVehiculoId);
-  if(!v) return;
+  const v=vehiculos.find(x=>x.id===neumVehiculoId); if(!v) return;
   const btn=document.getElementById('neum-save');
   btn.disabled=true; btn.textContent='Guardando...';
   try{
-    const rows=[];
-    document.querySelectorAll('.neum-grid-row').forEach(row=>{
-      const inputs=row.querySelectorAll('.neum-input');
-      const posEl=row.querySelector('[data-f="marca"]');
-      if(!posEl) return;
-      const p=parseInt(posEl.dataset.p);
-      const get=f=>row.querySelector(`[data-f="${f}"]`)?.value.trim()||null;
-      const precio=row.querySelector('[data-f="precio_unidad"]')?.value;
-      rows.push({
-        vehiculo_id:neumVehiculoId,
-        cliente_id:v.cliente_id,
-        posicion:p,
-        marca:get('marca'),
-        modelo:get('modelo'),
-        precio_unidad:precio!==''&&precio!=null?parseFloat(precio):null,
-        fecha_compra:get('fecha_compra'),
-        notas:get('notas')
-      });
-    });
-    // Upsert: insert o actualiza según (vehiculo_id, posicion)
-    const {error}=await db.from('neumaticos')
-      .upsert(rows,{onConflict:'vehiculo_id,posicion'});
-    if(error) throw error;
+    const rows=Object.entries(neumAssignments).map(([pos,n])=>({
+      vehiculo_id:neumVehiculoId,
+      cliente_id:v.cliente_id,
+      posicion:parseInt(pos),
+      stock_id:n.stock_id||null,
+      marca:n.marca||null,
+      modelo:n.modelo||null,
+      precio_unidad:n.precio_unidad!=null?n.precio_unidad:null,
+      fecha_compra:n.fecha_compra||null,
+      notas:n.notas||null
+    }));
+    if(rows.length){
+      const {error}=await db.from('neumaticos').upsert(rows,{onConflict:'vehiculo_id,posicion'});
+      if(error) throw error;
+    }
     showToast('Neumáticos guardados');
     closeNeumaticosModal();
   } catch(e){ showToast('Error: '+e.message,true); }
-  finally{ btn.disabled=false; btn.textContent='Guardar neumáticos'; }
+  finally{ btn.disabled=false; btn.textContent='Guardar todo'; }
+};
+
+// ══════════════════════════════════════════════════
+// STOCK DE NEUMÁTICOS
+// ══════════════════════════════════════════════════
+let stockItems=[], stockModalMode='create', stockActiveId=null;
+
+async function loadStock(){
+  const tbody=document.getElementById('tbody-stock');
+  tbody.innerHTML='<tr><td colspan="8"><div class="loading-state"><div class="spinner"></div></div></td></tr>';
+  const {data,error}=await db.from('stock_neumaticos')
+    .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
+    .order('created_at',{ascending:false});
+  if(error){ showToast('Error: '+error.message,true); return; }
+  stockItems=data||[];
+  // Poblar filtro clientes
+  const sel=document.getElementById('filter-cliente-stock');
+  const cmap=new Map();
+  stockItems.forEach(s=>{ if(s.clientes) cmap.set(s.cliente_id,s.clientes.nombre); });
+  sel.innerHTML='<option value="">Todos los clientes</option>'+
+    [...cmap.entries()].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  renderStock();
+}
+
+function renderStock(){
+  const q=document.getElementById('search-stock').value.toLowerCase();
+  const cid=document.getElementById('filter-cliente-stock').value;
+  const tbody=document.getElementById('tbody-stock');
+  const filtered=stockItems.filter(s=>{
+    const mq=(s.marca||'').toLowerCase().includes(q)||(s.modelo||'').toLowerCase().includes(q);
+    const mc=!cid||String(s.cliente_id)===cid;
+    return mq&&mc;
+  });
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=filtered.map(s=>`<tr>
+    <td><strong>${esc(s.marca)}</strong></td>
+    <td>${s.modelo?esc(s.modelo):'<span style="color:var(--text-tertiary)">—</span>'}</td>
+    <td>${s.clientes?esc(s.clientes.nombre):'—'}</td>
+    <td>${s.precio_unidad!=null?'$'+parseFloat(s.precio_unidad).toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</td>
+    <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
+    <td><span class="badge blue">${s.cantidad} ud.</span></td>
+    <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?esc(s.notas):'—'}</td>
+    <td><div class="actions">
+      <button class="icon-btn" data-sa="edit" data-sid="${s.id}" title="Editar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button class="icon-btn danger" data-sa="del" data-sid="${s.id}" title="Eliminar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </button>
+    </div></td>
+  </tr>`).join('');
+  tbody.querySelectorAll('button[data-sa]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=parseInt(btn.dataset.sid);
+      if(btn.dataset.sa==='del') removeStock(id); else openStockModal('edit',id);
+    });
+  });
+}
+
+window.openStockModal=async function(mode,id){
+  stockModalMode=mode; stockActiveId=id;
+  const {data}=await db.from('clientes').select('id,nombre').order('nombre');
+  document.getElementById('sf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  if(mode==='create'){
+    document.getElementById('stock-modal-title').textContent='Nueva compra de neumáticos';
+    document.getElementById('sf-marca').value='';
+    document.getElementById('sf-modelo').value='';
+    document.getElementById('sf-cantidad').value='1';
+    document.getElementById('sf-precio').value='';
+    document.getElementById('sf-fecha').value='';
+    document.getElementById('sf-notas').value='';
+    document.getElementById('stock-save').textContent='Guardar';
+  } else {
+    const s=stockItems.find(x=>x.id===id);
+    document.getElementById('stock-modal-title').textContent='Editar compra';
+    document.getElementById('sf-cliente').value=s.cliente_id;
+    document.getElementById('sf-marca').value=s.marca||'';
+    document.getElementById('sf-modelo').value=s.modelo||'';
+    document.getElementById('sf-cantidad').value=s.cantidad||1;
+    document.getElementById('sf-precio').value=s.precio_unidad??'';
+    document.getElementById('sf-fecha').value=s.fecha_compra||'';
+    document.getElementById('sf-notas').value=s.notas||'';
+    document.getElementById('stock-save').textContent='Guardar';
+  }
+  document.getElementById('modal-stock').classList.add('show');
+  setTimeout(()=>document.getElementById('sf-marca').focus(),60);
+};
+window.closeStockModal=()=>document.getElementById('modal-stock').classList.remove('show');
+
+window.saveStock=async function(){
+  const marca=document.getElementById('sf-marca').value.trim();
+  if(!marca){ showToast('La marca es obligatoria',true); return; }
+  const cliente_id=parseInt(document.getElementById('sf-cliente').value);
+  const precio=document.getElementById('sf-precio').value;
+  const fields={
+    cliente_id,
+    marca,
+    modelo:document.getElementById('sf-modelo').value.trim()||null,
+    cantidad:parseInt(document.getElementById('sf-cantidad').value)||1,
+    precio_unidad:precio!==''?parseFloat(precio):null,
+    fecha_compra:document.getElementById('sf-fecha').value||null,
+    notas:document.getElementById('sf-notas').value.trim()||null
+  };
+  const btn=document.getElementById('stock-save');
+  btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    if(stockModalMode==='create'){
+      const {data,error}=await db.from('stock_neumaticos').insert(fields)
+        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)').single();
+      if(error) throw error;
+      stockItems.unshift(data);
+    } else {
+      const {data,error}=await db.from('stock_neumaticos').update(fields).eq('id',stockActiveId)
+        .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)').single();
+      if(error) throw error;
+      const idx=stockItems.findIndex(x=>x.id===stockActiveId);
+      if(idx>=0) stockItems[idx]=data;
+    }
+    renderStock();
+    closeStockModal();
+    showToast('Guardado');
+  } catch(e){ showToast('Error: '+e.message,true); }
+  finally{ btn.disabled=false; btn.textContent='Guardar'; }
+};
+
+async function removeStock(id){
+  const s=stockItems.find(x=>x.id===id);
+  const ok=await confirmDialog('Eliminar','¿Eliminar esta entrada del stock?'); if(!ok) return;
+  const {error}=await db.from('stock_neumaticos').delete().eq('id',id);
+  if(error){ showToast('Error: '+error.message,true); return; }
+  stockItems=stockItems.filter(x=>x.id!==id);
+  renderStock();
+  showToast('Eliminado');
+}
+
+document.getElementById('search-stock').addEventListener('input',renderStock);
+document.getElementById('filter-cliente-stock').addEventListener('change',renderStock);
+
+// ── Sub-tabs de Vehículos ──
+window.switchSubTab=function(tabId, btn){
+  document.querySelectorAll('.sub-view').forEach(v=>v.style.display='none');
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tabId).style.display='';
+  btn.classList.add('active');
+  if(tabId==='sv-stock') loadStock();
 };
 
 async function removeVehiculo(id){

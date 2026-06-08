@@ -243,45 +243,106 @@
 
       <!-- VEHÍCULOS -->
       <div class="view" id="view-vehiculos">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Vehículos</div>
-            <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
-          </div>
-          <button class="btn primary" onclick="openVehiculoModal('create')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Nuevo vehículo
+
+        <!-- Sub-tabs -->
+        <div class="sub-tabs-bar">
+          <button class="sub-tab active" data-subtab="sv-vehiculos" onclick="switchSubTab('sv-vehiculos',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Vehículos
+          </button>
+          <button class="sub-tab" data-subtab="sv-stock" onclick="switchSubTab('sv-stock',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+            Stock de Neumáticos
           </button>
         </div>
-        <div class="toolbar">
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..."/>
+
+        <!-- Sub-view: Vehículos -->
+        <div class="sub-view" id="sv-vehiculos">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Vehículos</div>
+              <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
+            </div>
+            <button class="btn primary" onclick="openVehiculoModal('create')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Nuevo vehículo
+            </button>
           </div>
-          <select id="filter-cliente-veh" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
-            <option value="">Todos los clientes</option>
-          </select>
-          <button class="btn ghost" onclick="loadVehiculos()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Actualizar
-          </button>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..."/>
+            </div>
+            <select id="filter-cliente-veh" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+              <option value="">Todos los clientes</option>
+            </select>
+            <button class="btn ghost" onclick="loadVehiculos()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th style="width:60px">ID</th>
+                <th>Nombre</th>
+                <th>Patente</th>
+                <th>Cliente</th>
+                <th>Ruedas</th>
+                <th>Estado</th>
+                <th style="width:110px"></th>
+              </tr></thead>
+              <tbody id="tbody-vehiculos">
+                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th style="width:60px">ID</th>
-              <th>Nombre</th>
-              <th>Patente</th>
-              <th>Cliente</th>
-              <th>Ruedas</th>
-              <th>Estado</th>
-              <th style="width:90px"></th>
-            </tr></thead>
-            <tbody id="tbody-vehiculos">
-              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos...</div></td></tr>
-            </tbody>
-          </table>
+
+        <!-- Sub-view: Stock de Neumáticos -->
+        <div class="sub-view" id="sv-stock" style="display:none">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Stock de Neumáticos</div>
+              <div class="page-subtitle">Registrá las compras de cubiertas para asignarlas a los vehículos.</div>
+            </div>
+            <button class="btn primary" onclick="openStockModal('create')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar compra
+            </button>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="search-stock" type="text" placeholder="Buscar marca o modelo..."/>
+            </div>
+            <select id="filter-cliente-stock" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+              <option value="">Todos los clientes</option>
+            </select>
+            <button class="btn ghost" onclick="loadStock()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Cliente</th>
+                <th>Precio/ud</th>
+                <th>Fecha compra</th>
+                <th>Cantidad</th>
+                <th>Notas</th>
+                <th style="width:80px"></th>
+              </tr></thead>
+              <tbody id="tbody-stock">
+                <tr><td colspan="8"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
 
       <!-- DISPOSITIVOS -->
@@ -564,19 +625,59 @@
   </div>
 </div>
 
-<!-- Modal Neumáticos del vehículo -->
+<!-- Modal Neumáticos del vehículo (vista visual) -->
 <div class="modal-backdrop" id="modal-neumaticos" onclick="if(event.target===this)closeNeumaticosModal()">
-  <div class="modal modal-wide">
+  <div class="modal modal-neum">
     <div class="modal-header">
       <div class="modal-title" id="neum-modal-title">Neumáticos</div>
-      <div class="modal-sub" id="neum-modal-sub">Información de cada cubierta</div>
+      <div class="modal-sub" id="neum-modal-sub">Hacé clic en una rueda para editarla</div>
     </div>
-    <div class="modal-body" id="neum-modal-body">
-      <div class="loading-state"><div class="spinner"></div></div>
+    <div class="neum-assign-layout">
+      <!-- Panel izquierdo: dibujo del vehículo -->
+      <div class="neum-svg-panel">
+        <svg id="neum-assign-svg" style="width:100%;display:block"></svg>
+        <div class="neum-svg-hint">Hacé clic en una rueda para ver o editar su neumático</div>
+      </div>
+      <!-- Panel derecho: detalle de la posición seleccionada -->
+      <div class="neum-detail-panel" id="neum-detail-panel">
+        <div class="neum-no-sel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+          <span>Seleccioná una rueda</span>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn ghost" onclick="closeNeumaticosModal()">Cerrar</button>
-      <button class="btn primary" id="neum-save" onclick="saveNeumaticos()">Guardar neumáticos</button>
+      <button class="btn primary" id="neum-save" onclick="saveNeumaticos()">Guardar todo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Stock de Neumáticos (CRUD) -->
+<div class="modal-backdrop" id="modal-stock" onclick="if(event.target===this)closeStockModal()">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="stock-modal-title">Nueva compra</div>
+      <div class="modal-sub">Registrá una compra de neumáticos</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Cliente</label><select id="sf-cliente"></select></div>
+        <div class="field"><label>Marca</label><input type="text" id="sf-marca" placeholder="Ej: Michelin"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="Ej: X MultiWay 3D"/></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="sf-cantidad" value="1" min="1" step="1"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Precio por unidad <span class="label-opt">(opcional)</span></label><input type="number" id="sf-precio" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="field"><label>Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="sf-fecha"/></div>
+      </div>
+      <div class="field"><label>Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeStockModal()">Cancelar</button>
+      <button class="btn primary" id="stock-save" onclick="saveStock()">Guardar</button>
     </div>
   </div>
 </div>
