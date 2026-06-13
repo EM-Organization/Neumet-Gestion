@@ -2289,7 +2289,7 @@ window.medDeviceSelect=async function(mac){
 
   const {data,error}=await db
     .from('mediciones')
-    .select('posicion,mm1,mm2,mm3,promedio,created_at,vehiculo_id,vehiculos(nombre,patente,tipo_ruedas)')
+    .select('posicion,mm1,mm2,mm3,promedio,created_at,vehiculo_id,patente_raw,numero_raw,vehiculos(nombre,patente,tipo_ruedas)')
     .eq('device_id',mac)
     .order('created_at',{ascending:false})
     .limit(2000);
@@ -2300,8 +2300,9 @@ window.medDeviceSelect=async function(mac){
   const map={};
   (data||[]).forEach(m=>{
     const sec=new Date(m.created_at).toISOString().slice(0,19);
-    const key=`${m.vehiculo_id}-${sec}`;
-    if(!map[key]) map[key]={key,firstDate:m.created_at,sec,vehiculo_id:m.vehiculo_id,vehiculo:m.vehiculos,meds:[]};
+    const patchKey=m.vehiculo_id??m.patente_raw??m.numero_raw??'sin-veh';
+    const key=`${patchKey}-${sec}`;
+    if(!map[key]) map[key]={key,firstDate:m.created_at,sec,vehiculo_id:m.vehiculo_id,vehiculo:m.vehiculos,patente_raw:m.patente_raw,numero_raw:m.numero_raw,meds:[]};
     map[key].meds.push(m);
   });
   // Solo mostrar sesiones con todas las ruedas del vehículo
@@ -2332,7 +2333,10 @@ function medDeviceRenderSessions(){
     const avgs=s.meds.map(m=>m.promedio!=null?parseFloat(m.promedio):null).filter(v=>v!=null);
     const prom=avgs.length?(avgs.reduce((a,b)=>a+b,0)/avgs.length).toFixed(1):null;
     const veh=s.vehiculo;
-    const vehNom=veh?`${esc(veh.nombre)}${veh.patente?' · '+esc(veh.patente):''}`:' Vehículo sin nombre';
+    const rawLabel=s.patente_raw||s.numero_raw||null;
+    const vehNom=veh
+      ?`${esc(veh.nombre)}${veh.patente?' · '+esc(veh.patente):''}`
+      :rawLabel?`<span style="color:var(--warning)">Sin asignar · ${esc(rawLabel)}</span>`:'Sin matrícula';
     const dotColor=isActive?'var(--accent-dark)':'var(--text-tertiary)';
     return `<div class="session-item ${isActive?'active':''}" onclick="medDeviceSessionSelect(${i})">
       <div class="session-dot" style="background:${dotColor}"></div>
