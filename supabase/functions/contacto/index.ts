@@ -1,7 +1,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const TO_EMAIL = 'emarichal.uy@gmail.com';
+const RESEND_API_KEY      = Deno.env.get('RESEND_API_KEY');
+const CF_TURNSTILE_SECRET = Deno.env.get('CF_TURNSTILE_SECRET');
+const TO_EMAIL            = 'emarichal.uy@gmail.com';
 
 Deno.serve(async (req: Request) => {
   const corsHeaders = {
@@ -29,10 +30,34 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { nombre, empresa, email, telefono, flota, mensaje } = body;
+  const { nombre, empresa, email, telefono, mensaje, cfToken } = body;
 
   if (!nombre || !email) {
     return new Response(JSON.stringify({ error: 'nombre y email son requeridos' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Validar Cloudflare Turnstile
+  if (!cfToken) {
+    return new Response(JSON.stringify({ error: 'Verificación de seguridad requerida' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const secretKey = CF_TURNSTILE_SECRET ?? '1x0000000000000000000000000000000AA'; // fallback: test secret
+  const cfForm = new FormData();
+  cfForm.append('secret', secretKey);
+  cfForm.append('response', cfToken);
+
+  const cfRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body: cfForm,
+  });
+  const cfData = await cfRes.json() as { success: boolean };
+
+  if (!cfData.success) {
+    return new Response(JSON.stringify({ error: 'Verificación de seguridad inválida' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
@@ -45,22 +70,21 @@ Deno.serve(async (req: Request) => {
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e5e5ea">
-      <div style="background:#007AFF;padding:32px;text-align:center">
-        <h1 style="margin:0;color:white;font-size:24px;font-weight:800;letter-spacing:-0.5px">NEUMET</h1>
-        <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px">Nueva consulta de contacto</p>
+      <div style="background:#3D3C20;padding:32px;text-align:center">
+        <h1 style="margin:0;color:#C9B96A;font-size:24px;font-weight:800;letter-spacing:1px">NEUMET</h1>
+        <p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px">Nueva consulta de contacto</p>
       </div>
       <div style="padding:32px">
         <table style="width:100%;border-collapse:collapse">
-          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;color:#6C6C70;font-size:13px;width:130px">Nombre</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-weight:600;font-size:14px">${nombre}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;color:#6C6C70;font-size:13px">Empresa</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-size:14px">${empresa || '—'}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;color:#6C6C70;font-size:13px">Email</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-size:14px"><a href="mailto:${email}" style="color:#007AFF">${email}</a></td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;color:#6C6C70;font-size:13px">Teléfono</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-size:14px">${telefono || '—'}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;color:#6C6C70;font-size:13px">Flota</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-size:14px">${flota || '—'}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;color:#9E9D82;font-size:13px;width:130px">Nombre</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;font-weight:600;font-size:14px;color:#2C2B18">${nombre}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;color:#9E9D82;font-size:13px">Empresa</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;font-size:14px;color:#2C2B18">${empresa || '—'}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;color:#9E9D82;font-size:13px">Email</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;font-size:14px"><a href="mailto:${email}" style="color:#3D3C20">${email}</a></td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;color:#9E9D82;font-size:13px">Teléfono</td><td style="padding:10px 0;border-bottom:1px solid #f2f2f2;font-size:14px;color:#2C2B18">${telefono || '—'}</td></tr>
         </table>
-        ${mensaje ? `<div style="margin-top:24px;background:#F5F5F7;border-radius:12px;padding:20px"><p style="margin:0 0 8px;color:#6C6C70;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase">Mensaje</p><p style="margin:0;font-size:14px;line-height:1.6;color:#1D1D1F">${mensaje.replace(/\n/g,'<br>')}</p></div>` : ''}
+        ${mensaje ? `<div style="margin-top:24px;background:#F9F8F3;border-radius:12px;padding:20px"><p style="margin:0 0 8px;color:#9E9D82;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase">Mensaje</p><p style="margin:0;font-size:14px;line-height:1.6;color:#2C2B18">${mensaje.replace(/\n/g,'<br>')}</p></div>` : ''}
       </div>
-      <div style="padding:20px 32px;background:#F5F5F7;text-align:center">
-        <p style="margin:0;font-size:12px;color:#AEAEB2">NEUMET · Sistema de monitoreo de neumáticos</p>
+      <div style="padding:20px 32px;background:#F5F4EE;text-align:center">
+        <p style="margin:0;font-size:12px;color:#9E9D82">NEUMET · Calibre digital inteligente para flotas de transporte</p>
       </div>
     </div>
   `;

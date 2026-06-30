@@ -7,6 +7,7 @@
 <meta name="description" content="NEUMET es un calibre digital inteligente que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión."/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -609,6 +610,7 @@ footer {
             <label>Mensaje</label>
             <textarea id="f-mensaje"></textarea>
           </div>
+          <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-theme="light" style="margin-bottom:12px"></div>
           <button class="form-btn" id="form-btn" onclick="submitForm()">Enviar consulta</button>
         </div>
         <div class="form-success" id="form-success">
@@ -638,9 +640,15 @@ async function submitForm(){
   const email    = document.getElementById('f-email').value.trim();
   const telefono = document.getElementById('f-telefono').value.trim();
   const mensaje  = document.getElementById('f-mensaje').value.trim();
+  const cfToken  = document.querySelector('[name="cf-turnstile-response"]')?.value || '';
 
   if(!nombre || !email){
     errEl.textContent = 'Por favor completá nombre y email.';
+    errEl.style.display = 'block'; return;
+  }
+
+  if(!cfToken){
+    errEl.textContent = 'Por favor completá la verificación de seguridad.';
     errEl.style.display = 'block'; return;
   }
 
@@ -650,7 +658,7 @@ async function submitForm(){
     const res = await fetch('https://dqgrlflrjcarxlfetvoj.supabase.co/functions/v1/contacto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, empresa, email, telefono, mensaje })
+      body: JSON.stringify({ nombre, empresa, email, telefono, mensaje, cfToken })
     });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Error al enviar');

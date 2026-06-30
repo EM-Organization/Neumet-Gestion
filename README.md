@@ -132,21 +132,83 @@ El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. L
 
 ---
 
+## Landing page (`/landing`)
+
+Página pública para potenciales clientes con formulario de contacto.
+
+- Archivo: `landing/index.html` — HTML/CSS/JS estático, sin dependencias de build
+- Formulario de contacto con protección anti-spam via **Cloudflare Turnstile**
+- Al enviar, llama a la Edge Function `contacto` que despacha el email via **Resend**
+
+### Edge Function: `contacto`
+
+```
+POST https://dqgrlflrjcarxlfetvoj.supabase.co/functions/v1/contacto
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "nombre":   "Juan García",
+  "empresa":  "Transportes S.A.",
+  "email":    "juan@empresa.com",
+  "telefono": "+598 99 123 456",
+  "mensaje":  "Quiero más información.",
+  "cfToken":  "<cloudflare-turnstile-token>"
+}
+```
+
+El campo `cfToken` es validado server-side contra la API de Cloudflare Turnstile antes de enviar el email.
+
+### Dependencias externas nuevas
+
+| Servicio | Uso | Secrets requeridos |
+|---|---|---|
+| **Resend** ([resend.com](https://resend.com)) | Envío de emails desde la Edge Function `contacto` | `RESEND_API_KEY` en Supabase Edge Functions secrets |
+| **Cloudflare Turnstile** ([dash.cloudflare.com](https://dash.cloudflare.com)) | CAPTCHA anti-spam en el formulario de contacto | `CF_TURNSTILE_SECRET` en Supabase Edge Functions secrets |
+
+### Configuración de secrets (Supabase Dashboard → Project Settings → Edge Functions → Secrets)
+
+| Secret | Descripción |
+|---|---|
+| `RESEND_API_KEY` | API key de Resend. Cuenta gratuita en resend.com |
+| `CF_TURNSTILE_SECRET` | Secret key del widget Turnstile. Se obtiene en Cloudflare Dashboard → Turnstile |
+
+### Configuración de Cloudflare Turnstile
+
+1. Entrá a [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)
+2. Creá un nuevo sitio y copiá la **Site Key** (pública) y la **Secret Key**
+3. Reemplazá `SITE_KEY` en `landing/index.html` por tu Site Key pública
+4. Cargá la Secret Key como `CF_TURNSTILE_SECRET` en los secrets de Supabase
+
+> **Para pruebas locales:** usá las claves de test de Cloudflare:
+> - Site Key: `1x00000000000000000000AA` (siempre pasa)
+> - Secret Key: `1x0000000000000000000000000000000AA` (siempre válida server-side)
+
+---
+
 ## Estructura del proyecto
 
 ```
 Neumet-Gestion/
-├── index.html              # Panel admin (SPA)
+├── index.html                        # Panel admin (SPA)
 ├── assets/
-│   ├── css/styles.css      # Estilos globales
-│   ├── js/app.js           # Lógica frontend (Supabase JS SDK)
-│   └── img/                # Logo e imágenes
+│   ├── css/styles.css                # Estilos globales
+│   ├── js/app.js                     # Lógica frontend (Supabase JS SDK)
+│   └── img/                          # Logo e imágenes
+├── landing/
+│   └── index.html                    # Landing page pública (Cloudflare Turnstile + Resend)
+├── supabase/
+│   └── functions/
+│       ├── guardar-montaje-mm/       # Recibe mediciones del calibre físico
+│       └── contacto/                 # Recibe formulario, valida CAPTCHA y envía email
 ├── .gitignore
 └── README.md
 ```
 
 ## Desarrollo local
 
-No requiere dependencias ni servidor de build. Abrí `index.html` directamente en el navegador.
+No requiere dependencias ni servidor de build. Abrí `index.html` o `landing/index.html` directamente en el navegador.
 
 > **Nota:** el script usa `type="module"` internamente con el SDK de Supabase cargado como UMD desde CDN. Si abrís el archivo directamente como `file://` en Chrome/Edge, puede haber restricciones de CORS. Recomendado: usar la extensión **Live Server** de VS Code o cualquier servidor local simple.
