@@ -137,7 +137,7 @@ El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. L
 Página pública para potenciales clientes con formulario de contacto.
 
 - Archivo: `landing/index.html` — HTML/CSS/JS estático, sin dependencias de build
-- Formulario de contacto con protección anti-spam via **Cloudflare Turnstile**
+- Formulario de contacto con CAPTCHA local (canvas, sin dependencias externas)
 - Al enviar, llama a la Edge Function `contacto` que despacha el email via **Resend**
 
 ### Edge Function: `contacto`
@@ -154,37 +154,21 @@ Content-Type: application/json
   "empresa":  "Transportes S.A.",
   "email":    "juan@empresa.com",
   "telefono": "+598 99 123 456",
-  "mensaje":  "Quiero más información.",
-  "cfToken":  "<cloudflare-turnstile-token>"
+  "mensaje":  "Quiero más información."
 }
 ```
 
-El campo `cfToken` es validado server-side contra la API de Cloudflare Turnstile antes de enviar el email.
-
-### Dependencias externas nuevas
+### Dependencias externas
 
 | Servicio | Uso | Secrets requeridos |
 |---|---|---|
 | **Resend** ([resend.com](https://resend.com)) | Envío de emails desde la Edge Function `contacto` | `RESEND_API_KEY` en Supabase Edge Functions secrets |
-| **Cloudflare Turnstile** ([dash.cloudflare.com](https://dash.cloudflare.com)) | CAPTCHA anti-spam en el formulario de contacto | `CF_TURNSTILE_SECRET` en Supabase Edge Functions secrets |
 
 ### Configuración de secrets (Supabase Dashboard → Project Settings → Edge Functions → Secrets)
 
 | Secret | Descripción |
 |---|---|
 | `RESEND_API_KEY` | API key de Resend. Cuenta gratuita en resend.com |
-| `CF_TURNSTILE_SECRET` | Secret key del widget Turnstile. Se obtiene en Cloudflare Dashboard → Turnstile |
-
-### Configuración de Cloudflare Turnstile
-
-1. Entrá a [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)
-2. Creá un nuevo sitio y copiá la **Site Key** (pública) y la **Secret Key**
-3. Reemplazá `SITE_KEY` en `landing/index.html` por tu Site Key pública
-4. Cargá la Secret Key como `CF_TURNSTILE_SECRET` en los secrets de Supabase
-
-> **Para pruebas locales:** usá las claves de test de Cloudflare:
-> - Site Key: `1x00000000000000000000AA` (siempre pasa)
-> - Secret Key: `1x0000000000000000000000000000000AA` (siempre válida server-side)
 
 ---
 
