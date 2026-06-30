@@ -1,8 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
-const RESEND_API_KEY      = Deno.env.get('RESEND_API_KEY');
-const CF_TURNSTILE_SECRET = Deno.env.get('CF_TURNSTILE_SECRET');
-const TO_EMAIL            = 'emarichal.uy@gmail.com';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const TO_EMAIL       = 'emarichal.uy@gmail.com';
 
 Deno.serve(async (req: Request) => {
   const corsHeaders = {
@@ -30,34 +29,10 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { nombre, empresa, email, telefono, mensaje, cfToken } = body;
+  const { nombre, empresa, email, telefono, mensaje } = body;
 
   if (!nombre || !email) {
     return new Response(JSON.stringify({ error: 'nombre y email son requeridos' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  // Validar Cloudflare Turnstile
-  if (!cfToken) {
-    return new Response(JSON.stringify({ error: 'Verificación de seguridad requerida' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const secretKey = CF_TURNSTILE_SECRET ?? '1x0000000000000000000000000000000AA'; // fallback: test secret
-  const cfForm = new FormData();
-  cfForm.append('secret', secretKey);
-  cfForm.append('response', cfToken);
-
-  const cfRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body: cfForm,
-  });
-  const cfData = await cfRes.json() as { success: boolean };
-
-  if (!cfData.success) {
-    return new Response(JSON.stringify({ error: 'Verificación de seguridad inválida' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
