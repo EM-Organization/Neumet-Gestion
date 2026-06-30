@@ -3,503 +3,684 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NEUMET · Monitoreo de Neumáticos en Tiempo Real</title>
-<meta name="description" content="NEUMET mide el desgaste de cada neumático de tu flota en tiempo real y te alerta antes de que ocurra un problema."/>
+<title>NEUMET · El sensor que cuida tus neumáticos</title>
+<meta name="description" content="NEUMET es un dispositivo IoT que mide el desgaste de cada neumático de tu flota en tiempo real y se integra con tu sistema de gestión actual."/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Exo+2:ital,wght@1,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg:        #F5F5F7;
-    --surface:   #FFFFFF;
-    --dark:      #1D1D1F;
-    --dark2:     #2C2C2E;
-    --text:      #1D1D1F;
-    --text-2:    #3A3A3C;
-    --text-3:    #6C6C70;
-    --text-4:    #AEAEB2;
-    --accent:    #007AFF;
-    --accent-d:  #0051A8;
-    --green:     #34C759;
-    --orange:    #FF9500;
-    --red:       #FF3B30;
-    --border:    rgba(0,0,0,0.08);
-    --radius:    18px;
-    --radius-sm: 12px;
-    --shadow:    0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
-    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 24px 64px rgba(0,0,0,0.10);
-  }
+:root {
+  --bg:             #F5F4EE;
+  --surface:        #FFFFFF;
+  --surface-2:      #F9F8F3;
+  --border:         rgba(61,60,32,0.08);
+  --border-strong:  rgba(61,60,32,0.14);
+  --text:           #2C2B18;
+  --text-2:         #6B6A52;
+  --text-3:         #9E9D82;
+  --accent:         #C9B96A;
+  --accent-dark:    #3D3C20;
+  --accent-light:   rgba(201,185,106,0.12);
+  --accent-border:  rgba(201,185,106,0.3);
+  --success:        #1a7f37;
+  --success-bg:     rgba(52,199,89,0.1);
+  --success-border: rgba(52,199,89,0.25);
+  --warning:        #b25000;
+  --warning-bg:     rgba(255,149,0,0.1);
+  --warning-border: rgba(255,149,0,0.25);
+  --danger:         #c0392b;
+  --danger-bg:      rgba(255,59,48,0.08);
+  --danger-border:  rgba(255,59,48,0.2);
+  --font:           'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:      'JetBrains Mono', monospace;
+  --font-brand:     'Exo 2', sans-serif;
+  --radius:         16px;
+  --shadow:         0 1px 4px rgba(61,60,32,0.06), 0 4px 16px rgba(61,60,32,0.06);
+  --shadow-lg:      0 4px 20px rgba(61,60,32,0.08), 0 20px 60px rgba(61,60,32,0.10);
+}
 
-  html { scroll-behavior: smooth; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
-  /* ── NAV ── */
-  nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    height: 56px;
-    background: rgba(245,245,247,0.82);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 40px;
-  }
-  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .nav-logo-dot { width: 28px; height: 28px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-  .nav-logo-dot svg { width: 16px; height: 16px; color: white; }
-  .nav-logo-name { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; }
-  .nav-links { display: flex; align-items: center; gap: 28px; }
-  .nav-links a { font-size: 14px; font-weight: 500; color: var(--text-3); text-decoration: none; transition: color .2s; }
-  .nav-links a:hover { color: var(--text); }
-  .nav-cta { background: var(--accent); color: white; font-size: 14px; font-weight: 600; padding: 8px 18px; border-radius: 980px; text-decoration: none; transition: background .2s, transform .15s; }
-  .nav-cta:hover { background: var(--accent-d); transform: translateY(-1px); }
+.wordmark {
+  font-family: var(--font-brand);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
 
-  /* ── SECTIONS ── */
-  section { padding: 100px 40px; max-width: 1100px; margin: 0 auto; }
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 58px;
+  background: rgba(245,244,238,0.88);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 48px;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-img { width: 32px; height: 32px; object-fit: cover; object-position: center top; border-radius: 8px; }
+.nav-name { font-size: 18px; color: var(--accent-dark); }
+.nav-links { display: flex; align-items: center; gap: 28px; }
+.nav-links a { font-size: 14px; font-weight: 500; color: var(--text-2); text-decoration: none; transition: color .15s; }
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  background: var(--accent-dark); color: white;
+  font-size: 14px; font-weight: 500; padding: 8px 20px;
+  border-radius: 8px; text-decoration: none;
+  transition: background .15s, transform .12s;
+}
+.nav-cta:hover { background: #2a2b14; transform: translateY(-1px); }
 
-  /* ── HERO ── */
-  .hero-wrap { padding-top: 140px; padding-bottom: 80px; max-width: 1100px; margin: 0 auto; padding-left: 40px; padding-right: 40px; }
-  .hero-tag {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(0,122,255,0.08); border: 1px solid rgba(0,122,255,0.16);
-    color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.4px;
-    padding: 5px 12px; border-radius: 980px; margin-bottom: 24px;
-  }
-  .hero-tag span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; }
-  h1 {
-    font-size: clamp(36px, 6vw, 64px); font-weight: 800; letter-spacing: -1.5px;
-    line-height: 1.06; color: var(--text); max-width: 780px; margin-bottom: 20px;
-  }
-  h1 em { font-style: normal; color: var(--accent); }
-  .hero-sub {
-    font-size: clamp(16px, 2vw, 20px); color: var(--text-3); line-height: 1.55;
-    max-width: 560px; margin-bottom: 40px; font-weight: 400;
-  }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 64px; }
-  .btn-primary {
-    background: var(--accent); color: white; font-size: 15px; font-weight: 600;
-    padding: 14px 28px; border-radius: 980px; text-decoration: none;
-    transition: background .2s, transform .15s, box-shadow .2s;
-    box-shadow: 0 4px 16px rgba(0,122,255,0.30);
-  }
-  .btn-primary:hover { background: var(--accent-d); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,122,255,0.35); }
-  .btn-ghost {
-    background: rgba(0,0,0,0.06); color: var(--text); font-size: 15px; font-weight: 600;
-    padding: 14px 28px; border-radius: 980px; text-decoration: none;
-    transition: background .2s, transform .15s;
-  }
-  .btn-ghost:hover { background: rgba(0,0,0,0.10); transform: translateY(-2px); }
+/* ── HERO ── */
+.hero { padding: 130px 48px 80px; max-width: 1100px; margin: 0 auto; }
 
-  /* Hero visual */
-  .hero-visual {
-    background: var(--dark); border-radius: 24px; overflow: hidden;
-    box-shadow: var(--shadow-lg); position: relative;
-    display: grid; grid-template-columns: 1fr 1fr; min-height: 320px;
-  }
-  .hero-visual-left {
-    padding: 40px; display: flex; flex-direction: column; justify-content: space-between;
-    border-right: 1px solid rgba(255,255,255,0.06);
-  }
-  .hero-visual-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
-  .device-card {
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 14px;
-  }
-  .device-icon { width: 44px; height: 44px; background: rgba(0,122,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .device-icon svg { width: 22px; height: 22px; color: var(--accent); }
-  .device-name { font-size: 13px; font-weight: 600; color: white; }
-  .device-mac { font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'SF Mono', monospace; margin-top: 2px; }
-  .sending-pill {
-    display: inline-flex; align-items: center; gap: 6px; margin-top: 16px;
-    background: rgba(52,199,89,0.12); border: 1px solid rgba(52,199,89,0.2);
-    border-radius: 980px; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #34C759;
-  }
-  .pulse { width: 6px; height: 6px; background: #34C759; border-radius: 50%; animation: pulse-anim 1.6s ease-in-out infinite; }
-  @keyframes pulse-anim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  color: var(--accent-dark); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 6px; margin-bottom: 28px;
+}
+.hero-eyebrow span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; }
 
-  .hero-visual-right { padding: 40px; }
-  .tire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .tire-item {
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px; padding: 14px;
-  }
-  .tire-pos { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); letter-spacing: 0.5px; margin-bottom: 8px; }
-  .tire-val { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .tire-val.ok { color: #34C759; }
-  .tire-val.warn { color: #FF9500; }
-  .tire-val.crit { color: #FF3B30; }
-  .tire-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 8px; }
-  .tire-bar-fill { height: 3px; border-radius: 2px; }
+h1 {
+  font-size: clamp(36px, 5.5vw, 62px); font-weight: 800;
+  letter-spacing: -1.5px; line-height: 1.06;
+  color: var(--text); max-width: 820px; margin-bottom: 22px;
+}
+h1 em { font-style: normal; color: var(--accent-dark); border-bottom: 3px solid var(--accent); padding-bottom: 2px; }
 
-  /* ── STATS ── */
-  .stats-bar {
-    background: var(--surface); border-radius: var(--radius); padding: 28px 40px;
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
-    box-shadow: var(--shadow); margin: 0 40px;
-    border: 1px solid var(--border);
-  }
-  .stat-item { text-align: center; padding: 0 20px; }
-  .stat-item:not(:last-child) { border-right: 1px solid var(--border); }
-  .stat-num { font-size: 36px; font-weight: 800; letter-spacing: -1px; color: var(--text); }
-  .stat-num span { color: var(--accent); }
-  .stat-label { font-size: 13px; color: var(--text-3); margin-top: 4px; font-weight: 500; }
+.hero-sub {
+  font-size: clamp(15px, 1.8vw, 18px); color: var(--text-2);
+  line-height: 1.65; max-width: 560px; margin-bottom: 40px;
+}
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 72px; }
+.btn-primary {
+  background: var(--accent-dark); color: white;
+  font-size: 15px; font-weight: 500; padding: 13px 28px;
+  border-radius: 10px; text-decoration: none;
+  transition: background .15s, transform .12s;
+  box-shadow: 0 2px 8px rgba(61,60,32,0.25);
+}
+.btn-primary:hover { background: #2a2b14; transform: translateY(-1px); }
+.btn-ghost {
+  background: var(--surface); color: var(--text);
+  font-size: 15px; font-weight: 500; padding: 13px 28px;
+  border-radius: 10px; text-decoration: none;
+  border: 1px solid var(--border-strong);
+  transition: background .15s, transform .12s;
+}
+.btn-ghost:hover { background: var(--surface-2); transform: translateY(-1px); }
 
-  /* ── HOW IT WORKS ── */
-  .section-tag { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
-  h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -1px; line-height: 1.1; margin-bottom: 16px; }
-  .section-sub { font-size: 17px; color: var(--text-3); line-height: 1.55; max-width: 520px; }
+/* Hero visual */
+.hero-visual { display: grid; grid-template-columns: 1fr 1.4fr; gap: 20px; }
 
-  .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 56px; }
-  .step-card {
-    background: var(--surface); border-radius: var(--radius); padding: 32px;
-    box-shadow: var(--shadow); border: 1px solid var(--border);
-    position: relative; overflow: hidden;
-  }
-  .step-num {
-    position: absolute; top: 24px; right: 24px;
-    font-size: 72px; font-weight: 900; color: rgba(0,0,0,0.04);
-    line-height: 1; letter-spacing: -3px;
-  }
-  .step-icon {
-    width: 48px; height: 48px; border-radius: 14px; display: flex;
-    align-items: center; justify-content: center; margin-bottom: 20px;
-  }
-  .step-icon svg { width: 24px; height: 24px; }
-  .step-icon.blue { background: rgba(0,122,255,0.10); color: var(--accent); }
-  .step-icon.green { background: rgba(52,199,89,0.10); color: var(--green); }
-  .step-icon.purple { background: rgba(175,82,222,0.10); color: #AF52DE; }
-  .step-card h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 10px; }
-  .step-card p { font-size: 14px; color: var(--text-3); line-height: 1.6; }
+.device-showcase {
+  background: var(--accent-dark); border-radius: var(--radius);
+  padding: 36px 32px; display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 300px;
+}
+.device-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 20px; }
+.device-body {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px; padding: 24px;
+  display: flex; align-items: center; gap: 18px;
+}
+.device-chip {
+  width: 56px; height: 56px; flex-shrink: 0;
+  background: var(--accent); border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.device-chip svg { width: 28px; height: 28px; color: var(--accent-dark); }
+.device-name-lbl { font-size: 15px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+.device-model { font-size: 11px; color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-top: 3px; }
+.device-transmitting {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 18px;
+  background: rgba(52,199,89,0.12); border: 1px solid rgba(52,199,89,0.2);
+  border-radius: 6px; padding: 7px 12px;
+  font-size: 12px; font-weight: 600; color: #34C759;
+}
+.pulse { width: 6px; height: 6px; background: #34C759; border-radius: 50%; animation: pulse-a 1.6s ease-in-out infinite; flex-shrink: 0; }
+@keyframes pulse-a { 0%,100%{opacity:1} 50%{opacity:.3} }
+.device-specs { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.spec-row { display: flex; justify-content: space-between; font-size: 12px; }
+.spec-key { color: rgba(255,255,255,0.35); }
+.spec-val { color: rgba(255,255,255,0.7); font-family: var(--font-mono); font-size: 11px; }
 
-  /* ── FEATURES ── */
-  .features-section { background: var(--dark); border-radius: 28px; padding: 80px 60px; margin: 0 40px; }
-  .features-section .section-tag { color: rgba(255,255,255,0.4); }
-  .features-section h2 { color: white; }
-  .features-section .section-sub { color: rgba(255,255,255,0.5); }
-  .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-top: 56px; background: rgba(255,255,255,0.06); border-radius: 18px; overflow: hidden; }
-  .feature-item {
-    background: var(--dark); padding: 32px;
-    display: flex; flex-direction: column; gap: 12px;
-  }
-  .feature-icon { font-size: 28px; }
-  .feature-title { font-size: 16px; font-weight: 700; color: white; }
-  .feature-desc { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+.meds-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+}
+.meds-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.meds-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.live-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--success-bg); border: 1px solid var(--success-border);
+  color: var(--success); font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 5px;
+}
+.tire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tire-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+}
+.tire-pos { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+.tire-mm { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.tire-mm.ok   { color: var(--success); }
+.tire-mm.warn { color: var(--warning); }
+.tire-mm.crit { color: var(--danger); }
+.tire-bar { height: 3px; background: var(--border-strong); border-radius: 2px; margin-top: 8px; }
+.tire-fill { height: 3px; border-radius: 2px; }
+.meds-footer { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; }
+.meds-vehicle { font-size: 13px; font-weight: 600; color: var(--text); }
+.meds-plate { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); margin-top: 2px; }
+.meds-time { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); }
 
-  /* ── CONTACT ── */
-  .contact-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px; align-items: start; }
-  .contact-info h2 { margin-bottom: 16px; }
-  .contact-info p { font-size: 16px; color: var(--text-3); line-height: 1.6; margin-bottom: 32px; }
-  .contact-detail { display: flex; flex-direction: column; gap: 14px; }
-  .contact-detail-item { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-2); }
-  .contact-detail-item svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+/* ── STATS ── */
+.stats-strip {
+  background: var(--accent-dark); border-radius: var(--radius);
+  display: grid; grid-template-columns: repeat(3,1fr);
+  margin: 0 48px;
+}
+.stat-cell { padding: 32px 40px; text-align: center; }
+.stat-cell:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.08); }
+.stat-big { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; color: var(--accent); }
+.stat-lbl { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 4px; font-weight: 500; }
 
-  .contact-form {
-    background: var(--surface); border-radius: var(--radius);
-    padding: 40px; box-shadow: var(--shadow-lg); border: 1px solid var(--border);
-  }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .field label { font-size: 13px; font-weight: 600; color: var(--text-2); }
-  .field input, .field textarea, .field select {
-    background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
-    padding: 11px 14px; font-size: 14px; font-family: inherit; color: var(--text);
-    outline: none; transition: border-color .2s, box-shadow .2s;
-    resize: none;
-  }
-  .field input:focus, .field textarea:focus, .field select:focus {
-    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
-  }
-  .field textarea { height: 110px; }
-  .form-btn {
-    width: 100%; background: var(--accent); color: white; border: none;
-    font-size: 15px; font-weight: 600; padding: 14px; border-radius: 12px;
-    cursor: pointer; transition: background .2s, transform .15s;
-    font-family: inherit; margin-top: 6px;
-  }
-  .form-btn:hover { background: var(--accent-d); transform: translateY(-1px); }
-  .form-btn:disabled { opacity: .6; transform: none; cursor: not-allowed; }
-  .form-success {
-    display: none; text-align: center; padding: 32px 0;
-  }
-  .form-success-icon { font-size: 48px; margin-bottom: 12px; }
-  .form-success h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-  .form-success p { font-size: 14px; color: var(--text-3); }
-  .form-error { display:none; background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.2); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--red); margin-bottom: 14px; }
+/* ── SECTION ── */
+.section { padding: 90px 0; }
+.section-inner { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8px; line-height: 1.12; margin-bottom: 14px; color: var(--text); }
+.section-sub { font-size: 16px; color: var(--text-2); line-height: 1.65; max-width: 500px; }
 
-  /* ── FOOTER ── */
-  footer {
-    background: var(--dark); color: rgba(255,255,255,0.4);
-    padding: 40px; text-align: center; font-size: 13px; margin-top: 80px;
-  }
-  footer .footer-logo { font-size: 16px; font-weight: 700; color: white; margin-bottom: 8px; }
-  footer a { color: rgba(255,255,255,0.4); text-decoration: none; }
+/* ── COMO FUNCIONA ── */
+.steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 52px; }
+.step {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 30px; position: relative; overflow: hidden;
+}
+.step-ghost-num {
+  position: absolute; right: 20px; top: 16px;
+  font-size: 64px; font-weight: 900; color: rgba(61,60,32,0.04);
+  line-height: 1; letter-spacing: -3px;
+}
+.step-icon-wrap {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 18px;
+}
+.step-icon-wrap svg { width: 22px; height: 22px; color: var(--accent-dark); }
+.step h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 10px; }
+.step p { font-size: 14px; color: var(--text-2); line-height: 1.65; }
 
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    nav { padding: 0 20px; }
-    .nav-links { display: none; }
-    .hero-wrap, section { padding-left: 20px; padding-right: 20px; }
-    h1 { font-size: 34px; }
-    .hero-visual { grid-template-columns: 1fr; }
-    .hero-visual-left { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .stats-bar { grid-template-columns: 1fr; gap: 20px; margin: 0 20px; }
-    .stat-item { border-right: none !important; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
-    .stat-item:last-child { border-bottom: none; }
-    .steps { grid-template-columns: 1fr; }
-    .features-section { margin: 0 20px; padding: 48px 28px; }
-    .features-grid { grid-template-columns: 1fr; }
-    .contact-grid { grid-template-columns: 1fr; gap: 40px; }
-    .form-row { grid-template-columns: 1fr; }
-  }
+/* ── DEVICE SECTION ── */
+.device-section {
+  background: var(--accent-dark); border-radius: 24px;
+  margin: 0 48px; padding: 72px 64px;
+}
+.device-section .tag { color: rgba(255,255,255,0.3); }
+.device-section h2 { color: white; }
+.device-section .section-sub { color: rgba(255,255,255,0.5); max-width: 540px; }
+.device-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-top: 52px; }
+.device-props { display: flex; flex-direction: column; gap: 16px; }
+.prop {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 18px 20px; display: flex; align-items: flex-start; gap: 14px;
+}
+.prop-icon { width: 36px; height: 36px; flex-shrink: 0; background: rgba(201,185,106,0.15); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+.prop-icon svg { width: 18px; height: 18px; color: var(--accent); }
+.prop-title { font-size: 14px; font-weight: 600; color: white; }
+.prop-desc { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; line-height: 1.55; }
+.device-visual-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px; padding: 36px; display: flex; flex-direction: column; gap: 20px;
+}
+.dv-chip-area { display: flex; align-items: center; gap: 14px; padding: 18px; background: rgba(201,185,106,0.08); border: 1px solid rgba(201,185,106,0.15); border-radius: 12px; }
+.dv-chip { width: 52px; height: 52px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dv-chip svg { width: 26px; height: 26px; color: var(--accent-dark); }
+.dv-name { font-size: 15px; font-weight: 700; color: white; }
+.dv-sub { font-size: 11px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); margin-top: 3px; }
+.dv-data { display: flex; flex-direction: column; gap: 0; }
+.dv-row { display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.dv-row:last-child { border-bottom: none; }
+.dv-key { color: rgba(255,255,255,0.35); }
+.dv-val { color: rgba(255,255,255,0.75); font-family: var(--font-mono); font-size: 11px; }
+.dv-status { display: flex; align-items: center; gap: 8px; background: rgba(52,199,89,0.08); border: 1px solid rgba(52,199,89,0.2); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #34C759; font-weight: 600; }
+
+/* ── INTEGRATIONS ── */
+.integrations-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 52px; }
+.int-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+}
+.int-icon { font-size: 28px; margin-bottom: 12px; }
+.int-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.int-desc { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+.int-tag {
+  display: inline-block; margin-top: 12px;
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  color: var(--accent-dark); font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 5px; letter-spacing: 0.3px;
+}
+
+/* ── CONTACT ── */
+.contact-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; align-items: start; }
+.contact-aside h2 { margin-bottom: 14px; }
+.contact-aside p { font-size: 15px; color: var(--text-2); line-height: 1.65; margin-bottom: 32px; }
+.contact-detail { display: flex; flex-direction: column; gap: 12px; }
+.cd-item { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+.cd-item svg { width: 16px; height: 16px; color: var(--accent-dark); flex-shrink: 0; }
+
+.form-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 36px; box-shadow: var(--shadow-lg);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.field input, .field textarea, .field select {
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  border-radius: 9px; padding: 10px 13px;
+  font-size: 14px; font-family: var(--font); color: var(--text);
+  outline: none; transition: border-color .15s, box-shadow .15s; resize: none;
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--surface);
+}
+.field textarea { height: 100px; }
+.form-btn {
+  width: 100%; background: var(--accent-dark); color: white; border: none;
+  font-size: 15px; font-weight: 500; padding: 13px; border-radius: 10px;
+  cursor: pointer; font-family: var(--font); margin-top: 4px;
+  transition: background .15s, transform .12s;
+}
+.form-btn:hover { background: #2a2b14; transform: translateY(-1px); }
+.form-btn:disabled { opacity: .55; transform: none; cursor: not-allowed; }
+.form-error {
+  display: none; background: var(--danger-bg); border: 1px solid var(--danger-border);
+  border-radius: 8px; padding: 10px 13px; font-size: 13px; color: var(--danger); margin-bottom: 12px;
+}
+.form-success { display: none; text-align: center; padding: 32px 0; }
+.form-success-icon { font-size: 44px; margin-bottom: 12px; }
+.form-success h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.form-success p { font-size: 14px; color: var(--text-2); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--accent-dark); color: rgba(255,255,255,0.35);
+  padding: 40px 48px; margin-top: 80px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-brand { font-size: 20px; color: var(--accent); }
+.footer-copy { font-size: 12px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 860px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .hero, .section-inner { padding-left: 20px; padding-right: 20px; }
+  h1 { font-size: 32px; }
+  .hero-visual { grid-template-columns: 1fr; }
+  .stats-strip { grid-template-columns: 1fr; margin: 0 20px; }
+  .stat-cell:not(:last-child) { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .steps { grid-template-columns: 1fr; }
+  .device-section { margin: 0 20px; padding: 48px 28px; }
+  .device-grid { grid-template-columns: 1fr; gap: 32px; }
+  .integrations-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+  .form-row { grid-template-columns: 1fr; }
+  footer { flex-direction: column; gap: 12px; text-align: center; padding: 32px 20px; }
+}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo">
-    <div class="nav-logo-dot">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-      </svg>
-    </div>
-    <span class="nav-logo-name">NEUMET</span>
+  <a href="#" class="nav-brand">
+    <img class="nav-logo-img" src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET"/>
+    <span class="wordmark nav-name">NEUMET</span>
   </a>
   <div class="nav-links">
     <a href="#como-funciona">Cómo funciona</a>
-    <a href="#beneficios">Beneficios</a>
+    <a href="#dispositivo">El dispositivo</a>
+    <a href="#integraciones">Integraciones</a>
     <a href="#contacto">Contacto</a>
   </div>
-  <a href="#contacto" class="nav-cta">Hablar con ventas</a>
+  <a href="#contacto" class="nav-cta">Quiero una demo</a>
 </nav>
 
 <!-- HERO -->
-<div class="hero-wrap">
-  <div class="hero-tag"><span></span>Monitoreo de neumáticos en tiempo real</div>
-  <h1>Conocé el estado de tus neumáticos <em>antes de que fallen</em></h1>
-  <p class="hero-sub">NEUMET mide el desgaste de cada rueda de tu flota automáticamente y te alerta cuando hay riesgo. Sin sorpresas en ruta, sin costos inesperados.</p>
+<div class="hero">
+  <div class="hero-eyebrow"><span></span>Hardware IoT · Flotas de transporte</div>
+  <h1>El sensor que conecta tus neumáticos con <em>tu sistema de gestión</em></h1>
+  <p class="hero-sub">NEUMET es un dispositivo físico que instalás en el vehículo. Mide el desgaste de cada rueda automáticamente y envía los datos a donde ya trabajás: tu ERP, tu planilla, tu panel propio.</p>
   <div class="hero-actions">
-    <a href="#contacto" class="btn-primary">Quiero una demo</a>
-    <a href="#como-funciona" class="btn-ghost">Ver cómo funciona</a>
+    <a href="#contacto" class="btn-primary">Solicitar demo</a>
+    <a href="#dispositivo" class="btn-ghost">Ver el dispositivo</a>
   </div>
 
-  <!-- Visual -->
   <div class="hero-visual">
-    <div class="hero-visual-left">
+    <div class="device-showcase">
       <div>
-        <div class="hero-visual-label">Dispositivo activo</div>
-        <div class="device-card">
-          <div class="device-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+        <div class="device-label">Dispositivo NEUMET</div>
+        <div class="device-body">
+          <div class="device-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2"/>
+              <circle cx="12" cy="17" r="1"/>
+              <path d="M9 6h6"/>
+            </svg>
           </div>
           <div>
-            <div class="device-name">Medidor NEUMET</div>
-            <div class="device-mac">AA:BB:CC:DD:EE:01</div>
+            <div class="device-name-lbl">Medidor NEUMET</div>
+            <div class="device-model">AA:BB:CC:DD:EE:01</div>
           </div>
         </div>
-        <div class="sending-pill"><span class="pulse"></span>Enviando mediciones...</div>
+        <div class="device-transmitting">
+          <span class="pulse"></span>
+          Transmitiendo en tiempo real
+        </div>
       </div>
-      <div style="margin-top:24px">
-        <div class="hero-visual-label">Vehículo</div>
-        <div style="font-size:20px;font-weight:700;color:white;letter-spacing:-0.3px">Unidad 07</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:3px;font-family:monospace">ABC 123 · 10 ruedas</div>
+      <div class="device-specs">
+        <div class="spec-row"><span class="spec-key">Conectividad</span><span class="spec-val">WiFi / 4G</span></div>
+        <div class="spec-row"><span class="spec-key">Posiciones</span><span class="spec-val">hasta 16 ruedas</span></div>
+        <div class="spec-row"><span class="spec-key">Precisión</span><span class="spec-val">± 0.1 mm</span></div>
+        <div class="spec-row"><span class="spec-key">Instalación</span><span class="spec-val">Plug &amp; Play</span></div>
       </div>
     </div>
-    <div class="hero-visual-right">
-      <div class="hero-visual-label">Estado de neumáticos · sesión actual</div>
+
+    <div class="meds-panel">
+      <div class="meds-header">
+        <div class="meds-title">Mediciones en vivo</div>
+        <div class="live-badge"><span class="pulse" style="background:var(--success)"></span>En vivo</div>
+      </div>
       <div class="tire-grid">
-        <div class="tire-item">
-          <div class="tire-pos">POS 1 — EXT IZQ</div>
-          <div class="tire-val ok">12.4<small style="font-size:13px;font-weight:500"> mm</small></div>
-          <div class="tire-bar"><div class="tire-bar-fill" style="width:82%;background:#34C759"></div></div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 1 · Ext. Izq.</div>
+          <div class="tire-mm ok">12.4<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:83%;background:var(--success)"></div></div>
         </div>
-        <div class="tire-item">
-          <div class="tire-pos">POS 2 — EXT DER</div>
-          <div class="tire-val ok">11.8<small style="font-size:13px;font-weight:500"> mm</small></div>
-          <div class="tire-bar"><div class="tire-bar-fill" style="width:79%;background:#34C759"></div></div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 2 · Ext. Der.</div>
+          <div class="tire-mm ok">11.9<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:79%;background:var(--success)"></div></div>
         </div>
-        <div class="tire-item">
-          <div class="tire-pos">POS 5 — INT IZQ</div>
-          <div class="tire-val warn">6.2<small style="font-size:13px;font-weight:500"> mm</small></div>
-          <div class="tire-bar"><div class="tire-bar-fill" style="width:41%;background:#FF9500"></div></div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 5 · Int. Izq.</div>
+          <div class="tire-mm warn">6.1<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:41%;background:var(--warning)"></div></div>
         </div>
-        <div class="tire-item">
-          <div class="tire-pos">POS 6 — INT DER</div>
-          <div class="tire-val crit">3.9<small style="font-size:13px;font-weight:500"> mm</small></div>
-          <div class="tire-bar"><div class="tire-bar-fill" style="width:26%;background:#FF3B30"></div></div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 6 · Int. Der.</div>
+          <div class="tire-mm crit">3.8<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:25%;background:var(--danger)"></div></div>
         </div>
+      </div>
+      <div class="meds-footer">
+        <div>
+          <div class="meds-vehicle">Unidad 07</div>
+          <div class="meds-plate">ABC 123</div>
+        </div>
+        <div class="meds-time">hace 2 min</div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- STATS -->
-<div class="stats-bar">
-  <div class="stat-item">
-    <div class="stat-num">10<span>–16</span></div>
-    <div class="stat-label">Ruedas medidas por vehículo</div>
+<div class="stats-strip">
+  <div class="stat-cell">
+    <div class="stat-big">16</div>
+    <div class="stat-lbl">Ruedas medidas por sesión</div>
   </div>
-  <div class="stat-item">
-    <div class="stat-num"><span>&lt;</span>5mm</div>
-    <div class="stat-label">Alerta crítica automática</div>
+  <div class="stat-cell">
+    <div class="stat-big">&lt;5mm</div>
+    <div class="stat-lbl">Umbral de alerta crítica automática</div>
   </div>
-  <div class="stat-item">
-    <div class="stat-num">100<span>%</span></div>
-    <div class="stat-label">Datos en la nube, sin pérdida</div>
+  <div class="stat-cell">
+    <div class="stat-big">100%</div>
+    <div class="stat-lbl">Datos en la nube, sin pérdida</div>
   </div>
 </div>
 
 <!-- COMO FUNCIONA -->
-<section id="como-funciona">
-  <div class="section-tag">Cómo funciona</div>
-  <h2>Tres pasos, sin complicaciones</h2>
-  <p class="section-sub">No hace falta instalar software ni capacitar al personal. El dispositivo trabaja solo.</p>
-
-  <div class="steps">
-    <div class="step-card">
-      <div class="step-num">01</div>
-      <div class="step-icon blue">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+<div class="section" id="como-funciona">
+  <div class="section-inner">
+    <div class="tag">Cómo funciona</div>
+    <h2>Tres pasos, sin fricciones</h2>
+    <p class="section-sub">El dispositivo hace el trabajo pesado. Tu equipo sigue operando como siempre, con información que antes no tenían.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-ghost-num">1</div>
+        <div class="step-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+        </div>
+        <h3>Instalás el dispositivo</h3>
+        <p>El medidor NEUMET se monta en el vehículo una sola vez. Sin configuraciones complejas, sin cables, sin capacitación especial para el chofer.</p>
       </div>
-      <h3>El dispositivo mide</h3>
-      <p>Conectamos un medidor NEUMET al vehículo. Después de cada sesión de trabajo, mide el desgaste de cada neumático de forma automática, sin intervención del conductor.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">02</div>
-      <div class="step-icon purple">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <div class="step">
+        <div class="step-ghost-num">2</div>
+        <div class="step-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <h3>Los datos llegan solos</h3>
+        <p>Después de cada turno, el dispositivo mide todas las ruedas y envía los datos a la nube en segundos. Sin intervención humana.</p>
       </div>
-      <h3>Los datos llegan a la nube</h3>
-      <p>Las mediciones se envían en tiempo real al sistema. Sin cables, sin aplicaciones, sin intervención manual. Cada rueda queda registrada con fecha y hora exacta.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-num">03</div>
-      <div class="step-icon green">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      <div class="step">
+        <div class="step-ghost-num">3</div>
+        <div class="step-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3>Vos gestionás desde donde ya trabajás</h3>
+        <p>Las mediciones aparecen en tu panel NEUMET y también podés exportarlas o integrarlas con las herramientas que ya usa tu empresa.</p>
       </div>
-      <h3>Vos controlás todo</h3>
-      <p>Desde el panel NEUMET ves el estado de cada neumático, recibís alertas cuando el desgaste es crítico y podés planificar el mantenimiento antes de que ocurra un problema.</p>
-    </div>
-  </div>
-</section>
-
-<!-- BENEFICIOS -->
-<div class="features-section" id="beneficios">
-  <div class="section-tag">Beneficios</div>
-  <h2 style="color:white">Todo lo que necesitás para cuidar tu flota</h2>
-  <p class="section-sub">Diseñado específicamente para empresas de transporte y flotas de camiones.</p>
-
-  <div class="features-grid">
-    <div class="feature-item">
-      <div class="feature-icon">📡</div>
-      <div class="feature-title">Medición automática</div>
-      <div class="feature-desc">El dispositivo toma las mediciones solo. Sin que el chofer tenga que hacer nada.</div>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">⚡</div>
-      <div class="feature-title">Datos en tiempo real</div>
-      <div class="feature-desc">Las mediciones llegan al panel en segundos. Siempre información actualizada.</div>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">🔴</div>
-      <div class="feature-title">Alertas de riesgo</div>
-      <div class="feature-desc">El sistema identifica automáticamente neumáticos en estado crítico (menos de 5mm).</div>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">📊</div>
-      <div class="feature-title">Historial de desgaste</div>
-      <div class="feature-desc">Visualizá la evolución de cada neumático a lo largo del tiempo y anticipate al reemplazo.</div>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">🚛</div>
-      <div class="feature-title">Multi-vehículo</div>
-      <div class="feature-desc">Gestioná flotas completas. Vehículos de 10 o 16 ruedas, todos en un solo lugar.</div>
-    </div>
-    <div class="feature-item">
-      <div class="feature-icon">🔒</div>
-      <div class="feature-title">Datos seguros</div>
-      <div class="feature-desc">Cada cliente ve solo sus datos. Acceso protegido con credenciales propias.</div>
     </div>
   </div>
 </div>
 
-<!-- CONTACT -->
-<section id="contacto">
-  <div class="contact-grid">
-    <div class="contact-info">
-      <div class="section-tag">Contacto</div>
-      <h2>¿Te interesa para tu flota?</h2>
-      <p>Completá el formulario y nos comunicamos para mostrarte cómo funciona NEUMET con tu operación.</p>
-      <div class="contact-detail">
-        <div class="contact-detail-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 5.61 5.61l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16l.92.92z"/></svg>
-          Respondemos en menos de 24 horas
+<!-- EL DISPOSITIVO -->
+<div class="device-section" id="dispositivo">
+  <div class="tag">El hardware</div>
+  <h2>Un sensor pensado para el trabajo real</h2>
+  <p class="section-sub">No es una app ni un software. Es un dispositivo físico que se instala una vez y alimenta con datos reales tu cadena de gestión.</p>
+
+  <div class="device-grid">
+    <div class="device-props">
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <div class="contact-detail-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Argentina · Servicio a todo el país
+        <div>
+          <div class="prop-title">Construido para el ambiente de trabajo</div>
+          <div class="prop-desc">Resistente a vibraciones, polvo y temperatura extrema. Diseñado para el taller y la ruta, no para una oficina.</div>
         </div>
-        <div class="contact-detail-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          Demo online sin costo ni compromiso
+      </div>
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </div>
+        <div>
+          <div class="prop-title">Plug &amp; Play</div>
+          <div class="prop-desc">Se registra automáticamente al encenderse. Sin drivers, sin configuración, sin IT involucrada.</div>
+        </div>
+      </div>
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.05 12A11 11 0 0 1 23 12.54M23 12a11 11 0 0 1-21.95.46"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div>
+          <div class="prop-title">Conectividad WiFi y 4G</div>
+          <div class="prop-desc">Funciona en playa de camiones, en ruta o en cualquier lugar con señal. Sin dependencia de red local.</div>
+        </div>
+      </div>
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <div class="prop-title">Precisión de ±0.1 mm</div>
+          <div class="prop-desc">Detecta desgaste antes de que sea visible a simple vista. Información que cambia decisiones reales.</div>
         </div>
       </div>
     </div>
 
-    <div class="contact-form">
-      <div class="form-error" id="form-error"></div>
-      <div id="form-fields">
-        <div class="form-row">
-          <div class="field">
-            <label>Nombre *</label>
-            <input type="text" id="f-nombre" placeholder="Juan García" required/>
-          </div>
-          <div class="field">
-            <label>Empresa *</label>
-            <input type="text" id="f-empresa" placeholder="Transportes S.A."/>
-          </div>
+    <div class="device-visual-card">
+      <div class="dv-chip-area">
+        <div class="dv-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
         </div>
-        <div class="form-row">
-          <div class="field">
-            <label>Email *</label>
-            <input type="email" id="f-email" placeholder="juan@empresa.com" required/>
-          </div>
-          <div class="field">
-            <label>Teléfono</label>
-            <input type="tel" id="f-telefono" placeholder="+54 9 11 1234-5678"/>
-          </div>
+        <div>
+          <div class="dv-name">Sensor NEUMET v2</div>
+          <div class="dv-sub">NMT-2024-IoT · fw 2.4.1</div>
         </div>
-        <div class="field">
-          <label>¿Cuántos vehículos tiene su flota?</label>
-          <select id="f-flota">
-            <option value="">Seleccioná una opción</option>
-            <option>1 – 5 vehículos</option>
-            <option>6 – 20 vehículos</option>
-            <option>21 – 50 vehículos</option>
-            <option>Más de 50 vehículos</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Mensaje</label>
-          <textarea id="f-mensaje" placeholder="Contanos sobre tu operación o consultá lo que necesites..."></textarea>
-        </div>
-        <button class="form-btn" id="form-btn" onclick="submitForm()">Enviar consulta</button>
       </div>
-      <div class="form-success" id="form-success">
-        <div class="form-success-icon">✅</div>
-        <h3>¡Mensaje enviado!</h3>
-        <p>Gracias por contactarnos. Te respondemos en menos de 24 horas.</p>
+      <div class="dv-data">
+        <div class="dv-row"><span class="dv-key">MAC Address</span><span class="dv-val">AA:BB:CC:DD:EE:01</span></div>
+        <div class="dv-row"><span class="dv-key">Posiciones activas</span><span class="dv-val">10 / 10</span></div>
+        <div class="dv-row"><span class="dv-key">Última sesión</span><span class="dv-val">hace 4 min</span></div>
+        <div class="dv-row"><span class="dv-key">Mediciones enviadas</span><span class="dv-val">847</span></div>
+        <div class="dv-row"><span class="dv-key">Vehículo asignado</span><span class="dv-val">Unidad 07 · ABC 123</span></div>
+      </div>
+      <div class="dv-status">
+        <span class="pulse"></span>
+        Operativo · Sin alertas pendientes
       </div>
     </div>
   </div>
-</section>
+</div>
+
+<!-- INTEGRACIONES -->
+<div class="section" id="integraciones">
+  <div class="section-inner">
+    <div class="tag">Integraciones</div>
+    <h2>Se adapta a lo que ya tenés</h2>
+    <p class="section-sub">NEUMET es el eslabón que faltaba en tu cadena de gestión. Los datos del hardware llegan a donde ya trabaja tu equipo, sin cambiar nada.</p>
+    <div class="integrations-grid">
+      <div class="int-card">
+        <div class="int-icon">📊</div>
+        <div class="int-title">Excel / CSV</div>
+        <div class="int-desc">Exportá el historial completo de mediciones para analizarlo con las herramientas que ya conoce tu equipo de mantenimiento.</div>
+        <div class="int-tag">Disponible ahora</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">🔌</div>
+        <div class="int-title">API REST</div>
+        <div class="int-desc">Conectá NEUMET a tu ERP, TMS o sistema de gestión de flota. Cada medición disponible en tiempo real para tu plataforma vía API.</div>
+        <div class="int-tag">API abierta</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">📱</div>
+        <div class="int-title">Panel de administración propio</div>
+        <div class="int-desc">Accedé al panel NEUMET desde cualquier navegador. Cada cliente ve sus datos, el administrador ve todo.</div>
+        <div class="int-tag">Incluido</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">🔔</div>
+        <div class="int-title">Alertas por webhook</div>
+        <div class="int-desc">Cuando un neumático entra en zona crítica, el sistema puede notificar vía email, webhook o cualquier canal que conectes.</div>
+        <div class="int-tag">Configurable</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">🗄️</div>
+        <div class="int-title">ERP y gestión de transporte</div>
+        <div class="int-desc">Compatible con los principales sistemas de gestión. Si ya usás un software, NEUMET puede alimentarlo con datos reales de desgaste.</div>
+        <div class="int-tag">A consultar</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">☁️</div>
+        <div class="int-title">On-premise o cloud propio</div>
+        <div class="int-desc">¿Preferís que los datos vivan en tu infraestructura? NEUMET puede desplegarse en tu servidor o en tu proveedor cloud.</div>
+        <div class="int-tag">Enterprise</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTACTO -->
+<div class="section" id="contacto">
+  <div class="section-inner">
+    <div class="contact-grid">
+      <div class="contact-aside">
+        <div class="tag">Contacto</div>
+        <h2>¿Tiene flota de camiones?<br>Hablemos.</h2>
+        <p>Contanos sobre tu operación y te mostramos cómo NEUMET encaja en lo que ya tenés. Sin compromisos, sin tecnicismos.</p>
+        <div class="contact-detail">
+          <div class="cd-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 5.61 5.61l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16l.92.92z"/></svg>
+            Respondemos en menos de 24 h
+          </div>
+          <div class="cd-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Argentina · Servicio a todo el país
+          </div>
+          <div class="cd-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Demo online, sin costo ni compromiso
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-error" id="form-error"></div>
+        <div id="form-fields">
+          <div class="form-row">
+            <div class="field">
+              <label>Nombre *</label>
+              <input type="text" id="f-nombre" placeholder="Juan García" required/>
+            </div>
+            <div class="field">
+              <label>Empresa</label>
+              <input type="text" id="f-empresa" placeholder="Transportes S.A."/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Email *</label>
+              <input type="email" id="f-email" placeholder="juan@empresa.com" required/>
+            </div>
+            <div class="field">
+              <label>Teléfono</label>
+              <input type="tel" id="f-telefono" placeholder="+54 9 11 1234-5678"/>
+            </div>
+          </div>
+          <div class="field">
+            <label>¿Cuántos vehículos tiene su flota?</label>
+            <select id="f-flota">
+              <option value="">Seleccioná una opción</option>
+              <option>1 – 5 vehículos</option>
+              <option>6 – 20 vehículos</option>
+              <option>21 – 50 vehículos</option>
+              <option>Más de 50 vehículos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Mensaje</label>
+            <textarea id="f-mensaje" placeholder="Contanos sobre tu operación, qué sistemas usás hoy o qué querés consultar..."></textarea>
+          </div>
+          <button class="form-btn" id="form-btn" onclick="submitForm()">Enviar consulta</button>
+        </div>
+        <div class="form-success" id="form-success">
+          <div class="form-success-icon">✅</div>
+          <h3>¡Mensaje enviado!</h3>
+          <p>Gracias por tu consulta. Te respondemos en menos de 24 horas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">NEUMET</div>
-  <p>Sistema de monitoreo de neumáticos para flotas de transporte</p>
-  <p style="margin-top:8px">© 2026 NEUMET · Todos los derechos reservados</p>
+  <span class="wordmark footer-brand">NEUMET</span>
+  <span class="footer-copy">© 2026 NEUMET · Sistema de monitoreo de neumáticos para flotas de transporte</span>
 </footer>
 
 <script>
@@ -508,12 +689,12 @@ async function submitForm(){
   const errEl = document.getElementById('form-error');
   errEl.style.display = 'none';
 
-  const nombre  = document.getElementById('f-nombre').value.trim();
-  const empresa = document.getElementById('f-empresa').value.trim();
-  const email   = document.getElementById('f-email').value.trim();
-  const telefono= document.getElementById('f-telefono').value.trim();
-  const flota   = document.getElementById('f-flota').value;
-  const mensaje = document.getElementById('f-mensaje').value.trim();
+  const nombre   = document.getElementById('f-nombre').value.trim();
+  const empresa  = document.getElementById('f-empresa').value.trim();
+  const email    = document.getElementById('f-email').value.trim();
+  const telefono = document.getElementById('f-telefono').value.trim();
+  const flota    = document.getElementById('f-flota').value;
+  const mensaje  = document.getElementById('f-mensaje').value.trim();
 
   if(!nombre || !email){
     errEl.textContent = 'Por favor completá nombre y email.';
@@ -533,7 +714,7 @@ async function submitForm(){
     document.getElementById('form-fields').style.display = 'none';
     document.getElementById('form-success').style.display = 'block';
   } catch(e) {
-    errEl.textContent = 'No se pudo enviar el mensaje. Intentá de nuevo.';
+    errEl.textContent = 'No se pudo enviar el mensaje. Intentá de nuevo más tarde.';
     errEl.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Enviar consulta';
   }
