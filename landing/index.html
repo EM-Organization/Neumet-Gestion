@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NEUMET · El sensor que cuida tus neumáticos</title>
-<meta name="description" content="NEUMET es un dispositivo IoT que mide el desgaste de cada neumático de tu flota en tiempo real y se integra con tu sistema de gestión actual."/>
+<title>NEUMET · Medición de neumáticos sin errores</title>
+<meta name="description" content="NEUMET es un calibre digital inteligente que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión."/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Exo+2:ital,wght@1,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -34,7 +34,6 @@
   --danger-border:  rgba(255,59,48,0.2);
   --font:           'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono:      'JetBrains Mono', monospace;
-  --font-brand:     'Exo 2', sans-serif;
   --radius:         16px;
   --shadow:         0 1px 4px rgba(61,60,32,0.06), 0 4px 16px rgba(61,60,32,0.06);
   --shadow-lg:      0 4px 20px rgba(61,60,32,0.08), 0 20px 60px rgba(61,60,32,0.10);
@@ -42,15 +41,6 @@
 
 html { scroll-behavior: smooth; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
-
-.wordmark {
-  font-family: var(--font-brand);
-  font-style: italic;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1;
-}
 
 /* ── NAV ── */
 nav {
@@ -65,7 +55,7 @@ nav {
 }
 .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .nav-logo-img { width: 32px; height: 32px; object-fit: cover; object-position: center top; border-radius: 8px; }
-.nav-name { font-size: 18px; color: var(--accent-dark); }
+.nav-name { font-size: 17px; font-weight: 700; color: var(--accent-dark); letter-spacing: -0.3px; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-links a { font-size: 14px; font-weight: 500; color: var(--text-2); text-decoration: none; transition: color .15s; }
 .nav-links a:hover { color: var(--text); }
@@ -90,15 +80,15 @@ nav {
 .hero-eyebrow span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; }
 
 h1 {
-  font-size: clamp(36px, 5.5vw, 62px); font-weight: 800;
+  font-size: clamp(34px, 5vw, 60px); font-weight: 800;
   letter-spacing: -1.5px; line-height: 1.06;
   color: var(--text); max-width: 820px; margin-bottom: 22px;
 }
-h1 em { font-style: normal; color: var(--accent-dark); border-bottom: 3px solid var(--accent); padding-bottom: 2px; }
+h1 em { font-style: normal; border-bottom: 3px solid var(--accent); padding-bottom: 2px; }
 
 .hero-sub {
   font-size: clamp(15px, 1.8vw, 18px); color: var(--text-2);
-  line-height: 1.65; max-width: 560px; margin-bottom: 40px;
+  line-height: 1.65; max-width: 580px; margin-bottom: 40px;
 }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 72px; }
 .btn-primary {
@@ -118,69 +108,96 @@ h1 em { font-style: normal; color: var(--accent-dark); border-bottom: 3px solid 
 }
 .btn-ghost:hover { background: var(--surface-2); transform: translateY(-1px); }
 
-/* Hero visual */
-.hero-visual { display: grid; grid-template-columns: 1fr 1.4fr; gap: 20px; }
+/* Hero visual — dos columnas */
+.hero-visual { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
 
-.device-showcase {
+/* Columna izq: el calibre */
+.caliper-card {
   background: var(--accent-dark); border-radius: var(--radius);
-  padding: 36px 32px; display: flex; flex-direction: column; justify-content: space-between;
-  min-height: 300px;
+  padding: 36px 32px; display: flex; flex-direction: column; gap: 24px;
 }
-.device-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 20px; }
-.device-body {
+.caliper-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
+.caliper-body {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px; padding: 24px;
-  display: flex; align-items: center; gap: 18px;
+  border-radius: 14px; padding: 22px;
+  display: flex; align-items: center; gap: 16px;
 }
-.device-chip {
-  width: 56px; height: 56px; flex-shrink: 0;
+.caliper-icon {
+  width: 52px; height: 52px; flex-shrink: 0;
   background: var(--accent); border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
 }
-.device-chip svg { width: 28px; height: 28px; color: var(--accent-dark); }
-.device-name-lbl { font-size: 15px; font-weight: 700; color: white; letter-spacing: -0.3px; }
-.device-model { font-size: 11px; color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-top: 3px; }
-.device-transmitting {
-  display: inline-flex; align-items: center; gap: 7px; margin-top: 18px;
-  background: rgba(52,199,89,0.12); border: 1px solid rgba(52,199,89,0.2);
-  border-radius: 6px; padding: 7px 12px;
+.caliper-icon svg { width: 26px; height: 26px; color: var(--accent-dark); }
+.caliper-name { font-size: 14px; font-weight: 700; color: white; }
+.caliper-model { font-size: 11px; color: rgba(255,255,255,0.35); font-family: var(--font-mono); margin-top: 3px; }
+
+/* Lectura actual del calibre */
+.caliper-reading {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(201,185,106,0.2);
+  border-radius: 12px; padding: 20px; text-align: center;
+}
+.caliper-reading-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 8px; }
+.caliper-reading-val { font-size: 52px; font-weight: 800; letter-spacing: -3px; color: var(--accent); line-height: 1; }
+.caliper-reading-unit { font-size: 16px; font-weight: 500; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+.sending-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(52,199,89,0.10); border: 1px solid rgba(52,199,89,0.2);
+  border-radius: 8px; padding: 10px 14px;
   font-size: 12px; font-weight: 600; color: #34C759;
 }
-.pulse { width: 6px; height: 6px; background: #34C759; border-radius: 50%; animation: pulse-a 1.6s ease-in-out infinite; flex-shrink: 0; }
+.pulse { width: 6px; height: 6px; border-radius: 50%; animation: pulse-a 1.6s ease-in-out infinite; flex-shrink: 0; }
 @keyframes pulse-a { 0%,100%{opacity:1} 50%{opacity:.3} }
-.device-specs { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+
+.caliper-specs { display: flex; flex-direction: column; gap: 7px; }
 .spec-row { display: flex; justify-content: space-between; font-size: 12px; }
 .spec-key { color: rgba(255,255,255,0.35); }
-.spec-val { color: rgba(255,255,255,0.7); font-family: var(--font-mono); font-size: 11px; }
+.spec-val { color: rgba(255,255,255,0.65); font-family: var(--font-mono); font-size: 11px; }
 
-.meds-panel {
+/* Columna der: panel con mediciones recibidas */
+.panel-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 16px;
 }
-.meds-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.meds-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.panel-header { display: flex; justify-content: space-between; align-items: center; }
+.panel-title { font-size: 14px; font-weight: 600; color: var(--text); }
 .live-badge {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--success-bg); border: 1px solid var(--success-border);
   color: var(--success); font-size: 11px; font-weight: 600;
   padding: 3px 9px; border-radius: 5px;
 }
-.tire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.panel-vehicle {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-veh-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.panel-veh-plate { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); margin-top: 2px; }
+.auto-badge {
+  font-size: 11px; font-weight: 600; color: var(--accent-dark);
+  background: var(--accent-light); border: 1px solid var(--accent-border);
+  padding: 3px 8px; border-radius: 5px;
+}
+.tire-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
 .tire-card {
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px;
+  border-radius: 10px; padding: 12px;
 }
-.tire-pos { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
-.tire-mm { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.tire-pos { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.tire-mm { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
 .tire-mm.ok   { color: var(--success); }
 .tire-mm.warn { color: var(--warning); }
 .tire-mm.crit { color: var(--danger); }
-.tire-bar { height: 3px; background: var(--border-strong); border-radius: 2px; margin-top: 8px; }
+.tire-bar { height: 3px; background: var(--border-strong); border-radius: 2px; margin-top: 6px; }
 .tire-fill { height: 3px; border-radius: 2px; }
-.meds-footer { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; }
-.meds-vehicle { font-size: 13px; font-weight: 600; color: var(--text); }
-.meds-plate { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); margin-top: 2px; }
-.meds-time { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); }
+.panel-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.panel-footer-msg { font-size: 12px; color: var(--text-3); }
+.panel-footer-time { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); }
 
 /* ── STATS ── */
 .stats-strip {
@@ -198,7 +215,31 @@ h1 em { font-style: normal; color: var(--accent-dark); border-bottom: 3px solid 
 .section-inner { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
 .tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
 h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8px; line-height: 1.12; margin-bottom: 14px; color: var(--text); }
-.section-sub { font-size: 16px; color: var(--text-2); line-height: 1.65; max-width: 500px; }
+.section-sub { font-size: 16px; color: var(--text-2); line-height: 1.65; max-width: 520px; }
+
+/* ── PROBLEMA / SOLUCIÓN ── */
+.problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 52px; }
+.problem-card {
+  border-radius: var(--radius); padding: 32px;
+}
+.problem-card.before {
+  background: var(--surface); border: 1px solid var(--border);
+}
+.problem-card.after {
+  background: var(--accent-dark); border: 1px solid transparent;
+}
+.pc-tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 18px; }
+.before .pc-tag { color: var(--text-3); }
+.after .pc-tag  { color: rgba(255,255,255,0.3); }
+.pc-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; font-size: 14px; line-height: 1.55; }
+.before .pc-item { color: var(--text-2); }
+.after .pc-item  { color: rgba(255,255,255,0.65); }
+.pc-icon { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.pc-icon.x  { background: var(--danger-bg); }
+.pc-icon.x svg  { color: var(--danger); }
+.pc-icon.ok { background: rgba(201,185,106,0.15); }
+.pc-icon.ok svg { color: var(--accent); }
+.pc-icon svg { width: 11px; height: 11px; }
 
 /* ── COMO FUNCIONA ── */
 .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 52px; }
@@ -206,11 +247,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 30px; position: relative; overflow: hidden;
 }
-.step-ghost-num {
-  position: absolute; right: 20px; top: 16px;
-  font-size: 64px; font-weight: 900; color: rgba(61,60,32,0.04);
-  line-height: 1; letter-spacing: -3px;
-}
+.step-ghost { position: absolute; right: 18px; top: 14px; font-size: 60px; font-weight: 900; color: rgba(61,60,32,0.04); line-height: 1; }
 .step-icon-wrap {
   width: 44px; height: 44px; border-radius: 12px;
   background: var(--accent-light); border: 1px solid var(--accent-border);
@@ -229,7 +266,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 .device-section h2 { color: white; }
 .device-section .section-sub { color: rgba(255,255,255,0.5); max-width: 540px; }
 .device-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-top: 52px; }
-.device-props { display: flex; flex-direction: column; gap: 16px; }
+.device-props { display: flex; flex-direction: column; gap: 14px; }
 .prop {
   background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px; padding: 18px 20px; display: flex; align-items: flex-start; gap: 14px;
@@ -237,21 +274,28 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 .prop-icon { width: 36px; height: 36px; flex-shrink: 0; background: rgba(201,185,106,0.15); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
 .prop-icon svg { width: 18px; height: 18px; color: var(--accent); }
 .prop-title { font-size: 14px; font-weight: 600; color: white; }
-.prop-desc { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; line-height: 1.55; }
+.prop-desc { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 3px; line-height: 1.55; }
 .device-visual-card {
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 18px; padding: 36px; display: flex; flex-direction: column; gap: 20px;
+  border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 20px;
 }
-.dv-chip-area { display: flex; align-items: center; gap: 14px; padding: 18px; background: rgba(201,185,106,0.08); border: 1px solid rgba(201,185,106,0.15); border-radius: 12px; }
-.dv-chip { width: 52px; height: 52px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.dv-chip svg { width: 26px; height: 26px; color: var(--accent-dark); }
-.dv-name { font-size: 15px; font-weight: 700; color: white; }
+.dv-header { display: flex; align-items: center; gap: 14px; padding: 16px; background: rgba(201,185,106,0.08); border: 1px solid rgba(201,185,106,0.15); border-radius: 12px; }
+.dv-chip { width: 48px; height: 48px; background: var(--accent); border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dv-chip svg { width: 24px; height: 24px; color: var(--accent-dark); }
+.dv-name { font-size: 14px; font-weight: 700; color: white; }
 .dv-sub { font-size: 11px; color: rgba(255,255,255,0.3); font-family: var(--font-mono); margin-top: 3px; }
-.dv-data { display: flex; flex-direction: column; gap: 0; }
-.dv-row { display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.dv-screen {
+  background: #1a1a0e; border: 1px solid rgba(201,185,106,0.15); border-radius: 10px;
+  padding: 20px; text-align: center;
+}
+.dv-screen-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(201,185,106,0.4); margin-bottom: 6px; }
+.dv-screen-val { font-size: 44px; font-weight: 800; letter-spacing: -2px; color: var(--accent); line-height: 1; }
+.dv-screen-unit { font-size: 14px; color: rgba(201,185,106,0.5); margin-top: 3px; }
+.dv-data { display: flex; flex-direction: column; }
+.dv-row { display: flex; justify-content: space-between; font-size: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .dv-row:last-child { border-bottom: none; }
 .dv-key { color: rgba(255,255,255,0.35); }
-.dv-val { color: rgba(255,255,255,0.75); font-family: var(--font-mono); font-size: 11px; }
+.dv-val { color: rgba(255,255,255,0.7); font-family: var(--font-mono); font-size: 11px; }
 .dv-status { display: flex; align-items: center; gap: 8px; background: rgba(52,199,89,0.08); border: 1px solid rgba(52,199,89,0.2); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #34C759; font-weight: 600; }
 
 /* ── INTEGRATIONS ── */
@@ -267,7 +311,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
   display: inline-block; margin-top: 12px;
   background: var(--accent-light); border: 1px solid var(--accent-border);
   color: var(--accent-dark); font-size: 11px; font-weight: 600;
-  padding: 3px 9px; border-radius: 5px; letter-spacing: 0.3px;
+  padding: 3px 9px; border-radius: 5px;
 }
 
 /* ── CONTACT ── */
@@ -284,7 +328,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-.field label { font-size: 12px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-2); }
 .field input, .field textarea, .field select {
   background: var(--surface-2); border: 1px solid var(--border-strong);
   border-radius: 9px; padding: 10px 13px;
@@ -318,7 +362,7 @@ footer {
   padding: 40px 48px; margin-top: 80px;
   display: flex; justify-content: space-between; align-items: center;
 }
-.footer-brand { font-size: 20px; color: var(--accent); }
+.footer-brand { font-size: 17px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; }
 .footer-copy { font-size: 12px; }
 
 /* ── RESPONSIVE ── */
@@ -330,6 +374,7 @@ footer {
   .hero-visual { grid-template-columns: 1fr; }
   .stats-strip { grid-template-columns: 1fr; margin: 0 20px; }
   .stat-cell:not(:last-child) { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .problem-grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
   .device-section { margin: 0 20px; padding: 48px 28px; }
   .device-grid { grid-template-columns: 1fr; gap: 32px; }
@@ -346,12 +391,12 @@ footer {
 <nav>
   <a href="#" class="nav-brand">
     <img class="nav-logo-img" src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET"/>
-    <span class="wordmark nav-name">NEUMET</span>
+    <span class="nav-name">NEUMET</span>
   </a>
   <div class="nav-links">
+    <a href="#problema">El problema</a>
     <a href="#como-funciona">Cómo funciona</a>
     <a href="#dispositivo">El dispositivo</a>
-    <a href="#integraciones">Integraciones</a>
     <a href="#contacto">Contacto</a>
   </div>
   <a href="#contacto" class="nav-cta">Quiero una demo</a>
@@ -359,77 +404,94 @@ footer {
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-eyebrow"><span></span>Hardware IoT · Flotas de transporte</div>
-  <h1>El sensor que conecta tus neumáticos con <em>tu sistema de gestión</em></h1>
-  <p class="hero-sub">NEUMET es un dispositivo físico que instalás en el vehículo. Mide el desgaste de cada rueda automáticamente y envía los datos a donde ya trabajás: tu ERP, tu planilla, tu panel propio.</p>
+  <div class="hero-eyebrow"><span></span>Calibre digital inteligente · Flotas de transporte</div>
+  <h1>Medición de neumáticos <em>sin papel, sin errores, sin demoras</em></h1>
+  <p class="hero-sub">NEUMET es un calibre digital que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión. Lo que hoy se hace a mano, en minutos y con errores, pasa a ser automático e instantáneo.</p>
   <div class="hero-actions">
     <a href="#contacto" class="btn-primary">Solicitar demo</a>
-    <a href="#dispositivo" class="btn-ghost">Ver el dispositivo</a>
+    <a href="#problema" class="btn-ghost">Ver el problema que resuelve</a>
   </div>
 
   <div class="hero-visual">
-    <div class="device-showcase">
-      <div>
-        <div class="device-label">Dispositivo NEUMET</div>
-        <div class="device-body">
-          <div class="device-chip">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="5" y="2" width="14" height="20" rx="2"/>
-              <circle cx="12" cy="17" r="1"/>
-              <path d="M9 6h6"/>
-            </svg>
-          </div>
-          <div>
-            <div class="device-name-lbl">Medidor NEUMET</div>
-            <div class="device-model">AA:BB:CC:DD:EE:01</div>
-          </div>
+    <!-- El calibre -->
+    <div class="caliper-card">
+      <div class="caliper-label">Calibre NEUMET</div>
+      <div class="caliper-body">
+        <div class="caliper-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+            <path d="M7 9v6M17 9v6"/>
+          </svg>
         </div>
-        <div class="device-transmitting">
-          <span class="pulse"></span>
-          Transmitiendo en tiempo real
+        <div>
+          <div class="caliper-name">Medidor de huella</div>
+          <div class="caliper-model">NMT-CAL-2024 · fw 2.4.1</div>
         </div>
       </div>
-      <div class="device-specs">
-        <div class="spec-row"><span class="spec-key">Conectividad</span><span class="spec-val">WiFi / 4G</span></div>
-        <div class="spec-row"><span class="spec-key">Posiciones</span><span class="spec-val">hasta 16 ruedas</span></div>
+      <div class="caliper-reading">
+        <div class="caliper-reading-label">Lectura actual</div>
+        <div class="caliper-reading-val">8.3</div>
+        <div class="caliper-reading-unit">milímetros de huella</div>
+      </div>
+      <div class="sending-row">
+        <span class="pulse" style="background:#34C759"></span>
+        Enviando al sistema de gestión...
+      </div>
+      <div class="caliper-specs">
         <div class="spec-row"><span class="spec-key">Precisión</span><span class="spec-val">± 0.1 mm</span></div>
-        <div class="spec-row"><span class="spec-key">Instalación</span><span class="spec-val">Plug &amp; Play</span></div>
+        <div class="spec-row"><span class="spec-key">Conectividad</span><span class="spec-val">Bluetooth / WiFi</span></div>
+        <div class="spec-row"><span class="spec-key">Compatible con</span><span class="spec-val">App NEUMET + API</span></div>
       </div>
     </div>
 
-    <div class="meds-panel">
-      <div class="meds-header">
-        <div class="meds-title">Mediciones en vivo</div>
+    <!-- Panel que recibe las mediciones -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">Mediciones recibidas automáticamente</div>
         <div class="live-badge"><span class="pulse" style="background:var(--success)"></span>En vivo</div>
+      </div>
+      <div class="panel-vehicle">
+        <div>
+          <div class="panel-veh-name">Unidad 07</div>
+          <div class="panel-veh-plate">ABC 123 · 10 ruedas</div>
+        </div>
+        <div class="auto-badge">Cargado automático</div>
       </div>
       <div class="tire-grid">
         <div class="tire-card">
-          <div class="tire-pos">Pos 1 · Ext. Izq.</div>
-          <div class="tire-mm ok">12.4<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-pos">Pos 1 · E.Izq</div>
+          <div class="tire-mm ok">12.4<small style="font-size:11px;font-weight:500">mm</small></div>
           <div class="tire-bar"><div class="tire-fill" style="width:83%;background:var(--success)"></div></div>
         </div>
         <div class="tire-card">
-          <div class="tire-pos">Pos 2 · Ext. Der.</div>
-          <div class="tire-mm ok">11.9<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-pos">Pos 2 · E.Der</div>
+          <div class="tire-mm ok">11.9<small style="font-size:11px;font-weight:500">mm</small></div>
           <div class="tire-bar"><div class="tire-fill" style="width:79%;background:var(--success)"></div></div>
         </div>
         <div class="tire-card">
-          <div class="tire-pos">Pos 5 · Int. Izq.</div>
-          <div class="tire-mm warn">6.1<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-pos">Pos 3 · I.Izq</div>
+          <div class="tire-mm ok">10.2<small style="font-size:11px;font-weight:500">mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:68%;background:var(--success)"></div></div>
+        </div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 4 · I.Der</div>
+          <div class="tire-mm warn">6.1<small style="font-size:11px;font-weight:500">mm</small></div>
           <div class="tire-bar"><div class="tire-fill" style="width:41%;background:var(--warning)"></div></div>
         </div>
         <div class="tire-card">
-          <div class="tire-pos">Pos 6 · Int. Der.</div>
-          <div class="tire-mm crit">3.8<small style="font-size:12px;font-weight:500"> mm</small></div>
+          <div class="tire-pos">Pos 5 · T.Izq</div>
+          <div class="tire-mm warn">5.8<small style="font-size:11px;font-weight:500">mm</small></div>
+          <div class="tire-bar"><div class="tire-fill" style="width:39%;background:var(--warning)"></div></div>
+        </div>
+        <div class="tire-card">
+          <div class="tire-pos">Pos 6 · T.Der</div>
+          <div class="tire-mm crit">3.8<small style="font-size:11px;font-weight:500">mm</small></div>
           <div class="tire-bar"><div class="tire-fill" style="width:25%;background:var(--danger)"></div></div>
         </div>
       </div>
-      <div class="meds-footer">
-        <div>
-          <div class="meds-vehicle">Unidad 07</div>
-          <div class="meds-plate">ABC 123</div>
-        </div>
-        <div class="meds-time">hace 2 min</div>
+      <div class="panel-footer">
+        <div class="panel-footer-msg">6 de 10 posiciones cargadas</div>
+        <div class="panel-footer-time">hace 12 seg</div>
       </div>
     </div>
   </div>
@@ -438,16 +500,65 @@ footer {
 <!-- STATS -->
 <div class="stats-strip">
   <div class="stat-cell">
-    <div class="stat-big">16</div>
-    <div class="stat-lbl">Ruedas medidas por sesión</div>
+    <div class="stat-big">0</div>
+    <div class="stat-lbl">Transcripción manual de datos</div>
   </div>
   <div class="stat-cell">
-    <div class="stat-big">&lt;5mm</div>
-    <div class="stat-lbl">Umbral de alerta crítica automática</div>
+    <div class="stat-big">±0.1mm</div>
+    <div class="stat-lbl">Precisión de cada medición</div>
   </div>
   <div class="stat-cell">
     <div class="stat-big">100%</div>
-    <div class="stat-lbl">Datos en la nube, sin pérdida</div>
+    <div class="stat-lbl">Datos en tu sistema, en tiempo real</div>
+  </div>
+</div>
+
+<!-- EL PROBLEMA -->
+<div class="section" id="problema">
+  <div class="section-inner">
+    <div class="tag">El problema que resolvemos</div>
+    <h2>Hoy la medición de neumáticos es lenta, manual y propensa a errores</h2>
+    <p class="section-sub">En la mayoría de las flotas, el proceso de control de neumáticos depende de papel, planillas o carga manual. Eso tiene un costo real.</p>
+    <div class="problem-grid">
+      <div class="problem-card before">
+        <div class="pc-tag">Sin NEUMET</div>
+        <div class="pc-item">
+          <div class="pc-icon x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+          El operario mide con un calibre analógico y anota en papel
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+          Alguien transcribe esas anotaciones al sistema de gestión manualmente
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+          Los errores de transcripción generan decisiones equivocadas
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+          La información llega tarde, cuando el problema ya existe
+        </div>
+      </div>
+      <div class="problem-card after">
+        <div class="pc-tag">Con NEUMET</div>
+        <div class="pc-item">
+          <div class="pc-icon ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          El operario mide con el calibre NEUMET, igual que siempre
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Los datos van directo al sistema: sin papel, sin intermediario
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          La información es exacta, sin margen de error humano
+        </div>
+        <div class="pc-item">
+          <div class="pc-icon ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Alertas automáticas cuando un neumático entra en zona crítica
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -455,32 +566,32 @@ footer {
 <div class="section" id="como-funciona">
   <div class="section-inner">
     <div class="tag">Cómo funciona</div>
-    <h2>Tres pasos, sin fricciones</h2>
-    <p class="section-sub">El dispositivo hace el trabajo pesado. Tu equipo sigue operando como siempre, con información que antes no tenían.</p>
+    <h2>El mismo proceso de siempre, sin la parte que falla</h2>
+    <p class="section-sub">El operario trabaja igual. Lo que cambia es que la medición viaja sola al sistema, sin que nadie tenga que anotarla ni cargarla.</p>
     <div class="steps">
       <div class="step">
-        <div class="step-ghost-num">1</div>
+        <div class="step-ghost">1</div>
         <div class="step-icon-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/><path d="M7 9v6M17 9v6"/></svg>
         </div>
-        <h3>Instalás el dispositivo</h3>
-        <p>El medidor NEUMET se monta en el vehículo una sola vez. Sin configuraciones complejas, sin cables, sin capacitación especial para el chofer.</p>
+        <h3>El operario mide con el calibre</h3>
+        <p>Apoya el calibre NEUMET sobre cada neumático y toma la lectura de profundidad de huella, igual que siempre. Sin cambios en el proceso.</p>
       </div>
       <div class="step">
-        <div class="step-ghost-num">2</div>
+        <div class="step-ghost">2</div>
         <div class="step-icon-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         </div>
-        <h3>Los datos llegan solos</h3>
-        <p>Después de cada turno, el dispositivo mide todas las ruedas y envía los datos a la nube en segundos. Sin intervención humana.</p>
+        <h3>El dispositivo envía la medición</h3>
+        <p>Cada lectura se transmite automáticamente vía Bluetooth a la app NEUMET, que la sube a la nube en tiempo real. Sin papel, sin tipeo.</p>
       </div>
       <div class="step">
-        <div class="step-ghost-num">3</div>
+        <div class="step-ghost">3</div>
         <div class="step-icon-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         </div>
-        <h3>Vos gestionás desde donde ya trabajás</h3>
-        <p>Las mediciones aparecen en tu panel NEUMET y también podés exportarlas o integrarlas con las herramientas que ya usa tu empresa.</p>
+        <h3>Los datos llegan a tu sistema</h3>
+        <p>Las mediciones se guardan en el panel NEUMET o se envían al software de gestión que ya usás. Disponibles al instante para quien las necesite.</p>
       </div>
     </div>
   </div>
@@ -489,8 +600,8 @@ footer {
 <!-- EL DISPOSITIVO -->
 <div class="device-section" id="dispositivo">
   <div class="tag">El hardware</div>
-  <h2>Un sensor pensado para el trabajo real</h2>
-  <p class="section-sub">No es una app ni un software. Es un dispositivo físico que se instala una vez y alimenta con datos reales tu cadena de gestión.</p>
+  <h2>Un calibre digital diseñado para el trabajo real</h2>
+  <p class="section-sub">Preciso, robusto y conectado. Se integra con nuestra app y desde ahí los datos van a donde los necesitás.</p>
 
   <div class="device-grid">
     <div class="device-props">
@@ -499,26 +610,8 @@ footer {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <div>
-          <div class="prop-title">Construido para el ambiente de trabajo</div>
-          <div class="prop-desc">Resistente a vibraciones, polvo y temperatura extrema. Diseñado para el taller y la ruta, no para una oficina.</div>
-        </div>
-      </div>
-      <div class="prop">
-        <div class="prop-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-        </div>
-        <div>
-          <div class="prop-title">Plug &amp; Play</div>
-          <div class="prop-desc">Se registra automáticamente al encenderse. Sin drivers, sin configuración, sin IT involucrada.</div>
-        </div>
-      </div>
-      <div class="prop">
-        <div class="prop-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.05 12A11 11 0 0 1 23 12.54M23 12a11 11 0 0 1-21.95.46"/><circle cx="12" cy="12" r="3"/></svg>
-        </div>
-        <div>
-          <div class="prop-title">Conectividad WiFi y 4G</div>
-          <div class="prop-desc">Funciona en playa de camiones, en ruta o en cualquier lugar con señal. Sin dependencia de red local.</div>
+          <div class="prop-title">Construido para el taller y la ruta</div>
+          <div class="prop-desc">Resistente a golpes, polvo y grasa. Fabricado para durar en el ambiente donde trabajan tus operarios.</div>
         </div>
       </div>
       <div class="prop">
@@ -527,31 +620,53 @@ footer {
         </div>
         <div>
           <div class="prop-title">Precisión de ±0.1 mm</div>
-          <div class="prop-desc">Detecta desgaste antes de que sea visible a simple vista. Información que cambia decisiones reales.</div>
+          <div class="prop-desc">Sensor digital que elimina la ambigüedad de los calibres analógicos. Cada lectura es exacta y verificable.</div>
+        </div>
+      </div>
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        </div>
+        <div>
+          <div class="prop-title">Pantalla integrada</div>
+          <div class="prop-desc">El operario ve la medición en el display del calibre al instante, sin depender del celular para leer el valor.</div>
+        </div>
+      </div>
+      <div class="prop">
+        <div class="prop-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>
+        </div>
+        <div>
+          <div class="prop-title">Bluetooth + WiFi</div>
+          <div class="prop-desc">Se comunica con la app NEUMET vía Bluetooth. La app sube los datos a la nube en tiempo real.</div>
         </div>
       </div>
     </div>
 
     <div class="device-visual-card">
-      <div class="dv-chip-area">
+      <div class="dv-header">
         <div class="dv-chip">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/><path d="M7 9v6M17 9v6"/></svg>
         </div>
         <div>
-          <div class="dv-name">Sensor NEUMET v2</div>
-          <div class="dv-sub">NMT-2024-IoT · fw 2.4.1</div>
+          <div class="dv-name">Calibre NEUMET</div>
+          <div class="dv-sub">NMT-CAL-2024 · fw 2.4.1</div>
         </div>
       </div>
+      <div class="dv-screen">
+        <div class="dv-screen-label">Lectura en pantalla</div>
+        <div class="dv-screen-val">8.3</div>
+        <div class="dv-screen-unit">mm de profundidad de huella</div>
+      </div>
       <div class="dv-data">
-        <div class="dv-row"><span class="dv-key">MAC Address</span><span class="dv-val">AA:BB:CC:DD:EE:01</span></div>
-        <div class="dv-row"><span class="dv-key">Posiciones activas</span><span class="dv-val">10 / 10</span></div>
-        <div class="dv-row"><span class="dv-key">Última sesión</span><span class="dv-val">hace 4 min</span></div>
-        <div class="dv-row"><span class="dv-key">Mediciones enviadas</span><span class="dv-val">847</span></div>
-        <div class="dv-row"><span class="dv-key">Vehículo asignado</span><span class="dv-val">Unidad 07 · ABC 123</span></div>
+        <div class="dv-row"><span class="dv-key">Vehículo</span><span class="dv-val">Unidad 07 · ABC 123</span></div>
+        <div class="dv-row"><span class="dv-key">Posición</span><span class="dv-val">Pos 3 · Interior Izq.</span></div>
+        <div class="dv-row"><span class="dv-key">Mediciones hoy</span><span class="dv-val">42 registradas</span></div>
+        <div class="dv-row"><span class="dv-key">Conectado a</span><span class="dv-val">App NEUMET</span></div>
       </div>
       <div class="dv-status">
-        <span class="pulse"></span>
-        Operativo · Sin alertas pendientes
+        <span class="pulse" style="background:#34C759"></span>
+        Sincronizado · Datos enviados al sistema
       </div>
     </div>
   </div>
@@ -561,43 +676,43 @@ footer {
 <div class="section" id="integraciones">
   <div class="section-inner">
     <div class="tag">Integraciones</div>
-    <h2>Se adapta a lo que ya tenés</h2>
-    <p class="section-sub">NEUMET es el eslabón que faltaba en tu cadena de gestión. Los datos del hardware llegan a donde ya trabaja tu equipo, sin cambiar nada.</p>
+    <h2>Los datos van a donde ya trabajás</h2>
+    <p class="section-sub">NEUMET no te obliga a cambiar tu sistema de gestión. Los datos del calibre llegan a donde los necesitás, sin fricción.</p>
     <div class="integrations-grid">
       <div class="int-card">
-        <div class="int-icon">📊</div>
-        <div class="int-title">Excel / CSV</div>
-        <div class="int-desc">Exportá el historial completo de mediciones para analizarlo con las herramientas que ya conoce tu equipo de mantenimiento.</div>
-        <div class="int-tag">Disponible ahora</div>
+        <div class="int-icon">📱</div>
+        <div class="int-title">App NEUMET</div>
+        <div class="int-desc">El calibre se conecta vía Bluetooth a nuestra app. Desde ahí el operario asigna cada medición al vehículo y rueda correspondiente.</div>
+        <div class="int-tag">Incluido</div>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">🖥️</div>
+        <div class="int-title">Panel web de administración</div>
+        <div class="int-desc">Todas las mediciones quedan en el panel NEUMET. El responsable ve el historial de cada neumático, alertas y tendencias de desgaste.</div>
+        <div class="int-tag">Incluido</div>
       </div>
       <div class="int-card">
         <div class="int-icon">🔌</div>
         <div class="int-title">API REST</div>
-        <div class="int-desc">Conectá NEUMET a tu ERP, TMS o sistema de gestión de flota. Cada medición disponible en tiempo real para tu plataforma vía API.</div>
+        <div class="int-desc">¿Ya tenés un software de gestión de flota? Conectalo vía API y las mediciones del calibre llegarán directo, sin duplicar trabajo.</div>
         <div class="int-tag">API abierta</div>
       </div>
       <div class="int-card">
-        <div class="int-icon">📱</div>
-        <div class="int-title">Panel de administración propio</div>
-        <div class="int-desc">Accedé al panel NEUMET desde cualquier navegador. Cada cliente ve sus datos, el administrador ve todo.</div>
-        <div class="int-tag">Incluido</div>
+        <div class="int-icon">📊</div>
+        <div class="int-title">Excel / CSV</div>
+        <div class="int-desc">Exportá cualquier rango de mediciones para seguir trabajando con planillas, sin perder compatibilidad con procesos existentes.</div>
+        <div class="int-tag">Disponible</div>
       </div>
       <div class="int-card">
         <div class="int-icon">🔔</div>
-        <div class="int-title">Alertas por webhook</div>
-        <div class="int-desc">Cuando un neumático entra en zona crítica, el sistema puede notificar vía email, webhook o cualquier canal que conectes.</div>
+        <div class="int-title">Alertas automáticas</div>
+        <div class="int-desc">Cuando la huella de un neumático cae por debajo del umbral crítico, el sistema notifica al responsable automáticamente.</div>
         <div class="int-tag">Configurable</div>
       </div>
       <div class="int-card">
-        <div class="int-icon">🗄️</div>
-        <div class="int-title">ERP y gestión de transporte</div>
-        <div class="int-desc">Compatible con los principales sistemas de gestión. Si ya usás un software, NEUMET puede alimentarlo con datos reales de desgaste.</div>
-        <div class="int-tag">A consultar</div>
-      </div>
-      <div class="int-card">
         <div class="int-icon">☁️</div>
-        <div class="int-title">On-premise o cloud propio</div>
-        <div class="int-desc">¿Preferís que los datos vivan en tu infraestructura? NEUMET puede desplegarse en tu servidor o en tu proveedor cloud.</div>
+        <div class="int-title">Tu infraestructura</div>
+        <div class="int-desc">Para empresas que requieren que los datos queden en su propio entorno, NEUMET puede desplegarse on-premise o en cloud privado.</div>
         <div class="int-tag">Enterprise</div>
       </div>
     </div>
@@ -610,8 +725,8 @@ footer {
     <div class="contact-grid">
       <div class="contact-aside">
         <div class="tag">Contacto</div>
-        <h2>¿Tiene flota de camiones?<br>Hablemos.</h2>
-        <p>Contanos sobre tu operación y te mostramos cómo NEUMET encaja en lo que ya tenés. Sin compromisos, sin tecnicismos.</p>
+        <h2>¿Querés que tus mediciones dejen de ser manuales?</h2>
+        <p>Contanos cómo gestionan hoy el control de neumáticos y te mostramos cómo NEUMET encaja en tu operación. Sin compromisos.</p>
         <div class="contact-detail">
           <div class="cd-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 5.61 5.61l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16l.92.92z"/></svg>
@@ -662,8 +777,8 @@ footer {
             </select>
           </div>
           <div class="field">
-            <label>Mensaje</label>
-            <textarea id="f-mensaje" placeholder="Contanos sobre tu operación, qué sistemas usás hoy o qué querés consultar..."></textarea>
+            <label>¿Cómo gestionan hoy el control de neumáticos?</label>
+            <textarea id="f-mensaje" placeholder="Ej: anotamos en papel y cargamos en Excel semanalmente..."></textarea>
           </div>
           <button class="form-btn" id="form-btn" onclick="submitForm()">Enviar consulta</button>
         </div>
@@ -679,8 +794,8 @@ footer {
 
 <!-- FOOTER -->
 <footer>
-  <span class="wordmark footer-brand">NEUMET</span>
-  <span class="footer-copy">© 2026 NEUMET · Sistema de monitoreo de neumáticos para flotas de transporte</span>
+  <span class="footer-brand">NEUMET</span>
+  <span class="footer-copy">© 2026 NEUMET · Calibre digital inteligente para flotas de transporte</span>
 </footer>
 
 <script>
