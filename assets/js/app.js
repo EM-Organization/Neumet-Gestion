@@ -828,6 +828,39 @@ function medUpdateCounters(){
   document.getElementById('med-crit').textContent=crit;
 }
 
+async function exportMedicionesCSV(){
+  const vid=parseInt(document.getElementById('med-vehiculo-select').value);
+  if(!vid) return;
+  const veh=medVehs.find(v=>v.id===vid);
+  const btn=document.getElementById('med-export-btn');
+  btn.disabled=true; btn.textContent='Exportando...';
+
+  const {data,error}=await db.from('mediciones')
+    .select('posicion,mm1,mm2,mm3,promedio,created_at')
+    .eq('vehiculo_id',vid)
+    .order('created_at',{ascending:false});
+
+  btn.disabled=false;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar CSV';
+
+  if(error){ showToast('Error al exportar: '+error.message,true); return; }
+  if(!data||!data.length){ showToast('No hay mediciones para exportar',true); return; }
+
+  const vehNombre=veh?veh.nombre:'vehiculo';
+  const rows=[['Fecha','Posición','Exterior (mm)','Medio (mm)','Interior (mm)','Promedio (mm)']];
+  data.forEach(r=>{
+    const fecha=new Date(r.created_at).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour12:false});
+    rows.push([fecha,r.posicion,r.mm1??'',r.mm2??'',r.mm3??'',r.promedio!=null?parseFloat(r.promedio).toFixed(1):'']);
+  });
+
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`neumet_${vehNombre.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
 function medSelectTire(pos){
   medSelPos=pos; medDrawTruck();
   const col=mTireColor(pos), hist=medTireData[pos]||[], a=mLast(pos);
