@@ -132,11 +132,11 @@ El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. L
 
 ---
 
-## Landing page (`/landing`)
+## Landing page (`/`)
 
 Página pública para potenciales clientes con formulario de contacto.
 
-- Archivo: `landing/index.html` — HTML/CSS/JS estático, sin dependencias de build
+- Archivo: `index.html` en la raíz — HTML/CSS/JS estático, sin dependencias de build
 - Formulario de contacto con CAPTCHA local (canvas, sin dependencias externas)
 - Al enviar, llama a la Edge Function `contacto` que despacha el email via **Resend**
 
@@ -158,17 +158,25 @@ Content-Type: application/json
 }
 ```
 
-### Dependencias externas
+---
 
-| Servicio | Uso | Secrets requeridos |
+## Dependencias externas
+
+| Servicio | Rol | Dónde se configura |
 |---|---|---|
-| **Resend** ([resend.com](https://resend.com)) | Envío de emails desde la Edge Function `contacto` | `RESEND_API_KEY` en Supabase Edge Functions secrets |
+| **Supabase** ([supabase.com](https://supabase.com)) | Base de datos PostgreSQL, autenticación, Edge Functions | [supabase.com/dashboard](https://supabase.com/dashboard) · Proyecto ID: `dqgrlflrjcarxlfetvoj` |
+| **Vercel** ([vercel.com](https://vercel.com)) | Hosting del frontend (landing + panel admin) | [vercel.com/dashboard](https://vercel.com/dashboard) |
+| **Resend** ([resend.com](https://resend.com)) | Envío de emails desde la Edge Function `contacto` | Secret `RESEND_API_KEY` en Supabase → Edge Functions → Secrets |
 
-### Configuración de secrets (Supabase Dashboard → Project Settings → Edge Functions → Secrets)
+### Secrets requeridos en Supabase
+
+Supabase Dashboard → Project Settings → Edge Functions → Secrets:
 
 | Secret | Descripción |
 |---|---|
-| `RESEND_API_KEY` | API key de Resend. Cuenta gratuita en resend.com |
+| `RESEND_API_KEY` | API key de Resend. Necesaria para que la Edge Function `contacto` pueda enviar emails. |
+
+> **Nota sobre Resend en free tier:** con el sender `onboarding@resend.dev` solo se puede enviar al email con el que se registró la cuenta. Para enviar a cualquier destinatario es necesario verificar un dominio propio en Resend → Domains y cambiar el sender a `contacto@tudominio.com`.
 
 ---
 
@@ -194,6 +202,6 @@ Neumet-Gestion/
 
 ## Desarrollo local
 
-No requiere dependencias ni servidor de build. Abrí `index.html` o `landing/index.html` directamente en el navegador.
+No requiere dependencias ni servidor de build. Abrí `index.html` o `adminpanel/index.html` directamente en el navegador, o usá `npx serve` desde la raíz del proyecto.
 
-> **Nota:** el script usa `type="module"` internamente con el SDK de Supabase cargado como UMD desde CDN. Si abrís el archivo directamente como `file://` en Chrome/Edge, puede haber restricciones de CORS. Recomendado: usar la extensión **Live Server** de VS Code o cualquier servidor local simple.
+> **Nota:** el panel admin usa el SDK de Supabase cargado como UMD desde CDN. Si abrís el archivo directamente como `file://` en Chrome/Edge puede haber restricciones de CORS. Recomendado: usar la extensión **Live Server** de VS Code o `npx serve`.
