@@ -176,17 +176,18 @@ Content-Type: application/json
 
 ```
 Neumet-Gestion/
-├── index.html                        # Panel admin (SPA)
+├── index.html                        # Landing page pública (raíz)
+├── app-demo.mp4                      # Video del dispositivo para la landing
+├── adminpanel/
+│   └── index.html                    # Panel admin (SPA)
 ├── assets/
-│   ├── css/styles.css                # Estilos globales
+│   ├── css/styles.css                # Estilos globales del panel
 │   ├── js/app.js                     # Lógica frontend (Supabase JS SDK)
 │   └── img/                          # Logo e imágenes
-├── landing/
-│   └── index.html                    # Landing page pública (Cloudflare Turnstile + Resend)
 ├── supabase/
 │   └── functions/
 │       ├── guardar-montaje-mm/       # Recibe mediciones del calibre físico
-│       └── contacto/                 # Recibe formulario, valida CAPTCHA y envía email
+│       └── contacto/                 # Recibe formulario y envía email vía Resend
 ├── .gitignore
 └── README.md
 ```

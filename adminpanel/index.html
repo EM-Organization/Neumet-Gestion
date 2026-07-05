@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NEUMET · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Exo+2:ital,wght@1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/styles.css"/>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
+      <img src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:120px;height:120px;object-fit:contain;border-radius:18px"/>
+    </div>
+    <div class="login-title">Bienvenido</div>
+    <div class="login-sub">Iniciá sesión para continuar</div>
+    <div class="login-error" id="login-error"></div>
+    <form class="login-form" id="login-form">
+      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password"/></div>
+      <button type="submit" class="login-btn" id="login-btn">Iniciar sesión</button>
+    </form>
+  </div>
+</div>
+
+<!-- APP ADMIN -->
+<div class="app hidden" id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div style="width:32px;height:28px;overflow:hidden;border-radius:6px;flex-shrink:0">
+        <img src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:32px;height:42px;object-fit:cover;object-position:center top"/>
+      </div>
+      <div>
+        <div class="brand-sub" style="color:rgba(255,255,255,0.6);font-size:12px">admin · v10</div>
+      </div>
+    </div>
+    <div class="nav-section">Workspace</div>
+    <div class="nav-item" data-view="dashboard" data-cliente-only style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Mi Panel
+    </div>
+    <div class="nav-item" data-view="balance" data-admin-only>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Balance
+    </div>
+    <div class="nav-item active" data-view="clientes" data-admin-only>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Clientes
+    </div>
+    <div class="nav-item" data-view="vehiculos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Vehículos
+    </div>
+    <div class="nav-item" data-view="dispositivos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+      Dispositivos
+      <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
+    </div>
+    <div class="nav-item" data-view="mediciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Mediciones
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="user-avatar">A</div>
+      <div class="user-info">
+        <div class="user-name" id="user-email">—</div>
+        <div class="user-role" id="user-role">Administrador</div>
+      </div>
+      <button class="logout-btn" id="logout-btn" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Menú">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="breadcrumb" id="breadcrumb-current">Clientes</div>
+      </div>
+      <div class="status-pill" id="status-pill">
+        <div class="status-dot"></div>
+        <span id="status-text">Conectando...</span>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD (cliente) -->
+      <div class="view" id="view-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="dash-title">Mi Panel</div>
+            <div class="page-subtitle" id="dash-subtitle">Resumen de tu flota y neumáticos</div>
+          </div>
+          <button class="btn ghost" onclick="loadDashboard()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Actualizar
+          </button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="dash-kpi-row">
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-icon" style="background:rgba(0,122,255,0.1);color:#007aff">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div>
+              <div class="dash-kpi-val" id="dash-stat-vehs">—</div>
+              <div class="dash-kpi-label">Vehículos activos</div>
+            </div>
+          </div>
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-icon" style="background:rgba(52,199,89,0.1);color:#1a7f37">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+            </div>
+            <div>
+              <div class="dash-kpi-val" id="dash-stat-disps">—</div>
+              <div class="dash-kpi-label">Dispositivos</div>
+            </div>
+          </div>
+          <div class="dash-kpi-card">
+            <div class="dash-kpi-icon" style="background:rgba(201,185,106,0.15);color:#8a7530">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            </div>
+            <div>
+              <div class="dash-kpi-val" id="dash-stat-meds">—</div>
+              <div class="dash-kpi-label">Mediciones totales</div>
+            </div>
+          </div>
+          <div class="dash-kpi-card" id="dash-kpi-criticos">
+            <div class="dash-kpi-icon" style="background:rgba(255,59,48,0.08);color:#c0392b">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div class="dash-kpi-val" id="dash-stat-criticos">—</div>
+              <div class="dash-kpi-label">Neumáticos críticos</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado de la flota por vehículo -->
+        <div class="dash-section-title">Estado de la flota</div>
+        <div id="dash-fleet-grid" class="dash-fleet-grid">
+          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Cargando...</div>
+        </div>
+
+        <!-- Mediciones recientes -->
+        <div class="dash-section-title" style="margin-top:22px">Mediciones recientes</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Vehículo</th>
+              <th>Posición</th>
+              <th>Exterior</th>
+              <th>Medio</th>
+              <th>Interior</th>
+              <th>Estado</th>
+              <th>Hace</th>
+            </tr></thead>
+            <tbody id="dash-recent-body">
+              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="view active" id="view-clientes">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Clientes</div>
+            <div class="page-subtitle">Gestioná clientes y sus credenciales de acceso.</div>
+          </div>
+          <button class="btn primary" onclick="openClienteModal('create')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo cliente
+          </button>
+        </div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value" id="stat-clients">—</div><div class="stat-trend">total registrados</div></div>
+          <div class="stat-card"><div class="stat-label">Vehículos</div><div class="stat-value" id="stat-vehs">—</div><div class="stat-trend blue">registrados</div></div>
+          <div class="stat-card"><div class="stat-label">Dispositivos</div><div class="stat-value" id="stat-disps">—</div><div class="stat-trend">activos</div></div>
+          <div class="stat-card"><div class="stat-label">Sin dispositivo</div><div class="stat-value" id="stat-nodev">—</div><div class="stat-trend orange">clientes</div></div>
+        </div>
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="search-clientes" type="text" placeholder="Buscar cliente..."/>
+          </div>
+          <button class="btn ghost" onclick="loadClients()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Actualizar
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:60px">ID</th>
+              <th>Nombre</th>
+              <th>Dispositivos</th>
+              <th>Estado</th>
+              <th style="width:90px"></th>
+            </tr></thead>
+            <tbody id="tbody-clientes">
+              <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div>Cargando clientes...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BALANCE -->
+      <div class="view" id="view-balance">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Balance</div>
+            <div class="page-subtitle">Ingresos por clientes, gastos de la empresa y resultado mensual.</div>
+          </div>
+          <button class="btn primary" onclick="openGastoModal('create')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo gasto
+          </button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="balance-grid">
+          <div class="balance-kpi neutral">
+            <div class="kpi-label">Ingresos mensuales</div>
+            <div class="kpi-value gold" id="kpi-ingresos">—</div>
+            <div class="kpi-sub" id="kpi-ingresos-sub">— clientes activos</div>
+          </div>
+          <div class="balance-kpi">
+            <div class="kpi-label">Gastos mensuales</div>
+            <div class="kpi-value" id="kpi-gastos">—</div>
+            <div class="kpi-sub" id="kpi-gastos-sub">— ítems recurrentes</div>
+          </div>
+          <div class="balance-kpi" id="kpi-resultado-card">
+            <div class="kpi-label">Resultado neto</div>
+            <div class="kpi-value" id="kpi-resultado">—</div>
+            <div class="kpi-sub" id="kpi-resultado-sub">por mes</div>
+          </div>
+          <div class="balance-kpi">
+            <div class="kpi-label">Margen</div>
+            <div class="kpi-value" id="kpi-margen">—</div>
+            <div class="kpi-sub">sobre ingresos</div>
+          </div>
+        </div>
+
+        <!-- Ingresos + Gastos -->
+        <div class="balance-cols">
+          <div class="balance-card">
+            <div class="balance-card-header">
+              <div>
+                <div class="balance-card-title">Ingresos por cliente</div>
+                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">Editá el precio mensual de cada uno</div>
+              </div>
+              <div class="balance-card-total ingreso" id="total-ingresos-lbl">$0</div>
+            </div>
+            <table class="balance-table">
+              <thead><tr>
+                <th>Cliente</th>
+                <th style="text-align:right">$/mes</th>
+                <th style="width:36px"></th>
+              </tr></thead>
+              <tbody id="tbody-ingresos">
+                <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="balance-card">
+            <div class="balance-card-header">
+              <div>
+                <div class="balance-card-title">Gastos de la empresa</div>
+                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">Solo los recurrentes y activos cuentan</div>
+              </div>
+              <div class="balance-card-total gasto" id="total-gastos-lbl">$0</div>
+            </div>
+            <table class="balance-table">
+              <thead><tr>
+                <th>Concepto</th>
+                <th>Categoría</th>
+                <th style="text-align:right">$/mes</th>
+                <th style="width:60px"></th>
+              </tr></thead>
+              <tbody id="tbody-gastos">
+                <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Gráfico mensual -->
+        <div id="balance-chart-card" style="margin-top:20px;background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);border:1px solid var(--border);">
+          <div style="padding:22px 24px 4px;display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-size:20px;font-weight:600;letter-spacing:-0.02em;color:var(--text-primary)">Evolución mensual</div>
+              <div style="font-size:13px;color:var(--text-tertiary);margin-top:3px">Ingresos, gastos y resultado neto — últimos 12 meses</div>
+            </div>
+            <div style="display:flex;gap:18px;align-items:center;padding-top:4px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <svg width="24" height="3" style="overflow:visible"><line x1="0" y1="1.5" x2="24" y2="1.5" stroke="#C9B96A" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <span style="font-size:12px;color:var(--text-secondary);font-weight:500">Ingresos</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <svg width="24" height="3" style="overflow:visible"><line x1="0" y1="1.5" x2="24" y2="1.5" stroke="#34c759" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <span style="font-size:12px;color:var(--text-secondary);font-weight:500">Resultado</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <svg width="24" height="3" style="overflow:visible"><line x1="0" y1="1.5" x2="24" y2="1.5" stroke="rgba(192,57,43,0.7)" stroke-width="2" stroke-dasharray="5 3" stroke-linecap="round"/></svg>
+                <span style="font-size:12px;color:var(--text-secondary);font-weight:500">Gastos</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:8px 0 0">
+            <svg id="balance-chart-svg" width="100%" height="280" style="display:block"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- VEHÍCULOS -->
+      <div class="view" id="view-vehiculos">
+
+        <!-- Sub-tabs -->
+        <div class="sub-tabs-bar">
+          <button class="sub-tab active" data-subtab="sv-vehiculos" onclick="switchSubTab('sv-vehiculos',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Vehículos
+          </button>
+          <button class="sub-tab" data-subtab="sv-stock" onclick="switchSubTab('sv-stock',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+            Stock de Neumáticos
+          </button>
+        </div>
+
+        <!-- Sub-view: Vehículos -->
+        <div class="sub-view" id="sv-vehiculos">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Vehículos</div>
+              <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
+            </div>
+            <button class="btn primary" onclick="openVehiculoModal('create')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Nuevo vehículo
+            </button>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..."/>
+            </div>
+            <select id="filter-cliente-veh" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+              <option value="">Todos los clientes</option>
+            </select>
+            <button class="btn ghost" onclick="loadVehiculos()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th style="width:60px">ID</th>
+                <th>Nombre</th>
+                <th>Patente</th>
+                <th>Cliente</th>
+                <th>Ruedas</th>
+                <th>Estado</th>
+                <th style="width:110px"></th>
+              </tr></thead>
+              <tbody id="tbody-vehiculos">
+                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sub-view: Stock de Neumáticos -->
+        <div class="sub-view" id="sv-stock" style="display:none">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Stock de Neumáticos</div>
+              <div class="page-subtitle">Registrá las compras de cubiertas para asignarlas a los vehículos.</div>
+            </div>
+            <button class="btn primary" onclick="openStockModal('create')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar compra
+            </button>
+          </div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="search-stock" type="text" placeholder="Buscar marca o modelo..."/>
+            </div>
+            <select id="filter-cliente-stock" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+              <option value="">Todos los clientes</option>
+            </select>
+            <button class="btn ghost" onclick="loadStock()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Cliente</th>
+                <th>Precio/ud</th>
+                <th>Fecha compra</th>
+                <th>Asignados</th>
+                <th>Notas</th>
+                <th style="width:80px"></th>
+              </tr></thead>
+              <tbody id="tbody-stock">
+                <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- DISPOSITIVOS -->
+      <div class="view" id="view-dispositivos">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Dispositivos</div>
+            <div class="page-subtitle">Medidores asignados a cada cliente (identificados por MAC).</div>
+          </div>
+          <button class="btn primary" data-admin-only onclick="openDispositivoModal('create')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo dispositivo
+          </button>
+        </div>
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre..."/>
+          </div>
+          <select id="filter-cliente-disp" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+            <option value="">Todos los clientes</option>
+          </select>
+          <button class="btn ghost" onclick="loadDispositivos()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Actualizar
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:60px">ID</th>
+              <th>MAC Address</th>
+              <th>Nombre</th>
+              <th>Cliente</th>
+              <th>Última medición</th>
+              <th>Estado</th>
+              <th style="width:90px"></th>
+            </tr></thead>
+            <tbody id="tbody-dispositivos">
+              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando dispositivos...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="unreg-section" style="display:none;margin-top:22px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="width:7px;height:7px;border-radius:50%;background:#ff9500;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--warning)">Sin cliente asignado</span>
+            <span id="unreg-count" style="background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;color:var(--warning)">0</span>
+            <span style="font-size:12px;color:var(--text-tertiary)">enviaron mediciones pero no están registrados</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>MAC Address</th>
+                <th>Última medición</th>
+                <th>Mediciones totales</th>
+                <th style="width:130px"></th>
+              </tr></thead>
+              <tbody id="tbody-unreg"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEDICIONES -->
+      <div class="view" id="view-mediciones">
+        <div class="page-header" style="align-items:center">
+          <div>
+            <div class="page-title">Mediciones</div>
+            <div class="page-subtitle">Inspeccioná el estado de los neumáticos.</div>
+          </div>
+          <div class="med-tabs">
+            <button class="med-tab active" data-mode="vehiculo">Por vehículo</button>
+            <button class="med-tab" data-mode="dispositivo">Por dispositivo</button>
+          </div>
+        </div>
+        <div class="med-layout">
+          <div class="med-top">
+            <div class="med-card med-top-left" id="med-panel-vehiculo">
+              <div class="med-card-header">
+                <div><div class="med-card-title">Selección</div><div class="med-card-sub">Cliente y vehículo</div></div>
+              </div>
+              <div class="med-select-block">
+                <div class="med-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+                  <input id="med-cliente-search" type="text" placeholder="Buscar cliente..."/>
+                </div>
+                <select id="med-cliente-select"><option value="">— Seleccionar cliente —</option></select>
+                <select id="med-vehiculo-select" disabled><option value="">— Seleccionar vehículo —</option></select>
+              </div>
+            </div>
+
+            <div class="med-card med-top-left" id="med-panel-dispositivo" style="display:none">
+              <div class="med-card-header">
+                <div><div class="med-card-title">Dispositivo</div><div class="med-card-sub">Seleccioná un medidor</div></div>
+              </div>
+              <div style="padding:10px 14px 6px">
+                <div class="med-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+                  <input id="med-device-search" type="text" placeholder="Buscar MAC o nombre..."/>
+                </div>
+              </div>
+              <div class="device-list" id="med-device-list">
+                <div class="med-empty" style="padding:28px"><div class="spinner"></div></div>
+              </div>
+            </div>
+
+            <div class="med-card med-top-right" id="med-counters-card" style="display:none">
+              <div class="tire-counters" style="border-top:none">
+                <div class="tire-counter"><div class="tire-counter-n" id="med-ok" style="color:#1a7f37">0</div><div class="tire-counter-l">OK</div></div>
+                <div class="tire-counter"><div class="tire-counter-n" id="med-warn" style="color:#b25000">0</div><div class="tire-counter-l">Bajo</div></div>
+                <div class="tire-counter"><div class="tire-counter-n" id="med-crit" style="color:#c0392b">0</div><div class="tire-counter-l">Crítico</div></div>
+              </div>
+              <div class="tire-legend" style="border-top:1px solid var(--border)">
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#34c759"></div>≥ 8mm OK</div>
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#ff9500"></div>5–7.9mm Bajo</div>
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#ff3b30"></div>&lt; 5mm Crítico</div>
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#48484a"></div>Sin datos</div>
+              </div>
+              <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+                <button id="med-export-btn" onclick="exportMedicionesCSV()" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  CSV
+                </button>
+                <button id="med-report-btn" onclick="generarReportePDF()" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  Reporte PDF
+                </button>
+              </div>
+            </div>
+
+            <div class="med-card med-top-right" id="med-sessions-card" style="display:none;flex-direction:column">
+              <div class="med-card-header">
+                <div><div class="med-card-title">Sesiones de medición</div><div class="med-card-sub" id="med-sessions-sub">Seleccioná una sesión para ver el estado del camión</div></div>
+              </div>
+              <div class="session-list" id="med-sessions-list">
+                <div class="med-empty" style="padding:32px">
+                  <div style="font-size:13px;color:var(--text-tertiary)">Seleccioná un dispositivo</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="med-card" id="med-truck-card" style="display:none">
+            <div class="truck-container">
+              <svg id="med-truck-svg" width="100%" viewBox="0 0 600 270" style="overflow:visible;max-width:780px"></svg>
+            </div>
+          </div>
+
+          <div class="med-bottom">
+            <div class="med-card" id="med-detail-card">
+              <div class="med-empty" id="med-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8l4 4-4 4"/></svg>
+                <div style="font-weight:500;color:var(--text-secondary);margin-bottom:4px" id="med-empty-title">Seleccioná un vehículo</div>
+                <div style="font-size:13px" id="med-empty-sub">Luego hacé clic en un neumático para ver sus mediciones</div>
+              </div>
+              <div id="med-loading" style="display:none" class="med-empty">
+                <div class="spinner"></div>
+                <div>Cargando mediciones...</div>
+              </div>
+              <div id="med-tire-detail" style="display:none">
+                <div class="tire-detail-header">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span class="tire-pos-badge" id="med-pos-badge">P1</span>
+                    <div>
+                      <div style="font-size:15px;font-weight:600;color:var(--text-primary)" id="med-tire-title">—</div>
+                      <div style="font-size:12px;color:var(--text-tertiary);margin-top:1px" id="med-tire-sub">—</div>
+                    </div>
+                  </div>
+                  <span class="tire-status" id="med-tire-status">—</span>
+                </div>
+                <div class="mm-grid">
+                  <div class="mm-box"><div class="mm-val" id="med-mm1">—</div><div class="mm-lbl">Exterior</div><div class="mm-bar-wrap"><div class="mm-bar-inner" id="med-bar1" style="width:0%"></div></div></div>
+                  <div class="mm-box"><div class="mm-val" id="med-mm2">—</div><div class="mm-lbl">Medio</div><div class="mm-bar-wrap"><div class="mm-bar-inner" id="med-bar2" style="width:0%"></div></div></div>
+                  <div class="mm-box"><div class="mm-val" id="med-mm3">—</div><div class="mm-lbl">Interior</div><div class="mm-bar-wrap"><div class="mm-bar-inner" id="med-bar3" style="width:0%"></div></div></div>
+                </div>
+                <div style="display:flex;gap:0;flex-wrap:wrap">
+                  <div class="hist-table-wrap" style="flex:1;min-width:280px">
+                    <div class="hist-section-lbl">Historial de mediciones</div>
+                    <table class="hist-table">
+                      <thead><tr><th>Fecha</th><th>Exterior</th><th>Medio</th><th>Interior</th><th>Prom.</th></tr></thead>
+                      <tbody id="med-hist-body"></tbody>
+                    </table>
+                  </div>
+                  <div class="chart-section" style="flex:1;min-width:280px">
+                    <div class="hist-section-lbl">Evolución del desgaste</div>
+                    <svg id="med-chart-svg" width="100%" height="130"></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal Cliente -->
+<div class="modal-backdrop" id="modal-cliente" onclick="if(event.target===this)closeClienteModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="cli-modal-title">Nuevo cliente</div>
+      <div class="modal-sub" id="cli-modal-sub">Creá el cliente y sus credenciales de acceso</div>
+    </div>
+    <div class="modal-body">
+      <div class="field" id="field-name"><label>Nombre de la empresa</label><input type="text" id="f-name" placeholder="Ej: Transportes S.A."/></div>
+      <div class="field" id="field-email"><label>Email de acceso</label><input type="email" id="f-email" placeholder="cliente@empresa.com" autocomplete="off"/></div>
+      <div class="field" id="field-password">
+        <label>Contraseña inicial</label>
+        <div style="position:relative">
+          <input type="password" id="f-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+          <button type="button" onclick="togglePassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeClienteModal()">Cancelar</button>
+      <button class="btn primary" id="cli-save" onclick="saveCliente()">Crear cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Modal Vehículo -->
+<div class="modal-backdrop" id="modal-vehiculo" onclick="if(event.target===this)closeVehiculoModal()">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="veh-modal-title">Nuevo vehículo</div>
+      <div class="modal-sub" id="veh-modal-sub">Completá los datos del vehículo</div>
+    </div>
+    <div class="modal-body">
+      <!-- Sección: Datos básicos -->
+      <div class="modal-section-title">Datos del vehículo</div>
+      <div class="field-row">
+        <div class="field"><label>Cliente</label><select id="vf-cliente"></select></div>
+        <div class="field"><label>Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Patente <span class="label-opt">(opcional)</span></label>
+          <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
+        </div>
+        <div class="field">
+          <label>Número de coche <span class="label-opt">(opcional)</span></label>
+          <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Cantidad de ruedas</label>
+          <select id="vf-ruedas">
+            <option value="10">10 ruedas</option>
+            <option value="16">16 ruedas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fecha de compra del vehículo <span class="label-opt">(opcional)</span></label>
+          <input type="date" id="vf-fecha-compra"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Último servicio <span class="label-opt">(opcional)</span></label>
+          <input type="date" id="vf-ultimo-servicio"/>
+        </div>
+        <div class="field"></div>
+      </div>
+      <div class="field">
+        <label>Notas internas <span class="label-opt">(opcional)</span></label>
+        <textarea id="vf-notas" placeholder="Observaciones, historial, etc." rows="2" style="resize:vertical"></textarea>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Vehículo activo</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="vf-activo" checked/>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeVehiculoModal()">Cancelar</button>
+      <button class="btn primary" id="veh-save" onclick="saveVehiculo()">Crear vehículo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Neumáticos del vehículo (vista visual) -->
+<div class="modal-backdrop" id="modal-neumaticos" onclick="if(event.target===this)closeNeumaticosModal()">
+  <div class="modal modal-neum">
+    <div class="modal-header">
+      <div class="modal-title" id="neum-modal-title">Neumáticos</div>
+      <div class="modal-sub" id="neum-modal-sub">Hacé clic en una rueda para editarla</div>
+    </div>
+    <div class="neum-assign-layout">
+      <!-- Panel izquierdo: dibujo del vehículo -->
+      <div class="neum-svg-panel">
+        <svg id="neum-assign-svg" style="width:100%;display:block"></svg>
+        <div class="neum-svg-hint">Hacé clic en una rueda para ver o editar su neumático</div>
+      </div>
+      <!-- Panel derecho: detalle de la posición seleccionada -->
+      <div class="neum-detail-panel" id="neum-detail-panel">
+        <div class="neum-no-sel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+          <span>Seleccioná una rueda</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeNeumaticosModal()">Cerrar</button>
+      <button class="btn primary" id="neum-save" onclick="saveNeumaticos()">Guardar todo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Stock de Neumáticos (CRUD) -->
+<div class="modal-backdrop" id="modal-stock" onclick="if(event.target===this)closeStockModal()">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="stock-modal-title">Nueva compra</div>
+      <div class="modal-sub">Registrá una compra de neumáticos</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Cliente</label><select id="sf-cliente"></select></div>
+        <div class="field"><label>Marca</label><input type="text" id="sf-marca" placeholder="Ej: Michelin"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="Ej: X MultiWay 3D"/></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="sf-cantidad" value="1" min="1" step="1"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Precio por unidad <span class="label-opt">(opcional)</span></label><input type="number" id="sf-precio" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="field"><label>Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="sf-fecha"/></div>
+      </div>
+      <div class="field"><label>Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeStockModal()">Cancelar</button>
+      <button class="btn primary" id="stock-save" onclick="saveStock()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Gasto -->
+<div class="modal-backdrop" id="modal-gasto" onclick="if(event.target===this)closeGastoModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="gasto-modal-title">Nuevo gasto</div>
+      <div class="modal-sub" id="gasto-modal-sub">Agregá un gasto mensual de la empresa</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler oficina"/></div>
+      <div class="field">
+        <label>Categoría</label>
+        <select id="gf-categoria">
+          <option value="Personal">Personal</option>
+          <option value="Infraestructura">Infraestructura</option>
+          <option value="Operativo" selected>Operativo</option>
+          <option value="Marketing">Marketing</option>
+          <option value="Tecnología">Tecnología</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="field"><label>Monto mensual ($)</label><input type="number" id="gf-monto" placeholder="0.00" min="0" step="0.01"/></div>
+      <div class="field">
+        <label>Notas <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+        <input type="text" id="gf-notas" placeholder="Descripción adicional..."/>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Gasto recurrente (mensual)</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="gf-recurrente" checked/>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Activo</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="gf-activo" checked/>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeGastoModal()">Cancelar</button>
+      <button class="btn primary" id="gasto-save" onclick="saveGasto()">Crear gasto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dispositivo -->
+<div class="modal-backdrop" id="modal-dispositivo" onclick="if(event.target===this)closeDispositivoModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="disp-modal-title">Nuevo dispositivo</div>
+      <div class="modal-sub" id="disp-modal-sub">Registrá el medidor y asignalo a un cliente</div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Cliente</label><select id="df-cliente"></select></div>
+      <div class="field"><label>MAC Address</label><input type="text" id="df-mac" placeholder="Ej: AA:BB:CC:DD:EE:FF" style="font-family:var(--font-mono);text-transform:uppercase"/></div>
+      <div class="field">
+        <label>Nombre <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+        <input type="text" id="df-nombre" placeholder="Ej: Medidor 01"/>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Dispositivo activo</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="df-activo" checked/>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" onclick="closeDispositivoModal()">Cancelar</button>
+      <button class="btn primary" id="disp-save" onclick="saveDispositivo()">Crear dispositivo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar eliminación -->
+<div class="modal-backdrop" id="modal-confirm">
+  <div class="modal confirm-modal">
+    <div class="modal-body">
+      <div class="confirm-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </div>
+      <div class="modal-title" id="confirm-title">¿Eliminar?</div>
+      <div class="modal-sub" id="confirm-msg" style="margin-top:6px">Esta acción no se puede deshacer.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" id="confirm-cancel">Cancelar</button>
+      <button class="btn danger" id="confirm-ok">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+  <span id="toast-msg">OK</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

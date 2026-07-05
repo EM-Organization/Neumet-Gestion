@@ -20,3 +20,4 @@ Thumbs.db
 dist/
 build/
 servidor.ps1
+.vercel
