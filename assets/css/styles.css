@@ -389,6 +389,26 @@
   .nav-badge { margin-left:auto; background:#ff9500; color:white; border-radius:999px; font-size:10px; font-weight:700; padding:1px 6px; line-height:1.5; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
 
+  /* ANÁLISIS PREDICTIVO */
+  .analysis-block { margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+  .analysis-title { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:10px; }
+  .analysis-cards { display:flex; gap:8px; flex-wrap:wrap; }
+  .analysis-card {
+    flex:1; min-width:140px;
+    background:var(--surface-secondary); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px;
+  }
+  .analysis-card.warn  { background:rgba(255,149,0,0.07);  border-color:rgba(255,149,0,0.25); }
+  .analysis-card.crit  { background:rgba(255,59,48,0.07);   border-color:rgba(255,59,48,0.22); }
+  .analysis-card.ok    { background:rgba(52,199,89,0.07);   border-color:rgba(52,199,89,0.22); }
+  .analysis-card.info  { background:rgba(0,122,255,0.06);   border-color:rgba(0,122,255,0.18); }
+  .ac-label { font-size:11px; color:var(--text-tertiary); font-weight:500; margin-bottom:4px; }
+  .ac-value { font-size:15px; font-weight:700; color:var(--text-primary); letter-spacing:-.3px; }
+  .ac-value.warn  { color:#b25000; }
+  .ac-value.crit  { color:#c0392b; }
+  .ac-value.ok    { color:#1a7f37; }
+  .ac-sub  { font-size:11px; color:var(--text-tertiary); margin-top:3px; line-height:1.4; }
+
   /* TOGGLE SWITCH */
   .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; }
   .toggle-label { font-size:13px; font-weight:500; color:var(--text-secondary); }

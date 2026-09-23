@@ -460,6 +460,112 @@ function mTireColor(pos){
   return         {stroke:'#ff3b30',fill:'rgba(255,59,48,0.12)',text:'#c0392b',status:'crit'};
 }
 
+// ── ANÁLISIS PREDICTIVO ──
+// Devuelve un objeto con los insights calculados para una posición dada.
+// Requiere al menos 2 mediciones con fechas distintas para la tasa de desgaste.
+function mAnalysis(pos){
+  const hist = medTireData[pos];
+  if(!hist || hist.length < 1) return null;
+
+  const result = {};
+
+  // Último promedio conocido
+  const lastAvg = mAvg(hist[hist.length - 1]);
+  result.lastAvg = lastAvg;
+
+  // ── Tasa de desgaste (mm/semana) ──
+  if(hist.length >= 2){
+    const oldest = hist[0];
+    const newest = hist[hist.length - 1];
+    const avgOld = mAvg(oldest);
+    const avgNew = mAvg(newest);
+    const msOld  = new Date(oldest.created_at).getTime();
+    const msNew  = new Date(newest.created_at).getTime();
+    const days   = (msNew - msOld) / (1000 * 60 * 60 * 24);
+
+    if(days > 0 && avgOld != null && avgNew != null){
+      const lostMM   = avgOld - avgNew;          // mm perdidos en ese período
+      const mmPerDay = lostMM / days;
+      result.mmPerWeek = mmPerDay * 7;            // positivo = se está gastando
+      result.mmPerDay  = mmPerDay;
+      result.days      = Math.round(days);
+
+      // ── Proyección de vida útil hasta 3mm (límite seguro mínimo) ──
+      const LIMIT = 3;
+      if(mmPerDay > 0 && lastAvg != null && lastAvg > LIMIT){
+        const daysLeft = (lastAvg - LIMIT) / mmPerDay;
+        result.daysUntilLimit = Math.round(daysLeft);
+      } else if(mmPerDay <= 0){
+        result.daysUntilLimit = null; // no se está desgastando (datos insuficientes / rueda nueva)
+      }
+    }
+  }
+
+  // ── Desgaste desparejo (diferencia exterior vs interior > 1.5mm) ──
+  const lastRow = hist[hist.length - 1];
+  if(lastRow.mm1 != null && lastRow.mm3 != null){
+    const diff = Math.abs(lastRow.mm1 - lastRow.mm3);
+    if(diff >= 1.5){
+      result.unevenWear = diff;
+      result.unevenSide = lastRow.mm1 < lastRow.mm3 ? 'exterior' : 'interior';
+    }
+  }
+
+  return result;
+}
+
+function mRenderAnalysis(pos){
+  const block = document.getElementById('med-analysis-block');
+  const cards = document.getElementById('med-analysis-cards');
+  const a = mAnalysis(pos);
+
+  if(!a){ block.style.display='none'; return; }
+
+  const html = [];
+
+  // Tasa de desgaste
+  if(a.mmPerWeek != null){
+    const rate   = Math.abs(a.mmPerWeek).toFixed(2);
+    const losing = a.mmPerWeek > 0;
+    const cls    = !losing ? 'ok' : a.mmPerWeek > 0.5 ? 'warn' : 'ok';
+    html.push(`
+      <div class="analysis-card ${cls}">
+        <div class="ac-label">Tasa de desgaste</div>
+        <div class="ac-value ${cls}">${rate} mm/sem</div>
+        <div class="ac-sub">Basado en ${a.days} días de historial</div>
+      </div>`);
+  }
+
+  // Vida útil estimada
+  if(a.daysUntilLimit != null){
+    const weeks = Math.round(a.daysUntilLimit / 7);
+    let cls, txt;
+    if(a.daysUntilLimit < 30)       { cls='crit'; txt=`~${a.daysUntilLimit} días`; }
+    else if(a.daysUntilLimit < 90)  { cls='warn'; txt=`~${weeks} semanas`; }
+    else                             { cls='ok';   txt=`~${Math.round(a.daysUntilLimit/30)} meses`; }
+    html.push(`
+      <div class="analysis-card ${cls}">
+        <div class="ac-label">Vida útil estimada</div>
+        <div class="ac-value ${cls}">${txt}</div>
+        <div class="ac-sub">Hasta llegar a 3mm al ritmo actual</div>
+      </div>`);
+  }
+
+  // Desgaste desparejo
+  if(a.unevenWear != null){
+    html.push(`
+      <div class="analysis-card warn">
+        <div class="ac-label">Desgaste desparejo</div>
+        <div class="ac-value warn">${a.unevenWear.toFixed(1)} mm</div>
+        <div class="ac-sub">Mayor desgaste en el lado ${a.unevenSide}. Revisar alineación o presión.</div>
+      </div>`);
+  }
+
+  if(!html.length){ block.style.display='none'; return; }
+  cards.innerHTML = html.join('');
+  block.style.display = 'block';
+}
+
 async function medInit(){
   const sel=document.getElementById('med-cliente-select');
   // Panel selector de cliente: ocultar en modo cliente y auto-seleccionar
@@ -1121,6 +1227,7 @@ function medSelectTire(pos){
     }).join('');
   }
   medDrawChart(hist);
+  mRenderAnalysis(pos);
 }
 
 function medDrawChart(hist){
