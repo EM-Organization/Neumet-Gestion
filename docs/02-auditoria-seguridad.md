@@ -124,3 +124,14 @@ No hay CSP, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` ni HSTS d
 4. **P1** — Reemplazar alta por contraseña con invitación; MFA a admins.
 5. **P1** — `contacto`: CAPTCHA server-side + rate-limit + escapado.
 6. **P2** — Soft-delete y auditoría; gitleaks en CI; autoalojar fuentes.
+
+## 8. Estado de remediación (2026-11-06)
+
+| Hallazgo | Estado | Detalle |
+|---|---|---|
+| S8 `contacto` | 🟡 Código listo, sin desplegar ni probar en ejecución | Escapado HTML, validación, CORS por `ALLOWED_ORIGINS`, `TO_EMAIL` por secret, honeypot, Turnstile opcional (la landing aún no envía `cf_token`). Sin cabecera `Origin` (curl) la petición pasa: CORS no frena a clientes no-navegador; falta rate-limit. Ver `supabase/functions/contacto/README.md` |
+| §4 XSS | 🟡 Código listo, no probado en navegador | `esc()` en marca/modelo/reporte/categoría; `onclick` con MAC → `data-mac`; errores genéricos. `supabase-js` fijado en 2.118.0 con SRI (hash verificado) |
+| S9 cabeceras | 🟡 `vercel.json` listo, sin desplegar | CSP con `'unsafe-inline'` temporal (ver doc 03) |
+| S1/S2 RLS y signup | 🔴 Pendiente (requiere dashboard) | `supabase/audit/rls_audit.sql` y `supabase/config.toml` listos; ejecutar y aplicar |
+| S7 ingesta de dispositivos | 🔴 Pendiente | La función `guardar-montaje-mm` no está en el repo |
+| S3–S6 | 🔴 Pendiente | Invitación de clientes, soft-delete, MFA |
