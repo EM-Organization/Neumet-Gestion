@@ -1,0 +1,16 @@
+# Configuracion minima de Supabase CLI para NEUMET.
+project_id = "dqgrlflrjcarxlfetvoj"
+
+[auth]
+enabled = true
+site_url = "https://CAMBIAR-DOMINIO"
+additional_redirect_urls = ["https://CAMBIAR-DOMINIO", "http://localhost:3000"]
+enable_signup = false
+minimum_password_length = 12
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[functions.contacto]
+verify_jwt = false

@@ -21,3 +21,6 @@ dist/
 build/
 servidor.ps1
 .vercel
+
+# Claude Code worktrees
+.claude/worktrees/

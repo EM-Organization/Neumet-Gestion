@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar vercel.json
+        run: python3 -m json.tool vercel.json > /dev/null
+      - name: Sintaxis de app.js
+        run: node --check assets/js/app.js
+      - name: Chequeo de Edge Function (si hay deno)
+        run: |
+          if command -v deno >/dev/null 2>&1; then
+            deno check supabase/functions/contacto/index.ts
+          else
+            echo "deno no disponible; se omite"
+          fi
