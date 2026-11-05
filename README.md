@@ -4,6 +4,8 @@ Panel de administración web para la gestión de clientes, vehículos, dispositi
 
 ---
 
+> 📚 Revisión de arquitectura, auditoría de seguridad y plan de despliegue: ver [`docs/`](docs/README.md).
+
 ## Flujo de onboarding
 
 ![Flujo de onboarding de clientes y dispositivos](assets/img/onboarding-flow.svg)
