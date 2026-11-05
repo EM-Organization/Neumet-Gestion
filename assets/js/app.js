@@ -8,6 +8,8 @@ let clients = [], modalMode = 'create', activeId = null;
 
 const AVATARS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeCls = s => String(s==null?'':s).toLowerCase().replace(/[^a-z0-9_-]/g,'');
+function userError(e){ console.error(e); return 'No se pudo completar la operación'; }
 const avatarFor = id => AVATARS[Math.abs(id) % AVATARS.length];
 function relDate(d){
   const s=(Date.now()-new Date(d).getTime())/1000;
@@ -97,7 +99,7 @@ document.getElementById('login-form').addEventListener('submit',async e=>{
   const {data,error}=await db.auth.signInWithPassword({email,password:pass});
   btn.disabled=false; btn.textContent='Iniciar sesión';
   if(error){
-    err.textContent=error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message;
+    err.textContent=(error.message==='Invalid login credentials'||error.code==='invalid_credentials')?'Email o contraseña incorrectos':userError(error);
     err.classList.add('show'); return;
   }
   const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',data.user.id).maybeSingle();
@@ -280,7 +282,7 @@ async function loadClients(){
   const {data,error}=await db.from('clientes')
     .select('id,nombre,created_at,auth_user_id, dispositivos(id,mac_address,activo), vehiculos(id)')
     .order('created_at',{ascending:false});
-  if(error){ setStatus(false,'Error de conexión'); showToast('Error: '+error.message,true); return; }
+  if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
   clients=data||[]; setStatus(true,'Conectado'); renderClientes();
 }
 
@@ -416,7 +418,7 @@ window.saveCliente=async function(){
       showToast('Cliente actualizado');
     }
     closeClienteModal(); renderClientes();
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=modalMode==='create'?'Crear cliente':'Guardar'; }
 };
 
@@ -425,7 +427,7 @@ window.removeClient=async function(id){
   const ok=await confirmDialog(`Eliminar cliente`,`¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`);
   if(!ok) return;
   try{ await deleteClient(id); clients=clients.filter(c=>c.id!==id); showToast(`${c.nombre} eliminado`); renderClientes(); }
-  catch(e){ showToast('Error: '+e.message,true); }
+  catch(e){ showToast(userError(e),true); }
 };
 
 document.getElementById('search-clientes').addEventListener('input',renderClientes);
@@ -636,7 +638,7 @@ document.getElementById('med-vehiculo-select').addEventListener('change',async f
   document.getElementById('med-tire-detail').style.display='none';
   medTireData={}; medSelPos=null;
   const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
-  if(error){ showToast('Error: '+error.message,true); document.getElementById('med-loading').style.display='none'; return; }
+  if(error){ showToast(userError(error),true); document.getElementById('med-loading').style.display='none'; return; }
   // Agrupar historial por posición (últimas 10 lecturas por rueda)
   const grp={};
   (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
@@ -949,7 +951,7 @@ async function exportMedicionesCSV(){
   btn.disabled=false;
   btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar CSV';
 
-  if(error){ showToast('Error al exportar: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   if(!data||!data.length){ showToast('No hay mediciones para exportar',true); return; }
 
   const vehNombre=veh?veh.nombre:'vehiculo';
@@ -1058,8 +1060,8 @@ async function generarReportePDF(){
 
       return `<tr>
         <td style="font-weight:600;color:#3D3C20">Pos. ${pos}</td>
-        <td>${n?.marca||'—'}</td>
-        <td>${n?.modelo||'—'}</td>
+        <td>${esc(n?.marca||'—')}</td>
+        <td>${esc(n?.modelo||'—')}</td>
         <td>${n?.fecha_compra?fmtDate(n.fecha_compra):'—'}</td>
         <td style="text-align:center">
           <span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;background:${color}18;color:${color};border:1px solid ${color}40">
@@ -1086,7 +1088,7 @@ async function generarReportePDF(){
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>Reporte NEUMET · ${veh?.nombre||''}</title>
+<title>Reporte NEUMET · ${esc(veh?.nombre||'')}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#2C2B18;padding:40px;font-size:14px}
@@ -1126,8 +1128,8 @@ async function generarReportePDF(){
     <div style="font-size:12px;color:#6B6A52;margin-top:4px">Reporte de estado de neumáticos</div>
   </div>
   <div class="report-meta">
-    <div><strong>Vehículo:</strong> ${veh?.nombre||'—'}</div>
-    <div><strong>Patente:</strong> ${veh?.patente||'—'}</div>
+    <div><strong>Vehículo:</strong> ${esc(veh?.nombre||'—')}</div>
+    <div><strong>Patente:</strong> ${esc(veh?.patente||'—')}</div>
     <div><strong>Fecha:</strong> ${fmtDate(new Date().toISOString())}</div>
   </div>
 </div>
@@ -1166,11 +1168,12 @@ async function generarReportePDF(){
 </html>`;
 
     const w=window.open('','_blank');
+    if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes.',true); return; }
     w.document.write(html);
     w.document.close();
 
   } catch(e){
-    showToast('Error al generar reporte: '+e.message,true);
+    showToast(userError(e),true);
   } finally{
     btn.disabled=false;
     btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Reporte PDF';
@@ -1372,7 +1375,7 @@ function renderBalance(){
           ${!g.recurrente?'<span style="font-size:10px;color:var(--text-tertiary)">(único)</span>':''}
           ${!g.activo?'<span style="font-size:10px;color:var(--danger)"> · inactivo</span>':''}
         </td>
-        <td><span class="cat-pill cat-${g.categoria}">${g.categoria}</span></td>
+        <td><span class="cat-pill cat-${safeCls(g.categoria)}">${esc(g.categoria)}</span></td>
         <td style="text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600;color:${g.activo&&g.recurrente?'var(--danger)':'var(--text-tertiary)'}">${fmt(g.monto)}</td>
         <td><div class="actions">
           <button class="icon-btn" data-ga="edit" data-gid="${g.id}" title="Editar">
@@ -1669,7 +1672,7 @@ window.saveGasto=async function(){
       showToast('Gasto actualizado');
     }
     closeGastoModal(); renderBalance();
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=gastoModalMode==='create'?'Crear gasto':'Guardar'; }
 };
 
@@ -1678,7 +1681,7 @@ async function removeGasto(id){
   const ok=await confirmDialog('Eliminar gasto',`¿Eliminar "${g.nombre}" de los gastos?`);
   if(!ok) return;
   const {error}=await db.from('gastos').delete().eq('id',id);
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   gastos=gastos.filter(g=>g.id!==id);
   showToast('Gasto eliminado'); renderBalance();
 }
@@ -1702,7 +1705,7 @@ async function loadDispositivos(){
   const [{data:dispData,error:dispErr}, unregResult]=await Promise.all(promises);
   const unregData=unregResult?.data||[];
 
-  if(dispErr){ setStatus(false,'Error de conexión'); showToast('Error: '+dispErr.message,true); return; }
+  if(dispErr){ setStatus(false,'Error de conexión'); showToast(userError(dispErr),true); return; }
   dispositivos=dispData||[];
   setStatus(true,'Conectado');
 
@@ -1755,7 +1758,7 @@ function renderUnregistered(list){
         <span class="badge orange">● ${d.total_meds} medición${d.total_meds!=1?'es':''}</span>
       </td>
       <td style="text-align:right">
-        <button class="btn primary" style="font-size:12px;padding:5px 10px" onclick="registrarDispositivo('${esc(d.device_id)}')">
+        <button class="btn primary" style="font-size:12px;padding:5px 10px" data-reg-mac="${esc(d.device_id)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><path d="M12 5v14M5 12h14"/></svg>
           Registrar
         </button>
@@ -1812,6 +1815,10 @@ function renderDispositivos(){
 }
 
 // Abre el modal desde un dispositivo no registrado (MAC ya conocida)
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-reg-mac]');
+  if(b) window.registrarDispositivo(b.dataset.regMac);
+});
 window.registrarDispositivo=function(mac){
   openDispositivoModal('create', null, mac);
 };
@@ -1888,7 +1895,7 @@ window.saveDispositivo=async function(){
       showToast('Dispositivo actualizado');
     }
     closeDispositivoModal(); loadDispositivos(); // recarga todo incluyendo no registrados
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=dispModalMode==='create'?'Registrar dispositivo':'Guardar'; }
 };
 
@@ -1897,7 +1904,7 @@ async function removeDispositivo(id){
   const ok=await confirmDialog('Eliminar dispositivo',`¿Eliminar el dispositivo ${d.mac_address}?`);
   if(!ok) return;
   const {error}=await db.from('dispositivos').delete().eq('id',id);
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   dispositivos=dispositivos.filter(d=>d.id!==id);
   showToast('Dispositivo eliminado');
   renderDispositivos();
@@ -1917,7 +1924,7 @@ async function loadVehiculos(){
     .order('nombre');
   if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
   const {data,error}=await q;
-  if(error){ setStatus(false,'Error de conexión'); showToast('Error: '+error.message,true); return; }
+  if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
   vehiculos=data||[];
   setStatus(true,'Conectado');
   // Poblar filtro de clientes
@@ -2051,7 +2058,7 @@ window.saveVehiculo=async function(){
       showToast('Vehículo actualizado');
     }
     closeVehiculoModal(); renderVehiculos();
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=vehModalMode==='create'?'Crear vehículo':'Guardar'; }
 };
 
@@ -2313,7 +2320,7 @@ window.saveNeumaticos=async function(){
     }
     showToast('Neumáticos guardados');
     closeNeumaticosModal();
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent='Guardar todo'; }
 };
 
@@ -2345,7 +2352,7 @@ async function loadStock(){
     .order('created_at',{ascending:false});
   if(isClienteMode()) sq=sq.eq('cliente_id',currentClienteId);
   const {data,error}=await sq;
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   stockItems=data||[];
   // Poblar filtro clientes
   const sel=document.getElementById('filter-cliente-stock');
@@ -2513,7 +2520,7 @@ window.saveStock=async function(){
     renderStock();
     closeStockModal();
     showToast('Guardado');
-  } catch(e){ showToast('Error: '+e.message,true); }
+  } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent='Guardar'; }
 };
 
@@ -2521,7 +2528,7 @@ async function removeStock(id){
   const s=stockItems.find(x=>x.id===id);
   const ok=await confirmDialog('Eliminar','¿Eliminar esta entrada del stock?'); if(!ok) return;
   const {error}=await db.from('stock_neumaticos').delete().eq('id',id);
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   stockItems=stockItems.filter(x=>x.id!==id);
   renderStock();
   showToast('Eliminado');
@@ -2544,7 +2551,7 @@ async function removeVehiculo(id){
   const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${v.nombre}"? Se perderán sus mediciones asociadas.`);
   if(!ok) return;
   const {error}=await db.from('vehiculos').delete().eq('id',id);
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
   vehiculos=vehiculos.filter(v=>v.id!==id);
   showToast(`${v.nombre} eliminado`);
   renderVehiculos();
@@ -2622,7 +2629,7 @@ function medDeviceRenderList(){
     return;
   }
   container.innerHTML=filtered.map(d=>`
-    <div class="device-item ${medSelDevice===d.mac?'active':''}" onclick="medDeviceSelect('${d.mac.replace(/'/g,"\\'")}')">
+    <div class="device-item ${medSelDevice===d.mac?'active':''}" data-mac="${esc(d.mac)}">
       <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary)">${esc(d.mac)}</div>
       ${d.nombre?`<div style="font-size:11px;color:var(--text-secondary);margin-top:1px">${esc(d.nombre)}${d.cliente?' · '+esc(d.cliente):''}</div>`:''}
       ${!d.registered?'<div style="font-size:10px;color:var(--warning);margin-top:1px">● No registrado</div>':''}
@@ -2630,6 +2637,10 @@ function medDeviceRenderList(){
 }
 
 document.getElementById('med-device-search').addEventListener('input',medDeviceRenderList);
+document.getElementById('med-device-list')?.addEventListener('click',e=>{
+  const it=e.target.closest('[data-mac]');
+  if(it) medDeviceSelect(it.dataset.mac);
+});
 
 window.medDeviceSelect=async function(mac){
   medSelDevice=mac; medDeviceRenderList();
@@ -2644,7 +2655,7 @@ window.medDeviceSelect=async function(mac){
     .order('created_at',{ascending:false})
     .limit(2000);
 
-  if(error){ showToast('Error: '+error.message,true); return; }
+  if(error){ showToast(userError(error),true); return; }
 
   // Agrupar por (vehiculo_id + segundo) — todos los inserts de un POST tienen el mismo timestamp
   const map={};
