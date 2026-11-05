@@ -5,39 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>NEUMET · Medición de neumáticos sin errores</title>
 <meta name="description" content="NEUMET es un calibre digital inteligente que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión."/>
+<link rel="icon" type="image/svg+xml" href="assets/brand/favicon/favicon.svg">
+<link rel="icon" sizes="32x32" type="image/png" href="assets/brand/favicon/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon/apple-touch-icon.png">
+<meta name="theme-color" content="#383424">
+<meta property="og:title" content="NEUMET · Medición de neumáticos sin errores">
+<meta property="og:description" content="Calibre digital inteligente que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión.">
+<meta property="og:type" content="website">
+<!-- TODO: og:image requiere URL absoluta (https://<dominio>/assets/brand/png/logo-horizontal-claro.png) al definir el dominio final -->
+<meta property="og:image" content="assets/brand/png/logo-horizontal-claro.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<!-- PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) -->
+<link rel="stylesheet" href="assets/css/tokens.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --bg:             #F5F4EE;
-  --surface:        #FFFFFF;
-  --surface-2:      #F9F8F3;
-  --border:         rgba(61,60,32,0.08);
-  --border-strong:  rgba(61,60,32,0.14);
-  --text:           #2C2B18;
-  --text-2:         #6B6A52;
-  --text-3:         #9E9D82;
-  --accent:         #C9B96A;
-  --accent-dark:    #3D3C20;
-  --accent-light:   rgba(201,185,106,0.12);
-  --accent-border:  rgba(201,185,106,0.3);
-  --success:        #1a7f37;
-  --success-bg:     rgba(52,199,89,0.1);
-  --success-border: rgba(52,199,89,0.25);
-  --warning:        #b25000;
-  --warning-bg:     rgba(255,149,0,0.1);
-  --warning-border: rgba(255,149,0,0.25);
-  --danger:         #c0392b;
-  --danger-bg:      rgba(255,59,48,0.08);
-  --danger-border:  rgba(255,59,48,0.2);
-  --font:           'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:      'JetBrains Mono', monospace;
-  --radius:         16px;
-  --shadow:         0 1px 4px rgba(61,60,32,0.06), 0 4px 16px rgba(61,60,32,0.06);
-  --shadow-lg:      0 4px 20px rgba(61,60,32,0.08), 0 20px 60px rgba(61,60,32,0.10);
-}
 
 html { scroll-behavior: smooth; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
@@ -46,7 +29,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); -web
 nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   height: 58px;
-  background: rgba(245,244,238,0.88);
+  background: rgba(235,235,235,0.88);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border-bottom: 1px solid var(--border);
@@ -54,25 +37,26 @@ nav {
   padding: 0 48px;
 }
 .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.nav-logo-img { width: 32px; height: 32px; object-fit: cover; object-position: center top; border-radius: 8px; }
+.nav-logo-img { display: block; width: 190px; height: auto; }
 .nav-name { font-size: 17px; font-weight: 700; color: var(--accent-dark); letter-spacing: -0.3px; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-links a { font-size: 14px; font-weight: 500; color: var(--text-2); text-decoration: none; transition: color .15s; }
 .nav-links a:hover { color: var(--text); }
 .nav-cta {
-  background: var(--accent-dark); color: white;
+  background: var(--accent-dark); color: var(--n-blanco);
   font-size: 14px; font-weight: 500; padding: 8px 20px;
   border-radius: 8px; text-decoration: none;
   transition: background .15s, transform .12s;
 }
-.nav-cta:hover { background: #2a2b14; transform: translateY(-1px); }
+.nav-cta:hover { background: var(--accent-dark-hover); transform: translateY(-1px); }
 
 /* ── HERO ── */
 .hero { padding: 120px 48px 80px; max-width: 1100px; margin: 0 auto; }
 
 h1 {
-  font-size: clamp(34px, 5vw, 60px); font-weight: 800;
-  letter-spacing: -1.5px; line-height: 1.06;
+  font-family: var(--font-display); /* PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) */
+  font-size: clamp(34px, 5vw, 60px); font-weight: 700;
+  letter-spacing: -1px; line-height: 1.06;
   color: var(--text); max-width: 820px; margin-bottom: 22px;
 }
 h1 em { font-style: normal; }
@@ -83,13 +67,13 @@ h1 em { font-style: normal; }
 }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 64px; }
 .btn-primary {
-  background: var(--accent-dark); color: white;
+  background: var(--accent-dark); color: var(--n-blanco);
   font-size: 15px; font-weight: 500; padding: 13px 28px;
   border-radius: 10px; text-decoration: none;
   transition: background .15s, transform .12s;
-  box-shadow: 0 2px 8px rgba(61,60,32,0.25);
+  box-shadow: 0 2px 8px rgba(56,52,36,0.25);
 }
-.btn-primary:hover { background: #2a2b14; transform: translateY(-1px); }
+.btn-primary:hover { background: var(--accent-dark-hover); transform: translateY(-1px); }
 .btn-ghost {
   background: var(--surface); color: var(--text);
   font-size: 15px; font-weight: 500; padding: 13px 28px;
@@ -104,7 +88,7 @@ h1 em { font-style: normal; }
   background: var(--accent-dark); border-radius: var(--radius);
   padding: 32px 40px; overflow-x: auto;
 }
-.flow-diagram svg { width: 100%; min-width: 640px; display: block; }
+.flow-diagram svg { color: var(--accent); width: 100%; min-width: 640px; display: block; }
 
 /* ── STATS ── */
 .stats-strip {
@@ -114,14 +98,14 @@ h1 em { font-style: normal; }
 }
 .stat-cell { padding: 32px 40px; text-align: center; }
 .stat-cell:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.08); }
-.stat-big { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; color: var(--accent); }
+.stat-big { font-family: var(--font-display); font-variant-numeric: lining-nums; font-size: 38px; font-weight: 700; letter-spacing: -1px; color: var(--accent); }
 .stat-lbl { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 4px; font-weight: 500; }
 
 /* ── SECTION ── */
 .section { padding: 90px 0; }
 .section-inner { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
-.tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
-h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8px; line-height: 1.12; margin-bottom: 14px; color: var(--text); }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-2); margin-bottom: 10px; }
+h2 { font-family: var(--font-display); font-variant-numeric: lining-nums; font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8px; line-height: 1.12; margin-bottom: 14px; color: var(--text); }
 .section-sub { font-size: 16px; color: var(--text-2); line-height: 1.65; max-width: 520px; }
 
 /* ── PROBLEMA / SOLUCIÓN ── */
@@ -130,7 +114,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 .problem-card.before { background: var(--surface); border: 1px solid var(--border); }
 .problem-card.after  { background: var(--accent-dark); border: 1px solid transparent; }
 .pc-tag { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 18px; }
-.before .pc-tag { color: var(--text-3); }
+.before .pc-tag { color: var(--text-2); }
 .after  .pc-tag { color: rgba(255,255,255,0.3); }
 .pc-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; font-size: 14px; line-height: 1.55; }
 .before .pc-item { color: var(--text-2); }
@@ -138,7 +122,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 .pc-icon { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
 .pc-icon.x  { background: var(--danger-bg); }
 .pc-icon.x  svg { color: var(--danger); }
-.pc-icon.ok { background: rgba(201,185,106,0.15); }
+.pc-icon.ok { background: var(--accent-light); }
 .pc-icon.ok svg { color: var(--accent); }
 .pc-icon svg { width: 11px; height: 11px; }
 
@@ -148,7 +132,7 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 30px; position: relative; overflow: hidden;
 }
-.step-ghost { position: absolute; right: 18px; top: 14px; font-size: 60px; font-weight: 900; color: rgba(61,60,32,0.04); line-height: 1; }
+.step-ghost { position: absolute; right: 18px; top: 14px; font-size: 60px; font-weight: 900; color: rgba(56,52,36,0.04); line-height: 1; }
 .step-icon-wrap {
   width: 44px; height: 44px; border-radius: 12px;
   background: var(--accent-light); border: 1px solid var(--accent-border);
@@ -165,18 +149,18 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
   display: flex; flex-direction: column; align-items: center; gap: 32px;
 }
 .video-section .tag { color: rgba(255,255,255,0.3); }
-.video-section h2 { color: white; text-align: center; }
+.video-section h2 { color: var(--n-blanco); text-align: center; }
 .video-section .section-sub { color: rgba(255,255,255,0.5); text-align: center; max-width: 480px; }
 .video-placeholder {
   width: 100%; max-width: 720px;
   aspect-ratio: 16/9;
-  background: rgba(255,255,255,0.04); border: 2px dashed rgba(201,185,106,0.25);
+  background: rgba(255,255,255,0.04); border: 2px dashed var(--accent-border);
   border-radius: 16px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
 }
 .video-play-icon {
   width: 72px; height: 72px; border-radius: 50%;
-  background: rgba(201,185,106,0.12); border: 1.5px solid rgba(201,185,106,0.25);
+  background: var(--accent-light); border: 1.5px solid var(--accent-border);
   display: flex; align-items: center; justify-content: center;
 }
 .video-play-icon svg { width: 32px; height: 32px; color: var(--accent); margin-left: 4px; }
@@ -224,12 +208,12 @@ h2 { font-size: clamp(26px, 3.5vw, 40px); font-weight: 700; letter-spacing: -0.8
 }
 .field textarea { height: 100px; }
 .form-btn {
-  width: 100%; background: var(--accent-dark); color: white; border: none;
+  width: 100%; background: var(--accent-dark); color: var(--n-blanco); border: none;
   font-size: 15px; font-weight: 500; padding: 13px; border-radius: 10px;
   cursor: pointer; font-family: var(--font); margin-top: 4px;
   transition: background .15s, transform .12s;
 }
-.form-btn:hover { background: #2a2b14; transform: translateY(-1px); }
+.form-btn:hover { background: var(--accent-dark-hover); transform: translateY(-1px); }
 .form-btn:disabled { opacity: .55; transform: none; cursor: not-allowed; }
 .captcha-wrap {
   display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
@@ -292,8 +276,7 @@ footer {
 <!-- NAV -->
 <nav>
   <a href="#" class="nav-brand">
-    <img class="nav-logo-img" src="assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET"/>
-    <span class="nav-name">NEUMET</span>
+    <img class="nav-logo-img" src="assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="190" height="21"/>
   </a>
   <div class="nav-links">
     <a href="#problema">El problema</a>
@@ -318,60 +301,60 @@ footer {
     <svg viewBox="0 0 960 208" xmlns="http://www.w3.org/2000/svg" font-family="'Inter',-apple-system,sans-serif">
       <defs>
         <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="rgba(201,185,106,0.65)"/>
+          <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" fill-opacity="0.65"/>
         </marker>
       </defs>
 
       <!-- NODE 1 — Calibre NEUMET -->
       <rect x="12" y="56" width="208" height="100" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-      <rect x="30" y="74" width="36" height="36" rx="9" fill="rgba(201,185,106,0.12)" stroke="rgba(201,185,106,0.22)" stroke-width="1"/>
+      <rect x="30" y="74" width="36" height="36" rx="9" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.22" stroke-width="1"/>
       <!-- ruler icon -->
-      <rect x="32" y="83" width="32" height="12" rx="2.5" fill="none" stroke="#C9B96A" stroke-width="1.6"/>
-      <line x1="36" y1="83" x2="36" y2="89" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
-      <line x1="40" y1="83" x2="40" y2="87" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
-      <line x1="44" y1="83" x2="44" y2="89" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
-      <line x1="48" y1="83" x2="48" y2="87" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
-      <line x1="52" y1="83" x2="52" y2="89" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
-      <line x1="56" y1="83" x2="56" y2="87" stroke="#C9B96A" stroke-width="1.2" stroke-linecap="round"/>
+      <rect x="32" y="83" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="36" y1="83" x2="36" y2="89" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="40" y1="83" x2="40" y2="87" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="44" y1="83" x2="44" y2="89" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="48" y1="83" x2="48" y2="87" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="52" y1="83" x2="52" y2="89" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="56" y1="83" x2="56" y2="87" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
       <!-- labels -->
       <text x="76" y="89" fill="white" font-size="13.5" font-weight="700" letter-spacing="-0.3">Calibre NEUMET</text>
       <text x="30" y="130" fill="rgba(255,255,255,0.38)" font-size="11.5">Mide la profundidad de</text>
       <text x="30" y="145" fill="rgba(255,255,255,0.38)" font-size="11.5">huella de cada neumático</text>
 
       <!-- ARROW 1: Calibre → App -->
-      <line x1="220" y1="106" x2="356" y2="106" stroke="rgba(201,185,106,0.55)" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
-      <text x="288" y="97" fill="rgba(201,185,106,0.4)" font-size="10" font-weight="600" text-anchor="middle" letter-spacing="0.8">BLUETOOTH</text>
+      <line x1="220" y1="106" x2="356" y2="106" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
+      <text x="288" y="97" fill="currentColor" fill-opacity="0.4" font-size="10" font-weight="600" text-anchor="middle" letter-spacing="0.8">BLUETOOTH</text>
 
       <!-- NODE 2 — App NEUMET -->
       <rect x="360" y="56" width="208" height="100" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-      <rect x="378" y="74" width="36" height="36" rx="9" fill="rgba(201,185,106,0.12)" stroke="rgba(201,185,106,0.22)" stroke-width="1"/>
+      <rect x="378" y="74" width="36" height="36" rx="9" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.22" stroke-width="1"/>
       <!-- phone icon -->
-      <rect x="385" y="78" width="22" height="28" rx="3.5" fill="none" stroke="#C9B96A" stroke-width="1.7"/>
-      <circle cx="396" cy="100" r="1.8" fill="#C9B96A"/>
-      <line x1="391" y1="82" x2="401" y2="82" stroke="#C9B96A" stroke-width="1.3" stroke-linecap="round"/>
+      <rect x="385" y="78" width="22" height="28" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <circle cx="396" cy="100" r="1.8" fill="currentColor"/>
+      <line x1="391" y1="82" x2="401" y2="82" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
       <!-- labels -->
       <text x="424" y="89" fill="white" font-size="13.5" font-weight="700" letter-spacing="-0.3">App NEUMET</text>
       <text x="378" y="130" fill="rgba(255,255,255,0.38)" font-size="11.5">Recibe y centraliza</text>
       <text x="378" y="145" fill="rgba(255,255,255,0.38)" font-size="11.5">todas las mediciones</text>
 
       <!-- FORK stem from App right edge -->
-      <line x1="568" y1="106" x2="636" y2="106" stroke="rgba(201,185,106,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="568" y1="106" x2="636" y2="106" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" stroke-linecap="round"/>
       <!-- vertical connector -->
-      <line x1="636" y1="52" x2="636" y2="160" stroke="rgba(201,185,106,0.35)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="636" y1="52" x2="636" y2="160" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5" stroke-linecap="round"/>
       <!-- junction dot -->
-      <circle cx="636" cy="106" r="3.5" fill="rgba(201,185,106,0.55)"/>
+      <circle cx="636" cy="106" r="3.5" fill="currentColor" fill-opacity="0.55"/>
       <!-- upper branch → Panel -->
-      <line x1="636" y1="52" x2="706" y2="52" stroke="rgba(201,185,106,0.55)" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
+      <line x1="636" y1="52" x2="706" y2="52" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
       <!-- lower branch → Software -->
-      <line x1="636" y1="160" x2="706" y2="160" stroke="rgba(201,185,106,0.55)" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
+      <line x1="636" y1="160" x2="706" y2="160" stroke="currentColor" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#arr)" stroke-linecap="round"/>
 
       <!-- NODE 3 — Panel NEUMET -->
       <rect x="710" y="10" width="238" height="84" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-      <rect x="728" y="26" width="32" height="32" rx="8" fill="rgba(201,185,106,0.12)" stroke="rgba(201,185,106,0.22)" stroke-width="1"/>
+      <rect x="728" y="26" width="32" height="32" rx="8" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.22" stroke-width="1"/>
       <!-- monitor icon -->
-      <rect x="732" y="30" width="24" height="17" rx="2.5" fill="none" stroke="#C9B96A" stroke-width="1.6"/>
-      <line x1="738" y1="47" x2="748" y2="47" stroke="#C9B96A" stroke-width="1.5" stroke-linecap="round"/>
-      <line x1="744" y1="47" x2="744" y2="52" stroke="#C9B96A" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="732" y="30" width="24" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="738" y1="47" x2="748" y2="47" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="744" y1="47" x2="744" y2="52" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <!-- labels -->
       <text x="770" y="38" fill="white" font-size="12" font-weight="700" letter-spacing="-0.3">Panel de visualización NEUMET</text>
       <text x="728" y="58" fill="rgba(255,255,255,0.38)" font-size="10">Brindamos un panel propio para que</text>
@@ -379,11 +362,11 @@ footer {
 
       <!-- NODE 4 — Software del cliente -->
       <rect x="710" y="118" width="238" height="84" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-      <rect x="728" y="134" width="32" height="32" rx="8" fill="rgba(201,185,106,0.12)" stroke="rgba(201,185,106,0.22)" stroke-width="1"/>
+      <rect x="728" y="134" width="32" height="32" rx="8" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-opacity="0.22" stroke-width="1"/>
       <!-- grid / ERP icon -->
-      <rect x="732" y="138" width="24" height="20" rx="2.5" fill="none" stroke="#C9B96A" stroke-width="1.6"/>
-      <line x1="732" y1="144" x2="756" y2="144" stroke="#C9B96A" stroke-width="1" stroke-linecap="round"/>
-      <line x1="744" y1="138" x2="744" y2="158" stroke="#C9B96A" stroke-width="1" stroke-linecap="round"/>
+      <rect x="732" y="138" width="24" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="732" y1="144" x2="756" y2="144" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+      <line x1="744" y1="138" x2="744" y2="158" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
       <!-- labels -->
       <text x="770" y="146" fill="white" font-size="12" font-weight="700" letter-spacing="-0.3">Software de flota del cliente</text>
       <text x="728" y="166" fill="rgba(255,255,255,0.38)" font-size="10">NEUMET se puede integrar con el</text>
@@ -648,7 +631,8 @@ function drawCaptcha(){
   ctx.clearRect(0, 0, W, H);
 
   // Fondo con leve textura
-  ctx.fillStyle = '#F9F8F3';
+  const cs = getComputedStyle(document.documentElement);
+  ctx.fillStyle = cs.getPropertyValue('--surface-2').trim();
   ctx.fillRect(0, 0, W, H);
 
   // Líneas de ruido
@@ -666,7 +650,7 @@ function drawCaptcha(){
   }
 
   // Caracteres
-  const colors = ['#2C2B18','#3D3C20','#6B6A52','#4a4830','#1a1910'];
+  const colors = ['--text-primary','--accent-dark','--text-secondary'].map(v => cs.getPropertyValue(v).trim());
   const startX = 18;
   const stepX  = (W - startX * 2) / captchaCode.length;
 

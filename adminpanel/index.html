@@ -4,9 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>NEUMET · Admin</title>
+<link rel="icon" type="image/svg+xml" href="../assets/brand/favicon/favicon.svg">
+<link rel="icon" sizes="32x32" type="image/png" href="../assets/brand/favicon/favicon-32.png">
+<link rel="apple-touch-icon" href="../assets/brand/favicon/apple-touch-icon.png">
+<meta name="theme-color" content="#383424">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Exo+2:ital,wght@1,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<!-- PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) -->
+<link rel="stylesheet" href="../assets/css/tokens.css"/>
 <link rel="stylesheet" href="../assets/css/styles.css"/>
 </head>
 <body>
@@ -15,7 +21,7 @@
 <div class="login-screen" id="login-screen">
   <div class="login-box">
     <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
-      <img src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:120px;height:120px;object-fit:contain;border-radius:18px"/>
+      <img class="login-logo" src="../assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="220" height="24"/>
     </div>
     <div class="login-title">Bienvenido</div>
     <div class="login-sub">Iniciá sesión para continuar</div>
@@ -32,11 +38,9 @@
 <div class="app hidden" id="app">
   <aside class="sidebar">
     <div class="brand">
-      <div style="width:32px;height:28px;overflow:hidden;border-radius:6px;flex-shrink:0">
-        <img src="../assets/img/WhatsApp Image 2026-06-02 at 18.10.26.jpeg" alt="NEUMET" style="width:32px;height:42px;object-fit:cover;object-position:center top"/>
-      </div>
       <div>
-        <div class="brand-sub" style="color:rgba(255,255,255,0.6);font-size:12px">admin · v10</div>
+        <img class="brand-logo" src="../assets/brand/logo/logo-horizontal-oscuro.svg" alt="NEUMET" width="160" height="17"/>
+        <div class="brand-sub" style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:6px">admin · v10</div>
       </div>
     </div>
     <div class="nav-section">Workspace</div>
@@ -126,7 +130,7 @@
             </div>
           </div>
           <div class="dash-kpi-card">
-            <div class="dash-kpi-icon" style="background:rgba(201,185,106,0.15);color:#8a7530">
+            <div class="dash-kpi-icon" style="background:var(--accent-light);color:var(--accent-dark)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
             </div>
             <div>
@@ -305,7 +309,7 @@
             </div>
             <div style="display:flex;gap:18px;align-items:center;padding-top:4px">
               <div style="display:flex;align-items:center;gap:6px">
-                <svg width="24" height="3" style="overflow:visible"><line x1="0" y1="1.5" x2="24" y2="1.5" stroke="#C9B96A" stroke-width="2.5" stroke-linecap="round"/></svg>
+                <svg width="24" height="3" style="overflow:visible"><line x1="0" y1="1.5" x2="24" y2="1.5" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round"/></svg>
                 <span style="font-size:12px;color:var(--text-secondary);font-weight:500">Ingresos</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px">
