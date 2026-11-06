@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: NEUMET API de proveedor (app de medición)
+  version: 0.1.0-draft
+  description: |
+    Contrato derivado de `API_PROVEEDOR.pdf`. BORRADOR: ver docs/07-api-proveedor.md
+    para las ambigüedades abiertas (§5) y el diseño de seguridad (§4).
+    El éxito requiere HTTP 2xx y `code = 200` en el cuerpo (login: HTTP exactamente 200).
+servers:
+  - url: https://CAMBIAR-BASE-URL
+    description: Base a comunicar al cliente (staging y producción distintas)
+paths:
+  /auth/login:
+    post:
+      summary: Autenticación (cuenta dedicada por cliente)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Credenciales válidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { description: Credenciales inválidas }
+  /emenube/neumaticos/obtener_montaje:
+    post:
+      summary: Neumáticos montados de un vehículo y su última medición
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ObtenerMontajeRequest' }
+      responses:
+        '200':
+          description: Procesado (vehículo inexistente o ajeno => data vacío o code distinto de 200)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObtenerMontajeResponse' }
+        '401': { description: Token vencido o inválido }
+  /emenube/neumaticos/guardar_montaje_mm:
+    post:
+      summary: Registro de mediciones por posición
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GuardarMontajeRequest' }
+      responses:
+        '200':
+          description: Procesado. Fallos por neumático se informan con guardado=false (HTTP 2xx)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
+        '401': { description: Token vencido o inválido }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, clave, tipoLogin]
+      properties:
+        email: { type: string, format: email }
+        clave: { type: string, format: password }
+        tipoLogin: { type: integer, enum: [2] }
+    LoginResponse:
+      type: object
+      required: [code, access_token]
+      properties:
+        code: { type: integer, enum: [200] }
+        access_token: { type: string }
+    ObtenerMontajeRequest:
+      type: object
+      required: [matricula, numero]
+      description: Exactamente uno de los dos campos con valor; el otro cadena vacía. Mayúsculas.
+      properties:
+        matricula: { type: string }
+        numero: { type: string }
+    Neumatico:
+      type: object
+      required: [idneumatico, codigo, posicion, auxilio]
+      properties:
+        idneumatico: { type: string, minLength: 1 }
+        codigo: { type: string }
+        posicion: { type: integer }
+        auxilio: { type: string, enum: ['si', 'no'] }
+        mm1: { type: [number, string, 'null'], nullable: true, description: Borde interno }
+        mm2: { type: [number, string, 'null'], nullable: true, description: Centro }
+        mm3: { type: [number, string, 'null'], nullable: true, description: Centro (igual a mm2) }
+        mm4: { type: [number, string, 'null'], nullable: true, description: Borde externo }
+    ObtenerMontajeResponse:
+      type: object
+      required: [code]
+      properties:
+        code: { type: integer, description: 200 si el vehículo existe }
+        matricula: { type: string, description: Siempre devuelta, aunque se busque por numero }
+        numero: { type: string }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Neumatico' }
+    Montaje:
+      type: object
+      required: [posicion]
+      properties:
+        posicion: { type: integer }
+        mm1: { type: number, nullable: true, minimum: 0 }
+        mm2: { type: number, nullable: true, minimum: 0 }
+        mm3: { type: number, nullable: true, minimum: 0, description: Siempre igual a mm2 }
+        mm4: { type: number, nullable: true, minimum: 0 }
+    GuardarMontajeRequest:
+      type: object
+      required: [patente, numero, montajes]
+      properties:
+        patente: { type: string, description: La devuelta por obtener_montaje }
+        numero: { type: string, enum: [''], description: Siempre cadena vacía }
+        montajes:
+          type: array
+          maxItems: 40
+          items: { $ref: '#/components/schemas/Montaje' }
+    GuardarMontajeResponse:
+      type: object
+      required: [code, data]
+      properties:
+        code: { type: integer, enum: [200] }
+        data:
+          type: object
+          properties:
+            guardados:
+              type: array
+              items:
+                type: object
+                required: [posicion, guardado]
+                properties:
+                  posicion: { type: integer }
+                  guardado: { type: boolean }
