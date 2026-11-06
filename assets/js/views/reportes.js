@@ -7,6 +7,7 @@ import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { PAGE_SIZE, MAX_ROWS, medicionesCsv, resumenFlota, rangoFechas, safeFilename, fetchAll } from '../domain/reportes.js';
 import { printDoc } from './report.js';
+import { fmtMm } from '../domain/formato.js';
 
 const $ = id => document.getElementById(id);
 const COLOR = { ok: '#1a7f37', bajo: '#b25000', critico: '#c0392b', null: '#8e8e93' };
@@ -102,8 +103,7 @@ function exportCsv() {
   });
 }
 
-const fmtDate = s => s ? new Date(s).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-const fmtMm = v => v == null ? '—' : v.toFixed(1) + ' mm';
+const fmtDate = s => s ? new Date(s).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
 function buildDoc(rows, truncated) {
   const r = resumenFlota(rows);

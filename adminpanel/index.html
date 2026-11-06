@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="../assets/css/styles.css"/>
 </head>
 <body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
@@ -27,8 +28,8 @@
     <div class="login-sub">Iniciá sesión para continuar</div>
     <div class="login-error" id="login-error"></div>
     <form class="login-form" id="login-form">
-      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email"/></div>
-      <div class="field"><label>Contraseña</label><input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password"/></div>
+      <div class="field"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email"/></div>
+      <div class="field"><label for="login-password">Contraseña</label><input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password"/></div>
       <button type="submit" class="login-btn" id="login-btn">Iniciar sesión</button>
     </form>
   </div>
@@ -36,78 +37,87 @@
 
 <!-- APP ADMIN -->
 <div class="app hidden" id="app">
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div>
         <img class="brand-logo" src="../assets/brand/logo/logo-horizontal-oscuro.svg" alt="NEUMET" width="160" height="17"/>
-        <div class="brand-sub" style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:6px">admin · v10</div>
+        <div class="brand-sub">Gestión de flota</div>
       </div>
     </div>
-    <div class="nav-section">Workspace</div>
-    <div class="nav-item" data-view="dashboard" data-cliente-only style="display:none">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Mi Panel
-    </div>
-    <div class="nav-item" data-view="balance" data-admin-only>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      Balance
-    </div>
-    <div class="nav-item active" data-view="clientes" data-admin-only>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Clientes
-    </div>
-    <div class="nav-item" data-view="flota">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-      Flota
-    </div>
-    <div class="nav-item" data-view="alertas">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      Alertas
-    </div>
-    <div class="nav-item" data-view="vehiculos">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      Vehículos
-    </div>
-    <div class="nav-item" data-view="dispositivos">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
-      Dispositivos
-      <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
-    </div>
-    <div class="nav-item" data-view="salud">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Salud de dispositivos
-    </div>
-    <div class="nav-item" data-view="ficha">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg>
-      <span data-admin-only>Ficha de cliente</span><span data-cliente-only style="display:none">Mi resumen</span>
-    </div>
-    <div class="nav-item" data-view="mediciones">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      Mediciones
-    </div>
-    <div class="nav-item" data-view="reportes">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      Reportes
-    </div>
+    <nav class="sidebar-nav" aria-label="Principal">
+      <button type="button" class="nav-item active" data-view="inicio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+        Inicio
+      </button>
+      <div class="nav-section">Flota</div>
+      <button type="button" class="nav-item" data-view="flota">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        Estado de la flota
+      </button>
+      <button type="button" class="nav-item" data-view="alertas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alertas
+      </button>
+      <button type="button" class="nav-item" data-view="vehiculos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        Vehículos
+      </button>
+      <button type="button" class="nav-item" data-view="mediciones">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Mediciones
+      </button>
+      <button type="button" class="nav-item" data-view="dashboard" data-cliente-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Mi panel
+      </button>
+      <div class="nav-section">Equipos</div>
+      <button type="button" class="nav-item" data-view="dispositivos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+        Dispositivos
+        <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
+      </button>
+      <button type="button" class="nav-item" data-view="salud">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Salud de dispositivos
+      </button>
+      <div class="nav-section">Informes</div>
+      <button type="button" class="nav-item" data-view="reportes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Reportes
+      </button>
+      <div class="nav-section"><span data-admin-only>Administración</span><span data-cliente-only style="display:none">Mi cuenta</span></div>
+      <button type="button" class="nav-item" data-view="clientes" data-admin-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Clientes
+      </button>
+      <button type="button" class="nav-item" data-view="ficha">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg>
+        <span data-admin-only>Ficha de cliente</span><span data-cliente-only style="display:none">Mi resumen</span>
+      </button>
+      <button type="button" class="nav-item" data-view="balance" data-admin-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Balance
+      </button>
+    </nav>
     <div class="sidebar-footer">
       <div class="user-avatar" id="user-avatar">A</div>
       <div class="user-info">
         <div class="user-name" id="user-email">—</div>
         <div class="user-role" id="user-role">Administrador</div>
       </div>
-      <button class="logout-btn" id="logout-btn" title="Cerrar sesión">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      <button type="button" class="logout-btn" id="logout-btn" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       </button>
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="contenido" tabindex="-1">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
-        <button class="menu-toggle" id="menu-toggle" aria-label="Menú">
+        <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <div class="breadcrumb" id="breadcrumb-current">Clientes</div>
+        <h1 class="breadcrumb" id="breadcrumb-current">Inicio</h1>
       </div>
       <div class="status-pill" id="status-pill">
         <div class="status-dot"></div>
@@ -115,6 +125,20 @@
       </div>
     </div>
     <div class="content">
+
+      <!-- INICIO: qué requiere atención hoy -->
+      <div class="view active" id="view-inicio">
+        <div class="page-header">
+          <div>
+            <h2 class="page-title" id="inicio-title">Inicio</h2>
+            <div class="page-subtitle" id="inicio-subtitle">¿Qué requiere tu atención hoy?</div>
+          </div>
+          <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
+        </div>
+        <div id="inicio-contenido" aria-live="polite">
+          <div class="loading-state" role="status"><div class="spinner" aria-hidden="true"></div>Cargando…</div>
+        </div>
+      </div>
 
       <!-- DASHBOARD (cliente) -->
       <div class="view" id="view-dashboard">
@@ -180,13 +204,13 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Vehículo</th>
-              <th>Posición</th>
-              <th>Exterior</th>
-              <th>Medio</th>
-              <th>Interior</th>
-              <th>Estado</th>
-              <th>Hace</th>
+              <th scope="col">Vehículo</th>
+              <th scope="col">Posición</th>
+              <th scope="col">Exterior</th>
+              <th scope="col">Medio</th>
+              <th scope="col">Interior</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Hace</th>
             </tr></thead>
             <tbody id="dash-recent-body">
               <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
@@ -196,7 +220,7 @@
       </div>
 
       <!-- CLIENTES -->
-      <div class="view active" id="view-clientes">
+      <div class="view" id="view-clientes">
         <div class="page-header">
           <div>
             <div class="page-title">Clientes</div>
@@ -216,7 +240,7 @@
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-clientes" type="text" placeholder="Buscar cliente..."/>
+            <input id="search-clientes" type="text" placeholder="Buscar cliente..." aria-label="Buscar cliente"/>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary)"><input type="checkbox" id="chk-clientes-deleted"/> Mostrar eliminados</label>
           <button class="btn ghost" data-action="loadClients">
@@ -227,11 +251,11 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th style="width:60px">ID</th>
-              <th>Nombre</th>
-              <th>Dispositivos</th>
-              <th>Estado</th>
-              <th style="width:90px"></th>
+              <th scope="col" style="width:60px">ID</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Dispositivos</th>
+              <th scope="col">Estado</th>
+              <th scope="col" style="width:90px"></th>
             </tr></thead>
             <tbody id="tbody-clientes">
               <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div>Cargando clientes...</div></td></tr>
@@ -289,9 +313,9 @@
             </div>
             <table class="balance-table">
               <thead><tr>
-                <th>Cliente</th>
-                <th style="text-align:right">$/mes</th>
-                <th style="width:36px"></th>
+                <th scope="col">Cliente</th>
+                <th scope="col" style="text-align:right">$/mes</th>
+                <th scope="col" style="width:36px"></th>
               </tr></thead>
               <tbody id="tbody-ingresos">
                 <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
@@ -309,10 +333,10 @@
             </div>
             <table class="balance-table">
               <thead><tr>
-                <th>Concepto</th>
-                <th>Categoría</th>
-                <th style="text-align:right">$/mes</th>
-                <th style="width:60px"></th>
+                <th scope="col">Concepto</th>
+                <th scope="col">Categoría</th>
+                <th scope="col" style="text-align:right">$/mes</th>
+                <th scope="col" style="width:60px"></th>
               </tr></thead>
               <tbody id="tbody-gastos">
                 <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
@@ -379,9 +403,9 @@
           <div class="toolbar">
             <div class="search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..."/>
+              <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..." aria-label="Buscar vehículo"/>
             </div>
-            <select id="filter-cliente-veh" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+            <select id="filter-cliente-veh" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
               <option value="">Todos los clientes</option>
             </select>
             <button class="btn ghost" data-action="loadVehiculos">
@@ -392,13 +416,13 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th style="width:60px">ID</th>
-                <th>Nombre</th>
-                <th>Patente</th>
-                <th>Cliente</th>
-                <th>Ruedas</th>
-                <th>Estado</th>
-                <th style="width:110px"></th>
+                <th scope="col" style="width:60px">ID</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Patente</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Ruedas</th>
+                <th scope="col">Estado</th>
+                <th scope="col" style="width:110px"></th>
               </tr></thead>
               <tbody id="tbody-vehiculos">
                 <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos...</div></td></tr>
@@ -422,9 +446,9 @@
           <div class="toolbar">
             <div class="search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input id="search-stock" type="text" placeholder="Buscar marca o modelo..."/>
+              <input id="search-stock" type="text" placeholder="Buscar marca o modelo..." aria-label="Buscar marca o modelo"/>
             </div>
-            <select id="filter-cliente-stock" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+            <select id="filter-cliente-stock" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
               <option value="">Todos los clientes</option>
             </select>
             <button class="btn ghost" data-action="loadStock">
@@ -435,14 +459,14 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th>Marca</th>
-                <th>Modelo</th>
-                <th>Cliente</th>
-                <th>Precio/ud</th>
-                <th>Fecha compra</th>
-                <th>Asignados</th>
-                <th>Notas</th>
-                <th style="width:80px"></th>
+                <th scope="col">Marca</th>
+                <th scope="col">Modelo</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Precio/ud</th>
+                <th scope="col">Fecha compra</th>
+                <th scope="col">Asignados</th>
+                <th scope="col">Notas</th>
+                <th scope="col" style="width:80px"></th>
               </tr></thead>
               <tbody id="tbody-stock">
                 <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
@@ -468,9 +492,9 @@
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre..."/>
+            <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre..." aria-label="Buscar MAC o nombre"/>
           </div>
-          <select id="filter-cliente-disp" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+          <select id="filter-cliente-disp" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
             <option value="">Todos los clientes</option>
           </select>
           <button class="btn ghost" data-action="loadDispositivos">
@@ -481,13 +505,13 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th style="width:60px">ID</th>
-              <th>MAC Address</th>
-              <th>Nombre</th>
-              <th>Cliente</th>
-              <th>Última medición</th>
-              <th>Estado</th>
-              <th style="width:90px"></th>
+              <th scope="col" style="width:60px">ID</th>
+              <th scope="col">MAC Address</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Última medición</th>
+              <th scope="col">Estado</th>
+              <th scope="col" style="width:90px"></th>
             </tr></thead>
             <tbody id="tbody-dispositivos">
               <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando dispositivos...</div></td></tr>
@@ -505,10 +529,10 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th>MAC Address</th>
-                <th>Última medición</th>
-                <th>Mediciones totales</th>
-                <th style="width:130px"></th>
+                <th scope="col">MAC Address</th>
+                <th scope="col">Última medición</th>
+                <th scope="col">Mediciones totales</th>
+                <th scope="col" style="width:130px"></th>
               </tr></thead>
               <tbody id="tbody-unreg"></tbody>
             </table>
@@ -537,10 +561,10 @@
               <div class="med-select-block">
                 <div class="med-search">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-                  <input id="med-cliente-search" type="text" placeholder="Buscar cliente..."/>
+                  <input id="med-cliente-search" aria-label="Buscar cliente" type="text" placeholder="Buscar cliente..."/>
                 </div>
-                <select id="med-cliente-select"><option value="">— Seleccionar cliente —</option></select>
-                <select id="med-vehiculo-select" disabled><option value="">— Seleccionar vehículo —</option></select>
+                <select id="med-cliente-select" aria-label="Cliente"><option value="">— Seleccionar cliente —</option></select>
+                <select id="med-vehiculo-select" aria-label="Vehículo" disabled><option value="">— Seleccionar vehículo —</option></select>
               </div>
             </div>
 
@@ -551,7 +575,7 @@
               <div style="padding:10px 14px 6px">
                 <div class="med-search">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-                  <input id="med-device-search" type="text" placeholder="Buscar MAC o nombre..."/>
+                  <input id="med-device-search" aria-label="Buscar dispositivo" type="text" placeholder="Buscar MAC o nombre..."/>
                 </div>
               </div>
               <div class="device-list" id="med-device-list">
@@ -632,7 +656,7 @@
                   <div class="hist-table-wrap" style="flex:1;min-width:280px">
                     <div class="hist-section-lbl">Historial de mediciones</div>
                     <table class="hist-table">
-                      <thead><tr><th>Fecha</th><th>Exterior</th><th>Medio</th><th>Interior</th><th>Prom.</th></tr></thead>
+                      <thead><tr><th scope="col">Fecha</th><th scope="col">Exterior</th><th scope="col">Medio</th><th scope="col">Interior</th><th scope="col">Prom.</th></tr></thead>
                       <tbody id="med-hist-body"></tbody>
                     </table>
                   </div>
@@ -701,7 +725,7 @@
         <div class="rep-progress" id="alert-msg" role="status" aria-live="polite"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Severidad</th><th>Tipo</th><th>Mensaje</th><th>Vehículo</th><th>Pos.</th><th>Última medición</th><th></th></tr></thead>
+            <thead><tr><th scope="col">Severidad</th><th scope="col">Tipo</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Pos.</th><th scope="col">Última medición</th><th scope="col"></th></tr></thead>
             <tbody id="alert-tbody"></tbody>
           </table>
         </div>
@@ -720,7 +744,7 @@
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="salud-search" type="text" placeholder="Buscar MAC o nombre..."/>
+            <input id="salud-search" type="text" placeholder="Buscar MAC o nombre..." aria-label="Buscar MAC o nombre"/>
           </div>
           <select id="salud-estado" class="select-filter" aria-label="Estado" data-change="saludEstadoChange">
             <option value="">Todos los estados</option>
@@ -737,7 +761,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Estado</th><th>MAC Address</th><th>Nombre</th><th>Cliente</th><th>Última actividad</th><th>Sin actividad</th><th>Mediciones</th>
+              <th scope="col">Estado</th><th scope="col">MAC Address</th><th scope="col">Nombre</th><th scope="col">Cliente</th><th scope="col">Última actividad</th><th scope="col">Sin actividad</th><th scope="col">Mediciones</th>
             </tr></thead>
             <tbody id="tbody-salud">
               <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando salud de dispositivos...</div></td></tr>
@@ -838,10 +862,10 @@
       <div class="modal-sub" id="cli-modal-sub">Creá el cliente y sus credenciales de acceso</div>
     </div>
     <div class="modal-body">
-      <div class="field" id="field-name"><label>Nombre de la empresa</label><input type="text" id="f-name" placeholder="Ej: Transportes S.A."/></div>
-      <div class="field" id="field-email"><label>Email de acceso</label><input type="email" id="f-email" placeholder="cliente@empresa.com" autocomplete="off"/></div>
+      <div class="field" id="field-name"><label for="f-name">Nombre de la empresa</label><input type="text" id="f-name" placeholder="Ej: Transportes S.A."/></div>
+      <div class="field" id="field-email"><label for="f-email">Email de acceso</label><input type="email" id="f-email" placeholder="cliente@empresa.com" autocomplete="off"/></div>
       <div class="field" id="field-password">
-        <label>Contraseña inicial (opcional)</label>
+        <label for="f-password">Contraseña inicial (opcional)</label>
         <div style="position:relative">
           <input type="password" id="f-password" placeholder="Dejar vacío para enviar invitación por email (mín. 12 si se escribe)" autocomplete="new-password"/>
           <button type="button" data-action="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
@@ -869,41 +893,41 @@
       <!-- Sección: Datos básicos -->
       <div class="modal-section-title">Datos del vehículo</div>
       <div class="field-row">
-        <div class="field"><label>Cliente</label><select id="vf-cliente"></select></div>
-        <div class="field"><label>Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
+        <div class="field"><label for="vf-cliente">Cliente</label><select id="vf-cliente"></select></div>
+        <div class="field"><label for="vf-nombre">Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Patente <span class="label-opt">(opcional)</span></label>
+          <label for="vf-patente">Patente <span class="label-opt">(opcional)</span></label>
           <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
         </div>
         <div class="field">
-          <label>Número de coche <span class="label-opt">(opcional)</span></label>
+          <label for="vf-numero">Número de coche <span class="label-opt">(opcional)</span></label>
           <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
         </div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Cantidad de ruedas</label>
+          <label for="vf-ruedas">Cantidad de ruedas</label>
           <select id="vf-ruedas">
             <option value="10">10 ruedas</option>
             <option value="16">16 ruedas</option>
           </select>
         </div>
         <div class="field">
-          <label>Fecha de compra del vehículo <span class="label-opt">(opcional)</span></label>
+          <label for="vf-fecha-compra">Fecha de compra del vehículo <span class="label-opt">(opcional)</span></label>
           <input type="date" id="vf-fecha-compra"/>
         </div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Último servicio <span class="label-opt">(opcional)</span></label>
+          <label for="vf-ultimo-servicio">Último servicio <span class="label-opt">(opcional)</span></label>
           <input type="date" id="vf-ultimo-servicio"/>
         </div>
         <div class="field"></div>
       </div>
       <div class="field">
-        <label>Notas internas <span class="label-opt">(opcional)</span></label>
+        <label for="vf-notas">Notas internas <span class="label-opt">(opcional)</span></label>
         <textarea id="vf-notas" placeholder="Observaciones, historial, etc." rows="2" style="resize:vertical"></textarea>
       </div>
       <div class="toggle-row">
@@ -986,18 +1010,18 @@
     </div>
     <div class="modal-body">
       <div class="field-row">
-        <div class="field"><label>Cliente</label><select id="sf-cliente"></select></div>
-        <div class="field"><label>Marca</label><input type="text" id="sf-marca" placeholder="Ej: Michelin"/></div>
+        <div class="field"><label for="sf-cliente">Cliente</label><select id="sf-cliente"></select></div>
+        <div class="field"><label for="sf-marca">Marca</label><input type="text" id="sf-marca" placeholder="Ej: Michelin"/></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="Ej: X MultiWay 3D"/></div>
-        <div class="field"><label>Cantidad</label><input type="number" id="sf-cantidad" value="1" min="1" step="1"/></div>
+        <div class="field"><label for="sf-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="Ej: X MultiWay 3D"/></div>
+        <div class="field"><label for="sf-cantidad">Cantidad</label><input type="number" id="sf-cantidad" value="1" min="1" step="1"/></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Precio por unidad <span class="label-opt">(opcional)</span></label><input type="number" id="sf-precio" placeholder="0.00" min="0" step="0.01"/></div>
-        <div class="field"><label>Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="sf-fecha"/></div>
+        <div class="field"><label for="sf-precio">Precio por unidad <span class="label-opt">(opcional)</span></label><input type="number" id="sf-precio" placeholder="0.00" min="0" step="0.01"/></div>
+        <div class="field"><label for="sf-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="sf-fecha"/></div>
       </div>
-      <div class="field"><label>Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
+      <div class="field"><label for="sf-notas">Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn ghost" data-action="closeStockModal">Cancelar</button>
@@ -1014,9 +1038,9 @@
       <div class="modal-sub" id="gasto-modal-sub">Agregá un gasto mensual de la empresa</div>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler oficina"/></div>
+      <div class="field"><label for="gf-nombre">Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler oficina"/></div>
       <div class="field">
-        <label>Categoría</label>
+        <label for="gf-categoria">Categoría</label>
         <select id="gf-categoria">
           <option value="Personal">Personal</option>
           <option value="Infraestructura">Infraestructura</option>
@@ -1026,9 +1050,9 @@
           <option value="Otro">Otro</option>
         </select>
       </div>
-      <div class="field"><label>Monto mensual ($)</label><input type="number" id="gf-monto" placeholder="0.00" min="0" step="0.01"/></div>
+      <div class="field"><label for="gf-monto">Monto mensual ($)</label><input type="number" id="gf-monto" placeholder="0.00" min="0" step="0.01"/></div>
       <div class="field">
-        <label>Notas <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+        <label for="gf-notas">Notas <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
         <input type="text" id="gf-notas" placeholder="Descripción adicional..."/>
       </div>
       <div class="toggle-row">
@@ -1063,10 +1087,10 @@
       <div class="modal-sub" id="disp-modal-sub">Registrá el medidor y asignalo a un cliente</div>
     </div>
     <div class="modal-body">
-      <div class="field"><label>Cliente</label><select id="df-cliente"></select></div>
-      <div class="field"><label>MAC Address</label><input type="text" id="df-mac" placeholder="Ej: AA:BB:CC:DD:EE:FF" style="font-family:var(--font-mono);text-transform:uppercase"/></div>
+      <div class="field"><label for="df-cliente">Cliente</label><select id="df-cliente"></select></div>
+      <div class="field"><label for="df-mac">MAC Address</label><input type="text" id="df-mac" placeholder="Ej: AA:BB:CC:DD:EE:FF" style="font-family:var(--font-mono);text-transform:uppercase"/></div>
       <div class="field">
-        <label>Nombre <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
+        <label for="df-nombre">Nombre <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
         <input type="text" id="df-nombre" placeholder="Ej: Medidor 01"/>
       </div>
       <div class="toggle-row">
@@ -1102,7 +1126,9 @@
   </div>
 </div>
 
-<div class="toast" id="toast">
+<div class="sr-only" id="sr-live" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="sr-only" id="sr-alert" role="alert" aria-live="assertive" aria-atomic="true"></div>
+<div class="toast" id="toast" aria-hidden="true">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
   <span id="toast-msg">OK</span>
 </div>

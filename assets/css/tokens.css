@@ -18,7 +18,7 @@
   /* Texto (alias landing: --text, --text-2, --text-3) */
   --text-primary:   #383424;             /* = --n-oscuro, 12,46:1 s/ blanco */
   --text-secondary: #615A3F;             /* = --n-oliva,   6,90:1 s/ blanco */
-  --text-tertiary:  #908C79;             /* derivado, ~3,4:1: solo texto auxiliar/grande */
+  --text-tertiary:  #6B6753;             /* derivado, 5,6:1 s/ blanco y 4,7:1 s/ gris: cumple AA para texto auxiliar */
   --text:   var(--text-primary);
   --text-2: var(--text-secondary);
   --text-3: var(--text-tertiary);
