@@ -1,0 +1,16 @@
+# El sitio es estático y se sirve desde la raíz del repo: solo deben desplegarse
+# index.html, adminpanel/, assets/, app-demo.mp4 y vercel.json.
+# Todo lo demás (docs, funciones, CI, tooling, tests) no debe publicarse en producción.
+docs/
+supabase/
+tests/
+.github/
+.claude/
+node_modules/
+package.json
+package-lock.json
+eslint.config.js
+.gitleaks.toml
+.gitignore
+README.md
+SECURITY.md
