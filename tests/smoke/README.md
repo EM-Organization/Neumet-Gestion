@@ -42,3 +42,5 @@ El panel se carga como módulos ES (`assets/js/main.js`); el arnés sigue sustit
 El iframe congela `Date` (2026-06-15 12:00 UTC) para que las firmas de texto (`texto=<largo>:<hash>`) sean reproducibles, y con
 `?end=<vista>` desactiva transiciones para capturas idénticas byte a byte. Conocido: la firma de `balance` alterna entre dos
 valores (`649:…` / `716:…`) por una carrera con `requestAnimationFrame` del gráfico; ocurre igual en el monolito anterior.
+
+Cualquier `console.error` (incluido «Acción desconocida») o recurso que no cargue hace fallar el smoke. Capturas para revisión visual: `tests/visual/run.sh`.

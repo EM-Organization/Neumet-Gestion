@@ -38,7 +38,15 @@
   var eventos = [
     {id:1,cliente_id:1,vehiculo_id:10,neumatico_id:1003,idneumatico:'N10-3',tipo:'rotacion',posicion_origen:4,posicion_destino:3,odometro_km:120000,notas:'Rotación <programada>',created_at:D(30)}
   ];
-  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos};
+  // 10 mediciones semanales por rueda del vehículo 10 (como el demo): el gráfico se juzga con una serie realista.
+  var mediciones = [];
+  estado.filter(function(f){ return f.vehiculo_id === 10 && f.promedio !== null; }).forEach(function(f){
+    for(var k = 9; k >= 0; k--){
+      var mm = Math.round((f.promedio + (f.tasa_mm_semana || 0.4) * k + (k % 3 === 1 ? 0.15 : 0)) * 10) / 10;
+      mediciones.push({id:f.posicion*100+k, vehiculo_id:10, cliente_id:1, posicion:f.posicion, mm1:mm+0.2, mm2:mm, mm3:mm-0.2, promedio:mm, created_at:D(k*7+2)});
+    }
+  });
+  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones};
   var fx = window.__vehFx = { queries: [] };
 
   function Q(table){

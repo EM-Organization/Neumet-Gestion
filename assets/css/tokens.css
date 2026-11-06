@@ -102,6 +102,11 @@
 
 /* Seccionales: selector del cliente (topbar) y ABM de la ficha (admin) */
 .sec-selector { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; margin-right: 12px; }
+@media (max-width: 640px) {
+  .sec-selector { font-size: 0; gap: 0; margin-right: 0; }
+  .sec-selector select { font-size: 13px; max-width: 170px; }
+  .breadcrumb { max-width: 34vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 .sec-alta { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .sec-alta input { flex: 1; min-width: 200px; }
 .sec-user-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; align-items: end; }
@@ -111,3 +116,6 @@
 .sec-tabla input[type="text"] { width: 100%; max-width: 260px; }
 .sec-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
 .sec-sub { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; text-transform: uppercase; }
+/* Campos de texto del ABM de seccionales: mismo aspecto que los selects del panel */
+.sec-alta input, .sec-tabla input[type="text"], .sec-user-form input { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 12px; font-size: 14px; font-family: var(--font); color: var(--text-primary); outline: none; }
+.sec-alta input:focus, .sec-tabla input[type="text"]:focus, .sec-user-form input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }

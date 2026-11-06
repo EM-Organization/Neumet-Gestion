@@ -24,3 +24,4 @@ servidor.ps1
 
 # Claude Code worktrees
 .claude/worktrees/
+tests/visual/out/

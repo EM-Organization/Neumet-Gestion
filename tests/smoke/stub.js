@@ -74,7 +74,7 @@
       from:Q,
       rpc:function(name){ return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,total_meds:3,last_seen:D(1)}]:null,error:null}); },
       auth:{
-        getSession:function(){ return Promise.resolve({data:{session:session}}); },
+        getSession:function(){ return Promise.resolve({data:{session:/[?&]nosession=1/.test(window.parent.location.search)?null:session}}); },
         signInWithPassword:function(){ return Promise.resolve({data:{user:session.user},error:null}); },
         signOut:function(){ return Promise.resolve({error:null}); },
         onAuthStateChange:function(){ return {data:{subscription:{unsubscribe:function(){}}}}; }

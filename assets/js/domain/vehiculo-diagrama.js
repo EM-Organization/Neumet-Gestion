@@ -119,8 +119,9 @@ export function umbralesDe(row) {
   return u;
 }
 
+// Paleta apagada (salvia, ámbar suave, terracota, rojo, vino) en armonía con la marca; el estado nunca depende solo del color.
 export const COLORES = {
-  verde: [46, 158, 79], amarillo: [242, 194, 48], naranja: [240, 138, 28], rojo: [217, 56, 43], rojoIntenso: [143, 23, 16],
+  verde: [156, 190, 160], amarillo: [238, 208, 130], naranja: [230, 165, 120], rojo: [212, 118, 106], rojoIntenso: [140, 62, 70],
 };
 const mezcla = (a, b, t) => a.map((c, i) => Math.round(c + (b[i] - c) * t));
 const aHex = rgb => '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');

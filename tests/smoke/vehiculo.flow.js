@@ -52,7 +52,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(Object.keys(fills).length < 5) fail('detalle: la escala deberia dar varios colores, hay '+Object.keys(fills).length);
   if(!fills['url(#vd-sin-datos)']) fail('detalle: la rueda sin datos deberia tener patron');
   if(all('#vd-diagrama .vd-alerta-disco').length < 1) fail('detalle: falta marca de desgaste mayor al normal');
-  if(all('#vd-leyenda .vd-leyenda-item').length < 4) fail('detalle: leyenda incompleta');
+  if(!$('#vd-leyenda .vd-escala-barra') || all('#vd-leyenda .vd-escala-marcas span').length !== 3 || all('#vd-leyenda .vd-leyenda-item').length < 2) fail('detalle: leyenda incompleta');
 
   // Panel de la rueda 3 (critica, desgaste por encima de lo normal) con el teclado
   var r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
@@ -73,7 +73,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!ch) fail('detalle: no se dibujo el grafico');
   else {
     log.push('grafico-puntos='+ch.querySelectorAll('circle').length+' proy='+ch.querySelectorAll('.vd-g-proy').length);
-    if(ch.querySelectorAll('circle').length !== 3) fail('detalle: el grafico deberia tener 3 puntos');
+    if(ch.querySelectorAll('circle').length !== 10) fail('detalle: el grafico deberia tener 10 puntos');
     if(ch.querySelectorAll('.vd-g-umbral').length !== 3) fail('detalle: faltan lineas de umbral');
     if(ch.querySelectorAll('.vd-g-proy').length !== 1) fail('detalle: falta la proyeccion punteada');
   }

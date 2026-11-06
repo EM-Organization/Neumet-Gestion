@@ -66,3 +66,12 @@ Funciones en `supabase/functions/`: `api-proveedor` (desplegada), `crear-cliente
 - [ ] Prueba de punta a punta: login admin, crear cliente, ver flota/alertas, medición vía API, reporte exportable. **[pendiente]**
 - [ ] Confirmado con DAC el orden `mm1..mm4`. **[pendiente]**
 - [ ] Vuelta atrás: revertir `assets/config.js` y `vercel.json` al proyecto heredado `dqgrlflrjcarxlfetvoj`.
+
+## 7. QA visual y recarga forzada tras desplegar
+
+- **QA visual** (antes de un PR que toque la interfaz): `tests/visual/run.sh` saca capturas de las vistas clave en escritorio y móvil
+  con datos de prueba; revisarlas a ojo. Detalle en `tests/visual/README.md`. No usa el sitio real ni credenciales.
+- **Hard reload tras desplegar**: el panel carga módulos ES (`assets/js/*.js`) que el navegador y el CDN pueden tener en caché; si
+  tras un despliegue el panel muestra vistas vacías o un indicador «Conectado/Reintentar» raro, hacer recarga forzada
+  (Cmd+Shift+R / Ctrl+F5) o abrir en ventana privada antes de investigar. Un módulo viejo con uno nuevo mezclados es la causa más probable.
+

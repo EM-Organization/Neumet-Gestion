@@ -26,7 +26,7 @@ export function serieDesgaste(mediciones) {
  */
 export function datosGrafico(puntos, u, tasaMmSemana, { ancho = 320, alto = 190 } = {}) {
   if (!puntos || !puntos.length) return null;
-  const m = { l: 36, r: 12, t: 12, b: 26 };
+  const m = { l: 28, r: 62, t: 10, b: 22 };
   const ultimo = puntos[puntos.length - 1];
   const tasa = num(tasaMmSemana);
   let proy = null;
