@@ -23,7 +23,7 @@
     {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:2,n_neumaticos_con_datos:2,n_ok:1,n_bajo:1,n_critico:0,n_sin_datos:1,n_alertas_sev1:1,n_alertas_sev2:1,n_alertas_sev3:0,ultima_medicion_at:D(3)}
   ];
   var T = {v_estado_neumaticos:estado, v_alertas:alertas, v_resumen_flota_cliente:resumen};
-  var fx = window.__flotaFx = { queries: [] };
+  var fx = window.__flotaFx = { queries: [], vacio: false };
 
   function VQ(table){
     var rows = T[table].slice(), rng = null;
@@ -33,6 +33,7 @@
       range:function(a,b){ rng=[a,b]; return q; },
       then:function(res,rej){
         fx.queries.push(table);
+        if(fx.vacio && table !== 'v_resumen_flota_cliente') rows = []; // vehículos sin neumáticos medidos: las vistas derivadas vienen vacías
         if(rng) rows = rows.slice(rng[0], rng[1]+1);
         return Promise.resolve({data:rows,error:null}).then(res,rej);
       }

@@ -1,16 +1,18 @@
-// Inicio: responde "¿qué requiere mi atención hoy?" con neumáticos críticos, alertas, dispositivos sin actividad y
-// vehículos sin medir, cada uno con enlace a la vista donde se resuelve. Usa las mismas vistas SQL y reglas de dominio
-// que Flota, Alertas y Salud de dispositivos (security_invoker: RLS decide qué ve cada rol).
+// Inicio: neumáticos críticos, alertas, dispositivos sin actividad y vehículos sin medir, cada uno con enlace a la vista
+// donde se resuelve. Usa las mismas vistas SQL y reglas de dominio que Flota, Alertas y Dispositivos (security_invoker:
+// RLS decide qué ve cada rol; la seccional elegida se aplica además en el cliente).
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
-import { showToast, userError, relDate } from '../core/ui.js';
+import { showToast, userError, relDate, setStatus } from '../core/ui.js';
 import { isClienteMode, currentClienteNombre, onLogin } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
+import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
 import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { agruparVehiculos, kpisFlota, contarPorSeveridad } from '../domain/flota.js';
 import { contarPorEstado } from '../domain/salud.js';
+import { estadoInicio } from '../domain/inicio.js';
 import { fmtNum, fmtFechaLarga, fmtMm, plural } from '../domain/formato.js';
 
 const $ = id => document.getElementById(id);
@@ -56,34 +58,41 @@ function filaCliente(r) {
   </li>`;
 }
 
-export function render({ estadoRows, alertas, salud, resumen }) {
-  const k = kpisFlota(estadoRows, resumen, '');
+export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0 }) {
+  const cliente = isClienteMode();
+  const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
+  if (estado === 'vacio') {
+    return estadoVacio('Todavía no hay vehículos',
+      cliente ? 'Cuando se registren tus vehículos y se midan sus neumáticos, vas a ver su estado acá.'
+        : 'Registrá un cliente, cargá sus vehículos y asigná un dispositivo medidor.',
+      cliente ? null : { label: 'Ir a Clientes', action: 'irA', args: ['clientes'], primaria: true });
+  }
+  if (estado === 'sin_mediciones') {
+    return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones todavía` : 'Todavía no hay mediciones',
+      'Apenas un dispositivo mida sus neumáticos, vas a ver acá cuáles requieren atención.',
+      { label: 'Ver dispositivos', action: 'irA', args: ['dispositivos'], primaria: true });
+  }
+  const k = kpisFlota(estadoRows, cliente ? null : resumen, '');
   const sev = contarPorSeveridad(alertas);
   const sh = contarPorEstado(salud);
   const vehiculos = agruparVehiculos(estadoRows);
   const sinMedir = vehiculos.filter(v => v.n_sin_medir > 0 || v.semaforo === 'sin_datos').length;
   const sinActividad = sh.caido + sh.sin_actividad;
   const urgentes = vehiculos.filter(v => v.semaforo === 'critico' || v.semaforo === 'bajo').slice(0, MAX_VEHICULOS_LISTA);
-
-  if (!vehiculos.length && !salud.length && !alertas.length) {
-    return estadoVacio('Todavía no hay datos para mostrar',
-      isClienteMode() ? 'Cuando tu equipo registre vehículos y empiecen las mediciones, acá vas a ver qué requiere atención.'
-        : 'Registrá un cliente, cargá sus vehículos y asigná un dispositivo medidor para empezar a recibir mediciones.',
-      isClienteMode() ? { label: 'Ver vehículos', action: 'irA', args: ['vehiculos'] } : { label: 'Ir a Clientes', action: 'irA', args: ['clientes'], primaria: true });
-  }
+  const vistaFlota = cliente ? 'vehiculos' : 'flota';
 
   const tarjetas = joinHtml([
-    tarjeta({ n: k.criticos, titulo: 'Neumáticos críticos', ayuda: 'Con desgaste por debajo del límite: conviene cambiarlos pronto.', vista: 'flota', urgente: true, cta: 'Ver la flota' }),
-    tarjeta({ n: alertas.length, titulo: 'Alertas activas', ayuda: `${fmtNum(sev[3])} críticas, ${fmtNum(sev[2])} medias, ${fmtNum(sev[1])} informativas.`, vista: 'alertas', urgente: sev[3] > 0, cta: 'Ver alertas' }),
-    tarjeta({ n: sinActividad, titulo: 'Dispositivos sin actividad', ayuda: `Hace más de 7 días que no miden${sh.nunca ? `; además ${fmtNum(sh.nunca)} nunca midió` : ''}.`, vista: 'salud', urgente: sh.caido > 0, cta: 'Ver dispositivos' }),
-    tarjeta({ n: sinMedir, titulo: 'Vehículos sin medir', ayuda: 'Tienen neumáticos sin ninguna medición registrada.', vista: 'flota', urgente: false, cta: 'Ver vehículos' }),
+    tarjeta({ n: k.criticos, titulo: 'Neumáticos críticos', ayuda: 'Por debajo del límite: conviene cambiarlos.', vista: vistaFlota, urgente: true, cta: 'Ver' }),
+    tarjeta({ n: alertas.length, titulo: 'Alertas activas', ayuda: `${fmtNum(sev[3])} críticas, ${fmtNum(sev[2])} medias, ${fmtNum(sev[1])} informativas.`, vista: 'alertas', urgente: sev[3] > 0, cta: 'Ver' }),
+    tarjeta({ n: sinActividad, titulo: 'Dispositivos sin actividad', ayuda: `Más de 7 días sin medir${sh.nunca ? `; ${fmtNum(sh.nunca)} nunca midió` : ''}.`, vista: 'dispositivos', urgente: sh.caido > 0, cta: 'Ver' }),
+    tarjeta({ n: sinMedir, titulo: 'Vehículos sin medir', ayuda: 'Con neumáticos sin ninguna medición.', vista: vistaFlota, urgente: false, cta: 'Ver' }),
   ]);
 
   const listaVeh = urgentes.length
     ? html`<h3 class="seccion-titulo">Vehículos que más urgen</h3><ul class="atencion-lista">${joinHtml(urgentes.map(filaVehiculo))}</ul>`
-    : (vehiculos.length ? html`<h3 class="seccion-titulo">Vehículos que más urgen</h3>${estadoVacio('Ningún vehículo con neumáticos críticos o bajos', 'Seguí midiendo con regularidad para detectar el desgaste a tiempo.')}` : '');
+    : html`<h3 class="seccion-titulo">Vehículos que más urgen</h3>${estadoVacio('Ningún vehículo con neumáticos críticos o bajos')}`;
 
-  const clientesTop = !isClienteMode()
+  const clientesTop = !cliente
     ? [...resumen].sort((a, b) => (b.n_alertas_sev3 - a.n_alertas_sev3) || (b.n_critico - a.n_critico)).slice(0, MAX_VEHICULOS_LISTA)
     : [];
   const listaCli = clientesTop.length
@@ -94,20 +103,31 @@ export function render({ estadoRows, alertas, salud, resumen }) {
 
 export async function load() {
   const cont = $('inicio-contenido');
+  await contextoListo();
+  const sel = hayFiltroSeccional() ? sucursalSeleccionada() : '';
   $('inicio-title').textContent = isClienteMode() ? `Hola, ${currentClienteNombre}` : 'Inicio';
-  $('inicio-subtitle').textContent = `¿Qué requiere tu atención hoy? · ${fmtFechaLarga(new Date())}`;
+  $('inicio-subtitle').textContent = fmtFechaLarga(new Date()) + (sel ? ` · ${nombreSucursal(sel)}` : '');
   cont.setAttribute('aria-busy', 'true');
-  setHtml(cont, estadoCarga('Buscando lo que requiere tu atención…'));
-  const [est, al, sa, res] = await Promise.all([
+  setHtml(cont, estadoCarga('Cargando…'));
+  const [est, al, sa, res, veh, dis] = await Promise.all([
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_salud_dispositivos').select('dispositivo_id,cliente_id,estado'),
-    db.from('v_resumen_flota_cliente').select('*').order('nombre'),
+    isClienteMode() ? Promise.resolve({ data: [] }) : db.from('v_resumen_flota_cliente').select('*').order('nombre'),
+    // Cuenta de vehículos activos: distingue "sin vehículos" de "vehículos todavía sin neumáticos medidos".
+    filtrarConsulta(db.from('vehiculos').select('id', { count: 'exact', head: true }).eq('activo', true)),
+    sel ? filtrarConsulta(db.from('dispositivos').select('id')) : Promise.resolve({ data: null }),
   ]);
   cont.setAttribute('aria-busy', 'false');
-  const err = est.error || al.error || sa.error || res.error;
-  if (err) { showToast(userError(err), true); setHtml(cont, estadoError('', 'loadInicio')); return; }
-  setHtml(cont, render({ estadoRows: est.rows, alertas: al.rows, salud: sa.data || [], resumen: res.data || [] }));
+  const err = est.error || al.error || sa.error || res.error || veh.error || dis.error;
+  if (err) { setStatus(false); showToast(userError(err), true); setHtml(cont, estadoError('', 'loadInicio')); return; }
+  setStatus(true);
+  let salud = sa.data || [];
+  if (dis.data) { const ok = new Set(dis.data.map(d => String(d.id))); salud = salud.filter(f => ok.has(String(f.dispositivo_id))); }
+  setHtml(cont, render({
+    estadoRows: filtrarFilas(est.rows), alertas: filtrarFilas(al.rows), salud, resumen: res.data || [],
+    vehiculosTotal: veh.count ?? 0,
+  }));
 }
 
 registerActions({

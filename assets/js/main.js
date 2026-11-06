@@ -2,11 +2,11 @@
 // aquí solo se inicializa el cableado de DOM de cada una y se arranca la sesión.
 import { initActions } from './core/actions.js';
 import { initNav } from './core/nav.js';
+import { initConexion } from './core/conexion.js';
 import { initAuth, checkAuth } from './core/auth.js';
 import './core/seccional.js'; // sus hooks de login deben registrarse antes que los de las vistas
 import { initModales } from './core/modal-a11y.js';
 import * as inicio from './views/inicio.js';
-import * as dashboard from './views/dashboard.js';
 import * as clientes from './views/clientes.js';
 import * as balance from './views/balance.js';
 import * as vehiculos from './views/vehiculos.js';
@@ -15,7 +15,6 @@ import * as mediciones from './views/mediciones.js';
 import * as stock from './views/stock.js';
 import * as neumaticos from './views/neumaticos.js';
 import * as reportes from './views/reportes.js';
-import * as salud from './views/salud-dispositivos.js';
 import * as ficha from './views/ficha-cliente.js';
 import * as seccionalesAdmin from './views/seccionales-admin.js';
 import * as flota from './views/flota.js';
@@ -26,5 +25,6 @@ initActions();
 initAuth();
 initNav();
 initModales();
-[inicio,dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha,seccionalesAdmin].forEach(v=>v.init());
+initConexion();
+[inicio,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,ficha,seccionalesAdmin].forEach(v=>v.init());
 checkAuth();

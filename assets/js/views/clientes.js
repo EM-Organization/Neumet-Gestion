@@ -12,12 +12,12 @@ let showDeleted = false;
 let clients = [], modalMode = 'create', activeId = null;
 
 export async function loadClients(){
-  setStatus(true,'Cargando...');
+  
   let q=db.from('clientes').select(SEL);
   if(!showDeleted) q=q.is('deleted_at',null);
   const {data,error}=await q.order('created_at',{ascending:false});
-  if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
-  clients=data||[]; setStatus(true,'Conectado'); renderClientes();
+  if(error){ setStatus(false); showToast(userError(error),true); return; }
+  clients=data||[]; setStatus(true); renderClientes();
 }
 
 async function createClient_(body){

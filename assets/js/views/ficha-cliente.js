@@ -22,9 +22,9 @@ export async function loadFicha(){
   const sel=document.getElementById('ficha-cliente');
   if(isClienteMode()){ activoId=currentClienteId; }
   else {
-    setStatus(true,'Cargando...');
+    
     const {data,error}=await db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre');
-    if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
+    if(error){ setStatus(false); showToast(userError(error),true); return; }
     lista=data||[];
     setHtml(sel, joinHtml(lista.map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
     if(!lista.some(c=>c.id===activoId)) activoId=lista.length?lista[0].id:null;
@@ -50,8 +50,8 @@ async function cargarCliente(){
   ]);
   if(id!==activoId) return; // el usuario cambió de cliente mientras cargaba
   const e=res.error||cli.error||salud.error;
-  if(e){ setStatus(false,'Error de conexión'); showToast(userError(e),true); return; }
-  setStatus(true,'Conectado');
+  if(e){ setStatus(false); showToast(userError(e),true); return; }
+  setStatus(true);
   const c=(cli.data||[])[0]||{};
   document.getElementById('ficha-nombre').textContent=c.nombre||'Cliente';
   renderResumen((res.data||[])[0]||null);
