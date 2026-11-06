@@ -9,7 +9,7 @@
 | 0.2 | Auditoría RLS/RPC con checklist SQL y pruebas por rol; corregir | 02 S1 | 1–2 d |
 | 0.3 | Deshabilitar signup público; rol admin explícito server-side | 02 S2 | 0,5 d |
 | 0.4 | Autenticación + validación de payload en `guardar-montaje-mm` (coordinar con firmware) | 02 S7 | 2–3 d |
-| 0.5 | Revisar `crear-cliente`: verificación de rol, transaccionalidad | 02 S4 | 0,5 d |
+| 0.5 | Revisar `crear-cliente`: verificación de rol, transaccionalidad (reimplementada en `supabase/functions/crear-cliente`; falta desplegar y subir el mínimo de clave a 12 en el panel) | 02 S4 | 0,5 d |
 | 0.6 | `gitleaks`/`trufflehog` sobre el repo (confirmar hallazgo "sin secretos") | 02 §1 | 0,5 d |
 | 0.7 | Segundo proyecto Supabase (staging) con migraciones + seed sintético | 01 A4 | 1 d |
 
@@ -38,6 +38,8 @@
 
 > **Nota (avance 2.2):** el panel ya no usa `innerHTML` directo: todo HTML pasa por `html\`...\`` + `setHtml()` (`assets/js/app.js`), `no-unsanitized` está en `error`, y los manejadores inline del panel se sustituyeron por `data-action`/`data-change` con un listener delegado (`ACTIONS`). Eso permite quitar `'unsafe-inline'` de `script-src` en `vercel.json` (cambio aparte). Hay un arnés de humo headless en `tests/smoke/` (ver su README).
 
+> **Nota (avance 2.3 / modularización):** el monolito `assets/js/app.js` se dividió en **módulos ES nativos** (sin bundler): `assets/js/main.js` + `core/` (config, supabase, html, ui, actions, auth, nav, brand, svg) + `views/` (una por vista) + `domain/desgaste.js` (funciones puras: umbrales 5/8 mm, promedio, tasa mm/semana, predicción), con tests `node:test` en `tests/unit/` (`npm test`, job `test` en CI). La configuración del cliente vive en `assets/config.js` (`window.NEUMET_CONFIG`), lo que deja el cambio de proyecto Supabase como edición de un solo archivo. Estructura y guía para añadir una vista: `assets/js/README.md`. Sigue pendiente 2.1 (Vite/TS) si se decide un bundler; los módulos ya son compatibles.
+
 ## Fase 3 · Operación y escala
 | ID | Tarea | Doc |
 |---|---|---|
@@ -64,3 +66,6 @@ Nota: `deno check` de las Edge Functions es reproducible vía `supabase/function
 Ver checklist final en `03-despliegue-vercel-supabase.md` §8.
 
 Nota (producto): la migración `supabase/migrations/20261106020000_producto_vistas.sql` (umbrales por cliente, odómetro, ciclo de vida, vistas para panel/alertas/salud de dispositivos y `cliente_eliminar_suave`) cubre la base de datos de los ítems 1, 2, 4, 5, 6, 7, 8 y 9 del backlog de `09-benchmark-gestion-neumaticos.md` §6. Aún falta el panel que las consuma y que la ingesta rellene `odometro_km`. Tests: `tests/sql/run.sh` (job `sql` en CI). Ver `08-esquema-datos.md` Apéndice A.
+
+## Nota · API de proveedor (app de medición DAC)
+Implementada como Edge Function `supabase/functions/api-proveedor` + migración `20261106010000_api_proveedor.sql` (PR `feat/api-proveedor`). Pendiente antes de producción: aplicar la migración en staging, crear la cuenta `api` (perfil), confirmar el orden interno/externo de `mm1..mm4` con el equipo de la app y probar contra la app real. Detalle y decisiones en `07-api-proveedor.md` (Apéndice A). El job `deno` de CI ejecuta ahora `deno test`.

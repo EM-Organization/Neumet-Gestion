@@ -1,4 +1,4 @@
-// Stub de supabase-js para el arnés de humo. Se carga ANTES de app.js dentro del iframe.
+// Stub de supabase-js para el arnés de humo. Se carga ANTES de los módulos (main.js) dentro del iframe.
 (function(){
   var asCliente = /[?&]cliente=1/.test(window.parent.location.search);
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
@@ -32,10 +32,19 @@
     {id:1,nombre:'Servidor',categoria:'infra',monto:20000,notas:'Hosting <mensual>',recurrente:true,activo:true,created_at:D(9)},
     {id:2,nombre:'Publicidad',categoria:'marketing',monto:15000,notas:null,recurrente:false,activo:true,created_at:D(4)}
   ];
+  // Modo ?reportes=1: 2.300 mediciones extra del vehículo 10 (nombre y id hostiles) para probar la paginación de la vista Reportes.
+  var repMode = /[?&]reportes=1/.test(window.parent.location.search);
+  window.__rangeCalls = [];
+  if(repMode){
+    for(var n=0;n<2300;n++){
+      med.push({id:5000+n,vehiculo_id:10,cliente_id:1,device_id:dev[0].mac_address,posicion:(n%10)+1,mm1:9,mm2:9,mm3:9,promedio:9-(n%10)*0.5,created_at:D(100+n/10),idneumatico:'=ID,'+n,
+        vehiculos:{nombre:'=Camión 01',patente:veh[0].patente,tipo_ruedas:10},patente_raw:null,numero_raw:null});
+    }
+  }
   var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,neumaticos:neu,stock_neumaticos:stock,gastos:gas};
 
   function Q(table){
-    var rows=(T[table]||[]).slice(), head=false, single=false;
+    var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;
     var q={
       select:function(_c,o){ if(o&&o.head) head=true; return q; },
       insert:function(r){ rows=[Object.assign({id:999},r)]; return q; },
@@ -43,11 +52,15 @@
       upsert:function(){ return q; }, delete:function(){ return q; },
       eq:function(c,v){ rows=rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
       not:function(){ return q; }, in:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; },
-      ilike:function(){ return q; }, neq:function(){ return q; }, gte:function(){ return q; }, lte:function(){ return q; },
+      ilike:function(){ return q; }, neq:function(){ return q; }, gte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]>=v; }); return q; },
+      lte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]<=v; }); return q; },
+      lt:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]<v; }); return q; },
+      range:function(a,b){ rng=[a,b]; window.__rangeCalls.push([a,b,table]); return q; },
       single:function(){ single=true; return q; },
       maybeSingle:function(){ single=true; return q; },
       then:function(res,rej){
         var out;
+        if(rng) rows=rows.slice(rng[0],rng[1]+1);
         if(table==='clientes' && single && !asCliente){ out={data:null,error:null}; }
         else out={data: head?null:(single?(rows[0]||null):rows), count:rows.length, error:null};
         return Promise.resolve(out).then(res,rej);

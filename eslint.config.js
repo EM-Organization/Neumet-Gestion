@@ -12,7 +12,7 @@ module.exports = [
     plugins: { 'no-unsanitized': noUnsanitized },
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
+      sourceType: 'module', // módulos ES nativos (sin bundler)
       globals: {
         ...globals.browser,
         supabase: 'readonly', // UMD de supabase-js
@@ -29,5 +29,17 @@ module.exports = [
       eqeqeq: 'warn',
       'no-unused-vars': 'warn',
     },
+  },
+  {
+    // assets/config.js (define window.NEUMET_CONFIG antes de los módulos) y landing.js son scripts clásicos
+    files: ['assets/config.js', 'assets/js/landing.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'script', globals: { ...globals.browser } },
+    rules: { ...js.configs.recommended.rules },
+  },
+  {
+    // tests de Node (node:test)
+    files: ['tests/**/*.mjs'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
+    rules: { ...js.configs.recommended.rules },
   },
 ];

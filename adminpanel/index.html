@@ -69,6 +69,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       Mediciones
     </div>
+    <div class="nav-item" data-view="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Reportes
+    </div>
     <div class="sidebar-footer">
       <div class="user-avatar" id="user-avatar">A</div>
       <div class="user-info">
@@ -198,6 +202,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="search-clientes" type="text" placeholder="Buscar cliente..."/>
           </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary)"><input type="checkbox" id="chk-clientes-deleted"/> Mostrar eliminados</label>
           <button class="btn ghost" data-action="loadClients">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Actualizar
@@ -631,6 +636,37 @@
         </div>
       </div>
 
+      <!-- REPORTES -->
+      <div class="view" id="view-reportes">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Reportes</div>
+            <div class="page-subtitle">Exportá mediciones en CSV o generá un reporte imprimible por cliente o vehículo.</div>
+          </div>
+        </div>
+        <div class="rep-card">
+          <div class="rep-filters">
+            <label class="rep-field" data-admin-only>Cliente
+              <select id="rep-cliente" data-change="repClienteChange"></select>
+            </label>
+            <label class="rep-field">Vehículo
+              <select id="rep-vehiculo"></select>
+            </label>
+            <label class="rep-field">Desde
+              <input type="date" id="rep-desde"/>
+            </label>
+            <label class="rep-field">Hasta
+              <input type="date" id="rep-hasta"/>
+            </label>
+          </div>
+          <div class="rep-actions">
+            <button class="btn primary" id="rep-csv-btn" data-action="repExportCsv">Exportar CSV</button>
+            <button class="btn" id="rep-print-btn" data-action="repPrint">Reporte imprimible</button>
+          </div>
+          <div class="rep-progress" id="rep-progress" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -646,9 +682,9 @@
       <div class="field" id="field-name"><label>Nombre de la empresa</label><input type="text" id="f-name" placeholder="Ej: Transportes S.A."/></div>
       <div class="field" id="field-email"><label>Email de acceso</label><input type="email" id="f-email" placeholder="cliente@empresa.com" autocomplete="off"/></div>
       <div class="field" id="field-password">
-        <label>Contraseña inicial</label>
+        <label>Contraseña inicial (opcional)</label>
         <div style="position:relative">
-          <input type="password" id="f-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+          <input type="password" id="f-password" placeholder="Dejar vacío para enviar invitación por email (mín. 12 si se escribe)" autocomplete="new-password"/>
           <button type="button" data-action="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
         </div>
       </div>
@@ -886,6 +922,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
-<script src="../assets/js/app.js"></script>
+<script src="../assets/config.js"></script>
+<script type="module" src="../assets/js/main.js"></script>
 </body>
 </html>

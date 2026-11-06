@@ -1,0 +1,20 @@
+// Punto de entrada del panel (<script type="module">). Cada vista registra sus acciones y su carga al importarse;
+// aquí solo se inicializa el cableado de DOM de cada una y se arranca la sesión.
+import { initActions } from './core/actions.js';
+import { initNav } from './core/nav.js';
+import { initAuth, checkAuth } from './core/auth.js';
+import * as dashboard from './views/dashboard.js';
+import * as clientes from './views/clientes.js';
+import * as balance from './views/balance.js';
+import * as vehiculos from './views/vehiculos.js';
+import * as dispositivos from './views/dispositivos.js';
+import * as mediciones from './views/mediciones.js';
+import * as stock from './views/stock.js';
+import * as neumaticos from './views/neumaticos.js';
+import * as reportes from './views/reportes.js';
+
+initActions();
+initAuth();
+initNav();
+[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes].forEach(v=>v.init());
+checkAuth();

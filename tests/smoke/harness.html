@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>SMOKE:RUNNING</title></head>
 <body>
+<script src="/tests/smoke/clientes.flow.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
 // y recorre vistas y modales. Resultado en document.title: SMOKE:OK | SMOKE:FAIL:<mensaje>
@@ -12,13 +13,15 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     fr.style.cssText='width:1400px;height:900px;border:0';
     document.body.appendChild(fr);
-    // Errores durante la carga de app.js: hook inyectado antes de los scripts
-    src=src.replace('<head>','<head><script>window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    // Errores durante la carga de los módulos: hook inyectado antes de los scripts. Congela Date (hora fija) para que las firmas de texto sean deterministas.
+    src=src.replace('<head>','<head><script>(function(){var R=Date,F=R.UTC(2026,5,15,12,0,0);function FD(){if(!(this instanceof FD))return new R(F).toString();return arguments.length?new (Function.prototype.bind.apply(R,[null].concat([].slice.call(arguments))))():new R(F);}FD.prototype=R.prototype;FD.now=function(){return F};FD.UTC=R.UTC;FD.parse=R.parse;window.Date=FD;})();window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    // Con ?end=<vista> (capturas) se desactivan transiciones/animaciones para que el PNG sea reproducible.
+    if(/[?&]end=/.test(location.search)) src=src.replace('</head>','<style>*{transition:none!important;animation:none!important}</style></head>');
     window.__fail=fail;
     fr.srcdoc=src;
     await new Promise(function(r){ fr.onload=r; });
@@ -30,9 +33,48 @@
     await sleep(600);
     if($('#app').classList.contains('hidden')) fail('la app no salio del login');
 
+    if(/[?&]reportes=1/.test(location.search)){
+      // Sección Reportes: >1.000 filas -> paginación con range(), CSV (BOM, inyección) e imprimible escapado.
+      var waitFor=async function(cond,what){ for(var t=0;t<400;t++){ if(cond()) return true; await sleep(50); } fail('timeout esperando: '+what); return false; };
+      nav('reportes');
+      await waitFor(function(){ return $('#rep-vehiculo option[value="10"]'); },'opciones de vehiculo');
+      if(!$('#view-reportes').classList.contains('active')) fail('vista reportes no activa');
+      var captured=[], blobs=[];
+      w.open=function(){ return { document:{ write:function(h){ captured.push(h); }, close:function(){} }, focus:function(){}, print:function(){} }; };
+      var origCreate=w.URL.createObjectURL; w.URL.createObjectURL=function(b){ blobs.push(b); return origCreate.call(w.URL,b); };
+      w.HTMLAnchorElement.prototype.click=function(){ log.push('descarga='+this.download); };
+      $('#rep-vehiculo').value='10';
+      w.__rangeCalls.length=0;
+      click(act('repExportCsv'),'repExportCsv');
+      await waitFor(function(){ return blobs.length>0 && !$('#rep-csv-btn').disabled; },'CSV generado');
+      var rc=w.__rangeCalls.filter(function(c){ return c[2]==='mediciones'; });
+      log.push('range='+JSON.stringify(rc.map(function(c){ return c[0]+'-'+c[1]; })));
+      if(rc.length<3||rc[0][0]!==0||rc[0][1]!==999||rc[1][0]!==1000) fail('paginacion range incorrecta: '+JSON.stringify(rc));
+      log.push('progreso='+$('#rep-progress').textContent);
+      if(!/^2330 filas/.test($('#rep-progress').textContent)) fail('progreso inesperado: '+$('#rep-progress').textContent);
+      if(blobs.length!==1) fail('no se creo el Blob CSV'); else {
+        var txt=await blobs[0].text();
+        var bytes=new Uint8Array(await blobs[0].arrayBuffer()); // Blob.text() descarta el BOM: se verifica en bytes
+        if(bytes[0]!==0xEF||bytes[1]!==0xBB||bytes[2]!==0xBF) fail('CSV sin BOM');
+        if(txt.indexOf(",'=Camión 01,")===-1) fail('CSV sin proteccion de formulas');
+        if(txt.indexOf('"\'=ID,0"')===-1) fail('CSV sin escape de comas en idneumatico');
+        log.push('csv-lineas='+txt.split('\r\n').length);
+      }
+      click(act('repPrint'),'repPrint');
+      await waitFor(function(){ return captured.length>0 && !$('#rep-print-btn').disabled; },'imprimible generado');
+      if(captured.length!==1) fail('no se abrio reporte imprimible'); else {
+        if(captured[0].indexOf('=ID,')!==-1&&captured[0].indexOf('<')===-1) fail('imprimible raro');
+        if(captured[0].indexOf('Camión 01')===-1||captured[0].indexOf('Estado por neumático')===-1) fail('imprimible incompleto');
+        log.push('imprimible-len='+captured[0].length);
+      }
+      log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
+      throw new Error('__done');
+    }
     var views=cliMode?['dashboard','vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);
+      // El gráfico de balance se dibuja en requestAnimationFrame: esperar a que exista para que la firma sea estable.
+      if(views[i]==='balance'){ for(var t=0;t<20&&!d.querySelector('#balance-chart-svg *');t++) await sleep(100); }
       if(!$('#view-'+views[i]).classList.contains('active')) fail('vista no activa: '+views[i]);
       log.push(views[i]+': filas='+d.querySelectorAll('#view-'+views[i]+' tbody tr, #view-'+views[i]+' .dash-fleet-card').length+' texto='+sig($('#view-'+views[i]).textContent.replace(/\s+/g,' ')));
     }
@@ -74,12 +116,15 @@
       var si=d.querySelector('#med-sessions-list .session-item');
       if(si){ si.click(); await sleep(700); log.push('sesion seleccionada'); } else fail('sin sesiones');
     } else log.push('sin device-item');
+    // --- clientes (alta con/sin contraseña, baja lógica): tests/smoke/clientes.flow.js ---
+    if(!cliMode) await window.clientesFlow(w,d,sleep,fail,log);
+    // --- fin clientes ---
     var endV=(location.search.match(/[?&]end=([a-z]+)/)||[])[1];
     if(endV){ nav(endV); await sleep(600); }
     log.push('svg-nodos='+d.querySelectorAll('#view-mediciones svg *').length);
     log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
     log.push('xss(<Beta> crudo)='+(d.body.innerHTML.indexOf('<Beta>')===-1?'no':'SI'));
-  }catch(e){ fail('harness: '+(e&&e.stack||e)); }
+  }catch(e){ if(!(e&&e.message==='__done')) fail('harness: '+(e&&e.stack||e)); }
   var out=document.createElement('pre'); out.id='smoke-log'; out.textContent='\n'+log.join('\n')+'\n'+errors.join('\n'); document.body.appendChild(out);
   document.title = errors.length ? 'SMOKE:FAIL:'+errors.slice(0,5).join(' | ').slice(0,400) : 'SMOKE:OK';
 })();

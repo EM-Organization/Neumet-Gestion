@@ -38,8 +38,8 @@ jobs:
           node-version: 20
       - name: Validar vercel.json
         run: python3 -m json.tool vercel.json > /dev/null
-      - name: Sintaxis de app.js
-        run: node --check assets/js/app.js
+      - name: Sintaxis de los módulos del panel
+        run: node tests/check-modules.mjs
       - name: Chequeo de Edge Function (si hay deno)
         run: |
           if command -v deno >/dev/null 2>&1; then
@@ -60,6 +60,16 @@ jobs:
       - run: npm run lint
       - run: npm run check
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # node:test integrado: sin dependencias, no necesita npm ci
+      - run: npm test
+
   deno:
     runs-on: ubuntu-latest
     permissions:
@@ -73,6 +83,8 @@ jobs:
         run: deno task --config supabase/functions/deno.json check
       - name: deno lint (Edge Functions)
         run: deno lint --config supabase/functions/deno.json supabase/functions
+      - name: deno test (Edge Functions; incluye Postgres local si hay binarios)
+        run: deno task --config supabase/functions/deno.json test
 
   sql:
     runs-on: ubuntu-latest
