@@ -13,7 +13,11 @@
 <meta property="og:description" content="Calibre digital inteligente que mide la profundidad de huella de cada neumático y envía los datos automáticamente a tu sistema de gestión.">
 <meta property="og:type" content="website">
 <!-- TODO: og:image requiere URL absoluta (https://<dominio>/assets/brand/png/logo-horizontal-claro.png) al definir el dominio final -->
+<!-- TODO: URL absoluta cuando haya dominio -->
+<meta property="og:url" content="/">
 <meta property="og:image" content="assets/brand/png/logo-horizontal-claro.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="assets/brand/png/logo-horizontal-claro.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
 <!-- PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) -->
@@ -256,6 +260,8 @@ footer {
 @media (max-width: 860px) {
   nav { padding: 0 20px; }
   .nav-links { display: none; }
+  .nav-logo-img { width: 150px; }
+  .nav-cta { white-space: nowrap; padding: 8px 14px; font-size: 13px; }
   .hero, .section-inner { padding-left: 20px; padding-right: 20px; }
   h1 { font-size: 32px; }
   .flow-diagram { padding: 24px 16px; }
@@ -356,9 +362,9 @@ footer {
       <line x1="738" y1="47" x2="748" y2="47" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <line x1="744" y1="47" x2="744" y2="52" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <!-- labels -->
-      <text x="770" y="38" fill="white" font-size="12" font-weight="700" letter-spacing="-0.3">Panel de visualización NEUMET</text>
-      <text x="728" y="58" fill="rgba(255,255,255,0.38)" font-size="10">Brindamos un panel propio para que</text>
-      <text x="728" y="70" fill="rgba(255,255,255,0.38)" font-size="10">visualices tus datos.</text>
+      <text x="770" y="38" fill="white" font-size="11" font-weight="700" letter-spacing="-0.3">Panel de visualización NEUMET</text>
+      <text x="728" y="78" fill="rgba(255,255,255,0.38)" font-size="10">Brindamos un panel propio para que</text>
+      <text x="728" y="90" fill="rgba(255,255,255,0.38)" font-size="10">visualices tus datos.</text>
 
       <!-- NODE 4 — Software del cliente -->
       <rect x="710" y="118" width="238" height="84" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
@@ -368,9 +374,9 @@ footer {
       <line x1="732" y1="144" x2="756" y2="144" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
       <line x1="744" y1="138" x2="744" y2="158" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
       <!-- labels -->
-      <text x="770" y="146" fill="white" font-size="12" font-weight="700" letter-spacing="-0.3">Software de flota del cliente</text>
-      <text x="728" y="166" fill="rgba(255,255,255,0.38)" font-size="10">NEUMET se puede integrar con el</text>
-      <text x="728" y="178" fill="rgba(255,255,255,0.38)" font-size="10">software de gestión que ya tenés.</text>
+      <text x="770" y="146" fill="white" font-size="11" font-weight="700" letter-spacing="-0.3">Software de flota del cliente</text>
+      <text x="728" y="186" fill="rgba(255,255,255,0.38)" font-size="10">NEUMET se puede integrar con el</text>
+      <text x="728" y="198" fill="rgba(255,255,255,0.38)" font-size="10">software de gestión que ya tenés.</text>
     </svg>
   </div>
 </div>

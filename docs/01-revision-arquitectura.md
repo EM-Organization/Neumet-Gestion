@@ -89,7 +89,7 @@ Un cliente final descarga el código y los endpoints del panel admin (incluida l
 | Ítem | Observación | Acción |
 |---|---|---|
 | `app-demo.mp4` (6,6 MB) | Binario en git; inflará el historial con cada versión | Mover a Vercel Blob / Supabase Storage / YouTube; `git rm` |
-| `assets/img/WhatsApp Image …jpeg` | Nombres con fecha y origen; el logo se llama como una captura | Renombrar a `logo.jpeg` |
+| `assets/img/WhatsApp Image …jpeg` | ✅ Resuelto: logo anterior sin uso, eliminado; la identidad vive en `assets/brand/` | — |
 | `.claude/launch.json` | Config de herramienta local versionada | Ignorar o mover |
 | Autores del historial | Emails personales/`admin@neumet.com` en commits | Informativo; revisar si el repo es público |
 | Mensajes de commit | Mezcla inglés/español, convención parcial | Adoptar Conventional Commits |

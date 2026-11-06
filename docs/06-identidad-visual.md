@@ -79,7 +79,7 @@ Todos en `assets/brand/` (ver su `README.md` para el catálogo completo).
 3. **El wordmark en el PDF es una imagen raster** (≈ 1200 × 149 px por variante), no vector. Se **vectorizó por trazado automático** (potrace) para disponer de SVG escalables. Es adecuado para web y pantalla, pero los bordes no son geometría perfecta (se aprecian pequeñas imprecisiones en las esquinas internas al ampliar mucho).
    **Acción requerida:** pedir a Alegra Studio los **archivos vectoriales originales (.ai/.svg/.pdf)** del logo y reemplazar los trazados. Hasta entonces: no usar el wordmark en impresión de gran formato.
 4. **Tipografía del wordmark sin identificar ni licenciar.** La página 4 compara Ethnocentric, Neuropol, TDTD (tipografías de uso personal/comercial restringido) con Rajdhani, Michroma y Chakra Petch (Open Font License, Google Fonts). El wordmark final no coincide exactamente con ninguna. **Preguntar al estudio** de qué fuente deriva y bajo qué licencia, para asegurar el uso comercial. Mientras se use solo como archivo gráfico no hay problema de licencia de *fuente instalada*, pero sí conviene tenerlo por escrito.
-5. **No hay isotipo ni logo en los assets actuales del sitio**: usa `assets/img/WhatsApp Image …jpeg` (logo anterior, raster, 8–11 KB). Se reemplazará (§8).
+5. **No hay isotipo ni logo en los assets actuales del sitio**: usaba `assets/img/WhatsApp Image …jpeg` (logo anterior, raster). Ya se reemplazó por `assets/brand/` y los jpeg fueron eliminados (§8).
 
 ## 4. Tipografía de interfaz
 
@@ -166,7 +166,7 @@ Regla: **el dorado nunca representa un estado** (se confundiría con "bajo" en �
 | `index.html` (landing) | 27 | Tokens propios duplicados en `:root` (líneas 14-39) |
 | `assets/css/styles.css` (panel) | 9 | Tokens `:root` (líneas 3-32); `--font-brand: Exo 2` |
 | `assets/js/app.js` | 32 | Hex hardcodeados en templates y SVG de gráficos |
-| `adminpanel/index.html` | 1 (+ estilos inline) | Logo `WhatsApp Image…jpeg` en login y sidebar |
+| `adminpanel/index.html` | 1 (+ estilos inline) | Logo anterior (ya reemplazado por `assets/brand/`) en login y sidebar |
 | `supabase/functions/contacto/index.ts` | 15 | Plantilla de email con estilos inline |
 
 ¹ `#3D3C20`, `#C9B96A`, `#2C2B18`, `#6B6A52`, `#9E9D82`, `#F5F4EE`, `#F9F8F3`.
@@ -180,13 +180,13 @@ La duplicación de tokens (landing y panel definen sus propias variables) debe e
 |---|---|---|
 | B0 | ✅ Documentar identidad y publicar assets en `assets/brand/` | — |
 | B1 | Solicitar a Alegra Studio: vectores originales, fuente/licencia del wordmark, y manual de uso (zonas, tamaños mínimos) | — |
-| B2 | Crear `tokens.css` con primitivos + semánticos (§5); landing y panel lo importan | B0 |
-| B3 | Sustituir el logo `WhatsApp…jpeg` por `logo-horizontal-*.svg`/isotipo; añadir favicon, `apple-touch-icon`, `theme-color`, `og:image` | B0 |
-| B4 | Reemplazar hex hardcodeados de `app.js` y `index.html` por `var(--…)` (en SVG de gráficos, usar `currentColor`/variables) | B2 |
+| B2 | ✅ Crear `tokens.css` con primitivos + semánticos (§5); landing y panel lo importan | B0 |
+| B3 | ✅ Sustituir el logo `WhatsApp…jpeg` por `logo-horizontal-*.svg`/isotipo; añadir favicon, `apple-touch-icon`, `theme-color`, `og:image` | B0 |
+| B4 | 🟡 Reemplazar hex hardcodeados de `app.js` y `index.html` por `var(--…)` (landing y `styles.css` hechos; `app.js` en curso por otra rama) | B2 |
 | B5 | Plantilla de email de `contacto` con nueva paleta + logo (los clientes de correo no soportan `var()` ni SVG: usar PNG alojado y colores inline) | B0 |
 | B6 | Autoalojar tipografías elegidas; retirar Google Fonts | decisión §4 |
 | B7 | Verificación de contraste automatizada (axe/Lighthouse) y revisión visual por vista | B2–B4 |
-| B8 | Retirar del repo `assets/img/WhatsApp Image…` y `app-demo.mp4` si ya no se usan | B3 |
+| B8 | ✅ parcial (jpeg borrados; `app-demo.mp4` pendiente) Retirar del repo `assets/img/WhatsApp Image…` y `app-demo.mp4` si ya no se usan | B3 |
 
 Riesgo principal: **el dorado nuevo es más claro** que el actual y varios puntos usan el acento como color de texto o de línea sobre fondo claro (p. ej. etiquetas y enlaces). Esos usos hay que reasignar a `oliva`/`oscuro`; no es un cambio de variable 1:1.
 
