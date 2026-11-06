@@ -17,8 +17,10 @@
     var fr=document.createElement('iframe');
     fr.style.cssText='width:1400px;height:900px;border:0';
     document.body.appendChild(fr);
-    // Errores durante la carga de app.js: hook inyectado antes de los scripts
-    src=src.replace('<head>','<head><script>window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    // Errores durante la carga de los módulos: hook inyectado antes de los scripts. Congela Date (hora fija) para que las firmas de texto sean deterministas.
+    src=src.replace('<head>','<head><script>(function(){var R=Date,F=R.UTC(2026,5,15,12,0,0);function FD(){if(!(this instanceof FD))return new R(F).toString();return arguments.length?new (Function.prototype.bind.apply(R,[null].concat([].slice.call(arguments))))():new R(F);}FD.prototype=R.prototype;FD.now=function(){return F};FD.UTC=R.UTC;FD.parse=R.parse;window.Date=FD;})();window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    // Con ?end=<vista> (capturas) se desactivan transiciones/animaciones para que el PNG sea reproducible.
+    if(/[?&]end=/.test(location.search)) src=src.replace('</head>','<style>*{transition:none!important;animation:none!important}</style></head>');
     window.__fail=fail;
     fr.srcdoc=src;
     await new Promise(function(r){ fr.onload=r; });
@@ -33,6 +35,8 @@
     var views=cliMode?['dashboard','vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);
+      // El gráfico de balance se dibuja en requestAnimationFrame: esperar a que exista para que la firma sea estable.
+      if(views[i]==='balance'){ for(var t=0;t<20&&!d.querySelector('#balance-chart-svg *');t++) await sleep(100); }
       if(!$('#view-'+views[i]).classList.contains('active')) fail('vista no activa: '+views[i]);
       log.push(views[i]+': filas='+d.querySelectorAll('#view-'+views[i]+' tbody tr, #view-'+views[i]+' .dash-fleet-card').length+' texto='+sig($('#view-'+views[i]).textContent.replace(/\s+/g,' ')));
     }

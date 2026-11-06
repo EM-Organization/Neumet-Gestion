@@ -38,6 +38,8 @@
 
 > **Nota (avance 2.2):** el panel ya no usa `innerHTML` directo: todo HTML pasa por `html\`...\`` + `setHtml()` (`assets/js/app.js`), `no-unsanitized` está en `error`, y los manejadores inline del panel se sustituyeron por `data-action`/`data-change` con un listener delegado (`ACTIONS`). Eso permite quitar `'unsafe-inline'` de `script-src` en `vercel.json` (cambio aparte). Hay un arnés de humo headless en `tests/smoke/` (ver su README).
 
+> **Nota (avance 2.3 / modularización):** el monolito `assets/js/app.js` se dividió en **módulos ES nativos** (sin bundler): `assets/js/main.js` + `core/` (config, supabase, html, ui, actions, auth, nav, brand, svg) + `views/` (una por vista) + `domain/desgaste.js` (funciones puras: umbrales 5/8 mm, promedio, tasa mm/semana, predicción), con tests `node:test` en `tests/unit/` (`npm test`, job `test` en CI). La configuración del cliente vive en `assets/config.js` (`window.NEUMET_CONFIG`), lo que deja el cambio de proyecto Supabase como edición de un solo archivo. Estructura y guía para añadir una vista: `assets/js/README.md`. Sigue pendiente 2.1 (Vite/TS) si se decide un bundler; los módulos ya son compatibles.
+
 ## Fase 3 · Operación y escala
 | ID | Tarea | Doc |
 |---|---|---|

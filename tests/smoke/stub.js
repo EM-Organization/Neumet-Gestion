@@ -1,4 +1,4 @@
-// Stub de supabase-js para el arnés de humo. Se carga ANTES de app.js dentro del iframe.
+// Stub de supabase-js para el arnés de humo. Se carga ANTES de los módulos (main.js) dentro del iframe.
 (function(){
   var asCliente = /[?&]cliente=1/.test(window.parent.location.search);
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
