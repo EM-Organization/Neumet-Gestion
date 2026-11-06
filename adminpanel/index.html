@@ -871,6 +871,7 @@
       <div class="modal-title" id="ciclo-title">Odómetro y ciclo de vida</div>
     </div>
     <div class="modal-body">
+      <div id="ciclo-cambio" class="ciclo-cambio"></div>
       <div class="modal-section-title">Odómetro</div>
       <div id="ciclo-odo" class="ciclo-odo"></div>
       <div id="ciclo-admin">
@@ -885,6 +886,44 @@
     </div>
     <div class="modal-footer">
       <button class="btn ghost" data-action="closeCicloVida">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cambio de neumático (taller): una pantalla, RPC neumatico_cambiar -->
+<div class="modal-backdrop" id="modal-cambio" data-backdrop-close="neumatico-cambiar-cerrar">
+  <div class="modal cambio-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="cambio-title">Cambiar neumático</div>
+      <div class="modal-sub" id="cambio-sub">Registrá el cambio que hizo el taller</div>
+    </div>
+    <div class="modal-body">
+      <div id="cambio-actual" class="cambio-actual"></div>
+      <fieldset class="cambio-grupo"><legend>¿Qué se hace con el neumático viejo?</legend>
+        <div id="cambio-destinos" class="cambio-opciones"></div></fieldset>
+      <div class="field"><label for="cambio-motivo">Motivo <span class="label-opt" id="cambio-motivo-opt">(opcional)</span></label>
+        <input id="cambio-motivo" type="text" maxlength="200" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+      <fieldset class="cambio-grupo"><legend>Neumático nuevo</legend>
+        <div id="cambio-origenes" class="cambio-opciones"></div>
+        <div id="cambio-stock-wrap" class="field"><label for="cambio-stock">Del stock</label>
+          <select id="cambio-stock" data-change="neumatico-cambiar-resumen"></select></div>
+        <div id="cambio-nuevo-wrap">
+          <div class="field-row">
+            <div class="field"><label for="cambio-marca">Marca</label>
+              <input id="cambio-marca" type="text" maxlength="60" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+            <div class="field"><label for="cambio-modelo">Modelo <span class="label-opt">(opcional)</span></label>
+              <input id="cambio-modelo" type="text" maxlength="60" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+          </div>
+        </div>
+      </fieldset>
+      <div class="field"><label for="cambio-odo">Kilometraje actual <span class="label-opt">(opcional)</span></label>
+        <input id="cambio-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-cambiar-resumen"/></div>
+      <div id="cambio-resumen" class="cambio-resumen" aria-live="polite"></div>
+      <div id="cambio-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="neumatico-cambiar-cerrar">Cancelar</button>
+      <button class="btn primary" id="cambio-confirmar" data-action="neumatico-cambiar-confirmar">Confirmar cambio</button>
     </div>
   </div>
 </div>

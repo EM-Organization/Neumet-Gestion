@@ -6,7 +6,7 @@
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), from = c.from, rpc = c.rpc;
     c.rpc = function(name, args){
-      if(name !== 'neumatico_rotar') return rpc.apply(c, arguments);
+      if(name !== 'neumatico_rotar' && name !== 'neumatico_cambiar') return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
       return Promise.resolve(fx.rpcError ? {data: null, error: fx.rpcError} : {data: {intercambio: true}, error: null});
     };

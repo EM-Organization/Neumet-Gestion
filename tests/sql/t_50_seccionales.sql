@@ -79,7 +79,7 @@ update public.vehiculos set sucursal_id = 102 where id = 1;
 select test.eq('seccional MVD no mueve vehículos', (select sucursal_id from public.vehiculos where id = 1), 101::bigint);
 select test.denied('seccional MVD no inserta vehículos', $$insert into public.vehiculos (cliente_id, nombre, sucursal_id) values (1,'x',101)$$);
 select test.denied('seccional MVD no inserta sucursales', $$insert into public.sucursales (cliente_id, nombre) values (1,'Otra')$$);
-select test.denied('seccional MVD no llama rotación', $$select public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)$$);
+select test.denied('seccional MVD no rota vehículos de otra seccional', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
 reset role;
 
 -- Seccional B (Salto): ve lo suyo y nada de Montevideo
