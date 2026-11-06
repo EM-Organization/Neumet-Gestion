@@ -4,6 +4,7 @@
 <script src="/tests/smoke/clientes.flow.js"></script>
 <script src="/tests/smoke/salud.flow.js"></script>
 <script src="/tests/smoke/flota.flow.js"></script>
+<script src="/tests/smoke/vehiculo.flow.js"></script>
 <script src="/tests/smoke/ciclo.flow.js"></script>
 <script src="/tests/smoke/cambio.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
@@ -19,7 +20,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     fr.style.cssText='width:1400px;height:900px;border:0';
@@ -73,6 +74,12 @@
         if(captured[0].indexOf('Camión 01')===-1||captured[0].indexOf('Estado por neumático')===-1) fail('imprimible incompleto');
         log.push('imprimible-len='+captured[0].length);
       }
+      log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
+      throw new Error('__done');
+    }
+    if(/[?&]detalle=1/.test(location.search)){
+      // Vehículos como cliente: buscador + detalle con diagrama (vehiculo.fixture.js): tests/smoke/vehiculo.flow.js
+      await window.detalleFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
     }

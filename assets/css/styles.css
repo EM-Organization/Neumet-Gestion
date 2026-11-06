@@ -514,6 +514,87 @@
   .topbar { padding:0 12px; }
 }
 
+/* ── Vehículos: buscador y lista (cliente), pestañas con aire ── */
+.sub-tabs-bar { margin-bottom: 22px; }
+.search.search-grande { max-width: 480px; }
+.search.search-grande input { font-size: 16px; padding: 10px 12px 10px 36px; }
+.search.search-grande svg { left: 12px; width: 15px; height: 15px; }
+.veh-contador { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px; }
+.veh-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+.veh-fila { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; min-height: 52px; font-family: var(--font); color: var(--text-primary); cursor: pointer; }
+.veh-fila:hover { border-color: var(--border-strong); background: var(--surface-secondary); }
+.veh-fila:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.veh-fila-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.veh-fila-nombre { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.veh-fila-meta { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }
+.veh-fila-estado { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 12px; color: var(--text-secondary); text-align: right; }
+
+/* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
+.vd-volver { margin: 0 0 8px -6px; }
+.vd-cab { margin-bottom: 18px; }
+.vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
+.vd-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
+.vd-datos dt { font-size: 12px; color: var(--text-secondary); }
+.vd-datos dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.vd-layout { display: grid; grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.vd-diagrama-card, .vd-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.vd-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.vd-diagrama { display: flex; justify-content: center; }
+.vd-svg { width: 100%; max-width: 380px; height: auto; display: block; }
+.vd-chasis { fill: rgba(56,52,36,0.07); stroke: var(--text-primary); stroke-width: 1.5; }
+.vd-cabina { fill: rgba(56,52,36,0.14); stroke: var(--text-primary); stroke-width: 1.2; }
+.vd-eje { stroke: rgba(56,52,36,0.35); stroke-width: 3; stroke-linecap: round; }
+.vd-txt-suave { fill: var(--text-secondary); font-family: var(--font); font-size: 9px; letter-spacing: 0.14em; }
+.vd-rueda { cursor: pointer; outline: none; }
+.vd-rueda rect.vd-goma { stroke: var(--text-primary); stroke-width: 1; }
+.vd-rueda:hover rect.vd-goma { stroke-width: 2.5; }
+.vd-rueda:focus-visible rect.vd-goma { stroke-width: 3.5; stroke: #0b57d0; }
+.vd-rueda.sel rect.vd-goma { stroke-width: 3.5; }
+.vd-rueda text { font-family: var(--font); text-anchor: middle; pointer-events: none; }
+.vd-rueda .vd-mm { font-size: 12px; font-weight: 700; }
+.vd-rueda .vd-pos, .vd-rueda .vd-sim { font-size: 9.5px; font-weight: 600; }
+.vd-rueda .vd-sim { font-size: 12px; }
+.vd-marca rect.vd-goma { stroke-dasharray: 4 2; }
+.vd-alerta-disco { fill: var(--text-primary); }
+.vd-alerta-signo { fill: #fff; font-size: 10px; font-weight: 800; text-anchor: middle; font-family: var(--font); pointer-events: none; }
+.vd-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 12px; color: var(--text-secondary); }
+.vd-leyenda-item { display: inline-flex; align-items: center; gap: 6px; }
+.vd-muestra { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--border-strong); font-weight: 700; font-size: 12px; }
+.vd-panel { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; }
+.vd-panel-vacio { color: var(--text-secondary); font-size: 14px; padding: 8px 0; }
+.vd-p-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.vd-p-head h3 { font-size: 18px; margin: 0; font-weight: 700; outline: none; }
+.vd-p-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.vd-p-estado { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
+.vd-p-razon { font-size: 13px; background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--text-primary); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.vd-panel h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin: 16px 0 6px; }
+.vd-mm-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vd-mm-tabla th, .vd-mm-tabla td { padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+.vd-mm-tabla th { font-weight: 500; font-size: 12px; color: var(--text-secondary); }
+.vd-mm-tabla td { font-weight: 700; }
+.vd-p-nota { font-size: 13px; color: var(--text-secondary); margin: 4px 0 0; }
+.vd-p-texto { font-size: 14px; margin: 4px 0; }
+.vd-alertas, .vd-eventos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.vd-chart { width: 100%; height: auto; display: block; max-width: 460px; }
+.vd-g-grid { stroke: rgba(56,52,36,0.10); stroke-width: 1; }
+.vd-g-eje { fill: var(--text-secondary); font-size: 9.5px; font-family: var(--font); }
+.vd-g-serie { fill: none; stroke: var(--text-primary); stroke-width: 2; stroke-linejoin: round; }
+.vd-g-proy { fill: none; stroke: var(--text-primary); stroke-width: 2; stroke-dasharray: 1.5 4; stroke-linecap: round; }
+.vd-g-punto { fill: var(--surface); stroke: var(--text-primary); stroke-width: 2; }
+.vd-g-umbral { stroke-width: 1.2; }
+.vd-p-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.vd-panel-backdrop { display: none; }
+@media (max-width: 860px) {
+  .vd-layout { grid-template-columns: 1fr; }
+  .vd-panel { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 78vh; z-index: 60; border-radius: 16px 16px 0 0; padding: 16px 16px 24px; box-shadow: 0 -8px 32px rgba(56,52,36,0.2); }
+  .vd-panel.abierto { display: block; }
+  .vd-panel-backdrop.abierto { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(56,52,36,0.35); }
+  .vd-svg { max-width: 340px; }
+}
+.vd-rotar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vd-rotar label { font-size: 13px; color: var(--text-secondary); flex: 1 1 100%; }
+.vd-rotar select { flex: 1 1 160px; min-height: 36px; }
 /* ── Consistencia de espaciado (cabeceras, pestañas, barras de filtros y tablas) ─────────────────────────────
    Escala de 4 px: cabecera -> 20, pestañas -> 24, filtros -> 16, secciones -> 28. Solo tokens de marca. */
 .page-header { align-items: center; gap: 12px 16px; margin-bottom: 20px; min-height: 40px; }
