@@ -10,5 +10,6 @@ Revisión de arquitectura y plan de despliegue (2026-11-06, base `188b3fc`).
 | [04 · Observabilidad y logging](04-observabilidad-logging.md) | Ingesta, auditoría, errores, alertas |
 | [05 · Roadmap](05-roadmap.md) | Tareas ordenadas por fase y decisiones abiertas |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos, tipografía, tokens y plan de adopción (assets en [`assets/brand/`](../assets/brand/README.md)) |
+| [09 · Benchmark de gestión de neumáticos](09-benchmark-gestion-neumaticos.md) | Competidores, modelo de dominio, KPIs, brecha de NEUMET y backlog MVP priorizado |
 
 Política de reporte de vulnerabilidades: ver [`../SECURITY.md`](../SECURITY.md).
