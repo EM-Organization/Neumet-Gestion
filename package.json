@@ -4,8 +4,9 @@
   "private": true,
   "description": "Neumet: sitio estático + panel (tooling de calidad)",
   "scripts": {
-    "lint": "eslint assets/js",
-    "check": "node --check assets/js/app.js",
+    "lint": "eslint assets tests",
+    "check": "node tests/check-modules.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/*.test.mjs\"",
     "serve": "npx serve -p 3000 ."
   },
   "devDependencies": {
