@@ -798,6 +798,25 @@
             <button class="btn primary" id="ficha-guardar" data-admin-only data-action="guardarUmbrales">Guardar umbrales</button>
           </div>
         </div>
+        <div class="ficha-card" id="ficha-api-card" data-admin-only>
+          <div class="ficha-card-title">Cuenta de API</div>
+          <div class="ficha-sub">La app de medición inicia sesión con esta cuenta y todo se asigna a este cliente. Máximo 5 por cliente.</div>
+          <div id="ficha-api-lista"></div>
+          <div class="field">
+            <label for="ficha-api-email">Email de la cuenta</label>
+            <input type="email" id="ficha-api-email" autocomplete="off"/>
+          </div>
+          <div class="login-error" id="ficha-api-error" role="alert"></div>
+          <div id="ficha-api-cred" style="display:none">
+            <div class="ficha-ayuda"><strong>Guardá estas credenciales ahora: no se volverán a mostrar.</strong></div>
+            <div class="field"><label>Email</label><div id="ficha-api-cred-email"></div></div>
+            <div class="field"><label>Contraseña</label><code id="ficha-api-cred-pass"></code></div>
+            <button class="btn" id="ficha-api-copiar" data-action="copiarCredencialesApi">Copiar credenciales</button>
+          </div>
+          <div class="ficha-form-actions">
+            <button class="btn primary" id="ficha-api-crear" data-action="crearCuentaApi">Crear cuenta de API</button>
+          </div>
+        </div>
       </div>
 
       <!-- REPORTES -->

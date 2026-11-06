@@ -47,3 +47,29 @@ export function clientStatus(c) {
   if (disps.every(d => !d.activo)) return { cls: 'red', lbl: 'Inactivo' };
   return { cls: 'green', lbl: 'Activo' };
 }
+
+// ── Cuenta de API (crear-cuenta-api) ──
+// Email sugerido: api-<nombre-sin-acentos>@<dominio del admin> (editable en el panel).
+export function emailSugeridoApi(nombre, emailAdmin) {
+  const slug = String(nombre ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'cliente';
+  const dom = String(emailAdmin ?? '').split('@')[1] || 'example.com';
+  return `api-${slug}@${dom}`;
+}
+
+export function validarCuentaApi({ email } = {}) {
+  const e = String(email ?? '').trim();
+  if (!e) return { ok: false, error: 'Completá el email' };
+  if (!EMAIL_RE.test(e)) return { ok: false, error: 'El email no es válido' };
+  return { ok: true, email: e };
+}
+
+export function mensajeErrorCuentaApi(status, error) {
+  const t = String(error ?? '').toLowerCase();
+  if (status === 409 && /m[aá]ximo/.test(t)) return 'Este cliente ya tiene el máximo de 5 cuentas de API';
+  if (status === 409) return 'Ya existe un usuario con ese email';
+  if (status === 403 || status === 401) return 'No tenés permiso para crear cuentas de API';
+  if (status === 404) return 'El cliente no existe o fue eliminado';
+  if (status === 400) return 'Datos inválidos: revisá el email';
+  return 'No se pudo crear la cuenta de API';
+}
