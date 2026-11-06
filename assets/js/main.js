@@ -12,9 +12,11 @@ import * as mediciones from './views/mediciones.js';
 import * as stock from './views/stock.js';
 import * as neumaticos from './views/neumaticos.js';
 import * as reportes from './views/reportes.js';
+import * as flota from './views/flota.js';
+import * as alertas from './views/alertas.js';
 
 initActions();
 initAuth();
 initNav();
-[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes].forEach(v=>v.init());
+[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,flota,alertas].forEach(v=>v.init());
 checkAuth();

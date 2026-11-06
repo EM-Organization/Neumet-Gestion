@@ -408,3 +408,23 @@
   .rep-actions { display:flex; gap:10px; flex-wrap:wrap; }
   .rep-progress { margin-top:14px; font-size:13px; color:var(--text-secondary); min-height:18px; }
   .rep-progress.warn { color:var(--danger); font-weight:600; }
+
+  /* Flota con prioridades y centro de alertas */
+  .badge.gray { background: var(--surface-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+  .flota-select { background:var(--surface); border:1px solid var(--border-strong); border-radius:9px; padding:7px 12px; font-size:14px; font-family:var(--font); color:var(--text-primary); outline:none; cursor:pointer; }
+  .flota-select:focus { border-color:var(--accent-dark); box-shadow:0 0 0 3px var(--accent-light); }
+  #flota-grid { grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:12px; }
+  .flota-card { border-left:4px solid var(--border-strong); display:flex; flex-direction:column; gap:8px; }
+  .flota-card.sev-critico { border-left-color:var(--danger); }
+  .flota-card.sev-bajo { border-left-color:var(--warning); }
+  .flota-card.sev-ok { border-left-color:var(--success); }
+  .flota-card .dash-fleet-name { margin-bottom:0; }
+  .flota-cliente { font-size:12px; color:var(--text-tertiary); }
+  .flota-n { font-weight:600; }
+  .flota-n.red { color:var(--danger); } .flota-n.orange { color:var(--warning); } .flota-n.green { color:var(--success); } .flota-n.gray { color:var(--text-secondary); }
+  .flota-meta { font-size:12px; color:var(--text-secondary); line-height:1.5; }
+  .flota-link { align-self:flex-start; padding-left:0; color:var(--accent-dark); text-decoration:underline; }
+  .flota-vacio { padding:24px; text-align:center; color:var(--text-tertiary); font-size:14px; }
+  .alert-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .alert-chip { display:inline-flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:999px; padding:5px 12px 5px 6px; font:inherit; font-size:14px; font-weight:600; color:var(--text-primary); cursor:pointer; }
+  .alert-chip.active { border-color:var(--accent-dark); box-shadow:0 0 0 3px var(--accent-light); }
