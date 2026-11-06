@@ -34,7 +34,9 @@
 
     if(/[?&]reportes=1/.test(location.search)){
       // Sección Reportes: >1.000 filas -> paginación con range(), CSV (BOM, inyección) e imprimible escapado.
-      nav('reportes'); await sleep(600);
+      var waitFor=async function(cond,what){ for(var t=0;t<400;t++){ if(cond()) return true; await sleep(50); } fail('timeout esperando: '+what); return false; };
+      nav('reportes');
+      await waitFor(function(){ return $('#rep-vehiculo option[value="10"]'); },'opciones de vehiculo');
       if(!$('#view-reportes').classList.contains('active')) fail('vista reportes no activa');
       var captured=[], blobs=[];
       w.open=function(){ return { document:{ write:function(h){ captured.push(h); }, close:function(){} }, focus:function(){}, print:function(){} }; };
@@ -42,7 +44,8 @@
       w.HTMLAnchorElement.prototype.click=function(){ log.push('descarga='+this.download); };
       $('#rep-vehiculo').value='10';
       w.__rangeCalls.length=0;
-      click(act('repExportCsv'),'repExportCsv'); await sleep(1500);
+      click(act('repExportCsv'),'repExportCsv');
+      await waitFor(function(){ return blobs.length>0 && !$('#rep-csv-btn').disabled; },'CSV generado');
       var rc=w.__rangeCalls.filter(function(c){ return c[2]==='mediciones'; });
       log.push('range='+JSON.stringify(rc.map(function(c){ return c[0]+'-'+c[1]; })));
       if(rc.length<3||rc[0][0]!==0||rc[0][1]!==999||rc[1][0]!==1000) fail('paginacion range incorrecta: '+JSON.stringify(rc));
@@ -56,7 +59,8 @@
         if(txt.indexOf('"\'=ID,0"')===-1) fail('CSV sin escape de comas en idneumatico');
         log.push('csv-lineas='+txt.split('\r\n').length);
       }
-      click(act('repPrint'),'repPrint'); await sleep(1500);
+      click(act('repPrint'),'repPrint');
+      await waitFor(function(){ return captured.length>0 && !$('#rep-print-btn').disabled; },'imprimible generado');
       if(captured.length!==1) fail('no se abrio reporte imprimible'); else {
         if(captured[0].indexOf('=ID,')!==-1&&captured[0].indexOf('<')===-1) fail('imprimible raro');
         if(captured[0].indexOf('Camión 01')===-1||captured[0].indexOf('Estado por neumático')===-1) fail('imprimible incompleto');
