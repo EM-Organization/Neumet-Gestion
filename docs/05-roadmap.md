@@ -49,6 +49,8 @@
 B0 ✅ assets y documentación · B1 pedir vectores/licencia al estudio · B2 `tokens.css` único · B3 logo/favicon/og en el sitio · B4 eliminar hex hardcodeados · B5 email `contacto` · B6 autoalojar fuentes · B7 verificación de contraste.
 Conviene hacer B2–B4 **junto con** la Fase 2 (Vite + tokens compartidos) para no tocar dos veces los mismos archivos; B3 puede ir en la Fase 1 (bajo riesgo).
 
+Nota: `deno check` de las Edge Functions es reproducible vía `supabase/functions/deno.json` y corre en CI (job `deno`); ver `supabase/functions/contacto/README.md`.
+
 ## Decisiones abiertas (requieren al dueño del producto)
 1. ¿Un cliente tendrá más de un usuario? (hoy 1:1).
 2. ¿El firmware en campo ya está desplegado? Define cuánto cuesta cambiar el contrato de autenticación de dispositivos.
