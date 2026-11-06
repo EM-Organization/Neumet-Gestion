@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: NEUMET API de proveedor (app de medición)
   version: 0.1.0-draft
@@ -25,7 +25,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { description: Cuerpo inválido }
         '401': { description: Credenciales inválidas }
+        '5XX': { description: Error de servidor }
   /emenube/neumaticos/obtener_montaje:
     post:
       summary: Neumáticos montados de un vehículo y su última medición
@@ -41,7 +43,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ObtenerMontajeResponse' }
+        '400': { description: JSON inválido o fuera de límites (tamaño, nº de montajes) }
         '401': { description: Token vencido o inválido }
+        '5XX': { description: Error de servidor }
   /emenube/neumaticos/guardar_montaje_mm:
     post:
       summary: Registro de mediciones por posición
@@ -57,7 +61,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
+        '400': { description: JSON inválido o fuera de límites (tamaño, nº de montajes) }
         '401': { description: Token vencido o inválido }
+        '5XX': { description: Error de servidor }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -90,10 +96,10 @@ components:
         codigo: { type: string }
         posicion: { type: integer }
         auxilio: { type: string, enum: ['si', 'no'] }
-        mm1: { type: [number, string, 'null'], nullable: true, description: Borde interno }
-        mm2: { type: [number, string, 'null'], nullable: true, description: Centro }
-        mm3: { type: [number, string, 'null'], nullable: true, description: Centro (igual a mm2) }
-        mm4: { type: [number, string, 'null'], nullable: true, description: Borde externo }
+        mm1: { type: [number, string, 'null'], description: Borde interno }
+        mm2: { type: [number, string, 'null'], description: Centro }
+        mm3: { type: [number, string, 'null'], description: Centro (igual a mm2) }
+        mm4: { type: [number, string, 'null'], description: Borde externo }
     ObtenerMontajeResponse:
       type: object
       required: [code]
@@ -109,10 +115,10 @@ components:
       required: [posicion]
       properties:
         posicion: { type: integer }
-        mm1: { type: number, nullable: true, minimum: 0 }
-        mm2: { type: number, nullable: true, minimum: 0 }
-        mm3: { type: number, nullable: true, minimum: 0, description: Siempre igual a mm2 }
-        mm4: { type: number, nullable: true, minimum: 0 }
+        mm1: { type: [number, 'null'], minimum: 0, maximum: 40 }
+        mm2: { type: [number, 'null'], minimum: 0, maximum: 40 }
+        mm3: { type: number, minimum: 0, maximum: 40, description: Siempre igual a mm2 }
+        mm4: { type: [number, 'null'], minimum: 0, maximum: 40 }
     GuardarMontajeRequest:
       type: object
       required: [patente, numero, montajes]
