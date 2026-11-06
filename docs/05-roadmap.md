@@ -9,7 +9,7 @@
 | 0.2 | Auditoría RLS/RPC con checklist SQL y pruebas por rol; corregir | 02 S1 | 1–2 d |
 | 0.3 | Deshabilitar signup público; rol admin explícito server-side | 02 S2 | 0,5 d |
 | 0.4 | Autenticación + validación de payload en `guardar-montaje-mm` (coordinar con firmware) | 02 S7 | 2–3 d |
-| 0.5 | Revisar `crear-cliente`: verificación de rol, transaccionalidad | 02 S4 | 0,5 d |
+| 0.5 | Revisar `crear-cliente`: verificación de rol, transaccionalidad (reimplementada en `supabase/functions/crear-cliente`; falta desplegar y subir el mínimo de clave a 12 en el panel) | 02 S4 | 0,5 d |
 | 0.6 | `gitleaks`/`trufflehog` sobre el repo (confirmar hallazgo "sin secretos") | 02 §1 | 0,5 d |
 | 0.7 | Segundo proyecto Supabase (staging) con migraciones + seed sintético | 01 A4 | 1 d |
 
