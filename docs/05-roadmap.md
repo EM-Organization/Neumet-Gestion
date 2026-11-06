@@ -45,7 +45,7 @@
 | 3.2 | Sentry, uptime, canal de alertas | 04 |
 | 3.3 | Retención/particionado de `mediciones`; backups y prueba de restauración | 04 / 03 |
 | 3.4 | Evaluar Next.js + `@supabase/ssr` (sesión httpOnly) si el riesgo XSS/token lo amerita | 03 §4 |
-| 3.5 | Documentación de esquema (diagrama ER) y runbooks | — |
+| 3.5 | Documentación de esquema (diagrama ER) y runbooks. *Avance:* esquema deducido y migración inicial en borrador (sin aplicar) en `08-esquema-datos.md` y `supabase/migrations/`; falta contrastar con `db dump` real y probar en staging | 08 |
 
 ## Línea paralela · Identidad visual (ver `06-identidad-visual.md` §8)
 B0 ✅ assets y documentación · B1 pedir vectores/licencia al estudio · B2 `tokens.css` único · B3 logo/favicon/og en el sitio · B4 eliminar hex hardcodeados · B5 email `contacto` · B6 autoalojar fuentes · B7 verificación de contraste.
