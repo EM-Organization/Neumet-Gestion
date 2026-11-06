@@ -263,4 +263,6 @@ ACTIONS.saveNeumaticos=async function(){
   finally{ btn.disabled=false; btn.textContent='Guardar todo'; }
 };
 
+export function getNeumVehiculoId(){ return neumVehiculoId; }
+
 export function init(){}

@@ -3,6 +3,7 @@
 <body>
 <script src="/tests/smoke/clientes.flow.js"></script>
 <script src="/tests/smoke/flota.flow.js"></script>
+<script src="/tests/smoke/ciclo.flow.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
 // y recorre vistas y modales. Resultado en document.title: SMOKE:OK | SMOKE:FAIL:<mensaje>
@@ -14,7 +15,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     fr.style.cssText='width:1400px;height:900px;border:0';
@@ -125,6 +126,7 @@
     } else log.push('sin device-item');
     // --- clientes (alta con/sin contraseña, baja lógica): tests/smoke/clientes.flow.js ---
     if(!cliMode) await window.clientesFlow(w,d,sleep,fail,log);
+    if(!cliMode) await window.cicloFlow(w,d,sleep,fail,log);
     // --- fin clientes ---
     var endV=(location.search.match(/[?&]end=([a-z]+)/)||[])[1];
     if(endV){ nav(endV); await sleep(600); }
