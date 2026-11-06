@@ -85,7 +85,7 @@ Content-Type: application/json
 | `numero` | ✓ (o `patente`) | Número interno de 3 dígitos del vehículo (alternativa a patente) |
 | `montajes` | ✓ | Array con una entrada por rueda medida |
 | `posicion` | ✓ | Número de rueda (1 a 10 en camiones de 10 ruedas, 1 a 16 en los de 16) |
-| `mm1`–`mm3` | ✓ | Las 3 lecturas de profundidad en milímetros (huellas exterior, medio e interior) |
+| `mm1`–`mm3` | ✓ | Las 3 lecturas de profundidad en milímetros (huellas interno, centro y externo, en ese orden: mm1=interno, mm2=centro, mm3=externo) |
 
 > Se puede identificar el vehículo por `patente` **o** por `numero`. Si ambos vienen, se usa `patente`.
 

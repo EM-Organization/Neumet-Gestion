@@ -48,6 +48,6 @@
 CPK, reencauche con costos y presión/temperatura (TPMS): dependen de km acumulados y eventos reales.
 
 ## Riesgos abiertos
-- Orden físico de `mm1..mm4` (interno/externo) sin confirmar con la app de DAC.
+- Orden físico confirmado con la app de DAC: mm1 interno, mm2 centro, mm3 externo (resuelto).
 - Avisos del linter de Supabase: 4 WARN `SECURITY DEFINER` ejecutables por `authenticated` (intencionales; mover helpers a esquema privado más adelante).
 - Sin probar con sesión real y datos reales de punta a punta.

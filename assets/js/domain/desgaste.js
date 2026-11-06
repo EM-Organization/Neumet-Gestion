@@ -5,7 +5,7 @@
 export const WEAR={OK_MM:8, LOW_MM:5};
 // Profundidad mínima segura usada para proyectar la vida útil.
 export const LIFE_LIMIT_MM=3;
-// Diferencia exterior vs interior a partir de la cual se considera desgaste desparejo.
+// Diferencia interno vs externo (mm1 vs mm3) a partir de la cual se considera desgaste desparejo.
 export const UNEVEN_MM=1.5;
 const MS_DAY=1000*60*60*24;
 
@@ -60,12 +60,13 @@ export function dateUntil(lastAvg, mmPerDay, limit=LIFE_LIMIT_MM, from=new Date(
   return d==null?null:new Date(new Date(from).getTime()+d*MS_DAY);
 }
 
-// Desgaste desparejo de una medición: {diff, side:'exterior'|'interior'} si |mm1-mm3| >= 1.5, si no null.
+// Desgaste desparejo de una medición: {diff, side:'interno'|'externo'} si |mm1-mm3| >= 1.5, si no null.
+// Orden físico (app DAC): mm1=interno, mm2=centro, mm3=externo. `side` es el borde MÁS DESGASTADO (el de menos mm).
 export function unevenWear(row){
   if(!row || row.mm1==null || row.mm3==null) return null;
   const diff=Math.abs(row.mm1-row.mm3);
   if(diff<UNEVEN_MM) return null;
-  return {diff, side:row.mm1<row.mm3?'exterior':'interior'};
+  return {diff, side:row.mm1<row.mm3?'interno':'externo'};
 }
 
 // Análisis completo de una rueda a partir de su historial ascendente. null si no hay historial.

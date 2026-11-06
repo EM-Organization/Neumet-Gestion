@@ -25,7 +25,7 @@ export async function exportMedicionesCSV(){
   if(!data||!data.length){ showToast('No hay mediciones para exportar',true); return; }
 
   const vehNombre=veh?veh.nombre:'vehiculo';
-  const rows=[['Fecha','Posición','Exterior (mm)','Medio (mm)','Interior (mm)','Promedio (mm)']];
+  const rows=[['Fecha','Posición','Interno (mm)','Centro (mm)','Externo (mm)','Promedio (mm)']];
   data.forEach(r=>{
     const fecha=new Date(r.created_at).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour12:false});
     rows.push([fecha,r.posicion,r.mm1??'',r.mm2??'',r.mm3??'',r.promedio!=null?parseFloat(r.promedio).toFixed(1):'']);
