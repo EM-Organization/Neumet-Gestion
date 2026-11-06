@@ -1,5 +1,5 @@
 # Configuracion minima de Supabase CLI para NEUMET.
-project_id = "dqgrlflrjcarxlfetvoj"
+project_id = "kootszosdejmawanfxug"
 
 [auth]
 enabled = true
