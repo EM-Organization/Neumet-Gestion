@@ -73,3 +73,26 @@ jobs:
         run: deno task --config supabase/functions/deno.json check
       - name: deno lint (Edge Functions)
         run: deno lint --config supabase/functions/deno.json supabase/functions
+
+  sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cliente psql
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Migraciones + tests SQL (Postgres desechable)
+        env:
+          TEST_PG_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: tests/sql/run.sh
