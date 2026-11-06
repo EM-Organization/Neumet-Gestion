@@ -9,12 +9,12 @@
 |---|---|
 | Proyecto Supabase **nuevo** `kootszosdejmawanfxug` | Migraciones `20261106000000` (esquema), `20261106010000` (API de proveedor) y `20261106020000` (vistas, odómetro, ciclo de vida) **aplicadas** |
 | Edge Function `api-proveedor` | **Desplegada** en `kootszos…` (`verify_jwt = false`; el Bearer se verifica dentro del handler) |
-| Edge Functions `crear-cliente` y `contacto` | En el repo; **despliegue pendiente** |
+| Edge Functions | `api-proveedor` y `crear-cliente` **desplegadas** en kootszos (crear-cliente sin ALLOWED_ORIGINS aún: el navegador recibe 403); `contacto` en el repo, despliegue pendiente |
 | Proyecto Supabase heredado `dqgrlflrjcarxlfetvoj` | El frontend desplegado aún apunta a este (`assets/config.js`); **cutover pendiente** |
 | Vercel `neumet-gestion-theta.vercel.app` | Desplegado desde `main`; CSP sin `unsafe-inline` en scripts |
 | CI (GitHub Actions, `.github/workflows/ci.yml`) | Jobs: `secrets`, `lint`, `static`, `deno`, `test`, `sql` |
 
-## Hecho (PR #1 a #23 fusionados en `main`)
+## Hecho (PR #1 a #25 fusionados en `main`)
 - Auditoría, plan de despliegue, identidad visual, endurecimiento del panel (XSS, SRI), CSP, `.vercelignore`.
 - Esquema SQL con RLS/roles/auditoría, API de proveedor (contrato, función, migración), vistas SQL, odómetro, ciclo de vida y umbrales por cliente.
 - Benchmark de plataformas y backlog (`09-benchmark-gestion-neumaticos.md`).
@@ -30,7 +30,7 @@
 ### Acciones del director / desarrollo
 | Ítem | Notas |
 |---|---|
-| Desplegar `crear-cliente` y `contacto` en `kootszos…` | Depende de los secrets anteriores |
+| Desplegar `contacto` en kootszos; cargar secrets de `crear-cliente` (`ALLOWED_ORIGINS`) | Depende de los secrets anteriores |
 | Cutover del frontend a `kootszos…` | Editar `assets/config.js` (URL + clave publishable) y `connect-src` en `vercel.json`; requiere funciones desplegadas y primer admin. Checklist en el runbook §6 |
 | Cuenta con rol `api` para la app | Auth + fila en `perfiles` (runbook §2) |
 | Confirmar con DAC el orden físico de `mm1..mm4` | Constante en el código |
