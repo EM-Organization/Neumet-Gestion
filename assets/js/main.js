@@ -3,6 +3,7 @@
 import { initActions } from './core/actions.js';
 import { initNav } from './core/nav.js';
 import { initAuth, checkAuth } from './core/auth.js';
+import './core/seccional.js'; // sus hooks de login deben registrarse antes que los de las vistas
 import * as dashboard from './views/dashboard.js';
 import * as clientes from './views/clientes.js';
 import * as balance from './views/balance.js';
@@ -14,6 +15,7 @@ import * as neumaticos from './views/neumaticos.js';
 import * as reportes from './views/reportes.js';
 import * as salud from './views/salud-dispositivos.js';
 import * as ficha from './views/ficha-cliente.js';
+import * as seccionalesAdmin from './views/seccionales-admin.js';
 import * as flota from './views/flota.js';
 import * as alertas from './views/alertas.js';
 import * as cicloVida from './views/ciclo-vida.js';
@@ -21,5 +23,5 @@ import * as cicloVida from './views/ciclo-vida.js';
 initActions();
 initAuth();
 initNav();
-[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha].forEach(v=>v.init());
+[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha,seccionalesAdmin].forEach(v=>v.init());
 checkAuth();

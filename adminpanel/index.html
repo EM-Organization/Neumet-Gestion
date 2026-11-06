@@ -109,6 +109,9 @@
         </button>
         <div class="breadcrumb" id="breadcrumb-current">Clientes</div>
       </div>
+      <label class="sec-selector" id="sec-selector" style="display:none">Seccional
+        <select id="sec-select" class="flota-select" data-change="seccionalCambiar" aria-label="Seccional"></select>
+      </label>
       <div class="status-pill" id="status-pill">
         <div class="status-dot"></div>
         <span id="status-text">Conectando...</span>
@@ -772,6 +775,28 @@
           <div class="login-error" id="ficha-umbral-error" role="alert"></div>
           <div class="ficha-form-actions">
             <button class="btn primary" id="ficha-guardar" data-admin-only data-action="guardarUmbrales">Guardar umbrales</button>
+          </div>
+        </div>
+        <div class="ficha-card" id="ficha-seccionales" data-admin-only>
+          <div class="ficha-card-title">Seccionales y usuarios</div>
+          <div class="ficha-sub">Un usuario global ve toda la flota del cliente; un usuario de seccional solo ve los vehículos y dispositivos de su seccional (y no puede editar umbrales).</div>
+          <div class="sec-alta">
+            <input type="text" id="sec-nombre" maxlength="100" placeholder="Nueva seccional (p. ej. Salto)" aria-label="Nombre de la nueva seccional"/>
+            <button class="btn primary" data-action="seccionalCrear">Agregar seccional</button>
+          </div>
+          <div class="login-error" id="sec-error" role="alert"></div>
+          <div id="sec-lista"></div>
+          <div class="sec-sub">Asignar vehículos</div>
+          <div id="sec-vehiculos"></div>
+          <div class="sec-sub">Asignar dispositivos</div>
+          <div id="sec-dispositivos"></div>
+          <div class="sec-sub">Usuarios del cliente</div>
+          <div id="sec-usuarios"></div>
+          <div class="sec-user-form">
+            <div class="field"><label for="sec-user-email">Email del nuevo usuario</label><input type="text" id="sec-user-email" autocomplete="off"/></div>
+            <div class="field"><label for="sec-user-sucursal">Alcance</label><select id="sec-user-sucursal" class="select-filter"></select></div>
+            <div class="field"><label for="sec-user-password">Contraseña (opcional)</label><input type="password" id="sec-user-password" autocomplete="new-password"/><div class="ficha-ayuda">Vacía = se envía una invitación por email. Mínimo 12 caracteres.</div></div>
+            <button class="btn primary" id="sec-user-crear" data-action="seccionalCrearUsuario">Crear usuario</button>
           </div>
         </div>
       </div>

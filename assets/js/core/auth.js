@@ -4,6 +4,8 @@ import { userError } from './ui.js';
 // ── MODO CLIENTE ─────────────────────────────────
 // null = admin (ve todo), número = cliente (ve solo lo suyo). Exportados como live bindings (solo auth.js los modifica).
 export let currentClienteId=null, currentClienteNombre='';
+// Seccional del perfil (null = perfil global del cliente o admin). Un perfil de seccional solo recibe de la RLS lo de su seccional.
+export let currentSucursalId=null;
 
 export function isClienteMode(){ return currentClienteId!==null; }
 
@@ -23,18 +25,27 @@ function applyClienteMode(){
   document.getElementById('nav-unreg-badge').style.display='none';
   // Mostrar nombre del cliente en el sidebar
   document.getElementById('user-email').textContent=currentClienteNombre||'Cliente';
-  document.getElementById('user-role').textContent='Cliente';
+  document.getElementById('user-role').textContent=currentSucursalId!==null?'Seccional':'Cliente';
+}
+
+// Resuelve admin vs cliente. Primero el perfil (cubre usuarios de seccional, que no figuran en clientes.auth_user_id);
+// si no hay perfil de cliente, se usa el vínculo clientes.auth_user_id (cuentas anteriores a las seccionales).
+async function resolverRol(userId){
+  currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
+  const {data:perfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();
+  if(perfil&&perfil.rol==='cliente'&&perfil.cliente_id!=null){
+    const {data:c}=await db.from('clientes').select('id,nombre').eq('id',perfil.cliente_id).maybeSingle();
+    if(c){ currentClienteId=c.id; currentClienteNombre=c.nombre; currentSucursalId=perfil.sucursal_id??null; return; }
+  }
+  const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',userId).maybeSingle();
+  if(clienteRow){ currentClienteId=clienteRow.id; currentClienteNombre=clienteRow.nombre; }
 }
 
 // AUTH — detecta rol
 export async function checkAuth(){
   const {data:{session}}=await db.auth.getSession();
   if(!session){ showLogin(); return; }
-  const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',session.user.id).maybeSingle();
-  if(clienteRow){
-    currentClienteId=clienteRow.id;
-    currentClienteNombre=clienteRow.nombre;
-  }
+  await resolverRol(session.user.id);
   showApp(session.user);
 }
 
@@ -65,19 +76,13 @@ export function initAuth(){
       err.textContent=(error.message==='Invalid login credentials'||error.code==='invalid_credentials')?'Email o contraseña incorrectos':userError(error);
       err.classList.add('show'); return;
     }
-    const {data:clienteRow}=await db.from('clientes').select('id,nombre').eq('auth_user_id',data.user.id).maybeSingle();
-    if(clienteRow){
-      currentClienteId=clienteRow.id;
-      currentClienteNombre=clienteRow.nombre;
-    } else {
-      currentClienteId=null; currentClienteNombre='';
-    }
+    await resolverRol(data.user.id);
     showApp(data.user);
   });
 
   document.getElementById('logout-btn').addEventListener('click',async()=>{
     await db.auth.signOut();
-    logoutHooks.forEach(fn=>fn()); currentClienteId=null; currentClienteNombre='';
+    logoutHooks.forEach(fn=>fn()); currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
     // Restaurar visibilidad original
     document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
     document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display='none'; });

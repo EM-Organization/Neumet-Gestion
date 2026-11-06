@@ -5,14 +5,16 @@ import { isClienteMode, currentClienteId } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { loadStock } from './stock.js';
+import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 
 let vehiculos=[], vehModalMode='create', vehActiveId=null;
 
 export async function loadVehiculos(){
   setStatus(true,'Cargando...');
-  let q=db.from('vehiculos')
+  await contextoListo();
+  let q=filtrarConsulta(db.from('vehiculos')
     .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
-    .order('nombre');
+    .order('nombre'));
   if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
   const {data,error}=await q;
   if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }

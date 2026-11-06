@@ -254,3 +254,40 @@ Para el detalle de un neumático (#6/#7) el panel sigue leyendo `mediciones` (hi
 - `tests/sql/run.sh` crea un Postgres desechable (`initdb`/`pg_ctl` en un directorio temporal; o `TEST_PG_URL`; o Docker), simula `auth.users`/`auth.uid()`/roles, aplica la migración inicial y la de producto **dos veces** (idempotencia) y ejecuta ~170 aserciones: semáforo en límites exactos, tasa y semanas con datos conocidos, cada tipo de alerta, aislamiento por cliente/rol (admin, cliente A, cliente B, api, sin perfil, anon) en todas las vistas y tablas nuevas, estructura (security_invoker, grants, RLS), `eventos_neumatico` (RLS, constraints, auditoría), `cliente_eliminar_suave` y la inmutabilidad de `audit_log`. Sale con código ≠ 0 si algo falla. CI: job `sql` (servicio `postgres:16`).
 - **No cubierto**: Supabase real (extensiones, roles `supabase_admin`, PostgREST, privilegios por defecto reales), rendimiento con volumen (no se hizo `EXPLAIN` con datos grandes; los índices existentes cubren los accesos previstos), ni la reconciliación con el esquema de producción. Repetir las comprobaciones de la migración inicial y este conjunto en staging antes de aplicar.
 - Heredado de la migración inicial (no se cambia aquí): `normalizar_patente`, `dispositivos_normalizar_mac`, `mediciones_set_promedio` y `audit_log_inmutable` conservan EXECUTE para PUBLIC (funciones puras o de trigger, sin acceso a datos).
+
+---
+
+# Apéndice B · Seccionales (`20261107020000_seccionales.sql`) y cliente Demo
+
+Un **cliente** (empresa) puede tener **seccionales** (p. ej. "Montevideo", "Salto"). Hay un único rol `cliente` con dos alcances:
+
+| Perfil | `perfiles.sucursal_id` | Qué ve (RLS) |
+|---|---|---|
+| **Global** | `NULL` | Todo el cliente: todas las seccionales y lo que no tiene seccional |
+| **De seccional** | `= X` | Solo vehículos, neumáticos, mediciones, eventos y dispositivos de la seccional X; sus alertas, estado y salud (las vistas `security_invoker` heredan la RLS). **No** ve el stock del cliente, otras seccionales, mediciones/eventos sin vehículo ni gastos, y no puede editar nada (tampoco los umbrales) |
+| Admin | — | Todo; gestiona seccionales y asignaciones |
+
+## B.1 Objetos
+| Objeto | Detalle |
+|---|---|
+| `sucursales` | `id, cliente_id (RESTRICT), nombre, created_at`. Único por `(cliente_id, lower(btrim(nombre)))`. `unique(id, cliente_id)` para las FK compuestas. RLS: admin ALL; cliente SELECT (global: las suyas; de seccional: solo la suya). Auditada con `audit_row()` |
+| `vehiculos.sucursal_id`, `dispositivos.sucursal_id` | Nullable ("sin seccional" = solo perfil global). FK compuesta `(sucursal_id, cliente_id)` → `sucursales(id, cliente_id)` `ON DELETE RESTRICT`: no se puede asignar una seccional de otro cliente |
+| `perfiles.sucursal_id` | Nullable (NULL = global). FK compuesta igual; CHECK `sucursal_id is null or rol = 'cliente'` |
+| `perfiles.email` | Informativo (lo escribe `crear-usuario-seccional`); no se usa para autorizar |
+| `current_sucursal_id()` | `SECURITY DEFINER`, `search_path=''`, `stable`; solo `authenticated`. NULL = global o sin perfil (siempre se combina con `current_cliente_id()`) |
+
+**Por qué `RESTRICT` y no `SET NULL`**: con `SET NULL`, borrar una seccional convertiría en perfiles **globales** (ven todo el cliente) a sus usuarios. Con `RESTRICT` hay que reasignar o eliminar antes sus vehículos, dispositivos y usuarios. Consecuencia: un `DELETE` físico de un cliente con seccionales falla (la baja suave `cliente_eliminar_suave` no se ve afectada).
+
+Políticas reescritas (solo `SELECT` del cliente): `vehiculos`, `dispositivos`, `neumaticos` (vía vehículo), `mediciones` (vía `vehiculo_id`), `eventos_neumatico` (vía `vehiculo_id`), `stock_neumaticos` (solo global), más `sucursales`. `clientes_self_select` no cambia (el perfil de seccional ve la fila de su cliente: nombre y umbrales de solo lectura).
+
+## B.2 Panel
+- **Cliente global con seccionales**: selector "Todas las seccionales / …" en la barra superior (`core/seccional.js`). Filtra Inicio, Flota, Alertas, Reportes, Vehículos, Dispositivos, Salud y Mediciones por `vehiculos.sucursal_id` / `dispositivos.sucursal_id`. Inicio, Reportes, Vehículos, Dispositivos y Mediciones filtran en el servidor; Flota, Alertas y Salud filtran en el navegador (las vistas v_* no traen la seccional) y Flota recalcula los KPI desde las filas filtradas.
+- **Perfil de seccional**: no ve el selector (la RLS ya limita todo); el rol se muestra como "Seccional".
+- **Admin** (Ficha de cliente > "Seccionales y usuarios"): alta/renombrar/eliminar seccionales, asignar vehículos y dispositivos, y crear usuarios globales o de seccional con la función `crear-usuario-seccional` (invitación por email o contraseña de 12+ caracteres). No se vincula un usuario Auth ya existente: la API de Auth no permite buscarlo por email de forma fiable; se invita a uno nuevo.
+- La detección de rol usa ahora `perfiles` (un usuario de seccional no figura en `clientes.auth_user_id`) con el vínculo `clientes.auth_user_id` como respaldo.
+
+## B.3 Datos de demo
+`supabase/seed/demo.sql` (NO es migración; se ejecuta a mano). Ver su cabecera. Resumen: requiere el cliente `Demo Transportes` ya creado; genera 2 seccionales, 14 vehículos `DEMO001..014`, 6 dispositivos `02:DE:00:00:00:0N`, ~10 semanas de mediciones y stock/eventos de ejemplo; es idempotente y re-ejecutarlo refresca las fechas.
+
+## B.4 Cómo se validó
+`tests/sql/t_50_seccionales.sql` (global ve todo, seccional A no ve B, admin ve todo, cliente B aislado, anon nada, escrituras y FK compuestas) y `t_60_seed_demo.sql` (seed idempotente, vistas con filas, perfil de seccional del demo). Smoke: `tests/smoke/run.sh admin|cliente|secuser`.

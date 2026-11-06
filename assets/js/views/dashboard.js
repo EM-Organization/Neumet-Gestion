@@ -5,6 +5,7 @@ import { isClienteMode, currentClienteId, currentClienteNombre, onLogin } from '
 import { registerView, switchView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { tireStatus } from '../domain/desgaste.js';
+import { contextoListo, sucursalSeleccionada, hayFiltroSeccional, nombreSucursal } from '../core/seccional.js';
 
 // ── DASHBOARD CLIENTE ────────────────────────────────────────
 export async function loadDashboard(){
@@ -12,7 +13,12 @@ export async function loadDashboard(){
 
   const today=new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('dash-title').textContent=`Hola, ${currentClienteNombre}`;
-  document.getElementById('dash-subtitle').textContent=`Tu resumen al ${today}`;
+  await contextoListo();
+  const sel=hayFiltroSeccional()?sucursalSeleccionada():'';
+  document.getElementById('dash-subtitle').textContent=`Tu resumen al ${today}`+(sel?` · Seccional ${nombreSucursal(sel)}`:'');
+  // Con una seccional elegida (perfil global) se filtra en el servidor por vehiculos.sucursal_id.
+  const emb=sel?'vehiculos!inner(nombre,sucursal_id)':'vehiculos(nombre)';
+  const conSel=q=>sel?q.eq('sucursal_id',sel):q;
 
   // Queries en paralelo
   const [
@@ -22,11 +28,11 @@ export async function loadDashboard(){
     {data:vehicles},
     {data:allMed}
   ] = await Promise.all([
-    db.from('vehiculos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId).eq('activo',true),
-    db.from('dispositivos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId),
-    db.from('mediciones').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId),
-    db.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',currentClienteId).eq('activo',true).order('nombre'),
-    db.from('mediciones').select('vehiculo_id,posicion,mm1,mm2,mm3,created_at,vehiculos(nombre)')
+    conSel(db.from('vehiculos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId).eq('activo',true)),
+    conSel(db.from('dispositivos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId)),
+    (sel?db.from('mediciones').select('id,vehiculos!inner(sucursal_id)',{count:'exact',head:true}).eq('vehiculos.sucursal_id',sel):db.from('mediciones').select('*',{count:'exact',head:true})).eq('cliente_id',currentClienteId),
+    conSel(db.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',currentClienteId).eq('activo',true)).order('nombre'),
+    (sel?db.from('mediciones').select(`vehiculo_id,posicion,mm1,mm2,mm3,created_at,${emb}`).eq('vehiculos.sucursal_id',sel):db.from('mediciones').select(`vehiculo_id,posicion,mm1,mm2,mm3,created_at,${emb}`))
       .eq('cliente_id',currentClienteId).order('created_at',{ascending:false}).limit(600)
   ]);
 

@@ -6,6 +6,7 @@ import { isClienteMode } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { contextoListo, filtrarFilas } from '../core/seccional.js';
 import {
   ordenarAlertas, filtrarAlertas, contarPorSeveridad, tiposPresentes,
   severidadLabel, tipoLabel, SEVERIDAD_BADGE,
@@ -68,13 +69,14 @@ function fillFiltros() {
 
 export async function load() {
   $('alert-msg').textContent = 'Cargando…';
+  await contextoListo();
   const [al, res] = await Promise.all([
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
   ]);
   if (al.error || res.error) { $('alert-msg').textContent = ''; showToast(userError(al.error || res.error), true); return; }
-  alertas = al.rows;
+  alertas = filtrarFilas(al.rows);
   clientes = res.data || [];
   fillFiltros();
   $('alert-msg').textContent = al.truncated ? `Se muestran las primeras ${MAX_FILAS} alertas: la lista está incompleta.` : '';

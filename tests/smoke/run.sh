@@ -11,7 +11,8 @@ sleep 1
 Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = reportes ] && Q="?reportes=1"
 [ "$MODE" = flota ] && Q="?flota=1"
-OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-30000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
+[ "$MODE" = secuser ] && Q="?cliente=1&secuser=1"
+OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-60000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
 echo "$OUT" | grep -o '<title>[^<]*</title>' | head -1
 echo "$OUT" | awk '/<pre id="smoke-log">/{f=1} f{print} /<\/pre>/{f=0}' | sed 's/<[^>]*>//g'
 [[ "$OUT" == *"<title>SMOKE:OK</title>"* ]]

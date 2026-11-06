@@ -1,6 +1,6 @@
 // Stub de supabase-js para el arnés de humo. Se carga ANTES de los módulos (main.js) dentro del iframe.
 (function(){
-  var asCliente = /[?&]cliente=1/.test(window.parent.location.search);
+  var asCliente = /[?&](cliente|secuser)=1/.test(window.parent.location.search);
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   var cl = [
     {id:1,nombre:'Transportes Alfa',precio_mensual:50000,created_at:D(40),auth_user_id:'u-1'},

@@ -4,6 +4,7 @@ import { showToast, setStatus, userError } from '../core/ui.js';
 import { isClienteMode, currentClienteId, currentClienteNombre, onLogout } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
+import { contextoListo, hayFiltroSeccional, filtrarConsulta } from '../core/seccional.js';
 import { ESTADOS, infoEstado, filtrarSalud, contarPorEstado, textoDias } from '../domain/salud.js';
 
 // Salud de dispositivos: lee la vista v_salud_dispositivos (estado/días sin actividad los calcula la BD).
@@ -13,6 +14,7 @@ const fmtFecha=iso=>iso?new Date(iso).toLocaleString('es-AR',{day:'2-digit',mont
 
 export async function loadSalud(){
   setStatus(true,'Cargando...');
+  await contextoListo();
   const [{data,error},cl]=await Promise.all([
     db.from('v_salud_dispositivos')
       .select('dispositivo_id,cliente_id,mac_address,nombre,activo,ultima_actividad_at,total_mediciones,dias_sin_actividad,estado')
@@ -22,6 +24,12 @@ export async function loadSalud(){
   ]);
   if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
   filas=data||[];
+  if(hayFiltroSeccional()){ // la vista no trae la seccional: se cruza con los dispositivos de la seccional elegida
+    const {data:ds,error:e2}=await filtrarConsulta(db.from('dispositivos').select('id').eq('cliente_id',currentClienteId));
+    if(e2){ setStatus(false,'Error de conexión'); showToast(userError(e2),true); return; }
+    const ok=new Set((ds||[]).map(d=>String(d.id)));
+    filas=filas.filter(f=>ok.has(String(f.dispositivo_id)));
+  }
   clientes=new Map((cl.data||[]).map(c=>[String(c.id),c.nombre]));
   setStatus(true,'Conectado');
   renderFiltros();
