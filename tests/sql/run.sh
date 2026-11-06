@@ -79,6 +79,10 @@ echo "== migración de producto (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261106020000_producto_vistas.sql"
 echo "== migración de producto (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261106020000_producto_vistas.sql"
+echo "== migración de rotación (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107000000_rpc_rotacion.sql"
+echo "== migración de rotación (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107000000_rpc_rotacion.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

@@ -103,7 +103,7 @@ ACTIONS.guardarUmbrales=async function(){
   try{
     const {data,error}=await db.from('clientes').update(v.valores).eq('id',activoId).select('id,nombre,'+COLS);
     if(error){ err(mensajeErrorUmbrales(error)); return; } // se muestra el error de la BD (p. ej. check retiro < crítico < bajo)
-    if(!data||!data.length){ err('No se guardó ningún cambio (¿sin permiso?)'); return; }
+    if(!data||!data.length){ err('No se guardó ningún cambio: no tienes permiso para editar este cliente o ya no existe'); return; }
     renderUmbrales(data[0]);
     showToast('Umbrales actualizados');
     cargarCliente(); // las vistas SQL recalculan estados con los nuevos umbrales

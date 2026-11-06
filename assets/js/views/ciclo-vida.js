@@ -148,33 +148,29 @@ ACTIONS.cicloRegistrarEvento=async function(){
     posicionDestino:g('ciclo-pos-dest'), destinoEstado:g('ciclo-dest-estado'), motivo:g('ciclo-baja-motivo'), fecha:g('ciclo-baja-fecha')
   },hoyISO());
   if(!p.ok){ showToast(p.error,true); return; }
-  let pasos=null;
+  let rotar=false;
   if(tipo==='rotacion'){
     const rot=planRotacion(neums,n,p.posicionDestino);
     if(!rot.ok){ showToast(rot.error,true); return; }
-    pasos=rot.pasos;
+    rotar=true;
     if(rot.intercambio && !(await confirmDialog('Intercambiar neumáticos',`La posición P${p.posicionDestino} está ocupada: se intercambiarán los neumáticos de P${n.posicion} y P${p.posicionDestino}.`))) return;
   }
   const btn=$('ciclo-ev-save'); btn.disabled=true;
   try{
-    if(pasos){
-      for(const s of pasos){
-        const {error}=await db.from('neumaticos').update({posicion:s.posicion}).eq('id',s.id);
+    if(rotar){
+      // Una sola llamada transaccional: intercambia posiciones y registra los eventos, o no hace nada.
+      const {error}=await db.rpc('neumatico_rotar',{p_vehiculo_id:n.vehiculo_id, p_pos_a:n.posicion, p_pos_b:p.posicionDestino, p_odometro_km:p.evento.odometro_km??null});
+      if(error) throw error;
+      showToast(`${TIPO_LABEL[tipo]} registrado`);
+    } else {
+      if(Object.keys(p.patch).length){
+        const {error}=await db.from('neumaticos').update(p.patch).eq('id',n.id);
         if(error) throw error;
       }
-    } else if(Object.keys(p.patch).length){
-      const {error}=await db.from('neumaticos').update(p.patch).eq('id',n.id);
-      if(error) throw error;
+      const {error:e2}=await db.from('eventos_neumatico').insert([p.evento]);
+      if(e2){ showToast('El neumático se actualizó pero no se pudo registrar el evento',true); console.error(e2); }
+      else showToast(`${TIPO_LABEL[tipo]} registrado`);
     }
-    const filas=[p.evento];
-    if(tipo==='rotacion'){
-      const otro=neums.find(x=>x.id!==n.id && x.posicion===p.posicionDestino);
-      if(otro) filas.push({cliente_id:otro.cliente_id, vehiculo_id:otro.vehiculo_id, neumatico_id:otro.id, idneumatico:otro.idneumatico||null,
-        tipo:'rotacion', posicion_origen:otro.posicion, posicion_destino:n.posicion, odometro_km:p.evento.odometro_km, costo:null, notas:p.evento.notas});
-    }
-    const {error:e2}=await db.from('eventos_neumatico').insert(filas);
-    if(e2){ showToast('El neumático se actualizó pero no se pudo registrar el evento',true); console.error(e2); }
-    else showToast(`${TIPO_LABEL[tipo]} registrado`);
     if(await cargar()) renderTodo();
   }catch(e){ showToast(userError(e),true); btn.disabled=false; }
 };

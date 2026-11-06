@@ -42,6 +42,24 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   ev = writes('eventos_neumatico', 'insert');
   if(ev.length !== 2 || ev[1].payload[0].tipo !== 'baja') fail('ciclo: evento de baja');
   if($('#ciclo-timeline').innerHTML.indexOf('<b>') !== -1) fail('ciclo: HTML sin escapar en la línea de tiempo');
+  // Rotación: intercambio P2<->P3 vía RPC atómica (sin UPDATE sueltos); un error de la RPC no da éxito
+  var nWrites = fx.writes.length;
+  setv('#ciclo-neum', '2'); setv('#ciclo-tipo', 'rotacion'); $('#ciclo-tipo').dispatchEvent(new w.Event('change', {bubbles: true}));
+  setv('#ciclo-pos-dest', '3'); setv('#ciclo-ev-odo', '5100');
+  var ce = w.console.error; w.console.error = function(){}; // el error esperado se registra en consola
+  fx.rpcError = {code: 'P0002', message: 'no hay neumático'};
+  $('#ciclo-ev-save').click(); await sleep(200);
+  $('#confirm-ok').click(); await sleep(300);
+  if(fx.rpcs.length !== 1) fail('ciclo: la rotación no llamó a la RPC: ' + JSON.stringify(fx.rpcs));
+  if($('#toast-msg').textContent.indexOf('registrado') !== -1) fail('ciclo: éxito mostrado pese al error de la RPC');
+  fx.rpcError = null; w.console.error = ce;
+  $('#ciclo-ev-save').click(); await sleep(200);
+  $('#confirm-ok').click(); await sleep(300);
+  if(fx.rpcs.length !== 2) fail('ciclo: segunda rotación sin RPC');
+  var ra = fx.rpcs[1] ? fx.rpcs[1].args : {};
+  if(ra.p_vehiculo_id !== 10 || ra.p_pos_a !== 2 || ra.p_pos_b !== 3 || ra.p_odometro_km !== 5100) fail('ciclo: args de la RPC: ' + JSON.stringify(ra));
+  if(fx.writes.length !== nWrites) fail('ciclo: la rotación hizo escrituras sueltas: ' + JSON.stringify(fx.writes.slice(nWrites)));
+  if($('#toast-msg').textContent.indexOf('registrado') === -1) fail('ciclo: falta aviso de rotación registrada');
   log.push('ciclo-flow: writes=' + fx.writes.length);
   $('[data-action="closeCicloVida"]').click(); await sleep(100);
   if($('#modal-ciclo').classList.contains('show')) fail('ciclo: modal no cerrado');
