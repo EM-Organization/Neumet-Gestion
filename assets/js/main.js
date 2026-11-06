@@ -3,6 +3,8 @@
 import { initActions } from './core/actions.js';
 import { initNav } from './core/nav.js';
 import { initAuth, checkAuth } from './core/auth.js';
+import { initModales } from './core/modal-a11y.js';
+import * as inicio from './views/inicio.js';
 import * as dashboard from './views/dashboard.js';
 import * as clientes from './views/clientes.js';
 import * as balance from './views/balance.js';
@@ -21,5 +23,6 @@ import * as cicloVida from './views/ciclo-vida.js';
 initActions();
 initAuth();
 initNav();
-[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha].forEach(v=>v.init());
+initModales();
+[inicio,dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha].forEach(v=>v.init());
 checkAuth();

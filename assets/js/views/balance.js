@@ -5,6 +5,7 @@ import { safeCls } from '../core/html.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { renderBalanceChart } from './balance-chart.js';
+import { fmtNum } from '../domain/formato.js';
 
 let gastos=[], gastoModalMode='create', gastoActiveId=null;
 let balanceClients=[];
@@ -41,7 +42,7 @@ function renderBalance(){
   resEl.className='kpi-value '+(resultado>=0?'positive':'negative');
   resCard.className='balance-kpi '+(resultado>=0?'positive':'negative');
   const margenEl=document.getElementById('kpi-margen');
-  margenEl.textContent=totalIngresos>0?margen.toFixed(1)+'%':'—';
+  margenEl.textContent=totalIngresos>0?fmtNum(margen,1)+'%':'—';
   margenEl.className='kpi-value '+(margen>=0?'positive':'negative');
 
   // Totales
