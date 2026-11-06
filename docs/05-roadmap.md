@@ -34,6 +34,8 @@
 | 2.7 | Separar bundles admin / cliente | 01 A6 |
 | 2.8 | CI: lint, tipos, tests, gitleaks | 03 |
 
+> **Nota (avance 2.8):** ya existen ESLint (`npm run lint`, `eslint.config.js`) y el job `lint` en CI (`.github/workflows/ci.yml`, junto a `secrets` y `static`). La regla `no-unsanitized` queda en `warn` hasta migrar los `innerHTML` existentes (tarea 2.2); entonces pasará a `error`. Pendientes de 2.8: tipos y tests.
+
 ## Fase 3 · Operación y escala
 | ID | Tarea | Doc |
 |---|---|---|
