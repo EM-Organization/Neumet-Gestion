@@ -91,6 +91,10 @@ echo "== migración de seccionales (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107020000_seccionales.sql"
 echo "== migración de seccionales (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107020000_seccionales.sql"
+echo "== migración de cambio de neumático (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261108000000_cambio_neumatico.sql"
+echo "== migración de cambio de neumático (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261108000000_cambio_neumatico.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

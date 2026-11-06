@@ -21,10 +21,11 @@ import * as seccionalesAdmin from './views/seccionales-admin.js';
 import * as flota from './views/flota.js';
 import * as alertas from './views/alertas.js';
 import * as cicloVida from './views/ciclo-vida.js';
+import * as cambioNeumatico from './views/cambio-neumatico.js';
 
 initActions();
 initAuth();
 initNav();
 initModales();
-[inicio,dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha,seccionalesAdmin].forEach(v=>v.init());
+[inicio,dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,flota,alertas,salud,ficha,seccionalesAdmin].forEach(v=>v.init());
 checkAuth();
