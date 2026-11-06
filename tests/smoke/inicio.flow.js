@@ -20,26 +20,39 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   });
   var titulo = $('#inicio-title').textContent;
   if(cliMode ? titulo.indexOf('Hola, ') !== 0 : titulo !== 'Inicio') fail('inicio('+rol+'): título '+titulo);
+  if(/Todavía no hay datos|Todavía no hay vehículos/.test($('#inicio-contenido').textContent)) fail('inicio('+rol+'): muestra "sin datos" teniendo datos');
+  if(/¿Qué requiere/.test($('#view-inicio').textContent)) fail('inicio('+rol+'): queda el subtítulo de relleno');
   if(!$('#inicio-contenido .atencion-veh [data-action="verVehiculoEnLista"]')) fail('inicio('+rol+'): sin lista de vehículos que urgen');
   var listaClientes = /Clientes con más urgencias/.test($('#inicio-contenido').textContent);
   if(cliMode && listaClientes) fail('inicio(cliente): ve la lista de clientes (solo admin)');
   if(!cliMode && !listaClientes) fail('inicio(admin): falta la lista de clientes');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre de vehículo sin escapar');
 
-  // --- Menú por rol: el cliente nunca ve secciones de administración ---
+  // --- Sin "Conectando…" permanente: el aviso de conexión solo existe ante un problema real ---
+  var pill = $('#status-pill');
+  if(!pill.hidden || visible(pill)) fail('conexion('+rol+'): el aviso de conexión se ve con todo funcionando');
+  if(/Conectando/.test(d.body.innerText)) fail('conexion('+rol+'): se lee "Conectando…"');
+  var textoPill = pill.textContent;
+  if(!/Sin conexión/.test(textoPill) || !pill.querySelector('[data-action="reintentarConexion"]')) fail('conexion: el aviso de problema no tiene texto claro ni reintento');
+  // Problema real: al perder la red aparece el aviso con reintento; "Reintentar" lo oculta y recarga la vista.
+  w.dispatchEvent(new w.Event('offline')); await sleep(50);
+  if(pill.hidden || !visible(pill)) fail('conexion: no aparece el aviso al perder la red');
+  pill.querySelector('[data-action="reintentarConexion"]').click(); await sleep(300);
+  if(!pill.hidden) fail('conexion: "Reintentar" no oculta el aviso');
+
+  // --- Menú por rol: el cliente ve solo Inicio, Vehículos, Alertas, Reportes y Dispositivos ---
   var navVisible = function(v){ return visible($('.nav-item[data-view="'+v+'"]')); };
-  ['inicio','flota','alertas','vehiculos','mediciones','dispositivos','salud','reportes','ficha'].forEach(function(v){
+  ['inicio','vehiculos','alertas','reportes','dispositivos'].forEach(function(v){
     if(!navVisible(v)) fail('menu('+rol+'): falta '+v);
   });
+  ['salud','dashboard'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada duplicada '+v); });
   if(cliMode){
-    ['clientes','balance'].forEach(function(v){ if(navVisible(v)) fail('menu(cliente): ve la sección de administración '+v); });
+    var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; }).join(',');
+    if(visibles !== 'inicio,vehiculos,alertas,reportes,dispositivos') fail('menu(cliente): menú inesperado: '+visibles);
     all('[data-admin-only]').forEach(function(el){ if(visible(el)) fail('menu(cliente): elemento admin visible: '+(el.id||el.className||el.textContent.trim().slice(0,30))); });
-    if(!navVisible('dashboard')) fail('menu(cliente): falta Mi panel');
-    if(/administración/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee "Administración"');
-    if(!/Mi resumen/.test($('.nav-item[data-view="ficha"]').innerText)) fail('menu(cliente): la ficha debe llamarse "Mi resumen"');
+    if(/administración|mi panel|mi resumen|mediciones/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee texto de administración o duplicados');
   } else {
-    ['clientes','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
-    if(navVisible('dashboard')) fail('menu(admin): ve "Mi panel" (solo cliente)');
+    ['flota','mediciones','clientes','ficha','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
     if(!/administración/i.test($('.sidebar-nav').innerText)) fail('menu(admin): falta sección Administración');
   }
   var activos = all('.nav-item.active');
@@ -47,9 +60,11 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   all('.nav-item').forEach(function(n){ if(n.tagName !== 'BUTTON') fail('menu: el ítem '+n.dataset.view+' no es un botón (no se alcanza con teclado)'); });
 
   // --- Las tarjetas llevan a la vista correspondiente ---
-  var destinos = {alertas:'alertas', salud:'salud', flota:'flota'};
+  var destinos = {alertas:'alertas', dispositivos:'dispositivos', flota: cliMode ? 'vehiculos' : 'flota'};
   for(var v in destinos){
-    $('#inicio-contenido .atencion-card[data-tarjeta="'+v+'"]').click(); await sleep(400);
+    var card = $('#inicio-contenido .atencion-card[data-tarjeta="'+destinos[v]+'"]');
+    if(!card){ fail('inicio('+rol+'): falta la tarjeta que lleva a '+destinos[v]); continue; }
+    card.click(); await sleep(400);
     if(!$('#view-'+destinos[v]).classList.contains('active')) fail('inicio('+rol+'): la tarjeta '+v+' no abre su vista');
     $('.nav-item[data-view="inicio"]').click(); await sleep(500);
   }
@@ -84,6 +99,17 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   key('Escape'); await sleep(200);
   if($('#modal-vehiculo').classList.contains('show')) fail('modal: Esc no cierra');
   if(d.activeElement !== abre) fail('modal: el foco no vuelve al botón que lo abrió');
+  // --- Cliente CON vehículos pero sin neumáticos medidos (vistas derivadas vacías): NO es "sin datos" ---
+  var fxv = w.__flotaFx;
+  if(fxv){
+    fxv.vacio = true;
+    $('.nav-item[data-view="inicio"]').click(); await sleep(500);
+    var txt = $('#inicio-contenido').textContent;
+    if(/Todavía no hay datos|Todavía no hay vehículos/.test(txt)) fail('inicio('+rol+'): "sin datos" con vehículos registrados: '+txt.slice(0,80));
+    if(!/vehículos registrados, sin mediciones todavía/.test(txt)) fail('inicio('+rol+'): falta el estado "vehículos sin mediciones": '+txt.slice(0,80));
+    if(!$('#inicio-contenido [data-action="irA"]')) fail('inicio('+rol+'): el estado sin mediciones no ofrece acción');
+    fxv.vacio = false;
+  }
   log.push('inicio('+rol+'): menu+a11y ok');
   $('.nav-item[data-view="inicio"]').click(); await sleep(300);
 };

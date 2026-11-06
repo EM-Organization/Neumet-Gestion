@@ -101,9 +101,9 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   // Inicio y Reportes consultan con el filtro de seccional en el servidor
   fx.vehEqs.length = 0;
   setSel('#sec-select', '2');
-  await nav('dashboard'); await sleep(300);
+  await nav('inicio'); await sleep(300);
   if (fx.vehEqs.indexOf('vehiculos:2') === -1) fail('selector: Inicio no filtró por sucursal_id: ' + fx.vehEqs.join(','));
-  if ($('#dash-subtitle').textContent.indexOf('Seccional') === -1) fail('selector: Inicio no indica la seccional');
+  if ($('#inicio-subtitle').textContent.indexOf('Salto') === -1) fail('selector: Inicio no indica la seccional');
   fx.vehEqs.length = 0;
   await nav('reportes'); await sleep(300);
   if (fx.vehEqs.indexOf('vehiculos:2') === -1) fail('selector: Reportes no filtró vehículos por sucursal_id');

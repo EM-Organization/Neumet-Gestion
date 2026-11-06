@@ -17,7 +17,8 @@ core/
   config.js             lee window.NEUMET_CONFIG (SUPABASE_URL, SUPABASE_KEY)
   supabase.js           cliente `db`
   html.js               esc, html``, SafeHtml, raw, joinHtml, setHtml, safeCls  (ÚNICO sumidero de innerHTML)
-  ui.js                 showToast, setStatus, confirmDialog, relDate, userError, avatarFor
+  ui.js                 showToast, setStatus (aviso de conexión: oculto salvo problema real), confirmDialog, relDate, userError, avatarFor
+  conexion.js           eventos online/offline + acción «Reintentar» del aviso de conexión
   actions.js            ACTIONS + registerActions + listener delegado (data-action / data-change / data-backdrop-close)
   auth.js               checkAuth, login/logout, modo cliente (currentClienteId, isClienteMode), hooks onLogin/onLogout
   nav.js                registerView(nombre, etiqueta, load), switchView, sidebar móvil
@@ -26,9 +27,11 @@ core/
 domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
+  inicio.js             PURO: estadoInicio (vacio | sin_mediciones | con_datos)
+  salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
-  dashboard.js  clientes.js  vehiculos.js  dispositivos.js  balance.js (+ balance-chart.js)
+  inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo lectura para el cliente)  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
   neumaticos.js  stock.js  reportes.js
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
@@ -112,3 +115,14 @@ npm run check    # sintaxis de todos los módulos
 npm test         # node:test de domain/ (tests/unit)
 tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cliente)
 ```
+
+## Reglas de UX del panel (cliente = gestor de flota)
+- **Aviso de conexión**: no se muestra nada mientras todo funciona. Solo aparece «Sin conexión» + «Reintentar» ante un error
+  de carga o al perder la red (`setStatus(false)` / evento `offline`). Nunca «Conectando…».
+- **Copy**: si un texto no ayuda a decidir o actuar, se elimina. Títulos cortos, sin subtítulos de relleno; los vacíos dicen
+  qué pasa y, si existe, ofrecen la acción concreta.
+- **Menú del cliente**: Inicio, Vehículos, Alertas, Reportes, Dispositivos (solo lectura). Se quitan «Mi panel» (duplicaba Inicio),
+  «Mi resumen» (la ficha es de administración), «Mediciones» (el detalle por vehículo y el export viven en Vehículos y Reportes)
+  y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
+  Clientes, Ficha de cliente y Balance bajo «Administración».
+- **Solo lectura para el cliente**: Dispositivos y Stock sin alta/edición/baja (UI oculta + guardas en las acciones; la RLS lo impide igual).

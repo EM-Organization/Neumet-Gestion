@@ -51,7 +51,7 @@ function renderStock(){
     return mq&&mc;
   });
   if(!filtered.length){
-    setHtml(tbody, html`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`);
+    setHtml(tbody, html`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin neumáticos en stock</div></div></td></tr>`);
     return;
   }
   setHtml(tbody, joinHtml(filtered.map(s=>{
@@ -73,14 +73,14 @@ function renderStock(){
       <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
       <td>${asigBadge}</td>
       <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?s.notas:'—'}</td>
-      <td><div class="actions">
+      ${isClienteMode()?'':html`<td><div class="actions">
         <button class="icon-btn" data-sa="edit" data-sid="${s.id}" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
         <button class="icon-btn danger" data-sa="del" data-sid="${s.id}" title="Eliminar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
-      </div></td>
+      </div></td>`}
     </tr>
     <tr class="stock-asig-detail" data-detail="${s.id}" style="display:none">
       <td colspan="8" style="padding:0">
@@ -126,6 +126,7 @@ function renderStock(){
 }
 
 ACTIONS.openStockModal=async function(mode,id){
+  if(isClienteMode()) return; // el stock es de solo lectura para el cliente
   stockModalMode=mode; stockActiveId=id;
   const sfClienteField=document.getElementById('sf-cliente').closest('.field');
   if(isClienteMode()){
@@ -163,6 +164,7 @@ ACTIONS.openStockModal=async function(mode,id){
 ACTIONS.closeStockModal=()=>document.getElementById('modal-stock').classList.remove('show');
 
 ACTIONS.saveStock=async function(){
+  if(isClienteMode()) return;
   const marca=document.getElementById('sf-marca').value.trim();
   if(!marca){ showToast('La marca es obligatoria',true); return; }
   const cliente_id=parseInt(document.getElementById('sf-cliente').value);
@@ -201,6 +203,7 @@ ACTIONS.saveStock=async function(){
 };
 
 async function removeStock(id){
+  if(isClienteMode()) return;
   const s=stockItems.find(x=>x.id===id);
   const ok=await confirmDialog('Eliminar','¿Eliminar esta entrada del stock?'); if(!ok) return;
   const {error}=await db.from('stock_neumaticos').delete().eq('id',id);

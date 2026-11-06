@@ -65,6 +65,8 @@
   .breadcrumb { font-size: 14px; font-weight: 500; color: var(--text-primary); margin: 0; }
   h1, h2, h3 { margin: 0; }
   .status-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--success); }
+  .status-pill[hidden] { display: none; }
+  .status-retry { background: none; border: none; padding: 0 0 0 4px; font: inherit; font-weight: 600; color: inherit; text-decoration: underline; cursor: pointer; }
   .status-pill.disconnected { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
   .status-dot { width: 5px; height: 5px; border-radius: 50%; background: #34c759; }
   .status-pill.disconnected .status-dot { background: var(--danger); }
@@ -593,3 +595,22 @@
 .vd-rotar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 .vd-rotar label { font-size: 13px; color: var(--text-secondary); flex: 1 1 100%; }
 .vd-rotar select { flex: 1 1 160px; min-height: 36px; }
+/* ── Consistencia de espaciado (cabeceras, pestañas, barras de filtros y tablas) ─────────────────────────────
+   Escala de 4 px: cabecera -> 20, pestañas -> 24, filtros -> 16, secciones -> 28. Solo tokens de marca. */
+.page-header { align-items: center; gap: 12px 16px; margin-bottom: 20px; min-height: 40px; }
+.page-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sub-tabs-bar { gap: 4px; padding: 0; margin: 0 0 24px; background: none; border-bottom: 1px solid var(--border-strong); }
+.sub-tab { padding: 10px 16px; }
+.sub-tab:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+.toolbar { margin-bottom: 16px; }
+.salud-chips { margin-bottom: 16px; }
+.table-wrap + .table-wrap, .table-wrap + .unreg-section { margin-top: 24px; }
+.unreg-section { margin-top: 28px; }
+.unreg-section .seccion-titulo { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+.seccion-titulo { margin: 28px 0 12px; }
+.atencion-grid + .seccion-titulo { margin-top: 0; }
+@media (max-width: 640px) {
+  .page-header { align-items: stretch; }
+  .sub-tabs-bar { overflow-x: auto; margin-bottom: 20px; }
+  .sub-tab { white-space: nowrap; }
+}

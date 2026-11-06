@@ -1,186 +1,185 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, currentClienteId, onLogin } from '../core/auth.js';
-import { contextoListo, filtrarConsulta } from '../core/seccional.js';
+import { chip, estadoVacio, estadoCarga, estadoError, filaEstado } from '../core/componentes.js';
+import { fmtNum, fmtFechaHora } from '../domain/formato.js';
+import { isClienteMode, currentClienteId, currentClienteNombre, onLogin, onLogout } from '../core/auth.js';
+import { contextoListo, hayFiltroSeccional, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
+import { ESTADOS, infoEstado, filtrarSalud, contarPorEstado, textoDias } from '../domain/salud.js';
 
-let dispositivos=[], dispModalMode='create', dispActiveId=null;
+// Dispositivos: una sola vista con el estado de cada medidor (activo / sin actividad / caído / nunca midió), su última
+// actividad y filtros. Lee v_salud_dispositivos (la BD calcula estado y días). El rol cliente la ve en SOLO LECTURA:
+// sin alta, edición ni baja (la RLS ya lo impide; aquí además se oculta la UI y se protegen las acciones).
+let filas=[], clientes=new Map(), fEstado='', fCliente='', dispModalMode='create', dispActiveId=null;
+const SIMBOLO={activo:'✓',sin_actividad:'▲',caido:'✕',nunca:'–'};
+const $=id=>document.getElementById(id);
 
 export async function loadDispositivos(){
-  setStatus(true,'Cargando...');
   await contextoListo();
+  setHtml($('tbody-dispositivos'), filaEstado(8, estadoCarga('Cargando…')));
 
-  // Cargar dispositivos registrados (+ no registrados solo para admin)
-  let dispQuery=filtrarConsulta(db.from('dispositivos')
-    .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)')
-    .order('created_at',{ascending:false}));
-  if(isClienteMode()) dispQuery=dispQuery.eq('cliente_id',currentClienteId);
-
-  const promises=[dispQuery];
-  if(!isClienteMode()) promises.push(db.rpc('get_unregistered_devices'));
-  const [{data:dispData,error:dispErr}, unregResult]=await Promise.all(promises);
-  const unregData=unregResult?.data||[];
-
-  if(dispErr){ setStatus(false,'Error de conexión'); showToast(userError(dispErr),true); return; }
-  dispositivos=dispData||[];
-  setStatus(true,'Conectado');
-
-  // Poblar filtro clientes
-  const filterSel=document.getElementById('filter-cliente-disp');
-  const cmap=new Map();
-  dispositivos.forEach(d=>{ if(d.clientes) cmap.set(d.cliente_id,d.clientes.nombre); });
-  setHtml(filterSel, joinHtml([html`<option value="">Todos los clientes</option>`, [...cmap.entries()].map(([id,n])=>html`<option value="${id}">${n}</option>`)]));
-
-  // Enriquecer registrados con última medición
-  const macs=dispositivos.map(d=>d.mac_address).filter(Boolean);
-  let lastMed={};
-  if(macs.length){
-    const {data:meds}=await db
-      .from('mediciones').select('device_id,created_at')
-      .in('device_id',macs).order('created_at',{ascending:false});
-    (meds||[]).forEach(m=>{ if(!lastMed[m.device_id]) lastMed[m.device_id]=m.created_at; });
+  const cliente=isClienteMode();
+  const [{data,error},cl,unreg]=await Promise.all([
+    db.from('v_salud_dispositivos')
+      .select('dispositivo_id,cliente_id,mac_address,nombre,activo,ultima_actividad_at,total_mediciones,dias_sin_actividad,estado')
+      .order('dias_sin_actividad',{ascending:false,nullsFirst:false}),
+    cliente?Promise.resolve({data:[{id:currentClienteId,nombre:currentClienteNombre}]})
+      :db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre'),
+    cliente?Promise.resolve({data:[]}):db.rpc('get_unregistered_devices')
+  ]);
+  if(error){ setStatus(false); showToast(userError(error),true); setHtml($('tbody-dispositivos'), filaEstado(8, estadoError('', 'loadDispositivos'))); return; }
+  filas=data||[];
+  if(hayFiltroSeccional()){ // la vista no trae la seccional: se cruza con los dispositivos de la seccional elegida
+    const {data:ds,error:e2}=await filtrarConsulta(db.from('dispositivos').select('id').eq('cliente_id',currentClienteId));
+    if(e2){ setStatus(false); showToast(userError(e2),true); setHtml($('tbody-dispositivos'), filaEstado(8, estadoError('', 'loadDispositivos'))); return; }
+    const ok=new Set((ds||[]).map(d=>String(d.id)));
+    filas=filas.filter(f=>ok.has(String(f.dispositivo_id)));
   }
-  dispositivos.forEach(d=>{ d._lastMed=lastMed[d.mac_address]||null; });
-
-  renderUnregistered(unregData||[]);
+  setStatus(true);
+  clientes=new Map((cl.data||[]).map(c=>[String(c.id),c.nombre]));
+  renderFiltros();
+  renderUnregistered(unreg.data||[]);
   renderDispositivos();
 }
 
+function renderFiltros(){
+  const sel=$('filter-cliente-disp');
+  const ids=[...new Set(filas.map(f=>String(f.cliente_id)))];
+  setHtml(sel, joinHtml([html`<option value="">Todos los clientes</option>`, ids.map(id=>html`<option value="${id}">${clientes.get(id)||('Cliente #'+id)}</option>`)]));
+  if(fCliente&&!ids.includes(fCliente)) fCliente='';
+  sel.value=fCliente;
+  $('disp-estado').value=fEstado;
+  sel.style.display=isClienteMode()?'none':'';
+}
+
+function renderResumen(){
+  const c=contarPorEstado(filas,fCliente);
+  setHtml($('disp-chips'), joinHtml([
+    html`<button type="button" class="salud-chip ${fEstado===''?'active':''}" data-action="dispFiltrarEstado" data-args='[""]'><span class="salud-chip-n">${c.total}</span> Todos</button>`,
+    ESTADOS.map(e=>{
+      const i=infoEstado(e);
+      return html`<button type="button" class="salud-chip ${i.cls} ${fEstado===e?'active':''}" data-action="dispFiltrarEstado" data-args='["${e}"]'><span class="salud-chip-n">${c[e]}</span> ${i.lbl}</button>`;
+    })
+  ]));
+}
+
+// MAC que enviaron mediciones pero no tienen cliente: solo administración.
 function renderUnregistered(list){
-  const section=document.getElementById('unreg-section');
-  const tbody=document.getElementById('tbody-unreg');
-  const countEl=document.getElementById('unreg-count');
-  const badge=document.getElementById('nav-unreg-badge');
-  // Actualizar badge del nav
-  if(list.length){ badge.textContent=list.length; badge.style.display=''; }
-  else { badge.style.display='none'; }
-  if(!list.length){ section.style.display='none'; return; }
+  const section=$('unreg-section');
+  const badge=$('nav-unreg-badge');
+  if(isClienteMode()||!list.length){ badge.style.display='none'; section.style.display='none'; return; }
+  badge.textContent=list.length; badge.style.display='';
   section.style.display='block';
-  countEl.textContent=list.length;
-  setHtml(tbody, joinHtml(list.map(d=>{
-    const fecha=d.last_seen
-      ?new Date(d.last_seen).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
-      :'—';
+  $('unreg-count').textContent=list.length;
+  setHtml($('tbody-unreg'), joinHtml(list.map(d=>{
+    const fecha=d.last_seen?fmtFechaHora(d.last_seen):'—';
     return html`<tr>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:7px;height:7px;border-radius:50%;background:#ff9500;flex-shrink:0"></div>
-          <span class="mono-cell" style="font-size:13px;font-weight:600;color:var(--text-primary)">${d.device_id}</span>
-        </div>
-      </td>
-      <td class="mono-cell" style="font-size:12px">${fecha}</td>
-      <td>
-        <span class="badge orange">● ${d.total_meds} medición${d.total_meds!=1?'es':''}</span>
-      </td>
+      <td><span class="mono-cell salud-mac">${d.device_id}</span></td>
+      <td class="mono-cell salud-fecha">${fecha}</td>
+      <td><span class="badge orange">● ${d.total_meds} medición${d.total_meds!=1?'es':''}</span></td>
       <td style="text-align:right">
-        <button class="btn primary" style="font-size:12px;padding:5px 10px" data-reg-mac="${d.device_id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><path d="M12 5v14M5 12h14"/></svg>
-          Registrar
-        </button>
+        <button type="button" class="btn primary" data-reg-mac="${d.device_id}">Registrar</button>
       </td>
     </tr>`;
   })));
 }
 
 function renderDispositivos(){
-  document.getElementById('filter-cliente-disp').style.display=isClienteMode()?'none':'';
-  const q=document.getElementById('search-dispositivos').value.toLowerCase();
-  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-disp').value;
-  const tbody=document.getElementById('tbody-dispositivos');
-  const filtered=dispositivos.filter(d=>{
-    const matchQ=(d.mac_address||'').toLowerCase().includes(q)||(d.nombre||'').toLowerCase().includes(q);
-    const matchC=!cid||String(d.cliente_id)===cid;
-    return matchQ&&matchC;
-  });
-  if(!filtered.length){
-    setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">No hay dispositivos registrados aún</div></div></td></tr>`);
+  renderResumen();
+  const cliente=isClienteMode();
+  const lista=filtrarSalud(filas,{estado:fEstado,clienteId:fCliente,query:$('search-dispositivos').value});
+  const tbody=$('tbody-dispositivos');
+  $('disp-count').textContent=filas.length?`${lista.length} de ${filas.length}`:'';
+  if(!lista.length){
+    setHtml(tbody, filaEstado(8, filas.length
+      ? estadoVacio('Ningún dispositivo coincide', 'Probá con otro filtro.')
+      : (cliente
+        ? estadoVacio('Todavía no hay dispositivos')
+        : estadoVacio('Todavía no hay dispositivos', '', { label: 'Nuevo dispositivo', action: 'openDispositivoModal', args: ['create'], primaria: true }))));
     return;
   }
-  setHtml(tbody, joinHtml(filtered.map(d=>{
-    const clientNom=d.clientes?d.clientes.nombre:'—';
-    const lastMedStr=d._lastMed
-      ?new Date(d._lastMed).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
-      :html`<span style="color:var(--text-tertiary)">Sin mediciones</span>`;
-    const estadoBadge=d.activo
-      ?html`<span class="badge green">● Activo</span>`
-      :html`<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>`;
-    return html`<tr>
-      <td class="id-cell">#${d.id}</td>
-      <td><span class="mono-cell" style="font-size:13px;font-weight:500;color:var(--text-primary)">${d.mac_address}</span></td>
-      <td>${d.nombre?d.nombre:html`<span style="color:var(--text-tertiary)">—</span>`}</td>
-      <td>${clientNom}</td>
-      <td class="mono-cell" style="font-size:12px">${lastMedStr}</td>
-      <td>${estadoBadge}</td>
-      <td><div class="actions">
-        <button class="icon-btn" data-da="edit" data-did="${d.id}" title="Editar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  setHtml(tbody, joinHtml(lista.map(r=>{
+    const i=infoEstado(r.estado);
+    return html`<tr data-estado="${r.estado}">
+      <td>${chip(i.cls, i.lbl, SIMBOLO[r.estado]||'●')}</td>
+      <td><span class="mono-cell salud-mac">${r.mac_address}</span></td>
+      <td>${r.nombre?r.nombre:html`<span class="salud-muted">—</span>`}</td>
+      ${cliente?'':html`<td>${clientes.get(String(r.cliente_id))||('#'+r.cliente_id)}</td>`}
+      <td class="mono-cell salud-fecha">${r.ultima_actividad_at?fmtFechaHora(r.ultima_actividad_at):'Sin mediciones'}</td>
+      <td class="salud-num">${textoDias(r)}</td>
+      <td class="salud-num">${fmtNum(r.total_mediciones||0)}${r.activo===false?html` <span class="badge gray">Desactivado</span>`:''}</td>
+      ${cliente?'':html`<td><div class="actions">
+        <button type="button" class="icon-btn" data-action="editarDispositivo" data-args="${JSON.stringify([r.dispositivo_id])}" title="Editar" aria-label="Editar dispositivo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="icon-btn danger" data-da="del" data-did="${d.id}" title="Eliminar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <button type="button" class="icon-btn danger" data-action="eliminarDispositivo" data-args="${JSON.stringify([r.dispositivo_id])}" title="Eliminar" aria-label="Eliminar dispositivo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
-      </div></td>
+      </div></td>`}
     </tr>`;
   })));
-  tbody.querySelectorAll('button[data-da]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const id=parseInt(btn.dataset.did);
-      if(btn.dataset.da==='del') removeDispositivo(id); else ACTIONS.openDispositivoModal('edit',id);
-    });
-  });
 }
+
+ACTIONS.dispFiltrarEstado=e=>{ fEstado=e||''; $('disp-estado').value=fEstado; renderDispositivos(); };
+ACTIONS.dispEstadoChange=v=>{ fEstado=v||''; renderDispositivos(); };
+ACTIONS.dispClienteChange=v=>{ fCliente=v||''; renderDispositivos(); };
+ACTIONS.editarDispositivo=id=>ACTIONS.openDispositivoModal('edit',id);
+ACTIONS.eliminarDispositivo=id=>removeDispositivo(id);
 
 ACTIONS.registrarDispositivo=function(mac){
   ACTIONS.openDispositivoModal('create', null, mac);
 };
 
+// Alta/edición/baja: solo administración (la RLS también lo impide al rol cliente).
 ACTIONS.openDispositivoModal=async function(mode, id, prefillMac=null){
+  if(isClienteMode()) return;
   dispModalMode=mode; dispActiveId=id;
   const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-  setHtml(document.getElementById('df-cliente'), joinHtml((data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
-  const save=document.getElementById('disp-save');
+  setHtml($('df-cliente'), joinHtml((data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
+  const save=$('disp-save');
 
   if(mode==='create'){
-    document.getElementById('disp-modal-title').textContent=
-      prefillMac ? 'Registrar dispositivo' : 'Nuevo dispositivo';
-    document.getElementById('disp-modal-sub').textContent=
-      prefillMac ? `MAC detectada: ${prefillMac}` : 'Registrá el medidor y asignalo a un cliente';
-    document.getElementById('df-mac').value=prefillMac||'';
-    document.getElementById('df-mac').disabled=!!prefillMac; // si viene de "no registrado", la MAC no se edita
-    document.getElementById('df-nombre').value='';
-    document.getElementById('df-activo').checked=true;
+    $('disp-modal-title').textContent=prefillMac ? 'Registrar dispositivo' : 'Nuevo dispositivo';
+    $('disp-modal-sub').textContent=prefillMac ? prefillMac : '';
+    $('df-mac').value=prefillMac||'';
+    $('df-mac').disabled=!!prefillMac; // si viene de "no registrado", la MAC no se edita
+    $('df-nombre').value='';
+    $('df-activo').checked=true;
     save.textContent='Registrar dispositivo';
   } else {
-    const d=dispositivos.find(d=>d.id===id);
-    document.getElementById('disp-modal-title').textContent='Editar dispositivo';
-    document.getElementById('disp-modal-sub').textContent=d.mac_address;
-    document.getElementById('df-cliente').value=d.cliente_id;
-    document.getElementById('df-mac').value=d.mac_address;
-    document.getElementById('df-mac').disabled=true;
-    document.getElementById('df-nombre').value=d.nombre||'';
-    document.getElementById('df-activo').checked=d.activo;
+    const d=filas.find(f=>f.dispositivo_id===id);
+    if(!d) return;
+    $('disp-modal-title').textContent='Editar dispositivo';
+    $('disp-modal-sub').textContent=d.mac_address;
+    $('df-cliente').value=d.cliente_id;
+    $('df-mac').value=d.mac_address;
+    $('df-mac').disabled=true;
+    $('df-nombre').value=d.nombre||'';
+    $('df-activo').checked=d.activo;
     save.textContent='Guardar';
   }
-  document.getElementById('modal-dispositivo').classList.add('show');
+  $('modal-dispositivo').classList.add('show');
   setTimeout(()=>{
     const focus = prefillMac ? 'df-nombre' : (mode==='create' ? 'df-mac' : 'df-nombre');
-    document.getElementById(focus).focus();
+    $(focus).focus();
   }, 60);
 };
-ACTIONS.closeDispositivoModal=()=>document.getElementById('modal-dispositivo').classList.remove('show');
+ACTIONS.closeDispositivoModal=()=>$('modal-dispositivo').classList.remove('show');
 
 ACTIONS.saveDispositivo=async function(){
-  const mac=document.getElementById('df-mac').value.trim().toUpperCase();
-  const nombre=document.getElementById('df-nombre').value.trim()||null;
-  const cliente_id=parseInt(document.getElementById('df-cliente').value);
-  const activo=document.getElementById('df-activo').checked;
+  if(isClienteMode()) return;
+  const mac=$('df-mac').value.trim().toUpperCase();
+  const nombre=$('df-nombre').value.trim()||null;
+  const cliente_id=parseInt($('df-cliente').value);
+  const activo=$('df-activo').checked;
   if(!mac||!cliente_id){ showToast('Completá MAC y cliente',true); return; }
   // Validar formato MAC básico
   if(!/^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$/.test(mac)){
     showToast('Formato de MAC inválido (Ej: AA:BB:CC:DD:EE:FF)',true); return;
   }
-  const btn=document.getElementById('disp-save');
+  const btn=$('disp-save');
   btn.disabled=true; btn.textContent=dispModalMode==='create'?'Creando...':'Guardando...';
   try{
     if(dispModalMode==='create'){
@@ -197,13 +196,11 @@ ACTIONS.saveDispositivo=async function(){
       if(res.mediciones_vinculadas>0) msg+=` · ${res.mediciones_vinculadas} medición${res.mediciones_vinculadas>1?'es':''} vinculadas`;
       showToast(msg);
     } else {
-      const {data,error}=await db.from('dispositivos')
+      const {error}=await db.from('dispositivos')
         .update({nombre,cliente_id,activo})
         .eq('id',dispActiveId)
-        .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)').single();
+        .select('id').single();
       if(error) throw error;
-      const idx=dispositivos.findIndex(d=>d.id===dispActiveId);
-      if(idx>=0){ data._lastMed=dispositivos[idx]._lastMed; dispositivos[idx]=data; }
       showToast('Dispositivo actualizado');
     }
     ACTIONS.closeDispositivoModal(); loadDispositivos(); // recarga todo incluyendo no registrados
@@ -212,24 +209,28 @@ ACTIONS.saveDispositivo=async function(){
 };
 
 async function removeDispositivo(id){
-  const d=dispositivos.find(d=>d.id===id);
+  if(isClienteMode()) return;
+  const d=filas.find(f=>f.dispositivo_id===id);
+  if(!d) return;
   const ok=await confirmDialog('Eliminar dispositivo',`¿Eliminar el dispositivo ${d.mac_address}?`);
   if(!ok) return;
   const {error}=await db.from('dispositivos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }
-  dispositivos=dispositivos.filter(d=>d.id!==id);
+  filas=filas.filter(f=>f.dispositivo_id!==id);
   showToast('Dispositivo eliminado');
+  renderFiltros();
   renderDispositivos();
 }
 
 ACTIONS.loadDispositivos=loadDispositivos;
 export const load=loadDispositivos;
 registerView('dispositivos','Dispositivos',loadDispositivos);
+onLogout(()=>{ filas=[]; clientes=new Map(); fEstado=''; fCliente=''; });
 onLogin(({cliente})=>{
   if(cliente) return;
   db.rpc('get_unregistered_devices').then(({data})=>{
     if(data&&data.length){
-      const badge=document.getElementById('nav-unreg-badge');
+      const badge=$('nav-unreg-badge');
       badge.textContent=data.length; badge.style.display='';
     }
   });
@@ -241,6 +242,5 @@ export function init(){
     const b=e.target.closest('[data-reg-mac]');
     if(b) ACTIONS.registrarDispositivo(b.dataset.regMac);
   });
-  document.getElementById('search-dispositivos').addEventListener('input',renderDispositivos);
-  document.getElementById('filter-cliente-disp').addEventListener('change',renderDispositivos);
+  $('search-dispositivos').addEventListener('input',renderDispositivos);
 }

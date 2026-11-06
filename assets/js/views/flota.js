@@ -72,8 +72,8 @@ export function render() {
   const mostrarCliente = !isClienteMode() && !f.clienteId;
   if (!lista.length) {
     setHtml($('flota-grid'), vehiculos.length
-      ? estadoVacio('Ningún vehículo coincide con los filtros', 'Probá quitando algún filtro o cambiando la búsqueda.')
-      : estadoVacio('Todavía no hay vehículos con neumáticos', 'Registrá un vehículo y asignale sus neumáticos para ver acá su estado.', { label: 'Ir a Vehículos', action: 'irA', args: ['vehiculos'], primaria: true }));
+      ? estadoVacio('Ningún vehículo coincide con los filtros')
+      : estadoVacio('Todavía no hay vehículos con neumáticos', '', { label: 'Ver vehículos', action: 'irA', args: ['vehiculos'], primaria: true }));
     return;
   }
   setHtml($('flota-grid'), joinHtml(lista.map(v => card(v, mostrarCliente))));
