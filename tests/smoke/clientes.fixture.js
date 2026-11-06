@@ -5,7 +5,13 @@
   var deleted = {id:99,nombre:'Cliente Eliminado SA',created_at:new Date(Date.now()-86400000*90).toISOString(),auth_user_id:null,deleted_at:new Date(Date.now()-86400000).toISOString(),dispositivos:[],vehiculos:[]};
   var seq = 200;
 
+  fx.apiFetches = []; fx.apiRpcs = []; var apiCuentas = [];
   window.fetch = (function(orig){ return function(url, opts){
+    if(String(url).indexOf('/functions/v1/crear-cuenta-api') !== -1){
+      var b = JSON.parse(opts.body); fx.apiFetches.push(b);
+      apiCuentas.push({user_id:'api-'+apiCuentas.length, email:b.email, created_at:new Date().toISOString()});
+      return Promise.resolve({status:201, ok:true, json:function(){ return Promise.resolve({ok:true, cuenta:{user_id:'api-x', email:b.email, cliente_id:b.cliente_id}, password:'Zx9-generada-UNICA-vez-abcdef'}); }});
+    }
     if(String(url).indexOf('/functions/v1/crear-cliente') === -1) return orig.apply(this, arguments);
     var body = JSON.parse(opts.body); fx.fetches.push(body);
     function resp(status, obj){ return Promise.resolve({status:status, ok:status<300, json:function(){ return Promise.resolve(obj); }}); }
@@ -29,6 +35,7 @@
       return q;
     };
     c.rpc = function(name, args){
+      if(name === 'cuentas_api_listar'){ fx.apiRpcs.push(args); return Promise.resolve({data:apiCuentas.slice(), error:null}); }
       if(name === 'cliente_eliminar_suave'){ fx.rpcs.push({name:name, args:args}); return Promise.resolve({data:null, error:null}); }
       return rpc.apply(this, arguments);
     };

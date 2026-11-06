@@ -51,3 +51,23 @@ describe('clientStatus', () => {
   test('inactivo', () => assert.equal(clientStatus({ dispositivos: [{ activo: false }] }).lbl, 'Inactivo'));
   test('activo', () => assert.equal(clientStatus({ dispositivos: [{ activo: true }] }).lbl, 'Activo'));
 });
+
+import { emailSugeridoApi, validarCuentaApi, mensajeErrorCuentaApi } from '../../assets/js/domain/clientes.js';
+describe('cuenta de API', () => {
+  test('email sugerido: sin acentos, slug y dominio del admin', () => {
+    assert.equal(emailSugeridoApi('Transportes Ñandú S.A.', 'ana@neumet.cl'), 'api-transportes-nandu-s-a@neumet.cl');
+    assert.equal(emailSugeridoApi('', ''), 'api-cliente@example.com');
+  });
+  test('validarCuentaApi', () => {
+    assert.equal(validarCuentaApi({ email: '' }).ok, false);
+    assert.equal(validarCuentaApi({ email: 'x' }).ok, false);
+    assert.deepEqual(validarCuentaApi({ email: ' a@b.cl ' }), { ok: true, email: 'a@b.cl' });
+  });
+  test('mensajes de error', () => {
+    assert.match(mensajeErrorCuentaApi(409, 'Máximo 5 cuentas de API por cliente'), /máximo/);
+    assert.match(mensajeErrorCuentaApi(409, 'Ya existe un usuario'), /Ya existe/);
+    assert.match(mensajeErrorCuentaApi(403, ''), /permiso/);
+    assert.match(mensajeErrorCuentaApi(404, ''), /no existe/);
+    assert.match(mensajeErrorCuentaApi(500, ''), /No se pudo/);
+  });
+});
