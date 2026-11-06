@@ -2,6 +2,9 @@ openapi: 3.1.0
 info:
   title: NEUMET API de proveedor (app de medición)
   version: 0.1.0-draft
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
   description: |
     Contrato derivado de `API_PROVEEDOR.pdf`. BORRADOR: ver docs/07-api-proveedor.md
     para las ambigüedades abiertas (§5) y el diseño de seguridad (§4).
@@ -13,6 +16,7 @@ paths:
   /auth/login:
     post:
       summary: Autenticación (cuenta dedicada por cliente)
+      operationId: login
       security: []
       requestBody:
         required: true
@@ -31,6 +35,7 @@ paths:
   /emenube/neumaticos/obtener_montaje:
     post:
       summary: Neumáticos montados de un vehículo y su última medición
+      operationId: obtenerMontaje
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -43,12 +48,13 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ObtenerMontajeResponse' }
-        '400': { description: JSON inválido o fuera de límites (tamaño, nº de montajes) }
+        '400': { description: 'JSON inválido o fuera de límites (tamaño, nº de montajes)' }
         '401': { description: Token vencido o inválido }
         '5XX': { description: Error de servidor }
   /emenube/neumaticos/guardar_montaje_mm:
     post:
       summary: Registro de mediciones por posición
+      operationId: guardarMontajeMm
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -61,7 +67,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
-        '400': { description: JSON inválido o fuera de límites (tamaño, nº de montajes) }
+        '400': { description: 'JSON inválido o fuera de límites (tamaño, nº de montajes)' }
         '401': { description: Token vencido o inválido }
         '5XX': { description: Error de servidor }
 components:
@@ -105,7 +111,7 @@ components:
       required: [code]
       properties:
         code: { type: integer, description: 200 si el vehículo existe }
-        matricula: { type: string, description: Siempre devuelta, aunque se busque por numero }
+        matricula: { type: string, description: 'Siempre devuelta, aunque se busque por numero' }
         numero: { type: string }
         data:
           type: array
@@ -117,7 +123,7 @@ components:
         posicion: { type: integer }
         mm1: { type: [number, 'null'], minimum: 0, maximum: 40 }
         mm2: { type: [number, 'null'], minimum: 0, maximum: 40 }
-        mm3: { type: number, minimum: 0, maximum: 40, description: Siempre igual a mm2 }
+        mm3: { type: [number, 'null'], minimum: 0, maximum: 40, description: Siempre igual a mm2 }
         mm4: { type: [number, 'null'], minimum: 0, maximum: 40 }
     GuardarMontajeRequest:
       type: object
