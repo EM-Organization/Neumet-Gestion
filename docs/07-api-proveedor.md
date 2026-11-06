@@ -2,6 +2,7 @@
 
 > Estado: **análisis y diseño** (2026-11-06). Sin código ni despliegue. Fuente: `API_PROVEEDOR.pdf` (4 págs., "Especificación de API requerida").
 > Contrato formal en [`api/openapi.yaml`](api/openapi.yaml).
+> **Convención:** lo marcado **[verificar]** son hipótesis que no se pueden comprobar desde el repo (la función `guardar-montaje-mm`, el esquema y la RLS no están versionados). Lo demás sale del PDF o del código del panel.
 
 ## 1. Qué pide el documento
 
@@ -17,6 +18,8 @@ Reglas del contrato: HTTPS, JSON UTF-8; el éxito exige HTTP 2xx **y** `code = 2
 
 ## 2. Qué cambia respecto a lo que existe hoy
 
+> La columna "Hoy" sale del README y del código del panel (`app.js`). **[verificar]** contra la función desplegada y el esquema real: `guardar-montaje-mm` no está en el repo.
+
 | Aspecto | Hoy (`guardar-montaje-mm`, no versionada) | API requerida |
 |---|---|---|
 | Autenticación | Ninguna documentada; identifica por `device_id` (MAC) | Login con cuenta + token Bearer, acotado a un cliente |
@@ -25,7 +28,7 @@ Reglas del contrato: HTTPS, JSON UTF-8; el éxito exige HTTP 2xx **y** `code = 2
 | Lecturas | `mm1`–`mm3` (3 huellas) | `mm1`–`mm4`, con `mm3 = mm2` siempre |
 | Respuesta | `{ok, vehiculo_id, ruedas_guardadas}` | `{code, data.guardados[{posicion, guardado}]}` con fallo parcial por neumático |
 | Lectura de datos | No existe | `obtener_montaje` |
-| Inventario de neumáticos | Tablas `neumaticos`/`stock_neumaticos` (campos no versionados) | Requiere `idneumatico`, `codigo`, `posicion`, `auxilio` por neumático |
+| Inventario de neumáticos | `neumaticos` (por `vehiculo_id, posicion`; el panel lee `marca, modelo, fecha_compra, precio_unidad, notas`) y `stock_neumaticos`; `mediciones` ya guarda `idneumatico` (`app.js:680`). **[verificar]** si existen `codigo` y `auxilio` | Requiere `idneumatico`, `codigo`, `posicion`, `auxilio` por neumático |
 
 Consecuencia: **esta API cierra el hallazgo S7** de la auditoría (ingesta sin autenticación) para el canal de la app, y permite **retirar** el endpoint público basado en MAC una vez migrada la app.
 
@@ -39,11 +42,11 @@ Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 �
 ⚠ **El orden físico está invertido o ambiguo**: el panel habla de "exterior, medio, interior" y el contrato de "interno, centro, externo". Hay que confirmar con el desarrollo de la app y con los datos existentes qué es `mm1` en la tabla; un mapeo al revés **intercambia borde interno y externo** sin que nada falle.
 
 ### 3.2 Entidades
-- `matricula`/`patente` ↔ `vehiculos.patente_norm` (mayúsculas, sin espacios); `numero` ↔ `vehiculos.numero`.
+- `matricula`/`patente` ↔ `vehiculos.patente_norm` (mayúsculas, sin espacios) **[verificar]**; `numero` ↔ `vehiculos.numero`.
 - Vehículo del cliente de la cuenta ↔ `vehiculos.cliente_id`. **Fuera del cliente = "no encontrado"** (misma respuesta que inexistente, para no revelar su existencia).
-- Neumático montado ↔ `neumaticos(vehiculo_id, posicion, …)`; requiere columnas `idneumatico` (único), `codigo`, `auxilio` (hoy desconocidas).
+- Neumático montado ↔ `neumaticos(vehiculo_id, posicion, …)`; requiere `idneumatico` (único), `codigo`, `auxilio`: `idneumatico` ya aparece en `mediciones`; `codigo` y `auxilio` **[verificar]**.
 - Última medida por posición ↔ última fila de `mediciones` por `(vehiculo_id, posicion)`.
-- Auxilio (posición convencional, p. ej. 99, `auxilio:"si"`): máximo uno por vehículo; **fuera** de `tipo_ruedas` 10/16 → la validación de posición debe contemplarlo.
+- Auxilio (posición convencional, p. ej. 99 según el ejemplo del PDF, `auxilio:"si"`): máximo uno por vehículo; **fuera** de `tipo_ruedas` 10/16 → la validación de posición debe contemplarlo.
 
 ## 4. Diseño de seguridad
 
@@ -53,6 +56,8 @@ Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 �
 - **Contraseña**: ≥ 24 caracteres generados, almacenada en el almacén seguro del dispositivo (Keychain/Keystore) de la app; rotación documentada; protección contra filtrado de contraseñas activada.
 - **Vida del token**: el JWT de Supabase dura 1 h por defecto; aceptable porque la app re-loguea ante 401. Confirmar con el equipo de la app que lo hace (el contrato lo declara).
 - **Fuerza bruta**: límites de Auth de Supabase + bloqueo por cuenta/IP; alertas (doc `04`).
+- **Revocación:** un JWT de Supabase **no se puede revocar** antes de expirar (≈ 1 h) aunque se deshabilite o rote la cuenta, y `jwt_expiry` es global, no por cuenta. Opciones: aceptar la ventana de 1 h (recomendado al inicio), o validar en cada request contra una lista de cuentas/`jti` bloqueados dentro de la función. Documentarlo en el runbook de rotación.
+- **⚠ Acceso directo con el mismo JWT:** el token que emite el login **también sirve contra PostgREST/Realtime con la anon/publishable key**, sin pasar por la función. Por lo tanto la cuenta `api` no debe poder usar la API REST general: las políticas RLS de cada tabla deben **excluir expresamente** `app_metadata.role = 'api'` (o limitarla a su cliente y a operaciones concretas). Esto exige auditar la RLS actual antes de crear cuentas (ver §8, riesgo 2) y confirmar que el signup público está desactivado.
 
 ### 4.2 Autorización (endpoints 2 y 3)
 - Verificar el JWT en la función (firma/expiración con la clave del proyecto) y exigir `role = 'api'`. El **`cliente_id` sale únicamente del token**, jamás del cuerpo.
@@ -68,13 +73,17 @@ Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 �
 
 ### 4.4 Integridad y reintentos
 - El cliente tiene timeout de 10 s y puede **reintentar**: sin protección se duplican mediciones y se distorsiona el análisis predictivo (mm/semana).
-- Idempotencia: aceptar cabecera opcional `Idempotency-Key` y, además, deduplicar por clave natural `(vehiculo_id, posicion, valores, ventana de N min)`. Se propone una **sesión de medición** (`sesion_id`) generada por la función por request.
+- **Idempotencia (propuesta revisada):**
+  1. **Preferida:** exigir a la app una cabecera `Idempotency-Key` (UUID por intento de guardado, reutilizado en los reintentos). La función guarda `(cuenta, key) → respuesta` durante 24 h y devuelve la misma respuesta ante un reintento. Requiere confirmar con DAC (pregunta 9).
+  2. **Si la app no puede:** clave derivada = hash de `(cliente_id, patente, montajes normalizados)` con ventana corta (p. ej. 10 min). Limitación conocida: puede descartar una medición **legítimamente repetida** en esa ventana; por eso es el plan B y la ventana debe ser corta y acordada.
+  3. La `sesion_id` interna agrupa las filas de un request, pero **no** es mecanismo de deduplicación.
 - Escritura **atómica por request** vía RPC de Postgres (una transacción; validación por posición con savepoints para soportar el fallo parcial).
 
 ### 4.5 Superficie y operación
 - **Sin CORS** (no es un cliente de navegador): no emitir `Access-Control-Allow-Origin`.
 - Solo HTTPS; HSTS en el dominio propio; nada sensible en la URL ni en logs.
-- **Rate limit** por cuenta (p. ej. 60 req/min) y por IP.
+- **Rate limit** por cuenta (p. ej. 60 req/min) y por IP. Las Edge Functions **no lo incluyen**: implementar con una tabla de contadores en Postgres (ventana deslizante por `cuenta`) o un servicio externo (p. ej. Upstash Redis). "Por IP" solo es fiable si se toma la IP de la cabecera que ponga el proxy de Supabase; no confiar en cabeceras arbitrarias del cliente. La protección contra contraseñas filtradas de Supabase Auth **depende del plan** (**[verificar]**).
+- **Mismo tiempo de respuesta:** "vehículo ajeno" e "inexistente" deben recorrer **el mismo camino de código** (sin early-return distinto) para no filtrar existencia por tiempos.
 - **Auditoría/logs** (doc `04`): `ingesta_log(request_id, cuenta, cliente_id, endpoint, vehiculo_id, http, code, n_guardados, n_fallidos, ms)`; sin contraseñas ni tokens; `request_id` devuelto en una cabecera `X-Request-Id`.
 - **Rendimiento** (timeouts de 5 s/10 s): índice `mediciones(vehiculo_id, posicion, created_at desc)` y consulta "última por posición" con `DISTINCT ON`/lateral; evitar el patrón actual del panel de bajar cientos de filas.
 - **Entornos:** staging (segundo proyecto Supabase) para que DAC pruebe sin tocar producción; base URL distinta.
@@ -110,14 +119,15 @@ Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 �
 | A | Confirmar mapeo de lecturas y semántica de bordes (§5: 1–6) | Equipo de la app |
 | B | Migraciones: columnas `idneumatico/codigo/auxilio`, `perfiles`/rol `api`, `ingesta_log`, índices, RPC `api_guardar_montaje`, `api_obtener_montaje` | Esquema real |
 | C | Edge Function `api-proveedor` (router + validación + logs) | B |
-| D | Tests de contrato con los ejemplos del PDF, tests de aislamiento entre clientes, tests de reintento/idempotencia (Deno) | C |
+| D | Tests de contrato con los ejemplos del PDF, tests de aislamiento entre clientes (incluido `guardar` con posiciones de otro vehículo y `obtener` de vehículo ajeno), tests de reintento/idempotencia (Deno) | C |
 | E | Staging + pruebas conjuntas con DAC | C, D |
 | F | Producción, rotación de credenciales, **retiro de `guardar-montaje-mm`** público | E |
 
 ## 8. Riesgos principales
 
+0. **Hipótesis sin verificar:** esquema, RLS y `guardar-montaje-mm` no están en el repo; este documento no puede confirmarlos.
 1. **Datos invertidos** (interno/externo) por mapeo mal confirmado.
-2. **Fuga entre clientes** si el aislamiento se apoya solo en filtros de aplicación o en una RLS sin auditar.
+2. **Fuga entre clientes** si el aislamiento se apoya solo en filtros de aplicación o en una RLS sin auditar. Además, la cuenta `api` podría ser tratada como admin por la lógica actual ("sin fila en `clientes`") y su JWT sirve directo contra PostgREST: **auditar la RLS y excluir `role = 'api'` antes de crear la primera cuenta**.
 3. **Duplicados** por reintentos tras timeout.
 4. **Inventario sin origen**: la API no sirve si Neumet no tiene los neumáticos cargados.
 5. La clave de la cuenta de servicio vive en un dispositivo móvil: usar almacén seguro, cuenta de mínimo privilegio y rotación.
