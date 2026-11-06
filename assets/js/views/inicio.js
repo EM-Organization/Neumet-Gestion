@@ -20,9 +20,9 @@ const MAX_FILAS = 20000;
 const MAX_VEHICULOS_LISTA = 5;
 
 // Una tarjeta de atención: número grande + qué significa + a dónde ir. Si n=0, "Todo en orden" (texto + símbolo, no solo color).
-function tarjeta({ n, titulo, ayuda, vista, urgente, cta }) {
-  const estado = n > 0 ? (urgente ? chip('red', 'Requiere atención', '✕') : chip('orange', 'Revisar', '▲')) : chip('green', 'Todo en orden', '✓');
-  return html`<button type="button" class="atencion-card ${n > 0 ? (urgente ? 'sev-critico' : 'sev-bajo') : 'sev-ok'}" data-action="irA" data-args="${JSON.stringify([vista])}" data-tarjeta="${vista}">
+function tarjeta({ n, titulo, ayuda, vista, urgente, cta, neutro }) {
+  const estado = n > 0 ? (neutro ? chip('gray', 'Revisar', '●') : urgente ? chip('red', 'Requiere atención', '✕') : chip('orange', 'Revisar', '▲')) : chip('green', 'Todo en orden', '✓');
+  return html`<button type="button" class="atencion-card ${n > 0 ? (neutro ? 'sev-neutro' : urgente ? 'sev-critico' : 'sev-bajo') : 'sev-ok'}" data-action="irA" data-args="${JSON.stringify([vista])}" data-tarjeta="${vista}">
     <span class="atencion-n">${fmtNum(n)}</span>
     <span class="atencion-titulo">${titulo}</span>
     <span class="atencion-ayuda">${ayuda}</span>
@@ -84,7 +84,7 @@ export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0
   const tarjetas = joinHtml([
     tarjeta({ n: k.criticos, titulo: 'Neumáticos críticos', ayuda: 'Por debajo del límite: conviene cambiarlos.', vista: vistaFlota, urgente: true, cta: 'Ver' }),
     tarjeta({ n: alertas.length, titulo: 'Alertas activas', ayuda: `${fmtNum(sev[3])} críticas, ${fmtNum(sev[2])} medias, ${fmtNum(sev[1])} informativas.`, vista: 'alertas', urgente: sev[3] > 0, cta: 'Ver' }),
-    tarjeta({ n: sinActividad, titulo: 'Dispositivos sin actividad', ayuda: `Más de 7 días sin medir${sh.nunca ? `; ${fmtNum(sh.nunca)} nunca midió` : ''}.`, vista: 'dispositivos', urgente: sh.caido > 0, cta: 'Ver' }),
+    tarjeta({ n: sinActividad, titulo: 'Dispositivos sin actividad', ayuda: `Más de 7 días sin medir${sh.nunca ? `; ${fmtNum(sh.nunca)} nunca midió` : ''}.`, vista: 'dispositivos', neutro: true, cta: 'Ver' }),
     tarjeta({ n: sinMedir, titulo: 'Vehículos sin medir', ayuda: 'Con neumáticos sin ninguna medición.', vista: vistaFlota, urgente: false, cta: 'Ver' }),
   ]);
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # QA visual: capturas de las vistas clave (admin/cliente x escritorio/móvil) con Chrome headless y el stub de tests/smoke.
 # Uso: tests/visual/run.sh [escena ...]      (sin argumentos: todas). Salida: tests/visual/out/<rol>-<tamaño>-<escena>.png
-# Variables: PORT (8792), CHROME (ruta del binario), SIZES="desktop mobile", ROLES="admin cliente".
+# Variables: PORT (8792), CHROME (ruta del binario), SIZES="desktop mobile"  # también: laptop (1280x720), ROLES="admin cliente".
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 PORT="${PORT:-8792}"; OUT_DIR="tests/visual/out"
@@ -25,7 +25,7 @@ for item in $ALL; do
   for role in $ROLES; do
     [ "$who" != both ] && [ "$who" != "$role" ] && continue
     for size in $SIZES; do
-      if [ "$size" = mobile ]; then W=390; H=844; else W=1440; H=900; fi
+      case "$size" in mobile) W=390; H=844;; laptop) W=1280; H=720;; *) W=1440; H=900;; esac
       Q="shot=$scene&vw=$W&vh=$H"
       [ "$role" = cliente ] && Q="$Q&cliente=1"
       [ "$role" = cliente ] && [ "$scene" = vehiculos ] && Q="$Q&detalle=1"

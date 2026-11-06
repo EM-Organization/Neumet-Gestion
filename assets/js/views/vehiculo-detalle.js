@@ -175,13 +175,13 @@ function seccionMedicion(fila) {
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
 
-function seccionTasa(fila, u) {
+function seccionTasa(fila, u, razonMostrada) {
   if (!fila || nulo(fila.promedio)) return '';
   const tasa = fila.tasa_mm_semana;
   if (nulo(tasa)) return html`<p class="vd-p-nota">Todavía no hay mediciones suficientes para calcular la velocidad de desgaste (hacen falta al menos dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
   const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) <= u.retiro;
-  return html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>
+  return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
     <ul class="vd-alertas">${frase(`Nivel crítico (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Retiro (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
@@ -238,13 +238,15 @@ function renderPanel() {
         <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · reencauche ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}</div></div>
       <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
     </div>
-    <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}${ind && ind.mayorAlNormal ? chip('orange', 'Desgaste mayor al normal', '!') : ''}</div>
-    ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon">${ind.razon}</p>` : ''}
+    <div class="vd-p-scroll">
+    <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}</div>
+    ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon"><strong>Desgaste mayor al normal.</strong> ${ind.razon}</p>` : ''}
     <h4>Última medición</h4>${seccionMedicion(fila)}
-    <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u)}
-    <h4>Alertas</h4>${seccionAlertas(pos)}
     <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
+    <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
+    <h4>Alertas</h4>${seccionAlertas(pos)}
     <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
+    </div>
     ${acciones(pos)}`);
   cargarGrafico(pos, fila);
 }

@@ -12,6 +12,7 @@ ROLES=cliente SIZES=mobile tests/visual/run.sh alertas
 Salida: `tests/visual/out/<rol>-<tamaño>-<escena>.png` (ignorado por git; no se commitea). Después hay que **mirar** las
 imágenes (por ejemplo con la herramienta Read de Claude Code) y anotar defectos.
 
+Tamaños: desktop (1440x900), mobile (390x844) y laptop (1280x720, opcional con SIZES).
 Escenas: `login`, `inicio`, `vehiculos`, `vehiculos-busqueda`, `detalle`, `detalle-rueda`, `cambio-neumatico`, `flota`,
 `alertas`, `dispositivos`, `reportes`, `mediciones`, `clientes` y `ficha` (solo admin), `selector-seccional` (cliente global).
 Las de detalle/búsqueda/cambio solo existen como cliente (las fixtures de `vehiculo.fixture.js` son de cliente).
