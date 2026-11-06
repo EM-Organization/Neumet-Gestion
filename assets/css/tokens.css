@@ -65,3 +65,37 @@
   --shadow:    0 1px 4px rgba(56,52,36,0.06), 0 4px 16px rgba(56,52,36,0.06);
   --shadow-lg: 0 4px 20px rgba(56,52,36,0.08), 0 20px 60px rgba(56,52,36,0.10);
 }
+
+/* ── Salud de dispositivos y ficha de cliente ── */
+.badge.gray { background: rgba(56,52,36,0.07); color: var(--text-secondary); }
+.select-filter { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 7px 12px; font-size: 14px; font-family: var(--font); color: var(--text-primary); outline: none; cursor: pointer; }
+.salud-muted { color: var(--text-tertiary); font-size: 13px; }
+.salud-mac { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.salud-fecha { font-size: 12px; }
+.salud-num { font-variant-numeric: tabular-nums; }
+.salud-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.salud-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-family: var(--font); color: var(--text-primary); cursor: pointer; }
+.salud-chip-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.salud-chip.green .salud-chip-n { color: var(--success); }
+.salud-chip.orange .salud-chip-n { color: var(--warning); }
+.salud-chip.red .salud-chip-n { color: var(--danger); }
+.salud-chip.active { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
+.ficha-actions { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.ficha-selector { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ficha-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ficha-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.ficha-kpi-n { font-size: 24px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.ficha-kpi-l { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.ficha-kpi-s { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.ficha-kpi.green .ficha-kpi-n { color: var(--success); }
+.ficha-kpi.orange .ficha-kpi-n { color: var(--warning); }
+.ficha-kpi.red .ficha-kpi-n { color: var(--danger); }
+.ficha-kpi.gray .ficha-kpi-n { color: var(--text-tertiary); }
+.ficha-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+.ficha-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.ficha-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+.ficha-salud { display: flex; flex-wrap: wrap; gap: 8px; }
+.ficha-umbrales { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.ficha-umbrales .field { margin-bottom: 0; }
+.ficha-ayuda { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+.ficha-form-actions { display: flex; justify-content: flex-end; }
