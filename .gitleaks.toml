@@ -1,0 +1,8 @@
+# Config de gitleaks (extiende las reglas por defecto).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Clave pública (anon) de Supabase: va en el frontend por diseño; su seguridad es RLS. Ver docs/02-auditoria-seguridad.md §1."
+# Payload JWT del proyecto dqgrlflrjcarxlfetvoj con role=anon (NO cubre service_role ni otras claves).
+regexes = ['''eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZ3JsZmxyamNhcnhsZmV0dm9qIiwicm9sZSI6ImFub24i''']
