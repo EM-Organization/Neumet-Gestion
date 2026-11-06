@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# QA visual: capturas de las vistas clave (admin/cliente x escritorio/móvil) con Chrome headless y el stub de tests/smoke.
+# Uso: tests/visual/run.sh [escena ...]      (sin argumentos: todas). Salida: tests/visual/out/<rol>-<tamaño>-<escena>.png
+# Variables: PORT (8792), CHROME (ruta del binario), SIZES="desktop mobile", ROLES="admin cliente".
+set -uo pipefail
+cd "$(dirname "$0")/../.."
+PORT="${PORT:-8792}"; OUT_DIR="tests/visual/out"
+CHROME="${CHROME:-}"
+if [ -z "$CHROME" ]; then
+  for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" google-chrome google-chrome-stable chromium chromium-browser; do
+    if [ -x "$c" ] || command -v "$c" >/dev/null 2>&1; then CHROME="$c"; break; fi
+  done
+fi
+[ -n "$CHROME" ] || { echo "No se encontró Chrome (definí CHROME=...)"; exit 2; }
+SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
+# escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
+ALL="login:admin inicio:both vehiculos:both flota:both alertas:both dispositivos:both reportes:both mediciones:both clientes:admin ficha:admin vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente selector-seccional:cliente"
+mkdir -p "$OUT_DIR"
+python3 -m http.server "$PORT" >/dev/null 2>&1 &
+SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
+FAIL=0; N=0
+for item in $ALL; do
+  scene="${item%%:*}"; who="${item##*:}"
+  if [ $# -gt 0 ]; then case " $* " in *" $scene "*) ;; *) continue;; esac; fi
+  for role in $ROLES; do
+    [ "$who" != both ] && [ "$who" != "$role" ] && continue
+    for size in $SIZES; do
+      if [ "$size" = mobile ]; then W=390; H=844; else W=1440; H=900; fi
+      Q="shot=$scene&vw=$W&vh=$H"
+      [ "$role" = cliente ] && Q="$Q&cliente=1"
+      [ "$role" = cliente ] && [ "$scene" = vehiculos ] && Q="$Q&detalle=1"
+      case "$scene" in vehiculos-busqueda|detalle*|cambio-neumatico) Q="$Q&detalle=1&cliente=1";; esac
+      [ "$scene" = login ] && Q="$Q&nosession=1"
+      f="$OUT_DIR/$role-$size-$scene.png"; rm -f "$f"
+      "$CHROME" --headless=new --disable-gpu --hide-scrollbars --window-size=$W,$H --virtual-time-budget=${BUDGET:-30000} \
+        --screenshot="$PWD/$f" "http://localhost:$PORT/tests/smoke/harness.html?$Q" >/dev/null 2>&1
+      # Comprobación del estado (errores de consola/recursos): segunda pasada rápida con --dump-dom
+      T=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-30000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html?$Q" 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
+      N=$((N+1))
+      if [ -s "$f" ] && [[ "$T" == *"SMOKE:OK"* ]]; then echo "ok    $f"; else echo "FALLA $f $T"; FAIL=$((FAIL+1)); fi
+    done
+  done
+done
+echo "$N capturas, $FAIL con problemas -> $OUT_DIR"
+[ "$FAIL" -eq 0 ]

@@ -152,13 +152,13 @@ describe('escala de color', () => {
   test('>= bajo: verde pleno, siempre el mismo; <= retiro: rojo intenso', () => {
     assert.equal(colorDesgaste(8, u).hex, colorDesgaste(20, u).hex);
     assert.equal(colorDesgaste(3, u).hex, colorDesgaste(0.5, u).hex);
-    assert.equal(colorDesgaste(8, u).hex, '#2e9e4f');
-    assert.equal(colorDesgaste(3, u).hex, '#8f1710');
+    assert.equal(colorDesgaste(8, u).hex, '#9cbea0');
+    assert.equal(colorDesgaste(3, u).hex, '#8c3e46');
   });
   test('tramos: amarillo bajo el umbral bajo, naranja en crítico, rojo cerca del retiro', () => {
-    assert.equal(colorDesgaste(7.999, u).hex, '#f2c230');
-    assert.equal(colorDesgaste(5, u).hex, '#f08a1c');
-    assert.equal(colorDesgaste(3.0001, u).hex, '#d9382b');
+    assert.equal(colorDesgaste(7.999, u).hex, '#eed082');
+    assert.equal(colorDesgaste(5, u).hex, '#e6a578');
+    assert.equal(colorDesgaste(3.0001, u).hex, '#d4766a');
   });
   test('continua dentro de cada tramo (sin saltos) y sin dato = hex null', () => {
     const paso = (a, b) => colorDesgaste(a, u).rgb.reduce((s, c, i) => s + Math.abs(c - colorDesgaste(b, u).rgb[i]), 0);

@@ -9,6 +9,7 @@
 <script src="/tests/smoke/cambio.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
+<script src="/tests/visual/scenes.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
 // y recorre vistas y modales. Resultado en document.title: SMOKE:OK | SMOKE:FAIL:<mensaje>
@@ -23,10 +24,12 @@
     src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
-    fr.style.cssText='width:1400px;height:900px;border:0';
+    var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
+    if(/[?&]shot=/.test(location.search)) document.body.style.margin='0';
+    fr.style.cssText='width:'+vw+'px;height:'+vh+'px;border:0;display:block';
     document.body.appendChild(fr);
     // Errores durante la carga de los módulos: hook inyectado antes de los scripts. Congela Date (hora fija) para que las firmas de texto sean deterministas.
-    src=src.replace('<head>','<head><script>(function(){var R=Date,F=R.UTC(2026,5,15,12,0,0);function FD(){if(!(this instanceof FD))return new R(F).toString();return arguments.length?new (Function.prototype.bind.apply(R,[null].concat([].slice.call(arguments))))():new R(F);}FD.prototype=R.prototype;FD.now=function(){return F};FD.UTC=R.UTC;FD.parse=R.parse;window.Date=FD;})();window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    src=src.replace('<head>','<head><script>(function(){var R=Date,F=R.UTC(2026,5,15,12,0,0);function FD(){if(!(this instanceof FD))return new R(F).toString();return arguments.length?new (Function.prototype.bind.apply(R,[null].concat([].slice.call(arguments))))():new R(F);}FD.prototype=R.prototype;FD.now=function(){return F};FD.UTC=R.UTC;FD.parse=R.parse;window.Date=FD;})();window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("error",function(e){var t=e.target;if(t&&t.tagName&&t!==window)parent.__fail("recurso no cargado: "+(t.src||t.href))},true);window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
     // Con ?end=<vista> (capturas) se desactivan transiciones/animaciones para que el PNG sea reproducible.
     if(/[?&]end=/.test(location.search)) src=src.replace('</head>','<style>*{transition:none!important;animation:none!important}</style></head>');
     window.__fail=fail;
@@ -38,8 +41,14 @@
     var click=function(el,what){ if(!el){ fail('no existe elemento: '+what); return false; } el.click(); return true; };
     var nav=function(v){ return click($('.nav-item[data-view="'+v+'"]'),'nav '+v); };
     await sleep(600);
-    if($('#app').classList.contains('hidden')) fail('la app no salio del login');
+    if($('#app').classList.contains('hidden') && !/[?&]nosession=1/.test(location.search)) fail('la app no salio del login');
 
+    var shotName=(location.search.match(/[?&]shot=([a-z0-9-]+)/)||[])[1];
+    if(shotName){
+      // Modo capturas (tests/visual/run.sh): deja la vista pedida en pantalla; el PNG lo saca Chrome (tests/visual/scenes.js)
+      await window.visualScene(shotName,w,d,sleep,fail,log,cliMode);
+      throw new Error('__done');
+    }
     if(/[?&]reportes=1/.test(location.search)){
       // Sección Reportes: >1.000 filas -> paginación con range(), CSV (BOM, inyección) e imprimible escapado.
       var waitFor=async function(cond,what){ for(var t=0;t<400;t++){ if(cond()) return true; await sleep(50); } fail('timeout esperando: '+what); return false; };

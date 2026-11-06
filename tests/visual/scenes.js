@@ -1,0 +1,39 @@
+// Escenas de QA visual: dejan una vista concreta en pantalla (con el stub de tests/smoke) para que Chrome la fotografíe.
+// Las invoca tests/smoke/harness.html con ?shot=<escena>. Una escena = una captura. No hace aserciones: solo prepara la pantalla.
+// Los errores de consola / recursos que ocurran mientras tanto igual hacen fallar el título (SMOKE:FAIL).
+window.visualScene = async function(name, w, d, sleep, fail, log){
+  var $ = function(s){ return d.querySelector(s); };
+  var nav = function(v){ var b = $('.nav-item[data-view="'+v+'"]'); if(!b) fail('escena '+name+': no existe nav '+v); else b.click(); };
+  var click = function(s){ var b = $(s); if(!b) fail('escena '+name+': no existe '+s); else b.click(); };
+  var escribir = function(v){ var i = $('#search-vehiculos'); i.value = v; i.dispatchEvent(new w.Event('input',{bubbles:true})); return i; };
+  var abrirDetalle = async function(){
+    nav('vehiculos'); await sleep(600);
+    var i = escribir('AB123CD'); await sleep(150);
+    i.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); await sleep(1000);
+  };
+  var rueda3 = function(){ var r = $('#vd-diagrama .vd-rueda[data-pos="3"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 3'); };
+
+  var escenas = {
+    'login': async function(){ /* la sesión se anula con ?nosession=1 */ },
+    'inicio': async function(){ nav('inicio'); await sleep(800); },
+    'vehiculos': async function(){ nav('vehiculos'); await sleep(700); },
+    'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
+    'detalle': async function(){ await abrirDetalle(); },
+    'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    'cambio-neumatico': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); },
+    'alertas': async function(){ nav('alertas'); await sleep(800); },
+    'flota': async function(){ nav('flota'); await sleep(800); },
+    'dispositivos': async function(){ nav('dispositivos'); await sleep(800); },
+    'reportes': async function(){ nav('reportes'); await sleep(800); },
+    'mediciones': async function(){ nav('mediciones'); await sleep(800); },
+    'clientes': async function(){ nav('clientes'); await sleep(800); },
+    'ficha': async function(){ nav('ficha'); await sleep(900); },
+    'selector-seccional': async function(){ nav('flota'); await sleep(800); }
+  };
+  if(!escenas[name]){ fail('escena desconocida: '+name); return; }
+  await escenas[name]();
+  await sleep(300);
+  var nv = $('.nav-item.active'), vw = $('.view.active');
+  log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
+  if(nv && vw && vw.id !== 'view-vehiculo-detalle' && vw.id !== 'view-'+nv.dataset.view) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
+};
