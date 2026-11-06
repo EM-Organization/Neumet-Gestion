@@ -111,4 +111,4 @@ Se añadirá un `.env.example` documentado en la fase de implementación (no se 
 - `https://cdn.jsdelivr.net` se permite para librerias (p. ej. supabase-js); idealmente fijar version y anadir SRI, o servirlas desde `/assets`.
 - `connect-src` limita las llamadas al proyecto Supabase `dqgrlflrjcarxlfetvoj` (REST, Auth, Functions, Realtime por wss).
 - `frame-ancestors 'none'` y `X-Frame-Options: DENY` evitan clickjacking.
-- Cache: imagenes y fuentes en `/assets` son `immutable` (1 ano); CSS/JS sin hash usan `max-age=3600, must-revalidate`. Si se cambia una imagen, cambiar tambien su nombre de archivo.
+- Cache: imagenes y fuentes en `/assets` son `immutable` (1 ano); CSS/JS sin hash usan `max-age=0, must-revalidate` (se revalidan con ETag en cada carga: los módulos ES se piden por separado y con `max-age` el navegador mezclaba archivos viejos con el HTML nuevo tras un despliegue). Si se cambia una imagen, cambiar tambien su nombre de archivo.
