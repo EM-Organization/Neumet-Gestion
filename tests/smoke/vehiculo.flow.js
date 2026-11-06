@@ -78,21 +78,56 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(ch.querySelectorAll('.vd-g-proy').length !== 1) fail('detalle: falta la proyeccion punteada');
   }
 
-  // Contrato con el taller: botones presentes; sin accion registrada no rompe y avisa
+  // Contrato con el taller: botones presentes con data-*; handlers REALES de cambio-neumatico.js (no un stub)
+  var rpcs = function(n){ return w.__cicloFx.rpcs.filter(function(r){ return r.name === n; }); };
   var bc = $('#vd-panel [data-action="neumatico-cambiar"]'), br = $('#vd-panel [data-action="neumatico-rotar-pos"]');
   if(!bc || !br) { fail('detalle: faltan botones Cambiar/Rotar'); }
   else {
     if(bc.dataset.vehiculoId !== '10' || bc.dataset.posicion !== '3') fail('detalle: data-* del boton Cambiar incorrectos');
     if(br.dataset.vehiculoId !== '10' || br.dataset.posicion !== '3') fail('detalle: data-* del boton Rotar incorrectos');
-    var antes = d.querySelector('#toast-msg').textContent;
-    bc.click(); await sleep(200);
-    if(d.querySelector('#toast-msg').textContent !== 'No disponible') fail('detalle: sin accion registrada deberia decir "No disponible" (era "'+antes+'")');
+    if(!$('#vd-panel label[for="vd-rotar-destino"]')) fail('detalle: el select de destino no tiene etiqueta');
+    var sel = $('#vd-rotar-destino');
+    if(sel.querySelector('option[value="3"]')) fail('detalle: el destino no deberia incluir la propia posicion');
+    // Sin destino elegido: no llama a la RPC y avisa
+    br.click(); await sleep(200);
+    if(rpcs('neumatico_rotar').length) fail('detalle: rotar sin destino llego a la RPC');
+    if($('#toast-msg').textContent.indexOf('Elegí la posición') === -1) fail('detalle: rotar sin destino deberia avisar');
+    // Rotar 3 con 1 (ambas ocupadas: intercambio con confirmacion)
+    sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
+    if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);
+    br.click(); await sleep(400);
+    if(!$('#modal-confirm').classList.contains('show')) fail('detalle: el handler real no pidio confirmar el intercambio');
+    else { $('#confirm-ok').click(); await sleep(400); }
+    var rot = rpcs('neumatico_rotar');
+    if(rot.length !== 1) fail('detalle: la rotacion no llego a la RPC real ('+rot.length+')');
+    else if(JSON.stringify([rot[0].args.p_vehiculo_id, rot[0].args.p_pos_a, rot[0].args.p_pos_b]) !== '[10,3,1]') fail('detalle: args de rotar: '+JSON.stringify(rot[0].args));
+    for(var u = 0; u < 20 && $('#vd-panel-body').children.length === 0; u++) await sleep(50);
+    // Cambiar: abre el modal real del taller con el neumatico de P3
+    r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
+    r3.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400);
+    $('#vd-panel [data-action="neumatico-cambiar"]').click(); await sleep(700);
+    if(!$('#modal-cambio').classList.contains('show')) fail('detalle: Cambiar no abrio el modal real');
+    else {
+      if($('#cambio-actual').textContent.indexOf('P3') === -1) fail('detalle: el modal de cambio no es de P3');
+      $('#cambio-motivo').value = 'Desgaste';
+      $('#cambio-confirmar').click(); await sleep(600);
+      var cam = rpcs('neumatico_cambiar');
+      if(cam.length !== 1 || cam[0].args.p_vehiculo_id !== 10 || cam[0].args.p_posicion !== 3) fail('detalle: el cambio no llego a la RPC real: '+JSON.stringify(cam.map(function(c){ return c.args; })));
+      if($('#modal-cambio').classList.contains('show')) fail('detalle: el modal de cambio no se cerro');
+    }
+    // Sin accion registrada: aviso en vez de error (se quita temporalmente el handler real)
+    var AC = (await (new w.Function('return import("/assets/js/core/actions.js")'))()).ACTIONS;
+    var orig = AC['neumatico-cambiar']; delete AC['neumatico-cambiar'];
+    r3.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
+    $('#vd-panel [data-action="neumatico-cambiar"]').click(); await sleep(200);
+    AC['neumatico-cambiar'] = orig;
+    if($('#toast-msg').textContent !== 'No disponible') fail('detalle: sin accion registrada deberia decir "No disponible"');
   }
 
   // Escape cierra el panel y devuelve el foco a la rueda
   d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sleep(200);
   if($('#vd-panel').classList.contains('abierto') || $('#vd-diagrama .vd-rueda.sel')) fail('detalle: Escape no cerro el panel');
-  if(d.activeElement !== r3) fail('detalle: el foco no volvio a la rueda');
+  if(!d.activeElement || d.activeElement.dataset.pos !== '3') fail('detalle: el foco no volvio a la rueda');
 
   // Click en la rueda sin datos (5) y en una rueda normal
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);

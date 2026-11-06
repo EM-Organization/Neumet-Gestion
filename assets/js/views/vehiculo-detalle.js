@@ -309,11 +309,14 @@ function seleccionarRueda(pos) {
 }
 
 function cerrarPanel() {
+  const pos = seleccion;
   seleccion = null; tokenGrafico++;
   $('vd-panel').classList.remove('abierto'); $('vd-backdrop').classList.remove('abierto');
   document.querySelectorAll('#vd-diagrama .vd-rueda').forEach(g => { g.classList.remove('sel'); g.setAttribute('aria-pressed', 'false'); });
   renderPanel();
-  if (ultimoFoco && ultimoFoco.isConnected) ultimoFoco.focus();
+  // Si el diagrama se redibujó (p. ej. tras un cambio de neumático), se busca la rueda por posición.
+  const destino = ultimoFoco && ultimoFoco.isConnected ? ultimoFoco : document.querySelector(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
+  if (destino) destino.focus();
   ultimoFoco = null;
 }
 
