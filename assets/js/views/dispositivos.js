@@ -2,6 +2,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, onLogin } from '../core/auth.js';
+import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 
@@ -9,11 +10,12 @@ let dispositivos=[], dispModalMode='create', dispActiveId=null;
 
 export async function loadDispositivos(){
   setStatus(true,'Cargando...');
+  await contextoListo();
 
   // Cargar dispositivos registrados (+ no registrados solo para admin)
-  let dispQuery=db.from('dispositivos')
+  let dispQuery=filtrarConsulta(db.from('dispositivos')
     .select('id,mac_address,nombre,activo,cliente_id,created_at,clientes(nombre)')
-    .order('created_at',{ascending:false});
+    .order('created_at',{ascending:false}));
   if(isClienteMode()) dispQuery=dispQuery.eq('cliente_id',currentClienteId);
 
   const promises=[dispQuery];

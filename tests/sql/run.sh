@@ -87,10 +87,19 @@ echo "== migración de cuentas api (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107010000_cuentas_api.sql"
 echo "== migración de cuentas api (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107010000_cuentas_api.sql"
+echo "== migración de seccionales (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107020000_seccionales.sql"
+echo "== migración de seccionales (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261107020000_seccionales.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
 run -f "$SQL/01_fixtures.sql"
+echo "== seed demo sin cliente: debe fallar con mensaje claro"
+if "${PSQL[@]}" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/supabase/seed/demo.sql" >"$WORK/seed.txt" 2>&1; then
+  echo "FALLO: el seed no debería ejecutarse sin el cliente Demo" >&2; exit 1
+fi
+grep -q 'No existe el cliente "Demo Transportes"' "$WORK/seed.txt" || { cat "$WORK/seed.txt"; echo "FALLO: mensaje de error inesperado" >&2; exit 1; }
 for f in "$SQL"/t_*.sql; do
   echo "== $(basename "$f")"
   run_quiet "$f" show

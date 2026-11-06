@@ -7,6 +7,7 @@ import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { PAGE_SIZE, MAX_ROWS, medicionesCsv, resumenFlota, rangoFechas, safeFilename, fetchAll } from '../domain/reportes.js';
 import { printDoc } from './report.js';
+import { contextoListo, hayFiltroSeccional, sucursalSeleccionada, filtrarConsulta } from '../core/seccional.js';
 import { fmtMm } from '../domain/formato.js';
 
 const $ = id => document.getElementById(id);
@@ -26,7 +27,8 @@ function fillSelect(sel, first, items) {
 
 async function loadVehiculos() {
   const cid = isClienteMode() ? currentClienteId : $('rep-cliente').value;
-  let q = db.from('vehiculos').select('id,nombre,patente,cliente_id').order('nombre');
+  await contextoListo();
+  let q = filtrarConsulta(db.from('vehiculos').select('id,nombre,patente,cliente_id').order('nombre'));
   if (cid) q = q.eq('cliente_id', cid);
   const { data, error } = await q;
   if (error) { showToast(userError(error), true); return; }
@@ -50,8 +52,13 @@ async function fetchMediciones() {
   const cid = isClienteMode() ? currentClienteId : $('rep-cliente').value;
   const vid = $('rep-vehiculo').value;
   const page = (from, to) => {
+    // Con una seccional elegida se filtra por el vehículo (join interno) en el servidor.
+    const porSeccional = hayFiltroSeccional();
     let q = db.from('mediciones')
-      .select('id,created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,vehiculos(nombre,patente)');
+      .select(porSeccional
+        ? 'id,created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,vehiculos!inner(nombre,patente,sucursal_id)'
+        : 'id,created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,vehiculos(nombre,patente)');
+    if (porSeccional) q = q.eq('vehiculos.sucursal_id', sucursalSeleccionada());
     if (cid) q = q.eq('cliente_id', cid);
     if (vid) q = q.eq('vehiculo_id', vid);
     if (rango.desde) q = q.gte('created_at', rango.desde);

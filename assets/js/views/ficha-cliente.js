@@ -7,6 +7,7 @@ import { isClienteMode, currentClienteId, onLogin, onLogout } from '../core/auth
 import { registerView, switchView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { CAMPOS_UMBRAL, validarUmbrales, mensajeErrorUmbrales, resumenFlota } from '../domain/umbrales.js';
+import { cargarSeccionalesAdmin } from './seccionales-admin.js';
 import { contarPorEstado, infoEstado, ESTADOS } from '../domain/salud.js';
 
 // Ficha de cliente: resumen (v_resumen_flota_cliente), salud de sus dispositivos (v_salud_dispositivos) y umbrales
@@ -38,6 +39,7 @@ async function cargarCliente(){
   if(activoId===null){
     document.getElementById('ficha-nombre').textContent='Sin clientes';
     setHtml(document.getElementById('ficha-kpis'), html`<div class="empty-state"><div class="empty-title">No hay clientes para mostrar</div></div>`);
+    cargarSeccionalesAdmin(null);
     return;
   }
   const id=activoId;
@@ -55,6 +57,7 @@ async function cargarCliente(){
   renderResumen((res.data||[])[0]||null);
   renderSalud(salud.data||[]);
   renderUmbrales(c);
+  cargarSeccionalesAdmin(id); // ABM de seccionales (solo admin; no hace nada en modo cliente)
   cargarCuentasApi();
 }
 

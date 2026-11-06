@@ -3,7 +3,12 @@ const NAV_LABELS={};
 const LOADERS={};
 export function registerView(name,label,load){ NAV_LABELS[name]=label; LOADERS[name]=load; }
 
+let activa=null;
+// Recarga la vista activa (p. ej. al cambiar el selector de seccional).
+export function reloadActiveView(){ if(activa&&LOADERS[activa]) LOADERS[activa](); }
+
 export function switchView(v){
+  activa=v;
   document.querySelectorAll('.nav-item[data-view]').forEach(n=>{
     const on=n.dataset.view===v;
     n.classList.toggle('active',on);

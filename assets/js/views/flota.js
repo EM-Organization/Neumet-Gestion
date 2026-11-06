@@ -9,6 +9,8 @@ import { isClienteMode } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { contextoListo, hayFiltroSeccional, filtrarFilas } from '../core/seccional.js';
+import { resumenDesdeFilas } from '../domain/seccional.js';
 import {
   agruparVehiculos, filtrarVehiculos, kpisFlota,
 } from '../domain/flota.js';
@@ -89,14 +91,24 @@ function fillClientes() {
 export async function load() {
   $('flota-msg').textContent = '';
   setHtml($('flota-grid'), estadoCarga('Cargando la flota…'));
-  const [est, res] = await Promise.all([
+  await contextoListo();
+  const filtrando = hayFiltroSeccional();
+  const [est, res, al] = await Promise.all([
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_resumen_flota_cliente').select('*').order('nombre'),
+    // Con una seccional elegida el resumen del servidor (por cliente) no sirve: se recalcula con las alertas filtradas.
+    filtrando ? fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
+      { pageSize: PAGE_SIZE, max: MAX_FILAS }) : Promise.resolve({ rows: [], error: null }),
   ]);
-  if (est.error || res.error) { showToast(userError(est.error || res.error), true); setHtml($('flota-grid'), estadoError('', 'loadFlota')); return; }
-  estadoRows = est.rows;
+  if (est.error || res.error || al.error) { showToast(userError(est.error || res.error || al.error), true); setHtml($('flota-grid'), estadoError('', 'loadFlota')); return; }
+  estadoRows = filtrando ? filtrarFilas(est.rows) : est.rows;
   resumen = res.data || [];
+  if (filtrando) {
+    const alF = filtrarFilas(al.rows);
+    const base = resumen[0] || {};
+    resumen = [resumenDesdeFilas(estadoRows, alF, { clienteId: base.cliente_id ?? null, nombre: base.nombre || '' })];
+  }
   vehiculos = agruparVehiculos(estadoRows);
   fillClientes();
   $('flota-msg').textContent = est.truncated ? `Se muestran las primeras ${MAX_FILAS} posiciones: la lista está incompleta.` : '';

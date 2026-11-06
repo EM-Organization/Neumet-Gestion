@@ -5,6 +5,7 @@ import { BRAND } from '../core/brand.js';
 import { svgEl } from '../core/svg.js';
 import { showToast, userError } from '../core/ui.js';
 import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/auth.js';
+import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { WEAR, wearStatus, avgMm, analyzeTire } from '../domain/desgaste.js';
@@ -79,8 +80,9 @@ export async function medInit(){
     // En modo cliente: cargar vehículos directamente sin seleccionar cliente
     setHtml(sel, html`<option value="${currentClienteId}">${currentClienteNombre}</option>`);
     sel.value=String(currentClienteId);
-    const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas')
-      .eq('cliente_id',currentClienteId).eq('activo',true).order('nombre');
+    await contextoListo();
+    const {data}=await filtrarConsulta(db.from('vehiculos').select('id,nombre,patente,tipo_ruedas')
+      .eq('cliente_id',currentClienteId).eq('activo',true)).order('nombre');
     med.vehs=data||[];
     const vs=document.getElementById('med-vehiculo-select');
     setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, med.vehs.map(v=>html`<option value="${v.id}">${v.nombre}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
