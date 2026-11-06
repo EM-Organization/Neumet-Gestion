@@ -1,6 +1,6 @@
 # 06 · Identidad visual NEUMET
 
-> Fuente: `assets/brand/source/identidad.pdf` (Alegra Studio, exportado de Canva, 2026-06-02).
+> Fuente: `identidad.pdf` (Alegra Studio, exportado de Canva, 2026-06-02). **El PDF no se versiona en el repo** (binario de 860 KB, repo potencialmente público y licencia de la tipografía del wordmark aún sin confirmar); se conserva en el almacenamiento interno del equipo.
 > Estado: **documentación y assets disponibilizados. El sitio y el panel todavía NO usan esta identidad** (plan de adopción en §8).
 
 ## 1. Qué contiene la identidad entregada
