@@ -2,6 +2,8 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
+import { chip, estadoVacio, estadoCarga, estadoError, filaEstado } from '../core/componentes.js';
+import { fmtNum, plural } from '../domain/formato.js';
 import { isClienteMode } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
@@ -14,6 +16,8 @@ import {
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 10000;
+const SEV_SIMBOLO = { 3: '✕', 2: '▲', 1: 'i' };
+const chipSeveridad = s => chip(SEVERIDAD_BADGE[s] || 'gray', severidadLabel(s), SEV_SIMBOLO[s] || 'i');
 let alertas = [];
 let clientes = [];
 
@@ -29,7 +33,7 @@ function fila(a, mostrarCliente) {
   const arg = JSON.stringify([a.patente || a.vehiculo_nombre || '']);
   const cli = mostrarCliente ? (clientes.find(c => String(c.cliente_id) === String(a.cliente_id)) || {}).nombre : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}">
-    <td><span class="badge ${SEVERIDAD_BADGE[a.severidad] || 'gray'}">${severidadLabel(a.severidad)}</span></td>
+    <td>${chipSeveridad(a.severidad)}</td>
     <td>${tipoLabel(a.tipo)}</td>
     <td>${a.mensaje}</td>
     <td>${a.vehiculo_nombre}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
@@ -44,13 +48,15 @@ export function render() {
   // Los chips cuentan con los filtros de tipo/cliente aplicados, pero sin el de severidad.
   const base = filtrarAlertas(alertas, { tipo: f.tipo, clienteId: f.clienteId });
   const c = contarPorSeveridad(base);
-  setHtml($('alert-chips'), joinHtml([3, 2, 1].map(s => html`<button type="button" class="alert-chip ${String(s) === f.severidad ? 'active' : ''}" data-action="alertasSeveridad" data-args="${JSON.stringify([String(s)])}"><span class="badge ${SEVERIDAD_BADGE[s]}">${severidadLabel(s)}</span> ${c[s]}</button>`)));
+  setHtml($('alert-chips'), joinHtml([3, 2, 1].map(s => html`<button type="button" class="alert-chip ${String(s) === f.severidad ? 'active' : ''}" data-action="alertasSeveridad" data-args="${JSON.stringify([String(s)])}">${chipSeveridad(s)} ${fmtNum(c[s])}</button>`)));
   const lista = ordenarAlertas(filtrarAlertas(alertas, f));
-  $('alert-count').textContent = `${lista.length} alerta${lista.length === 1 ? '' : 's'}`;
+  $('alert-count').textContent = plural(lista.length, 'alerta');
   const mostrarCliente = !isClienteMode() && !f.clienteId;
   setHtml($('alert-tbody'), lista.length
     ? joinHtml(lista.map(a => fila(a, mostrarCliente)))
-    : html`<tr><td colspan="7" class="flota-vacio">${alertas.length ? 'Ninguna alerta coincide con los filtros.' : 'Sin alertas activas.'}</td></tr>`);
+    : filaEstado(7, alertas.length
+      ? estadoVacio('Ninguna alerta coincide con los filtros', 'Probá quitando algún filtro.')
+      : estadoVacio('No hay alertas activas', 'Buena noticia: ningún neumático ni vehículo requiere atención por ahora.')));
 }
 
 function fillFiltros() {
@@ -68,14 +74,15 @@ function fillFiltros() {
 }
 
 export async function load() {
-  $('alert-msg').textContent = 'Cargando…';
+  $('alert-msg').textContent = '';
+  setHtml($('alert-tbody'), filaEstado(7, estadoCarga('Cargando alertas…')));
   await contextoListo();
   const [al, res] = await Promise.all([
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
   ]);
-  if (al.error || res.error) { $('alert-msg').textContent = ''; showToast(userError(al.error || res.error), true); return; }
+  if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(7, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
   clientes = res.data || [];
   fillFiltros();

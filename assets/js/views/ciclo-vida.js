@@ -6,13 +6,14 @@ import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { getVehiculos } from './vehiculos.js';
+import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { getNeumVehiculoId } from './neumaticos.js';
 import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, kmPorNeumatico, ordenarEventos } from '../domain/ciclo-vida.js';
 
 let vehId=null, veh=null, neums=[], eventos=[], filtroNeum='';
 const $=id=>document.getElementById(id);
-const fmtKm=n=>n==null?'—':Number(n).toLocaleString('es-CL')+' km';
-const fmtFecha=d=>d?new Date(d).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';
+const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
+const fmtFecha=fmtFechaHora;
 const hoyISO=()=>new Date().toISOString().slice(0,10);
 const neumLabel=n=>`P${n.posicion} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}`;
 

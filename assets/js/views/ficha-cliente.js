@@ -1,4 +1,6 @@
 import { db } from '../core/supabase.js';
+import { SUPABASE_URL, SUPABASE_KEY } from '../core/config.js';
+import { emailSugeridoApi, validarCuentaApi, mensajeErrorCuentaApi } from '../domain/clientes.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, relDate } from '../core/ui.js';
 import { isClienteMode, currentClienteId, onLogin, onLogout } from '../core/auth.js';
@@ -11,6 +13,7 @@ import { contarPorEstado, infoEstado, ESTADOS } from '../domain/salud.js';
 // Ficha de cliente: resumen (v_resumen_flota_cliente), salud de sus dispositivos (v_salud_dispositivos) y umbrales
 // (columnas de clientes; edición solo admin, el cliente los ve de solo lectura).
 const COLS=CAMPOS_UMBRAL.map(c=>c.key).join(',');
+const MAX_CUENTAS_API=5;
 let activoId=null, lista=[];
 
 const err=(msg)=>{ const el=document.getElementById('ficha-umbral-error'); el.textContent=msg||''; el.classList.toggle('show',!!msg); };
@@ -55,6 +58,7 @@ async function cargarCliente(){
   renderSalud(salud.data||[]);
   renderUmbrales(c);
   cargarSeccionalesAdmin(id); // ABM de seccionales (solo admin; no hace nada en modo cliente)
+  cargarCuentasApi();
 }
 
 const kpi=(cls,n,lbl,sub)=>html`<div class="ficha-kpi ${cls}"><div class="ficha-kpi-n">${n}</div><div class="ficha-kpi-l">${lbl}</div>${sub?html`<div class="ficha-kpi-s">${sub}</div>`:''}</div>`;
@@ -113,10 +117,79 @@ ACTIONS.guardarUmbrales=async function(){
   } finally { btn.disabled=false; btn.textContent='Guardar umbrales'; }
 };
 
+// ── Cuenta de API (solo admin) ──
+let credenciales=null;
+const apiErr=(msg)=>{ const el=document.getElementById('ficha-api-error'); el.textContent=msg||''; el.classList.toggle('show',!!msg); };
+
+function ocultarCredenciales(){
+  credenciales=null;
+  document.getElementById('ficha-api-cred').style.display='none';
+  document.getElementById('ficha-api-cred-email').textContent='';
+  document.getElementById('ficha-api-cred-pass').textContent='';
+}
+
+async function cargarCuentasApi(){
+  if(isClienteMode()||activoId===null) return;
+  const id=activoId, el=document.getElementById('ficha-api-lista');
+  ocultarCredenciales(); apiErr('');
+  const sesion=await db.auth.getSession();
+  const adminEmail=sesion&&sesion.data&&sesion.data.session&&sesion.data.session.user?sesion.data.session.user.email:'';
+  const nombre=(lista.find(c=>c.id===id)||{}).nombre||document.getElementById('ficha-nombre').textContent;
+  document.getElementById('ficha-api-email').value=emailSugeridoApi(nombre,adminEmail);
+  const {data,error}=await db.rpc('cuentas_api_listar',{p_cliente_id:id});
+  if(id!==activoId) return;
+  if(error){ setHtml(el, html`<div class="ficha-ayuda">No se pudo cargar la lista de cuentas de API</div>`); return; }
+  const rows=data||[];
+  setHtml(el, rows.length
+    ?joinHtml(rows.map(r=>html`<div class="ficha-ayuda" data-api-cuenta="${r.user_id}">${r.email} · creada ${relDate(r.created_at)}</div>`))
+    :html`<div class="ficha-ayuda">Este cliente aún no tiene cuentas de API</div>`);
+  document.getElementById('ficha-api-crear').disabled=rows.length>=MAX_CUENTAS_API;
+}
+
+ACTIONS.crearCuentaApi=async function(){
+  if(isClienteMode()||activoId===null) return;
+  const v=validarCuentaApi({email:document.getElementById('ficha-api-email').value});
+  if(!v.ok){ apiErr(v.error); return; }
+  apiErr(''); ocultarCredenciales();
+  const btn=document.getElementById('ficha-api-crear'), id=activoId;
+  btn.disabled=true; btn.textContent='Creando...';
+  let res=null, out=null;
+  try{
+    const {data:{session}}=await db.auth.getSession();
+    res=await fetch(`${SUPABASE_URL}/functions/v1/crear-cuenta-api`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_KEY},
+      body:JSON.stringify({cliente_id:id,email:v.email})
+    });
+    out=await res.json();
+  }catch(_e){ /* red o respuesta no JSON: se informa abajo */ }
+  btn.textContent='Crear cuenta de API';
+  if(!res||!out||!out.ok){ btn.disabled=false; apiErr(mensajeErrorCuentaApi(res&&res.status,out&&out.error)); return; }
+  // Las credenciales viven solo en memoria y en el DOM hasta que se cambie de cliente/vista.
+  credenciales={email:out.cuenta.email,password:out.password||''};
+  document.getElementById('ficha-api-cred-email').textContent=credenciales.email;
+  document.getElementById('ficha-api-cred-pass').textContent=credenciales.password||'(la que indicaste)';
+  document.getElementById('ficha-api-cred').style.display='';
+  showToast('Cuenta de API creada. Copiá las credenciales: no se volverán a mostrar');
+  const {data}=await db.rpc('cuentas_api_listar',{p_cliente_id:id});
+  if(id===activoId&&Array.isArray(data)){
+    setHtml(document.getElementById('ficha-api-lista'), joinHtml(data.map(r=>html`<div class="ficha-ayuda" data-api-cuenta="${r.user_id}">${r.email} · creada ${relDate(r.created_at)}</div>`)));
+    btn.disabled=data.length>=MAX_CUENTAS_API;
+  } else btn.disabled=false;
+};
+
+ACTIONS.copiarCredencialesApi=async function(){
+  if(!credenciales) return;
+  try{
+    await navigator.clipboard.writeText(`Email: ${credenciales.email}\nContraseña: ${credenciales.password}`);
+    showToast('Credenciales copiadas');
+  }catch(_e){ showToast('No se pudo copiar: seleccioná y copiá el texto manualmente',true); }
+};
+
 ACTIONS.loadFicha=loadFicha;
 export const load=loadFicha;
 registerView('ficha','Ficha de cliente',loadFicha);
 onLogin(()=>{ if(isClienteMode()) activoId=currentClienteId; });
-onLogout(()=>{ activoId=null; lista=[]; });
+onLogout(()=>{ activoId=null; lista=[]; credenciales=null; });
 
 export function init(){}

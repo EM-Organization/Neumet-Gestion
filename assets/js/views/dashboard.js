@@ -1,8 +1,10 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
-import { relDate } from '../core/ui.js';
-import { isClienteMode, currentClienteId, currentClienteNombre, onLogin } from '../core/auth.js';
-import { registerView, switchView } from '../core/nav.js';
+import { relDate, showToast, userError } from '../core/ui.js';
+import { chipEstado, estadoVacio, estadoError, filaEstado } from '../core/componentes.js';
+import { fmtNum, fmtMm, fmtFechaLarga } from '../domain/formato.js';
+import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/auth.js';
+import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { tireStatus } from '../domain/desgaste.js';
 import { contextoListo, sucursalSeleccionada, hayFiltroSeccional, nombreSucursal } from '../core/seccional.js';
@@ -11,7 +13,7 @@ import { contextoListo, sucursalSeleccionada, hayFiltroSeccional, nombreSucursal
 export async function loadDashboard(){
   if(!isClienteMode()) return;
 
-  const today=new Date().toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
+  const today=fmtFechaLarga(new Date());
   document.getElementById('dash-title').textContent=`Hola, ${currentClienteNombre}`;
   await contextoListo();
   const sel=hayFiltroSeccional()?sucursalSeleccionada():'';
@@ -22,11 +24,11 @@ export async function loadDashboard(){
 
   // Queries en paralelo
   const [
-    {count:vehCount},
-    {count:dispCount},
-    {count:medCount},
-    {data:vehicles},
-    {data:allMed}
+    {count:vehCount,error:e1},
+    {count:dispCount,error:e2},
+    {count:medCount,error:e3},
+    {data:vehicles,error:e4},
+    {data:allMed,error:e5}
   ] = await Promise.all([
     conSel(db.from('vehiculos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId).eq('activo',true)),
     conSel(db.from('dispositivos').select('*',{count:'exact',head:true}).eq('cliente_id',currentClienteId)),
@@ -36,9 +38,16 @@ export async function loadDashboard(){
       .eq('cliente_id',currentClienteId).order('created_at',{ascending:false}).limit(600)
   ]);
 
-  document.getElementById('dash-stat-vehs').textContent = vehCount??0;
-  document.getElementById('dash-stat-disps').textContent = dispCount??0;
-  document.getElementById('dash-stat-meds').textContent = (medCount??0).toLocaleString('es-AR');
+  const err=e1||e2||e3||e4||e5;
+  if(err){
+    showToast(userError(err),true);
+    setHtml(document.getElementById('dash-fleet-grid'), estadoError('', 'loadDashboard'));
+    setHtml(document.getElementById('dash-recent-body'), filaEstado(7, estadoError('', 'loadDashboard')));
+    return;
+  }
+  document.getElementById('dash-stat-vehs').textContent = fmtNum(vehCount??0);
+  document.getElementById('dash-stat-disps').textContent = fmtNum(dispCount??0);
+  document.getElementById('dash-stat-meds').textContent = fmtNum(medCount??0);
 
   // Último dato por vehículo+posición
   const latestMap={};
@@ -56,7 +65,7 @@ export async function loadDashboard(){
   const fleetGrid=document.getElementById('dash-fleet-grid');
   const vehs=vehicles||[];
   if(!vehs.length){
-    setHtml(fleetGrid, html`<div class="dash-empty" style="grid-column:1/-1">No hay vehículos activos.</div>`);
+    setHtml(fleetGrid, html`<div style="grid-column:1/-1">${estadoVacio('Todavía no hay vehículos activos','Cuando se registren vehículos y se midan sus neumáticos, vas a ver acá su estado.',{label:'Ir a Vehículos',action:'irA',args:['vehiculos']})}</div>`);
   } else {
     setHtml(fleetGrid, joinHtml(vehs.map(v=>{
       const tiresV=latestList.filter(m=>m.vehiculo_id===v.id);
@@ -77,10 +86,10 @@ export async function loadDashboard(){
           <div style="flex:1;background:rgba(0,0,0,0.07)"></div>
         </div>
         <div class="dash-fleet-stats">
-          ${ok?html`<span style="color:#1a7f37">✓ ${ok} OK</span>`:''}
-          ${bajo?html`<span style="color:#b25000">⚠ ${bajo} bajo</span>`:''}
-          ${crit?html`<span style="color:#c0392b">✕ ${crit} crítico</span>`:''}
-          ${sinD>0?html`<span style="color:var(--text-tertiary)">${sinD} sin datos</span>`:''}
+          ${ok?html`<span class="flota-n green">${ok} OK</span>`:''}
+          ${bajo?html`<span class="flota-n orange">${bajo} bajo</span>`:''}
+          ${crit?html`<span class="flota-n red">${crit} crítico</span>`:''}
+          ${sinD>0?html`<span class="flota-n gray">${sinD} sin datos</span>`:''}
         </div>
       </div>`;
     })));
@@ -90,21 +99,20 @@ export async function loadDashboard(){
   const recentBody=document.getElementById('dash-recent-body');
   const recent=(allMed||[]).slice(0,20);
   if(!recent.length){
-    setHtml(recentBody, html`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">No hay mediciones aún.</td></tr>`);
+    setHtml(recentBody, filaEstado(7, estadoVacio('Todavía no hay mediciones','Las mediciones aparecen apenas un dispositivo mida los neumáticos de tus vehículos.',{label:'Ver dispositivos',action:'irA',args:['dispositivos']})));
     return;
   }
-  const sLabel={ok:html`<span class="ds-badge ok">OK</span>`,bajo:html`<span class="ds-badge warn">Bajo</span>`,critico:html`<span class="ds-badge crit">Crítico</span>`};
   setHtml(recentBody, joinHtml(recent.map(m=>{
     const s=tireStatus(m);
-    const fmt=v=>v!=null?html`<b>${parseFloat(v).toFixed(1)}</b>`:'—';
+    const fmt=v=>v!=null?html`<b>${fmtMm(v)}</b>`:'—';
     return html`<tr>
       <td>${(m.vehiculos?.nombre||'—')}</td>
-      <td><span class="tire-pos-badge" style="font-size:11px;padding:2px 7px">P${m.posicion}</span></td>
+      <td><span class="tire-pos-badge" style="font-size:11px;padding:2px 7px">Pos. ${m.posicion}</span></td>
       <td>${fmt(m.mm1)}</td>
       <td>${fmt(m.mm2)}</td>
       <td>${fmt(m.mm3)}</td>
-      <td>${s?sLabel[s]:'—'}</td>
-      <td style="color:var(--text-secondary);font-size:12px">${relDate(m.created_at)}</td>
+      <td>${s?chipEstado(s):'—'}</td>
+      <td class="celda-aux">${relDate(m.created_at)}</td>
     </tr>`;
   })));
 }
@@ -112,5 +120,4 @@ export async function loadDashboard(){
 export const load=loadDashboard;
 registerView('dashboard','Mi Panel',loadDashboard);
 ACTIONS.loadDashboard=loadDashboard;
-onLogin(({cliente})=>{ if(cliente) switchView('dashboard'); });
 export function init(){}

@@ -6,6 +6,7 @@
 <script src="/tests/smoke/flota.flow.js"></script>
 <script src="/tests/smoke/ciclo.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
+<script src="/tests/smoke/inicio.flow.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
 // y recorre vistas y modales. Resultado en document.title: SMOKE:OK | SMOKE:FAIL:<mensaje>
@@ -80,6 +81,7 @@
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
     }
+    await window.inicioFlow(w,d,sleep,fail,log,cliMode);
     var views=cliMode?['dashboard','vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);

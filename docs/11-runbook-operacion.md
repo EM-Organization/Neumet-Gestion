@@ -14,6 +14,15 @@
 
 ## 2. Crear la cuenta `api` (app del calibre)
 La cuenta es de mínimo privilegio y queda ligada a un cliente. Contrato en [07-api-proveedor.md](07-api-proveedor.md).
+
+### 2.0 Desde el panel (recomendado)
+1. Antes, aplicar `20261107010000_cuentas_api` (RPC `cuentas_api_listar`) y desplegar `crear-cuenta-api` (`verify_jwt = false`, necesita `ALLOWED_ORIGINS`; ver su README).
+2. Panel → Ficha de cliente → sección **Cuenta de API** (solo admin) → revisar el email sugerido (editable) → **Crear cuenta de API**.
+3. El panel muestra email y contraseña **una sola vez** (la genera el servidor: 28 caracteres aleatorios; no se registra en logs ni se puede recuperar). Usar **Copiar credenciales** y guardarlas en el almacén seguro de la app. Al cambiar de cliente o recargar, desaparecen.
+4. Límite de 5 cuentas de API por cliente. La empresa de cada medición sale siempre del `cliente_id` del perfil `api`, nunca del cuerpo de la petición.
+5. Si falla el alta del perfil, la función borra el usuario Auth recién creado (no quedan cuentas huérfanas). No existe trigger sobre `auth.users`, por lo que el perfil lo crea la propia función (upsert).
+
+### 2.1 Manual (alternativa)
 1. Authentication → Users → Add user con un email técnico y una contraseña generada de 24 o más caracteres (guardarla en el almacén seguro de la app: Keychain/Keystore).
 2. Insertar la fila de perfil con rol `api` y `cliente_id` obligatorio:
    ```sql
@@ -23,7 +32,7 @@ La cuenta es de mínimo privilegio y queda ligada a un cliente. Contrato en [07-
 4. Limitaciones conocidas: un JWT no se revoca antes de expirar (aprox. 1 h); la baja de un cliente no desactiva su perfil `api` (sugerencias del revisor en el tablero).
 
 ## 3. Aplicar migraciones
-Las migraciones están en `supabase/migrations/` y deben ser idempotentes. Orden: `20261106000000_init_schema`, `20261106010000_api_proveedor`, `20261106020000_producto_vistas`.
+Las migraciones están en `supabase/migrations/` y deben ser idempotentes. Orden: `20261106000000_init_schema`, `20261106010000_api_proveedor`, `20261106020000_producto_vistas`, `20261107000000_rpc_rotacion`, `20261107010000_cuentas_api`.
 1. Revisar el PR (el CI ejecuta el job `sql` contra un PostgreSQL desechable).
 2. Aplicar con el MCP de Supabase (`apply_migration`) o con el CLI (`supabase db push`) apuntando a `kootszos…`.
 3. Verificar con `list_migrations`, `get_advisors` (seguridad) y `supabase/audit/rls_audit.sql`.
@@ -31,7 +40,7 @@ Las migraciones están en `supabase/migrations/` y deben ser idempotentes. Orden
 Las tres migraciones ya están aplicadas.
 
 ## 4. Desplegar funciones
-Funciones en `supabase/functions/`: `api-proveedor` (desplegada), `crear-cliente` y `contacto` (pendientes). La configuración de `verify_jwt` está en `supabase/config.toml`.
+Funciones en `supabase/functions/`: `api-proveedor` (desplegada), `crear-cliente` (desplegada), `crear-cuenta-api` (nueva, pendiente de desplegar) y `contacto` (pendiente). La configuración de `verify_jwt` está en `supabase/config.toml`.
 1. Cargar antes los secrets (acción del dueño o `supabase secrets set`):
    - `contacto`: `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`, `ALLOWED_ORIGINS`, opcional `TURNSTILE_SECRET` (ver `supabase/functions/contacto/README.md`).
    - `crear-cliente`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver su README). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.

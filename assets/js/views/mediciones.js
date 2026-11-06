@@ -10,6 +10,7 @@ import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { WEAR, wearStatus, avgMm, analyzeTire } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
+import { fmtNum } from '../domain/formato.js';
 import { mLast, mTireColor, medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
 import { medSwitchMode, initDispositivoMode } from './mediciones-dispositivo.js';
 import './report.js';
@@ -25,7 +26,7 @@ function mRenderAnalysis(pos){
 
   // Tasa de desgaste
   if(a.mmPerWeek != null){
-    const rate   = Math.abs(a.mmPerWeek).toFixed(2);
+    const rate   = fmtNum(Math.abs(a.mmPerWeek),2);
     const losing = a.mmPerWeek > 0;
     const cls    = !losing ? 'ok' : a.mmPerWeek > 0.5 ? 'warn' : 'ok';
     items.push(html`
@@ -56,7 +57,7 @@ function mRenderAnalysis(pos){
     items.push(html`
       <div class="analysis-card warn">
         <div class="ac-label">Desgaste desparejo</div>
-        <div class="ac-value warn">${a.unevenWear.toFixed(1)} mm</div>
+        <div class="ac-value warn">${fmtNum(a.unevenWear,1)} mm</div>
         <div class="ac-sub">Mayor desgaste en el lado ${a.unevenSide}. Revisar alineación o presión.</div>
       </div>`);
   }
@@ -161,13 +162,13 @@ export function medSelectTire(pos){
   document.getElementById('med-pos-badge').textContent=`P${pos}`;
   const lr=hist[hist.length-1];
   document.getElementById('med-tire-title').textContent=lr&&lr.idneumatico?`Neumático ID ${lr.idneumatico}`:`Posición ${pos}`;
-  document.getElementById('med-tire-sub').textContent=a!=null?`Promedio actual: ${a.toFixed(1)} mm`:'Sin mediciones recientes';
+  document.getElementById('med-tire-sub').textContent=a!=null?`Promedio actual: ${fmtNum(a,1)} mm`:'Sin mediciones recientes';
 
   const statusEl=document.getElementById('med-tire-status');
   const statusMap={ok:{cls:'ok',txt:'Operativo'},warn:{cls:'warn',txt:'Bajo'},crit:{cls:'crit',txt:'Crítico'},neutral:{cls:'',txt:'Sin datos'}};
   const s=statusMap[col.status]||statusMap.neutral;
   statusEl.className=`tire-status ${s.cls}`;
-  statusEl.textContent=s.txt+(a!=null?` · ${a.toFixed(1)} mm`:'');
+  statusEl.textContent=s.txt+(a!=null?` · ${fmtNum(a,1)} mm`:'');
 
   // mm values
   const mm=['mm1','mm2','mm3'];
@@ -176,7 +177,7 @@ export function medSelectTire(pos){
     const pct=val!=null?Math.min(100,(val/12)*100):0;
     const c=val==null?'var(--text-tertiary)':{ok:'#1a7f37',bajo:'#b25000',critico:'#c0392b'}[wearStatus(val)];
     const bc=val==null?'rgba(0,0,0,0.15)':{ok:'#34c759',bajo:'#ff9500',critico:'#ff3b30'}[wearStatus(val)];
-    document.getElementById(`med-${m}`).textContent=val!=null?val.toFixed(1)+'mm':'—';
+    document.getElementById(`med-${m}`).textContent=val!=null?fmtNum(val,1)+' mm':'—';
     document.getElementById(`med-${m}`).style.color=c;
     document.getElementById(`med-bar${i+1}`).style.width=pct+'%';
     document.getElementById(`med-bar${i+1}`).style.background=bc;
@@ -194,10 +195,10 @@ export function medSelectTire(pos){
       const badge=i===0?html`<span style="background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px">Actual</span>`:'';
       return html`<tr>
         <td style="color:var(--text-secondary)">${fecha}${badge}</td>
-        <td style="color:var(--text-secondary)">${r.mm1!=null?parseFloat(r.mm1).toFixed(1):'—'}</td>
-        <td style="color:var(--text-secondary)">${r.mm2!=null?parseFloat(r.mm2).toFixed(1):'—'}</td>
-        <td style="color:var(--text-secondary)">${r.mm3!=null?parseFloat(r.mm3).toFixed(1):'—'}</td>
-        <td style="color:${rc};font-weight:500">${pa!=null?parseFloat(pa).toFixed(1):'—'}</td>
+        <td style="color:var(--text-secondary)">${fmtNum(r.mm1,1)}</td>
+        <td style="color:var(--text-secondary)">${fmtNum(r.mm2,1)}</td>
+        <td style="color:var(--text-secondary)">${fmtNum(r.mm3,1)}</td>
+        <td style="color:${rc};font-weight:500">${fmtNum(pa,1)}</td>
       </tr>`;
     })));
   }

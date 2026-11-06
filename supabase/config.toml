@@ -22,6 +22,10 @@ verify_jwt = false
 [functions.crear-cliente]
 verify_jwt = false
 
-# Idem: valida el JWT y el rol admin dentro del handler; el preflight CORS (OPTIONS) no lleva token.
+# Valida el JWT y el rol admin dentro del handler; el preflight CORS (OPTIONS) no lleva token.
+[functions.crear-cuenta-api]
+verify_jwt = false
+
+# Idem para crear-usuario-seccional.
 [functions.crear-usuario-seccional]
 verify_jwt = false

@@ -1,6 +1,8 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError } from '../core/ui.js';
+import { chip, estadoVacio, estadoCarga, estadoError, filaEstado } from '../core/componentes.js';
+import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { isClienteMode, currentClienteId, currentClienteNombre, onLogout } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
@@ -10,11 +12,12 @@ import { ESTADOS, infoEstado, filtrarSalud, contarPorEstado, textoDias } from '.
 // Salud de dispositivos: lee la vista v_salud_dispositivos (estado/días sin actividad los calcula la BD).
 let filas=[], clientes=new Map(), fEstado='', fCliente='';
 
-const fmtFecha=iso=>iso?new Date(iso).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const SIMBOLO={activo:'✓',sin_actividad:'▲',caido:'✕',nunca:'–'};
 
 export async function loadSalud(){
   setStatus(true,'Cargando...');
   await contextoListo();
+  setHtml(document.getElementById('tbody-salud'), filaEstado(7, estadoCarga('Cargando salud de dispositivos…')));
   const [{data,error},cl]=await Promise.all([
     db.from('v_salud_dispositivos')
       .select('dispositivo_id,cliente_id,mac_address,nombre,activo,ultima_actividad_at,total_mediciones,dias_sin_actividad,estado')
@@ -22,7 +25,7 @@ export async function loadSalud(){
     isClienteMode()?Promise.resolve({data:[{id:currentClienteId,nombre:currentClienteNombre}]})
       :db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre')
   ]);
-  if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
+  if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); setHtml(document.getElementById('tbody-salud'), filaEstado(7, estadoError('', 'loadSalud'))); return; }
   filas=data||[];
   if(hayFiltroSeccional()){ // la vista no trae la seccional: se cruza con los dispositivos de la seccional elegida
     const {data:ds,error:e2}=await filtrarConsulta(db.from('dispositivos').select('id').eq('cliente_id',currentClienteId));
@@ -64,19 +67,21 @@ function renderSalud(){
   const tbody=document.getElementById('tbody-salud');
   document.getElementById('salud-count').textContent=`${lista.length} de ${filas.length}`;
   if(!lista.length){
-    setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">${filas.length?'Probá con otro filtro':'No hay dispositivos registrados aún'}</div></div></td></tr>`);
+    setHtml(tbody, filaEstado(7, filas.length
+      ? estadoVacio('Ningún dispositivo coincide', 'Probá con otro filtro o quitá la búsqueda.')
+      : estadoVacio('Todavía no hay dispositivos registrados', 'Registrá un dispositivo medidor y asignalo a un cliente para ver su actividad.', isClienteMode() ? null : { label: 'Ir a Dispositivos', action: 'irA', args: ['dispositivos'], primaria: true })));
     return;
   }
   setHtml(tbody, joinHtml(lista.map(r=>{
     const i=infoEstado(r.estado);
     return html`<tr data-estado="${r.estado}">
-      <td><span class="badge ${i.cls}">● ${i.lbl}</span></td>
+      <td>${chip(i.cls, i.lbl, SIMBOLO[r.estado]||'●')}</td>
       <td><span class="mono-cell salud-mac">${r.mac_address}</span></td>
       <td>${r.nombre?r.nombre:html`<span class="salud-muted">—</span>`}</td>
       <td>${clientes.get(String(r.cliente_id))||('#'+r.cliente_id)}</td>
-      <td class="mono-cell salud-fecha">${fmtFecha(r.ultima_actividad_at)}</td>
+      <td class="mono-cell salud-fecha">${fmtFechaHora(r.ultima_actividad_at)}</td>
       <td class="salud-num">${textoDias(r)}</td>
-      <td class="salud-num">${Number(r.total_mediciones||0).toLocaleString('es-AR')}${r.activo===false?html` <span class="badge gray">Desactivado</span>`:''}</td>
+      <td class="salud-num">${fmtNum(r.total_mediciones||0)}${r.activo===false?html` <span class="badge gray">Desactivado</span>`:''}</td>
     </tr>`;
   })));
 }
