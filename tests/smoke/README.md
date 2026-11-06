@@ -12,6 +12,7 @@ Requiere Google Chrome y `python3`:
 ```
 tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones)
 tests/smoke/run.sh cliente    # sesión de cliente (panel, vehículos, dispositivos, mediciones)
+tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)
 ```
 
 Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:

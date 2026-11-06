@@ -14,9 +14,12 @@ import * as neumaticos from './views/neumaticos.js';
 import * as reportes from './views/reportes.js';
 import * as salud from './views/salud-dispositivos.js';
 import * as ficha from './views/ficha-cliente.js';
+import * as flota from './views/flota.js';
+import * as alertas from './views/alertas.js';
+import * as cicloVida from './views/ciclo-vida.js';
 
 initActions();
 initAuth();
 initNav();
-[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,salud,ficha].forEach(v=>v.init());
+[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,flota,alertas,salud,ficha].forEach(v=>v.init());
 checkAuth();
