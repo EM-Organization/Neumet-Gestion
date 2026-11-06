@@ -62,3 +62,5 @@ Nota: `deno check` de las Edge Functions es reproducible vía `supabase/function
 
 ## Criterios de "hecho" de la Fase 0+1 (plataforma disponible de forma responsable)
 Ver checklist final en `03-despliegue-vercel-supabase.md` §8.
+
+Nota (producto): la migración `supabase/migrations/20261106020000_producto_vistas.sql` (umbrales por cliente, odómetro, ciclo de vida, vistas para panel/alertas/salud de dispositivos y `cliente_eliminar_suave`) cubre la base de datos de los ítems 1, 2, 4, 5, 6, 7, 8 y 9 del backlog de `09-benchmark-gestion-neumaticos.md` §6. Aún falta el panel que las consuma y que la ingesta rellene `odometro_km`. Tests: `tests/sql/run.sh` (job `sql` en CI). Ver `08-esquema-datos.md` Apéndice A.
