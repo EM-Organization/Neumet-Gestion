@@ -53,6 +53,14 @@ nav {
   transition: background .15s, transform .12s;
 }
 .nav-cta:hover { background: var(--accent-dark-hover); transform: translateY(-1px); }
+.nav-actions { display: flex; align-items: center; gap: 10px; }
+.nav-login {
+  color: var(--accent-dark); border: 1.5px solid var(--accent-dark);
+  font-size: 14px; font-weight: 500; padding: 7px 18px;
+  border-radius: 8px; text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.nav-login:hover { background: var(--accent-dark); color: var(--n-blanco); }
 
 /* ── HERO ── */
 .hero { padding: 120px 48px 80px; max-width: 1100px; margin: 0 auto; }
@@ -262,6 +270,8 @@ footer {
   .nav-links { display: none; }
   .nav-logo-img { width: 150px; }
   .nav-cta { white-space: nowrap; padding: 8px 14px; font-size: 13px; }
+  .nav-login { white-space: nowrap; padding: 6px 12px; font-size: 13px; }
+  .nav-actions { gap: 8px; }
   .hero, .section-inner { padding-left: 20px; padding-right: 20px; }
   h1 { font-size: 32px; }
   .flow-diagram { padding: 24px 16px; }
@@ -290,9 +300,11 @@ footer {
     <a href="#como-funciona">Cómo funciona</a>
     <a href="#dispositivo">El dispositivo</a>
     <a href="#contacto">Contacto</a>
-    <a href="/adminpanel">Acceder</a>
   </div>
-  <a href="#contacto" class="nav-cta">Quiero una demo</a>
+  <div class="nav-actions">
+    <a href="/adminpanel" class="nav-login">Acceder</a>
+    <a href="#contacto" class="nav-cta">Quiero una demo</a>
+  </div>
 </nav>
 
 <!-- HERO -->
