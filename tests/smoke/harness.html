@@ -2,6 +2,7 @@
 <html lang="es"><head><meta charset="utf-8"><title>SMOKE:RUNNING</title></head>
 <body>
 <script src="/tests/smoke/clientes.flow.js"></script>
+<script src="/tests/smoke/flota.flow.js"></script>
 <script src="/tests/smoke/ciclo.flow.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
@@ -14,7 +15,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     fr.style.cssText='width:1400px;height:900px;border:0';
@@ -68,6 +69,12 @@
         if(captured[0].indexOf('Camión 01')===-1||captured[0].indexOf('Estado por neumático')===-1) fail('imprimible incompleto');
         log.push('imprimible-len='+captured[0].length);
       }
+      log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
+      throw new Error('__done');
+    }
+    if(/[?&]flota=1/.test(location.search)){
+      // Flota con prioridades + Centro de alertas (vistas SQL simuladas por flota.fixture.js): tests/smoke/flota.flow.js
+      await window.flotaFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
     }

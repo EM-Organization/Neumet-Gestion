@@ -1,0 +1,63 @@
+// Recorrido de humo de Flota y Alertas (admin). Lo invoca harness.html: await window.flotaFlow(w, d, sleep, fail, log)
+window.flotaFlow = async function(w, d, sleep, fail, log){
+  var fx = w.__flotaFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
+  var setSel = function(id, v){ var el = $(id); el.value = v; el.dispatchEvent(new w.Event('change',{bubbles:true})); };
+  var nav = function(v){ var el = $('.nav-item[data-view="'+v+'"]'); if(!el){ fail('no existe nav '+v); return false; } el.click(); return true; };
+
+  // --- Flota ---
+  if(!nav('flota')) return;
+  await sleep(500);
+  if(!$('#view-flota').classList.contains('active')) fail('flota: vista no activa');
+  var cards = all('#flota-grid .flota-card');
+  log.push('flota-cards='+cards.length);
+  if(cards.length !== 4) fail('flota: se esperaban 4 vehiculos, hay '+cards.length);
+  var orden = Array.prototype.map.call(cards, function(c){ return c.dataset.semaforo; }).join(',');
+  log.push('flota-orden='+orden);
+  if(orden !== 'critico,bajo,sin_datos,ok') fail('flota: orden por severidad incorrecto: '+orden);
+  var kp = Array.prototype.map.call(all('#flota-kpis .dash-kpi-val'), function(k){ return k.textContent; }).join(',');
+  log.push('flota-kpis='+kp);
+  if(kp !== '4,1,2,4') fail('flota: KPIs inesperados: '+kp);
+  if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('flota: nombre de vehiculo sin escapar');
+  if(all('#flota-cliente option').length !== 3) fail('flota: select de clientes incompleto');
+  setSel('#flota-cliente', '2'); await sleep(100);
+  if(all('#flota-grid .flota-card').length !== 2) fail('flota: filtro por cliente');
+  setSel('#flota-cliente', ''); setSel('#flota-estado', 'critico'); await sleep(100);
+  if(all('#flota-grid .flota-card').length !== 1) fail('flota: filtro por estado');
+  setSel('#flota-estado', '');
+
+  // Enlace al vehículo: salta a Vehículos con la búsqueda prellenada
+  var link = $('#flota-grid .flota-card [data-action="verVehiculoEnLista"]');
+  if(!link){ fail('flota: sin enlace Ver vehiculo'); return; }
+  link.click(); await sleep(400);
+  if(!$('#view-vehiculos').classList.contains('active')) fail('flota: el enlace no abre Vehiculos');
+  if($('#search-vehiculos').value !== 'CR0001') fail('flota: busqueda no prellenada: '+$('#search-vehiculos').value);
+  $('#search-vehiculos').value = ''; $('#search-vehiculos').dispatchEvent(new w.Event('input',{bubbles:true}));
+
+  // --- Alertas ---
+  if(!nav('alertas')) return;
+  await sleep(500);
+  if(!$('#view-alertas').classList.contains('active')) fail('alertas: vista no activa');
+  var rows = function(){ return all('#alert-tbody tr[data-severidad]'); };
+  log.push('alertas-filas='+rows().length);
+  if(rows().length !== 4) fail('alertas: se esperaban 4 filas, hay '+rows().length);
+  if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
+  if(rows()[0].textContent.indexOf('Neumático crítico: 3 mm') === -1) fail('alertas: falta mensaje');
+  if(!rows()[0].querySelector('[data-action="verVehiculoEnLista"]')) fail('alertas: falta enlace al vehiculo');
+  if(d.body.innerHTML.indexOf('<Crítica>') !== -1 || d.body.innerHTML.indexOf('<Beta>') !== -1) fail('alertas: HTML sin escapar');
+  setSel('#alert-severidad', '2'); await sleep(100);
+  if(rows().length !== 2) fail('alertas: filtro severidad 2 -> '+rows().length);
+  setSel('#alert-severidad', ''); setSel('#alert-tipo', 'sin_medir'); await sleep(100);
+  if(rows().length !== 1) fail('alertas: filtro tipo');
+  setSel('#alert-tipo', ''); setSel('#alert-cliente', '1'); await sleep(100);
+  if(rows().length !== 2) fail('alertas: filtro cliente');
+  setSel('#alert-cliente', '');
+  var chip = $('#alert-chips [data-action="alertasSeveridad"]'); // primer chip = Crítica
+  if(!chip){ fail('alertas: sin chips'); return; }
+  chip.click(); await sleep(100);
+  if(rows().length !== 1) fail('alertas: chip de severidad critica');
+  $('#alert-chips [data-action="alertasSeveridad"]').click(); await sleep(100);
+  if(rows().length !== 4) fail('alertas: chip no alterna');
+  var qs = fx.queries.join(',');
+  log.push('flota-consultas='+qs);
+  if(qs.indexOf('v_estado_neumaticos') === -1 || qs.indexOf('v_alertas') === -1 || qs.indexOf('v_resumen_flota_cliente') === -1) fail('flota: no consulto las vistas SQL');
+};

@@ -25,11 +25,13 @@ core/
   svg.js                svgEl(tag, attrs)
 domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
+  flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
   dashboard.js  clientes.js  vehiculos.js  dispositivos.js  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
-  neumaticos.js  stock.js
+  neumaticos.js  stock.js  reportes.js
+  flota.js (flota con prioridades)  alertas.js (centro de alertas)
 ```
 
 Dependencias permitidas: `views/*` -> `core/*` y `domain/*`; `core/*` nunca importa `views/*` (usa los hooks

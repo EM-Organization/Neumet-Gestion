@@ -56,6 +56,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Clientes
     </div>
+    <div class="nav-item" data-view="flota">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      Flota
+    </div>
+    <div class="nav-item" data-view="alertas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Alertas
+    </div>
     <div class="nav-item" data-view="vehiculos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       Vehículos
@@ -633,6 +641,61 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- FLOTA CON PRIORIDADES -->
+      <div class="view" id="view-flota">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Flota</div>
+            <div class="page-subtitle">Vehículos ordenados por prioridad: primero los que tienen neumáticos críticos.</div>
+          </div>
+          <button class="btn ghost" data-action="loadFlota">Actualizar</button>
+        </div>
+        <div class="dash-kpi-row" id="flota-kpis"></div>
+        <div class="toolbar">
+          <select id="flota-cliente" class="flota-select" data-admin-only aria-label="Cliente"><option value="">Todos los clientes</option></select>
+          <select id="flota-estado" class="flota-select" aria-label="Estado">
+            <option value="">Todos los estados</option>
+            <option value="critico">Crítico</option>
+            <option value="bajo">Bajo</option>
+            <option value="sin_datos">Sin datos</option>
+            <option value="ok">OK</option>
+          </select>
+          <div class="search"><input id="flota-q" type="text" placeholder="Buscar vehículo o patente..." aria-label="Buscar vehículo"/></div>
+        </div>
+        <div class="rep-progress" id="flota-msg" role="status" aria-live="polite"></div>
+        <div class="dash-fleet-grid" id="flota-grid"></div>
+      </div>
+
+      <!-- CENTRO DE ALERTAS -->
+      <div class="view" id="view-alertas">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Centro de alertas</div>
+            <div class="page-subtitle">Neumáticos críticos, desgaste irregular, predicciones y mediciones atrasadas.</div>
+          </div>
+          <button class="btn ghost" data-action="loadAlertas">Actualizar</button>
+        </div>
+        <div class="alert-chips" id="alert-chips"></div>
+        <div class="toolbar">
+          <select id="alert-severidad" class="flota-select" aria-label="Severidad">
+            <option value="">Todas las severidades</option>
+            <option value="3">Crítica</option>
+            <option value="2">Media</option>
+            <option value="1">Informativa</option>
+          </select>
+          <select id="alert-tipo" class="flota-select" aria-label="Tipo"><option value="">Todos los tipos</option></select>
+          <select id="alert-cliente" class="flota-select" data-admin-only aria-label="Cliente"><option value="">Todos los clientes</option></select>
+          <span class="flota-meta" id="alert-count"></span>
+        </div>
+        <div class="rep-progress" id="alert-msg" role="status" aria-live="polite"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Severidad</th><th>Tipo</th><th>Mensaje</th><th>Vehículo</th><th>Pos.</th><th>Última medición</th><th></th></tr></thead>
+            <tbody id="alert-tbody"></tbody>
+          </table>
         </div>
       </div>
 
