@@ -103,7 +103,7 @@
             <div class="page-title" id="dash-title">Mi Panel</div>
             <div class="page-subtitle" id="dash-subtitle">Resumen de tu flota y neumáticos</div>
           </div>
-          <button class="btn ghost" onclick="loadDashboard()">
+          <button class="btn ghost" data-action="loadDashboard">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Actualizar
           </button>
@@ -182,7 +182,7 @@
             <div class="page-title">Clientes</div>
             <div class="page-subtitle">Gestioná clientes y sus credenciales de acceso.</div>
           </div>
-          <button class="btn primary" onclick="openClienteModal('create')">
+          <button class="btn primary" data-action="openClienteModal" data-args='["create"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo cliente
           </button>
@@ -198,7 +198,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="search-clientes" type="text" placeholder="Buscar cliente..."/>
           </div>
-          <button class="btn ghost" onclick="loadClients()">
+          <button class="btn ghost" data-action="loadClients">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Actualizar
           </button>
@@ -226,7 +226,7 @@
             <div class="page-title">Balance</div>
             <div class="page-subtitle">Ingresos por clientes, gastos de la empresa y resultado mensual.</div>
           </div>
-          <button class="btn primary" onclick="openGastoModal('create')">
+          <button class="btn primary" data-action="openGastoModal" data-args='["create"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo gasto
           </button>
@@ -333,11 +333,11 @@
 
         <!-- Sub-tabs -->
         <div class="sub-tabs-bar">
-          <button class="sub-tab active" data-subtab="sv-vehiculos" onclick="switchSubTab('sv-vehiculos',this)">
+          <button class="sub-tab active" data-subtab="sv-vehiculos" data-action="switchSubTab" data-args='["sv-vehiculos"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             Vehículos
           </button>
-          <button class="sub-tab" data-subtab="sv-stock" onclick="switchSubTab('sv-stock',this)">
+          <button class="sub-tab" data-subtab="sv-stock" data-action="switchSubTab" data-args='["sv-stock"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
             Stock de Neumáticos
           </button>
@@ -350,7 +350,7 @@
               <div class="page-title">Vehículos</div>
               <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
             </div>
-            <button class="btn primary" onclick="openVehiculoModal('create')">
+            <button class="btn primary" data-action="openVehiculoModal" data-args='["create"]'>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Nuevo vehículo
             </button>
@@ -363,7 +363,7 @@
             <select id="filter-cliente-veh" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
               <option value="">Todos los clientes</option>
             </select>
-            <button class="btn ghost" onclick="loadVehiculos()">
+            <button class="btn ghost" data-action="loadVehiculos">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               Actualizar
             </button>
@@ -393,7 +393,7 @@
               <div class="page-title">Stock de Neumáticos</div>
               <div class="page-subtitle">Registrá las compras de cubiertas para asignarlas a los vehículos.</div>
             </div>
-            <button class="btn primary" onclick="openStockModal('create')">
+            <button class="btn primary" data-action="openStockModal" data-args='["create"]'>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Agregar compra
             </button>
@@ -406,7 +406,7 @@
             <select id="filter-cliente-stock" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
               <option value="">Todos los clientes</option>
             </select>
-            <button class="btn ghost" onclick="loadStock()">
+            <button class="btn ghost" data-action="loadStock">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               Actualizar
             </button>
@@ -439,7 +439,7 @@
             <div class="page-title">Dispositivos</div>
             <div class="page-subtitle">Medidores asignados a cada cliente (identificados por MAC).</div>
           </div>
-          <button class="btn primary" data-admin-only onclick="openDispositivoModal('create')">
+          <button class="btn primary" data-admin-only data-action="openDispositivoModal" data-args='["create"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo dispositivo
           </button>
@@ -452,7 +452,7 @@
           <select id="filter-cliente-disp" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
             <option value="">Todos los clientes</option>
           </select>
-          <button class="btn ghost" onclick="loadDispositivos()">
+          <button class="btn ghost" data-action="loadDispositivos">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Actualizar
           </button>
@@ -551,11 +551,11 @@
                 <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#48484a"></div>Sin datos</div>
               </div>
               <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
-                <button id="med-export-btn" onclick="exportMedicionesCSV()" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
+                <button id="med-export-btn" data-action="exportMedicionesCSV" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   CSV
                 </button>
-                <button id="med-report-btn" onclick="generarReportePDF()" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
+                <button id="med-report-btn" data-action="generarReportePDF" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                   Reporte PDF
                 </button>
@@ -636,7 +636,7 @@
 </div>
 
 <!-- Modal Cliente -->
-<div class="modal-backdrop" id="modal-cliente" onclick="if(event.target===this)closeClienteModal()">
+<div class="modal-backdrop" id="modal-cliente" data-backdrop-close="closeClienteModal">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="cli-modal-title">Nuevo cliente</div>
@@ -649,13 +649,13 @@
         <label>Contraseña inicial</label>
         <div style="position:relative">
           <input type="password" id="f-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
-          <button type="button" onclick="togglePassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
+          <button type="button" data-action="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeClienteModal()">Cancelar</button>
-      <button class="btn primary" id="cli-save" onclick="saveCliente()">Crear cliente</button>
+      <button class="btn ghost" data-action="closeClienteModal">Cancelar</button>
+      <button class="btn primary" id="cli-save" data-action="saveCliente">Crear cliente</button>
     </div>
   </div>
 </div>
@@ -664,7 +664,7 @@
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
 <!-- Modal Vehículo -->
-<div class="modal-backdrop" id="modal-vehiculo" onclick="if(event.target===this)closeVehiculoModal()">
+<div class="modal-backdrop" id="modal-vehiculo" data-backdrop-close="closeVehiculoModal">
   <div class="modal modal-wide">
     <div class="modal-header">
       <div class="modal-title" id="veh-modal-title">Nuevo vehículo</div>
@@ -721,14 +721,14 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeVehiculoModal()">Cancelar</button>
-      <button class="btn primary" id="veh-save" onclick="saveVehiculo()">Crear vehículo</button>
+      <button class="btn ghost" data-action="closeVehiculoModal">Cancelar</button>
+      <button class="btn primary" id="veh-save" data-action="saveVehiculo">Crear vehículo</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Neumáticos del vehículo (vista visual) -->
-<div class="modal-backdrop" id="modal-neumaticos" onclick="if(event.target===this)closeNeumaticosModal()">
+<div class="modal-backdrop" id="modal-neumaticos" data-backdrop-close="closeNeumaticosModal">
   <div class="modal modal-neum">
     <div class="modal-header">
       <div class="modal-title" id="neum-modal-title">Neumáticos</div>
@@ -749,14 +749,14 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeNeumaticosModal()">Cerrar</button>
-      <button class="btn primary" id="neum-save" onclick="saveNeumaticos()">Guardar todo</button>
+      <button class="btn ghost" data-action="closeNeumaticosModal">Cerrar</button>
+      <button class="btn primary" id="neum-save" data-action="saveNeumaticos">Guardar todo</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Stock de Neumáticos (CRUD) -->
-<div class="modal-backdrop" id="modal-stock" onclick="if(event.target===this)closeStockModal()">
+<div class="modal-backdrop" id="modal-stock" data-backdrop-close="closeStockModal">
   <div class="modal modal-wide">
     <div class="modal-header">
       <div class="modal-title" id="stock-modal-title">Nueva compra</div>
@@ -778,14 +778,14 @@
       <div class="field"><label>Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeStockModal()">Cancelar</button>
-      <button class="btn primary" id="stock-save" onclick="saveStock()">Guardar</button>
+      <button class="btn ghost" data-action="closeStockModal">Cancelar</button>
+      <button class="btn primary" id="stock-save" data-action="saveStock">Guardar</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Gasto -->
-<div class="modal-backdrop" id="modal-gasto" onclick="if(event.target===this)closeGastoModal()">
+<div class="modal-backdrop" id="modal-gasto" data-backdrop-close="closeGastoModal">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="gasto-modal-title">Nuevo gasto</div>
@@ -827,14 +827,14 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeGastoModal()">Cancelar</button>
-      <button class="btn primary" id="gasto-save" onclick="saveGasto()">Crear gasto</button>
+      <button class="btn ghost" data-action="closeGastoModal">Cancelar</button>
+      <button class="btn primary" id="gasto-save" data-action="saveGasto">Crear gasto</button>
     </div>
   </div>
 </div>
 
 <!-- Modal Dispositivo -->
-<div class="modal-backdrop" id="modal-dispositivo" onclick="if(event.target===this)closeDispositivoModal()">
+<div class="modal-backdrop" id="modal-dispositivo" data-backdrop-close="closeDispositivoModal">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="disp-modal-title">Nuevo dispositivo</div>
@@ -857,8 +857,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" onclick="closeDispositivoModal()">Cancelar</button>
-      <button class="btn primary" id="disp-save" onclick="saveDispositivo()">Crear dispositivo</button>
+      <button class="btn ghost" data-action="closeDispositivoModal">Cancelar</button>
+      <button class="btn primary" id="disp-save" data-action="saveDispositivo">Crear dispositivo</button>
     </div>
   </div>
 </div>

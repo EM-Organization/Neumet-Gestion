@@ -4,6 +4,8 @@ const SUPABASE_URL = 'https://dqgrlflrjcarxlfetvoj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZ3JsZmxyamNhcnhsZmV0dm9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzE4MzIsImV4cCI6MjA5Mzc0NzgzMn0.i9wnVq_OmBuGtzEEyi_ix-upDpFe4T1clO7mOUnp4_E';
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Registro de acciones invocables desde el DOM (data-action / data-change); sin handlers inline.
+const ACTIONS = {};
 let clients = [], modalMode = 'create', activeId = null;
 
 // ── Paleta de marca para SVG generados por JS (var() no es fiable en atributos SVG) ──
@@ -27,6 +29,29 @@ function avgMm(m){ const v=[m.mm1,m.mm2,m.mm3].filter(x=>x!=null); return v.leng
 
 const AVATARS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ── Plantillas HTML seguras ──
+// html`...` escapa cada interpolación con esc() salvo SafeHtml (se inserta tal cual) o arrays (se procesan y concatenan).
+// setHtml() es el ÚNICO sumidero de innerHTML y rechaza strings planos.
+class SafeHtml{ constructor(s){ this.s=s; } toString(){ return this.s; } }
+const raw=s=>new SafeHtml(String(s));
+function htmlPart(v){
+  if(v==null||v===false) return '';
+  if(v instanceof SafeHtml) return v.s;
+  if(Array.isArray(v)) return v.map(htmlPart).join('');
+  return esc(v);
+}
+function html(strings,...vals){
+  let out=strings[0];
+  vals.forEach((v,i)=>{ out+=htmlPart(v)+strings[i+1]; });
+  return new SafeHtml(out);
+}
+const joinHtml=arr=>new SafeHtml(htmlPart(arr)); // array de SafeHtml/strings -> SafeHtml
+function setHtml(el,safe){
+  if(!(safe instanceof SafeHtml)) throw new TypeError('setHtml requiere SafeHtml (usá html`...`)');
+  // eslint-disable-next-line no-unsanitized/property -- único sumidero; recibe SafeHtml
+  el.innerHTML=safe.toString();
+}
 const safeCls = s => String(s==null?'':s).toLowerCase().replace(/[^a-z0-9_-]/g,'');
 function userError(e){ console.error(e); return 'No se pudo completar la operación'; }
 const avatarFor = id => AVATARS[Math.abs(id) % AVATARS.length];
@@ -218,9 +243,9 @@ async function loadDashboard(){
   const fleetGrid=document.getElementById('dash-fleet-grid');
   const vehs=vehicles||[];
   if(!vehs.length){
-    fleetGrid.innerHTML='<div class="dash-empty" style="grid-column:1/-1">No hay vehículos activos.</div>';
+    setHtml(fleetGrid, html`<div class="dash-empty" style="grid-column:1/-1">No hay vehículos activos.</div>`);
   } else {
-    fleetGrid.innerHTML=vehs.map(v=>{
+    setHtml(fleetGrid, joinHtml(vehs.map(v=>{
       const tiresV=latestList.filter(m=>m.vehiculo_id===v.id);
       const total=v.tipo_ruedas||10;
       const ok=tiresV.filter(m=>tireStatus(m)==='ok').length;
@@ -230,8 +255,8 @@ async function loadDashboard(){
       const pctOk=Math.round(ok/total*100);
       const pctBajo=Math.round(bajo/total*100);
       const pctCrit=Math.round(crit/total*100);
-      return `<div class="dash-fleet-card">
-        <div class="dash-fleet-name">${esc(v.nombre)}${v.patente?`<span class="dash-fleet-pat">${esc(v.patente)}</span>`:''}</div>
+      return html`<div class="dash-fleet-card">
+        <div class="dash-fleet-name">${v.nombre}${v.patente?html`<span class="dash-fleet-pat">${v.patente}</span>`:''}</div>
         <div class="dash-fleet-bar">
           <div style="width:${pctOk}%;background:#34c759"></div>
           <div style="width:${pctBajo}%;background:#ff9500"></div>
@@ -239,28 +264,28 @@ async function loadDashboard(){
           <div style="flex:1;background:rgba(0,0,0,0.07)"></div>
         </div>
         <div class="dash-fleet-stats">
-          ${ok?`<span style="color:#1a7f37">✓ ${ok} OK</span>`:''}
-          ${bajo?`<span style="color:#b25000">⚠ ${bajo} bajo</span>`:''}
-          ${crit?`<span style="color:#c0392b">✕ ${crit} crítico</span>`:''}
-          ${sinD>0?`<span style="color:var(--text-tertiary)">${sinD} sin datos</span>`:''}
+          ${ok?html`<span style="color:#1a7f37">✓ ${ok} OK</span>`:''}
+          ${bajo?html`<span style="color:#b25000">⚠ ${bajo} bajo</span>`:''}
+          ${crit?html`<span style="color:#c0392b">✕ ${crit} crítico</span>`:''}
+          ${sinD>0?html`<span style="color:var(--text-tertiary)">${sinD} sin datos</span>`:''}
         </div>
       </div>`;
-    }).join('');
+    })));
   }
 
   // ── Tabla recientes ──
   const recentBody=document.getElementById('dash-recent-body');
   const recent=(allMed||[]).slice(0,20);
   if(!recent.length){
-    recentBody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">No hay mediciones aún.</td></tr>';
+    setHtml(recentBody, html`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">No hay mediciones aún.</td></tr>`);
     return;
   }
-  const sLabel={ok:'<span class="ds-badge ok">OK</span>',bajo:'<span class="ds-badge warn">Bajo</span>',critico:'<span class="ds-badge crit">Crítico</span>'};
-  recentBody.innerHTML=recent.map(m=>{
+  const sLabel={ok:html`<span class="ds-badge ok">OK</span>`,bajo:html`<span class="ds-badge warn">Bajo</span>`,critico:html`<span class="ds-badge crit">Crítico</span>`};
+  setHtml(recentBody, joinHtml(recent.map(m=>{
     const s=tireStatus(m);
-    const fmt=v=>v!=null?`<b>${parseFloat(v).toFixed(1)}</b>`:'—';
-    return `<tr>
-      <td>${esc(m.vehiculos?.nombre||'—')}</td>
+    const fmt=v=>v!=null?html`<b>${parseFloat(v).toFixed(1)}</b>`:'—';
+    return html`<tr>
+      <td>${(m.vehiculos?.nombre||'—')}</td>
       <td><span class="tire-pos-badge" style="font-size:11px;padding:2px 7px">P${m.posicion}</span></td>
       <td>${fmt(m.mm1)}</td>
       <td>${fmt(m.mm2)}</td>
@@ -268,7 +293,7 @@ async function loadDashboard(){
       <td>${s?sLabel[s]:'—'}</td>
       <td style="color:var(--text-secondary);font-size:12px">${relDate(m.created_at)}</td>
     </tr>`;
-  }).join('');
+  })));
 }
 
 // NAV
@@ -341,28 +366,28 @@ function renderClientes(){
   document.getElementById('stat-nodev').textContent=noDevs;
 
   if(!clients.length){
-    tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div class="empty-title">Sin clientes todavía</div><div class="empty-sub">Creá tu primer cliente con el botón de arriba</div></div></td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div class="empty-title">Sin clientes todavía</div><div class="empty-sub">Creá tu primer cliente con el botón de arriba</div></div></td></tr>`);
     return;
   }
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término</div></div></td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término</div></div></td></tr>`);
     return;
   }
 
-  tbody.innerHTML=filtered.map(c=>{
+  setHtml(tbody, joinHtml(filtered.map(c=>{
     const st=clientStatus(c), av=avatarFor(c.id);
     const disps=c.dispositivos||[];
     const dispCount=disps.length;
     const dispActivos=disps.filter(d=>d.activo).length;
     const dispHtml=dispCount===0
-      ?'<span style="color:var(--text-tertiary);font-size:13px">—</span>'
-      :`<div style="display:flex;flex-direction:column;gap:3px">
+      ?html`<span style="color:var(--text-tertiary);font-size:13px">—</span>`
+      :html`<div style="display:flex;flex-direction:column;gap:3px">
           <span class="badge ${dispActivos>0?'blue':''}">● ${dispCount} dispositivo${dispCount!==1?'s':''}</span>
-          ${disps.map(d=>`<span class="mono-cell" style="font-size:11px;color:var(--text-secondary)">${esc(d.mac_address)}</span>`).join('')}
+          ${disps.map(d=>html`<span class="mono-cell" style="font-size:11px;color:var(--text-secondary)">${d.mac_address}</span>`)}
         </div>`;
-    return `<tr>
+    return html`<tr>
       <td class="id-cell">#${c.id}</td>
-      <td><div class="name-cell"><div class="name-av ${av}">${c.nombre[0].toUpperCase()}</div>${esc(c.nombre)}</div></td>
+      <td><div class="name-cell"><div class="name-av ${av}">${c.nombre[0].toUpperCase()}</div>${c.nombre}</div></td>
       <td>${dispHtml}</td>
       <td><span class="badge ${st.cls}">● ${st.lbl}</span></td>
       <td><div class="actions">
@@ -374,17 +399,17 @@ function renderClientes(){
         </button>
       </div></td>
     </tr>`;
-  }).join('');
+  })));
 
   tbody.querySelectorAll('button[data-a]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.id);
-      if(btn.dataset.a==='del') removeClient(id); else openClienteModal('edit',id);
+      if(btn.dataset.a==='del') ACTIONS.removeClient(id); else ACTIONS.openClienteModal('edit',id);
     });
   });
 }
 
-window.openClienteModal=function(mode,id){
+ACTIONS.openClienteModal=function(mode,id){
   modalMode=mode; activeId=id;
   const fn=document.getElementById('field-name');
   const fe=document.getElementById('field-email');
@@ -409,10 +434,10 @@ window.openClienteModal=function(mode,id){
   document.getElementById('modal-cliente').classList.add('show');
   setTimeout(()=>document.getElementById('f-name').focus(),60);
 };
-window.closeClienteModal=()=>document.getElementById('modal-cliente').classList.remove('show');
-window.togglePassword=()=>{ const i=document.getElementById('f-password'); i.type=i.type==='password'?'text':'password'; };
+ACTIONS.closeClienteModal=()=>document.getElementById('modal-cliente').classList.remove('show');
+ACTIONS.togglePassword=()=>{ const i=document.getElementById('f-password'); i.type=i.type==='password'?'text':'password'; };
 
-window.saveCliente=async function(){
+ACTIONS.saveCliente=async function(){
   const name=document.getElementById('f-name').value.trim();
   const email=document.getElementById('f-email').value.trim();
   const password=document.getElementById('f-password').value;
@@ -433,12 +458,12 @@ window.saveCliente=async function(){
       if(idx>=0) clients[idx]=data;
       showToast('Cliente actualizado');
     }
-    closeClienteModal(); renderClientes();
+    ACTIONS.closeClienteModal(); renderClientes();
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=modalMode==='create'?'Crear cliente':'Guardar'; }
 };
 
-window.removeClient=async function(id){
+ACTIONS.removeClient=async function(id){
   const c=clients.find(c=>c.id===id);
   const ok=await confirmDialog(`Eliminar cliente`,`¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`);
   if(!ok) return;
@@ -447,8 +472,8 @@ window.removeClient=async function(id){
 };
 
 document.getElementById('search-clientes').addEventListener('input',renderClientes);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeClienteModal(); });
-window.loadClients=loadClients;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') ACTIONS.closeClienteModal(); });
+ACTIONS.loadClients=loadClients;
 
 // MEDICIONES
 let medTireData={}, medVehs=[], medSelPos=null, medTipoRuedas='10';
@@ -540,14 +565,14 @@ function mRenderAnalysis(pos){
 
   if(!a){ block.style.display='none'; return; }
 
-  const html = [];
+  const items = [];
 
   // Tasa de desgaste
   if(a.mmPerWeek != null){
     const rate   = Math.abs(a.mmPerWeek).toFixed(2);
     const losing = a.mmPerWeek > 0;
     const cls    = !losing ? 'ok' : a.mmPerWeek > 0.5 ? 'warn' : 'ok';
-    html.push(`
+    items.push(html`
       <div class="analysis-card ${cls}">
         <div class="ac-label">Tasa de desgaste</div>
         <div class="ac-value ${cls}">${rate} mm/sem</div>
@@ -562,7 +587,7 @@ function mRenderAnalysis(pos){
     if(a.daysUntilLimit < 30)       { cls='crit'; txt=`~${a.daysUntilLimit} días`; }
     else if(a.daysUntilLimit < 90)  { cls='warn'; txt=`~${weeks} semanas`; }
     else                             { cls='ok';   txt=`~${Math.round(a.daysUntilLimit/30)} meses`; }
-    html.push(`
+    items.push(html`
       <div class="analysis-card ${cls}">
         <div class="ac-label">Vida útil estimada</div>
         <div class="ac-value ${cls}">${txt}</div>
@@ -572,7 +597,7 @@ function mRenderAnalysis(pos){
 
   // Desgaste desparejo
   if(a.unevenWear != null){
-    html.push(`
+    items.push(html`
       <div class="analysis-card warn">
         <div class="ac-label">Desgaste desparejo</div>
         <div class="ac-value warn">${a.unevenWear.toFixed(1)} mm</div>
@@ -580,8 +605,8 @@ function mRenderAnalysis(pos){
       </div>`);
   }
 
-  if(!html.length){ block.style.display='none'; return; }
-  cards.innerHTML = html.join('');
+  if(!items.length){ block.style.display='none'; return; }
+  setHtml(cards, joinHtml(items));
   block.style.display = 'block';
 }
 
@@ -596,20 +621,18 @@ async function medInit(){
 
   if(isClienteMode()){
     // En modo cliente: cargar vehículos directamente sin seleccionar cliente
-    sel.innerHTML=`<option value="${currentClienteId}">${esc(currentClienteNombre)}</option>`;
+    setHtml(sel, html`<option value="${currentClienteId}">${currentClienteNombre}</option>`);
     sel.value=String(currentClienteId);
     const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas')
       .eq('cliente_id',currentClienteId).eq('activo',true).order('nombre');
     medVehs=data||[];
     const vs=document.getElementById('med-vehiculo-select');
-    vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'+
-      medVehs.map(v=>`<option value="${v.id}">${esc(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`).join('');
+    setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, medVehs.map(v=>html`<option value="${v.id}">${v.nombre}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
     vs.disabled=false;
   } else {
     const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-    sel.innerHTML='<option value="">— Seleccionar cliente —</option>'+
-      (data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
-    document.getElementById('med-vehiculo-select').innerHTML='<option value="">— Seleccionar vehículo —</option>';
+    setHtml(sel, joinHtml([html`<option value="">— Seleccionar cliente —</option>`, (data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)]));
+    setHtml(document.getElementById('med-vehiculo-select'), html`<option value="">— Seleccionar vehículo —</option>`);
     document.getElementById('med-vehiculo-select').disabled=true;
   }
   document.getElementById('med-truck-card').style.display='none';
@@ -637,10 +660,10 @@ document.getElementById('med-cliente-select').addEventListener('change',async fu
   document.getElementById('med-counters-card').style.display='none';
   document.getElementById('med-empty').style.display='flex';
   document.getElementById('med-tire-detail').style.display='none';
-  if(!cid){ vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'; vs.disabled=true; return; }
+  if(!cid){ setHtml(vs, html`<option value="">— Seleccionar vehículo —</option>`); vs.disabled=true; return; }
   const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',cid).eq('activo',true).order('nombre');
   medVehs=data||[];
-  vs.innerHTML='<option value="">— Seleccionar vehículo —</option>'+medVehs.map(v=>`<option value="${v.id}">${esc(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`).join('');
+  setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, medVehs.map(v=>html`<option value="${v.id}">${v.nombre}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
   vs.disabled=false;
 });
 
@@ -754,7 +777,7 @@ function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
 function medDrawTruck(){
   const key=String(medTipoRuedas);
   const svg=document.getElementById('med-truck-svg');
-  svg.innerHTML='';
+  svg.replaceChildren();
   const cfg=MED_CFG[key]; if(!cfg) return;
 
   // ── Dimensiones de neumáticos ──
@@ -966,7 +989,7 @@ async function exportMedicionesCSV(){
     .order('created_at',{ascending:false});
 
   btn.disabled=false;
-  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar CSV';
+  setHtml(btn, html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar CSV`);
 
   if(error){ showToast(userError(error),true); return; }
   if(!data||!data.length){ showToast('No hay mediciones para exportar',true); return; }
@@ -1052,15 +1075,15 @@ async function generarReportePDF(){
         const pts=sparkVals.map((v,i)=>`${PAD+i*scaleX},${H-PAD-(v-min)*scaleY}`).join(' ');
         const lastY=H-PAD-(sparkVals[sparkVals.length-1]-min)*scaleY;
         const lastX=PAD+(sparkVals.length-1)*scaleX;
-        sparkSVG=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
+        sparkSVG=html`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
           <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="${lastX}" cy="${lastY}" r="3" fill="${color}"/>
           <line x1="0" y1="${H-PAD-(WEAR.LOW_MM-min)*scaleY}" x2="${W}" y2="${H-PAD-(WEAR.LOW_MM-min)*scaleY}" stroke="#c0392b" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
         </svg>`;
       } else if(sparkVals.length===1){
-        sparkSVG=`<span style="font-size:11px;color:#8e8e93">1 medición</span>`;
+        sparkSVG=html`<span style="font-size:11px;color:#8e8e93">1 medición</span>`;
       } else {
-        sparkSVG=`<span style="font-size:11px;color:#8e8e93">Sin historial</span>`;
+        sparkSVG=html`<span style="font-size:11px;color:#8e8e93">Sin historial</span>`;
       }
 
       // Variación primera vs última
@@ -1069,14 +1092,14 @@ async function generarReportePDF(){
         const diff=sparkVals[sparkVals.length-1]-sparkVals[0];
         const diffStr=diff.toFixed(1);
         variacion=diff<0
-          ?`<span style="color:#c0392b">▼ ${Math.abs(diff).toFixed(1)}mm</span>`
-          :`<span style="color:#1a7f37">▲ ${diffStr}mm</span>`;
+          ?html`<span style="color:#c0392b">▼ ${Math.abs(diff).toFixed(1)}mm</span>`
+          :html`<span style="color:#1a7f37">▲ ${diffStr}mm</span>`;
       }
 
-      return `<tr>
+      return html`<tr>
         <td style="font-weight:600;color:var(--text-primary)">Pos. ${pos}</td>
-        <td>${esc(n?.marca||'—')}</td>
-        <td>${esc(n?.modelo||'—')}</td>
+        <td>${(n?.marca||'—')}</td>
+        <td>${(n?.modelo||'—')}</td>
         <td>${n?.fecha_compra?fmtDate(n.fecha_compra):'—'}</td>
         <td style="text-align:center">
           <span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;background:${color}18;color:${color};border:1px solid ${color}40">
@@ -1088,7 +1111,7 @@ async function generarReportePDF(){
         <td style="text-align:center">${sparkSVG}</td>
         <td style="text-align:center">${variacion||'—'}</td>
       </tr>`;
-    }).join('');
+    });
 
     // Resumen global
     const allLastMM=posiciones.map(pos=>{
@@ -1099,11 +1122,11 @@ async function generarReportePDF(){
     const bajos=allLastMM.filter(v=>wearStatus(v)==='bajo').length;
     const ok=allLastMM.filter(v=>wearStatus(v)==='ok').length;
 
-    const html=`<!DOCTYPE html>
+    const doc=html`<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>Reporte NEUMET · ${esc(veh?.nombre||'')}</title>
+<title>Reporte NEUMET · ${(veh?.nombre||'')}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#383424;padding:40px;font-size:14px}
@@ -1143,8 +1166,8 @@ async function generarReportePDF(){
     <div style="font-size:12px;color:#615A3F;margin-top:4px">Reporte de estado de neumáticos</div>
   </div>
   <div class="report-meta">
-    <div><strong>Vehículo:</strong> ${esc(veh?.nombre||'—')}</div>
-    <div><strong>Patente:</strong> ${esc(veh?.patente||'—')}</div>
+    <div><strong>Vehículo:</strong> ${(veh?.nombre||'—')}</div>
+    <div><strong>Patente:</strong> ${(veh?.patente||'—')}</div>
     <div><strong>Fecha:</strong> ${fmtDate(new Date().toISOString())}</div>
   </div>
 </div>
@@ -1178,20 +1201,23 @@ async function generarReportePDF(){
   <span>Generado el ${fmtDate(new Date().toISOString())}</span>
 </div>
 
-<script>window.onload=()=>window.print()</script>
 </body>
 </html>`;
 
     const w=window.open('','_blank');
     if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes.',true); return; }
-    w.document.write(html);
+    // Documento generado con el helper html`` (todo dato interpolado queda escapado); about:blank del reporte no tiene otro sumidero.
+    // eslint-disable-next-line no-unsanitized/method -- recibe SafeHtml (doc), no un string plano
+    w.document.write(doc.toString());
     w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(),300); // sin <script> inline (CSP sin 'unsafe-inline')
 
   } catch(e){
     showToast(userError(e),true);
   } finally{
     btn.disabled=false;
-    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Reporte PDF';
+    setHtml(btn, html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Reporte PDF`);
   }
 }
 
@@ -1228,21 +1254,21 @@ function medSelectTire(pos){
   // History table
   const tbody=document.getElementById('med-hist-body');
   if(!hist.length){
-    tbody.innerHTML=`<tr><td colspan="6" style="color:var(--text-tertiary);text-align:center;padding:16px;font-size:12px">Sin registros</td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="6" style="color:var(--text-tertiary);text-align:center;padding:16px;font-size:12px">Sin registros</td></tr>`);
   } else {
-    tbody.innerHTML=hist.slice().reverse().map((r,i)=>{
+    setHtml(tbody, joinHtml(hist.slice().reverse().map((r,i)=>{
       const pa=r.promedio!=null?parseFloat(r.promedio):mAvg(r);
       const rc=pa==null?'var(--text-tertiary)':{ok:'#1a7f37',bajo:'#b25000',critico:'#c0392b'}[wearStatus(pa)];
       const fecha=r.created_at?new Date(r.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
-      const badge=i===0?'<span style="background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px">Actual</span>':'';
-      return `<tr>
+      const badge=i===0?html`<span style="background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px">Actual</span>`:'';
+      return html`<tr>
         <td style="color:var(--text-secondary)">${fecha}${badge}</td>
         <td style="color:var(--text-secondary)">${r.mm1!=null?parseFloat(r.mm1).toFixed(1):'—'}</td>
         <td style="color:var(--text-secondary)">${r.mm2!=null?parseFloat(r.mm2).toFixed(1):'—'}</td>
         <td style="color:var(--text-secondary)">${r.mm3!=null?parseFloat(r.mm3).toFixed(1):'—'}</td>
         <td style="color:${rc};font-weight:500">${pa!=null?parseFloat(pa).toFixed(1):'—'}</td>
       </tr>`;
-    }).join('');
+    })));
   }
   medDrawChart(hist);
   mRenderAnalysis(pos);
@@ -1251,7 +1277,7 @@ function medSelectTire(pos){
 function medDrawChart(hist){
   const svgEl=document.getElementById('med-chart-svg');
   const W=svgEl.parentElement.clientWidth||400;
-  svgEl.setAttribute('width',W); svgEl.innerHTML='';
+  svgEl.setAttribute('width',W); svgEl.replaceChildren();
   const avgs=hist.map(r=>r.promedio!=null?parseFloat(r.promedio):mAvg(r)).filter(x=>x!=null);
   if(avgs.length<2){
     const t=medNS('text',{x:W/2,y:55,'text-anchor':'middle','font-size':'12','font-family':"'Inter',sans-serif",fill:BRAND.textSecondary}); t.textContent='Insuficientes datos para el gráfico'; svgEl.appendChild(t); return;
@@ -1355,42 +1381,42 @@ function renderBalance(){
   // Tabla ingresos
   const tbody1=document.getElementById('tbody-ingresos');
   if(!balanceClients.length){
-    tbody1.innerHTML=`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:13px">Sin clientes</td></tr>`;
+    setHtml(tbody1, html`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:13px">Sin clientes</td></tr>`);
   } else {
-    tbody1.innerHTML=balanceClients.map(c=>`
+    setHtml(tbody1, joinHtml(balanceClients.map(c=>html`
       <tr>
-        <td style="font-weight:500">${esc(c.nombre)}</td>
+        <td style="font-weight:500">${c.nombre}</td>
         <td style="text-align:right">
           <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
             <span style="font-size:12px;color:var(--text-tertiary)">$</span>
             <input class="precio-input" type="number" min="0" step="1"
               value="${parseFloat(c.precio_mensual||0).toFixed(0)}"
               data-cid="${c.id}"
-              onchange="updatePrecio(${c.id},this.value)"
+              data-change="updatePrecio" data-args="[${c.id}]"
               title="Presioná Enter para guardar"/>
           </div>
         </td>
         <td>
           <span style="font-size:11px;font-weight:600;color:${parseFloat(c.precio_mensual||0)>0?'var(--success)':'var(--text-tertiary)'}">${parseFloat(c.precio_mensual||0)>0?'●':'○'}</span>
         </td>
-      </tr>`).join('');
+      </tr>`)));
   }
 
   // Tabla gastos
   const tbody2=document.getElementById('tbody-gastos');
   if(!gastos.length){
-    tbody2.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:13px">Sin gastos registrados</td></tr>`;
+    setHtml(tbody2, html`<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-tertiary);font-size:13px">Sin gastos registrados</td></tr>`);
   } else {
-    tbody2.innerHTML=gastos.map(g=>{
+    setHtml(tbody2, joinHtml(gastos.map(g=>{
       const opacidad=(!g.activo||!g.recurrente)?'opacity:0.45':'';
-      return `<tr style="${opacidad}">
+      return html`<tr style="${opacidad}">
         <td>
-          <div style="font-weight:500;font-size:13px">${esc(g.nombre)}</div>
-          ${g.notas?`<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${esc(g.notas)}</div>`:''}
-          ${!g.recurrente?'<span style="font-size:10px;color:var(--text-secondary)">(único)</span>':''}
-          ${!g.activo?'<span style="font-size:10px;color:var(--danger)"> · inactivo</span>':''}
+          <div style="font-weight:500;font-size:13px">${g.nombre}</div>
+          ${g.notas?html`<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${g.notas}</div>`:''}
+          ${!g.recurrente?html`<span style="font-size:10px;color:var(--text-secondary)">(único)</span>`:''}
+          ${!g.activo?html`<span style="font-size:10px;color:var(--danger)"> · inactivo</span>`:''}
         </td>
-        <td><span class="cat-pill cat-${safeCls(g.categoria)}">${esc(g.categoria)}</span></td>
+        <td><span class="cat-pill cat-${safeCls(g.categoria)}">${g.categoria}</span></td>
         <td style="text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600;color:${g.activo&&g.recurrente?'var(--danger)':'var(--text-tertiary)'}">${fmt(g.monto)}</td>
         <td><div class="actions">
           <button class="icon-btn" data-ga="edit" data-gid="${g.id}" title="Editar">
@@ -1401,11 +1427,11 @@ function renderBalance(){
           </button>
         </div></td>
       </tr>`;
-    }).join('');
+    })));
     tbody2.querySelectorAll('button[data-ga]').forEach(btn=>{
       btn.addEventListener('click',()=>{
         const id=parseInt(btn.dataset.gid);
-        if(btn.dataset.ga==='del') removeGasto(id); else openGastoModal('edit',id);
+        if(btn.dataset.ga==='del') removeGasto(id); else ACTIONS.openGastoModal('edit',id);
       });
     });
   }
@@ -1438,7 +1464,7 @@ function niceGridVals(min,max,count=5){
 function renderBalanceChart(){
   const svgEl=document.getElementById('balance-chart-svg');
   if(!svgEl) return;
-  svgEl.innerHTML='';
+  svgEl.replaceChildren();
 
   const W=svgEl.parentElement.clientWidth||700;
   svgEl.setAttribute('width',W);
@@ -1623,7 +1649,7 @@ function renderBalanceChart(){
   });
 }
 
-window.updatePrecio=async function(clienteId,val){
+ACTIONS.updatePrecio=async function(clienteId,val){
   const precio=Math.max(0,parseFloat(val)||0);
   const {error}=await db.from('clientes').update({precio_mensual:precio}).eq('id',clienteId);
   if(error){ showToast('Error al guardar precio',true); return; }
@@ -1633,7 +1659,7 @@ window.updatePrecio=async function(clienteId,val){
   showToast('Precio actualizado');
 };
 
-window.openGastoModal=function(mode,id){
+ACTIONS.openGastoModal=function(mode,id){
   gastoModalMode=mode; gastoActiveId=id;
   const save=document.getElementById('gasto-save');
   if(mode==='create'){
@@ -1661,9 +1687,9 @@ window.openGastoModal=function(mode,id){
   document.getElementById('modal-gasto').classList.add('show');
   setTimeout(()=>document.getElementById('gf-nombre').focus(),60);
 };
-window.closeGastoModal=()=>document.getElementById('modal-gasto').classList.remove('show');
+ACTIONS.closeGastoModal=()=>document.getElementById('modal-gasto').classList.remove('show');
 
-window.saveGasto=async function(){
+ACTIONS.saveGasto=async function(){
   const nombre=document.getElementById('gf-nombre').value.trim();
   const categoria=document.getElementById('gf-categoria').value;
   const monto=parseFloat(document.getElementById('gf-monto').value)||0;
@@ -1686,7 +1712,7 @@ window.saveGasto=async function(){
       if(idx>=0) gastos[idx]=data;
       showToast('Gasto actualizado');
     }
-    closeGastoModal(); renderBalance();
+    ACTIONS.closeGastoModal(); renderBalance();
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=gastoModalMode==='create'?'Crear gasto':'Guardar'; }
 };
@@ -1701,7 +1727,7 @@ async function removeGasto(id){
   showToast('Gasto eliminado'); renderBalance();
 }
 
-window.loadBalance=loadBalance;
+ACTIONS.loadBalance=loadBalance;
 
 // ── DISPOSITIVOS ──
 let dispositivos=[], dispModalMode='create', dispActiveId=null;
@@ -1728,8 +1754,7 @@ async function loadDispositivos(){
   const filterSel=document.getElementById('filter-cliente-disp');
   const cmap=new Map();
   dispositivos.forEach(d=>{ if(d.clientes) cmap.set(d.cliente_id,d.clientes.nombre); });
-  filterSel.innerHTML='<option value="">Todos los clientes</option>'+
-    [...cmap.entries()].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  setHtml(filterSel, joinHtml([html`<option value="">Todos los clientes</option>`, [...cmap.entries()].map(([id,n])=>html`<option value="${id}">${n}</option>`)]));
 
   // Enriquecer registrados con última medición
   const macs=dispositivos.map(d=>d.mac_address).filter(Boolean);
@@ -1757,15 +1782,15 @@ function renderUnregistered(list){
   if(!list.length){ section.style.display='none'; return; }
   section.style.display='block';
   countEl.textContent=list.length;
-  tbody.innerHTML=list.map(d=>{
+  setHtml(tbody, joinHtml(list.map(d=>{
     const fecha=d.last_seen
       ?new Date(d.last_seen).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
       :'—';
-    return `<tr>
+    return html`<tr>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:7px;height:7px;border-radius:50%;background:#ff9500;flex-shrink:0"></div>
-          <span class="mono-cell" style="font-size:13px;font-weight:600;color:var(--text-primary)">${esc(d.device_id)}</span>
+          <span class="mono-cell" style="font-size:13px;font-weight:600;color:var(--text-primary)">${d.device_id}</span>
         </div>
       </td>
       <td class="mono-cell" style="font-size:12px">${fecha}</td>
@@ -1773,13 +1798,13 @@ function renderUnregistered(list){
         <span class="badge orange">● ${d.total_meds} medición${d.total_meds!=1?'es':''}</span>
       </td>
       <td style="text-align:right">
-        <button class="btn primary" style="font-size:12px;padding:5px 10px" data-reg-mac="${esc(d.device_id)}">
+        <button class="btn primary" style="font-size:12px;padding:5px 10px" data-reg-mac="${d.device_id}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><path d="M12 5v14M5 12h14"/></svg>
           Registrar
         </button>
       </td>
     </tr>`;
-  }).join('');
+  })));
 }
 
 function renderDispositivos(){
@@ -1793,21 +1818,21 @@ function renderDispositivos(){
     return matchQ&&matchC;
   });
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">No hay dispositivos registrados aún</div></div></td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">No hay dispositivos registrados aún</div></div></td></tr>`);
     return;
   }
-  tbody.innerHTML=filtered.map(d=>{
-    const clientNom=d.clientes?esc(d.clientes.nombre):'—';
+  setHtml(tbody, joinHtml(filtered.map(d=>{
+    const clientNom=d.clientes?d.clientes.nombre:'—';
     const lastMedStr=d._lastMed
       ?new Date(d._lastMed).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
-      :'<span style="color:var(--text-tertiary)">Sin mediciones</span>';
+      :html`<span style="color:var(--text-tertiary)">Sin mediciones</span>`;
     const estadoBadge=d.activo
-      ?'<span class="badge green">● Activo</span>'
-      :'<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>';
-    return `<tr>
+      ?html`<span class="badge green">● Activo</span>`
+      :html`<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>`;
+    return html`<tr>
       <td class="id-cell">#${d.id}</td>
-      <td><span class="mono-cell" style="font-size:13px;font-weight:500;color:var(--text-primary)">${esc(d.mac_address)}</span></td>
-      <td>${d.nombre?esc(d.nombre):'<span style="color:var(--text-tertiary)">—</span>'}</td>
+      <td><span class="mono-cell" style="font-size:13px;font-weight:500;color:var(--text-primary)">${d.mac_address}</span></td>
+      <td>${d.nombre?d.nombre:html`<span style="color:var(--text-tertiary)">—</span>`}</td>
       <td>${clientNom}</td>
       <td class="mono-cell" style="font-size:12px">${lastMedStr}</td>
       <td>${estadoBadge}</td>
@@ -1820,11 +1845,11 @@ function renderDispositivos(){
         </button>
       </div></td>
     </tr>`;
-  }).join('');
+  })));
   tbody.querySelectorAll('button[data-da]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.did);
-      if(btn.dataset.da==='del') removeDispositivo(id); else openDispositivoModal('edit',id);
+      if(btn.dataset.da==='del') removeDispositivo(id); else ACTIONS.openDispositivoModal('edit',id);
     });
   });
 }
@@ -1832,16 +1857,16 @@ function renderDispositivos(){
 // Abre el modal desde un dispositivo no registrado (MAC ya conocida)
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-reg-mac]');
-  if(b) window.registrarDispositivo(b.dataset.regMac);
+  if(b) ACTIONS.registrarDispositivo(b.dataset.regMac);
 });
-window.registrarDispositivo=function(mac){
-  openDispositivoModal('create', null, mac);
+ACTIONS.registrarDispositivo=function(mac){
+  ACTIONS.openDispositivoModal('create', null, mac);
 };
 
-window.openDispositivoModal=async function(mode, id, prefillMac=null){
+ACTIONS.openDispositivoModal=async function(mode, id, prefillMac=null){
   dispModalMode=mode; dispActiveId=id;
   const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-  document.getElementById('df-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  setHtml(document.getElementById('df-cliente'), joinHtml((data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
   const save=document.getElementById('disp-save');
 
   if(mode==='create'){
@@ -1871,9 +1896,9 @@ window.openDispositivoModal=async function(mode, id, prefillMac=null){
     document.getElementById(focus).focus();
   }, 60);
 };
-window.closeDispositivoModal=()=>document.getElementById('modal-dispositivo').classList.remove('show');
+ACTIONS.closeDispositivoModal=()=>document.getElementById('modal-dispositivo').classList.remove('show');
 
-window.saveDispositivo=async function(){
+ACTIONS.saveDispositivo=async function(){
   const mac=document.getElementById('df-mac').value.trim().toUpperCase();
   const nombre=document.getElementById('df-nombre').value.trim()||null;
   const cliente_id=parseInt(document.getElementById('df-cliente').value);
@@ -1909,7 +1934,7 @@ window.saveDispositivo=async function(){
       if(idx>=0){ data._lastMed=dispositivos[idx]._lastMed; dispositivos[idx]=data; }
       showToast('Dispositivo actualizado');
     }
-    closeDispositivoModal(); loadDispositivos(); // recarga todo incluyendo no registrados
+    ACTIONS.closeDispositivoModal(); loadDispositivos(); // recarga todo incluyendo no registrados
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=dispModalMode==='create'?'Registrar dispositivo':'Guardar'; }
 };
@@ -1927,7 +1952,7 @@ async function removeDispositivo(id){
 
 document.getElementById('search-dispositivos').addEventListener('input',renderDispositivos);
 document.getElementById('filter-cliente-disp').addEventListener('change',renderDispositivos);
-window.loadDispositivos=loadDispositivos;
+ACTIONS.loadDispositivos=loadDispositivos;
 
 // ── VEHÍCULOS ──
 let vehiculos=[], vehModalMode='create', vehActiveId=null;
@@ -1946,8 +1971,7 @@ async function loadVehiculos(){
   const filterSel=document.getElementById('filter-cliente-veh');
   const clientSet=new Map();
   vehiculos.forEach(v=>{ if(v.clientes) clientSet.set(v.cliente_id, v.clientes.nombre); });
-  filterSel.innerHTML='<option value="">Todos los clientes</option>'+
-    [...clientSet.entries()].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  setHtml(filterSel, joinHtml([html`<option value="">Todos los clientes</option>`, [...clientSet.entries()].map(([id,n])=>html`<option value="${id}">${n}</option>`)]));
   renderVehiculos();
 }
 
@@ -1963,19 +1987,19 @@ function renderVehiculos(){
     return matchQ&&matchC;
   });
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término o filtro</div></div></td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término o filtro</div></div></td></tr>`);
     return;
   }
-  tbody.innerHTML=filtered.map(v=>{
+  setHtml(tbody, joinHtml(filtered.map(v=>{
     const av=avatarFor(v.id);
-    const clientNom=v.clientes?esc(v.clientes.nombre):'—';
+    const clientNom=v.clientes?v.clientes.nombre:'—';
     const estadoBadge=v.activo
-      ?'<span class="badge green">● Activo</span>'
-      :'<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>';
-    return `<tr>
+      ?html`<span class="badge green">● Activo</span>`
+      :html`<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>`;
+    return html`<tr>
       <td class="id-cell">#${v.id}</td>
-      <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${esc(v.nombre)}</div></td>
-      <td class="mono-cell">${v.patente?esc(v.patente):'—'}</td>
+      <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${v.nombre}</div></td>
+      <td class="mono-cell">${v.patente?v.patente:'—'}</td>
       <td>${clientNom}</td>
       <td><span class="badge blue">${v.tipo_ruedas} WHL</span></td>
       <td>${estadoBadge}</td>
@@ -1991,23 +2015,23 @@ function renderVehiculos(){
         </button>
       </div></td>
     </tr>`;
-  }).join('');
+  })));
   tbody.querySelectorAll('button[data-va]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.vid);
       if(btn.dataset.va==='del') removeVehiculo(id);
-      else if(btn.dataset.va==='neum') openNeumaticosModal(id);
-      else openVehiculoModal('edit',id);
+      else if(btn.dataset.va==='neum') ACTIONS.openNeumaticosModal(id);
+      else ACTIONS.openVehiculoModal('edit',id);
     });
   });
 }
 
-window.openVehiculoModal=async function(mode,id){
+ACTIONS.openVehiculoModal=async function(mode,id){
   vehModalMode=mode; vehActiveId=id;
   const save=document.getElementById('veh-save');
   // Poblar select de clientes
   const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-  document.getElementById('vf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  setHtml(document.getElementById('vf-cliente'), joinHtml((data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
   // Ocultar selector de cliente en modo cliente
   document.getElementById('vf-cliente').closest('.field').style.display=isClienteMode()?'none':'';
   if(isClienteMode()) document.getElementById('vf-cliente').value=currentClienteId;
@@ -2042,9 +2066,9 @@ window.openVehiculoModal=async function(mode,id){
   document.getElementById('modal-vehiculo').classList.add('show');
   setTimeout(()=>document.getElementById('vf-nombre').focus(),60);
 };
-window.closeVehiculoModal=()=>document.getElementById('modal-vehiculo').classList.remove('show');
+ACTIONS.closeVehiculoModal=()=>document.getElementById('modal-vehiculo').classList.remove('show');
 
-window.saveVehiculo=async function(){
+ACTIONS.saveVehiculo=async function(){
   const nombre=document.getElementById('vf-nombre').value.trim();
   const patente=document.getElementById('vf-patente').value.trim().toUpperCase()||null;
   const numero=document.getElementById('vf-numero').value.trim()||null;
@@ -2072,7 +2096,7 @@ window.saveVehiculo=async function(){
       if(idx>=0) vehiculos[idx]=data;
       showToast('Vehículo actualizado');
     }
-    closeVehiculoModal(); renderVehiculos();
+    ACTIONS.closeVehiculoModal(); renderVehiculos();
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent=vehModalMode==='create'?'Crear vehículo':'Guardar'; }
 };
@@ -2132,7 +2156,7 @@ function neumDrawTruck(){
   const key=String(v?.tipo_ruedas||10);
   const cfg=MED_CFG[key]; if(!cfg) return;
   const svg=document.getElementById('neum-assign-svg');
-  svg.innerHTML='';
+  svg.replaceChildren();
   const TW_s=20,TH_s=54,TW_d=15,TH_d=38,GAP_D=5,BGAP=12;
   let axleXs,bodyX1,bodyX2;
   if(key==='10'){ axleXs=[150,440,580]; bodyX1=64; bodyX2=730; }
@@ -2226,38 +2250,38 @@ function neumSelectTire(pos){
 function renderNeumDetailPanel(pos){
   const n=neumAssignments[pos]||{};
   const stockOpts=neumStockCache.map(s=>
-    `<option value="${s.id}" ${n.stock_id===s.id?'selected':''}>
-      ${esc(s.marca)}${s.modelo?' '+esc(s.modelo):''} ${s.precio_unidad?'· $'+s.precio_unidad:''} ${s.fecha_compra?'· '+s.fecha_compra:''}
-    </option>`).join('');
+    html`<option value="${s.id}" ${n.stock_id===s.id?'selected':''}>
+      ${s.marca}${s.modelo?' '+s.modelo:''} ${s.precio_unidad?'· $'+s.precio_unidad:''} ${s.fecha_compra?'· '+s.fecha_compra:''}
+    </option>`);
   const panel=document.getElementById('neum-detail-panel');
-  panel.innerHTML=`
+  setHtml(panel, html`
     <div class="ndp-header">
       <div class="ndp-title">Posición <strong>P${pos}</strong></div>
-      <button class="ndp-clear" onclick="neumClearPos(${pos})" title="Quitar neumático">
+      <button class="ndp-clear" data-action="neumClearPos" data-args="[${pos}]" title="Quitar neumático">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="field" style="margin-bottom:10px">
       <label>Seleccionar del stock</label>
-      <select id="ndp-stock" onchange="neumFillFromStock(${pos})">
+      <select id="ndp-stock" data-change="neumFillFromStock" data-args="[${pos}]">
         <option value="">— Ingresar manualmente —</option>
         ${stockOpts}
       </select>
     </div>
     <div class="field-row" style="gap:8px">
-      <div class="field"><label>Marca</label><input id="ndp-marca" value="${esc(n.marca||'')}" placeholder="Michelin"/></div>
-      <div class="field"><label>Modelo</label><input id="ndp-modelo" value="${esc(n.modelo||'')}" placeholder="X MultiWay"/></div>
+      <div class="field"><label>Marca</label><input id="ndp-marca" value="${(n.marca||'')}" placeholder="Michelin"/></div>
+      <div class="field"><label>Modelo</label><input id="ndp-modelo" value="${(n.modelo||'')}" placeholder="X MultiWay"/></div>
     </div>
     <div class="field-row" style="gap:8px">
       <div class="field"><label>Precio/ud</label><input id="ndp-precio" type="number" value="${n.precio_unidad??''}" placeholder="0.00" min="0" step="0.01"/></div>
       <div class="field"><label>Fecha compra</label><input id="ndp-fecha" type="date" value="${n.fecha_compra||''}"/></div>
     </div>
-    <div class="field"><label>Notas</label><textarea id="ndp-notas" rows="2" placeholder="Dimensión, observaciones...">${esc(n.notas||'')}</textarea></div>
-    <button class="btn primary ndp-btn" onclick="neumApplyPos(${pos})">Aplicar</button>
-  `;
+    <div class="field"><label>Notas</label><textarea id="ndp-notas" rows="2" placeholder="Dimensión, observaciones...">${(n.notas||'')}</textarea></div>
+    <button class="btn primary ndp-btn" data-action="neumApplyPos" data-args="[${pos}]">Aplicar</button>
+  `);
 }
 
-window.neumFillFromStock=function(pos){
+ACTIONS.neumFillFromStock=function(pos){
   const sid=parseInt(document.getElementById('ndp-stock').value);
   if(!sid) return;
   const s=neumStockCache.find(x=>x.id===sid); if(!s) return;
@@ -2267,7 +2291,7 @@ window.neumFillFromStock=function(pos){
   document.getElementById('ndp-fecha').value=s.fecha_compra||'';
 };
 
-window.neumApplyPos=function(pos){
+ACTIONS.neumApplyPos=function(pos){
   const sid=parseInt(document.getElementById('ndp-stock').value)||null;
   const precio=document.getElementById('ndp-precio').value;
   neumAssignments[pos]={
@@ -2283,21 +2307,19 @@ window.neumApplyPos=function(pos){
   showToast(`P${pos} actualizada — guardá para confirmar`,false);
 };
 
-window.neumClearPos=function(pos){
+ACTIONS.neumClearPos=function(pos){
   delete neumAssignments[pos];
   neumSelPos=null;
-  document.getElementById('neum-detail-panel').innerHTML=
-    '<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>';
+  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>`);
   neumDrawTruck();
 };
 
-window.openNeumaticosModal=async function(vehiculoId){
+ACTIONS.openNeumaticosModal=async function(vehiculoId){
   neumVehiculoId=vehiculoId; neumSelPos=null; neumAssignments={};
   const v=vehiculos.find(x=>x.id===vehiculoId);
   document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
   document.getElementById('modal-neumaticos').classList.add('show');
-  document.getElementById('neum-detail-panel').innerHTML=
-    '<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>';
+  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>`);
 
   // Carga paralela: registros existentes + stock del cliente
   const [{data:nData},{data:sData}]=await Promise.all([
@@ -2309,11 +2331,11 @@ window.openNeumaticosModal=async function(vehiculoId){
   neumDrawTruck();
 };
 
-window.closeNeumaticosModal=function(){
+ACTIONS.closeNeumaticosModal=function(){
   document.getElementById('modal-neumaticos').classList.remove('show');
 };
 
-window.saveNeumaticos=async function(){
+ACTIONS.saveNeumaticos=async function(){
   const v=vehiculos.find(x=>x.id===neumVehiculoId); if(!v) return;
   const btn=document.getElementById('neum-save');
   btn.disabled=true; btn.textContent='Guardando...';
@@ -2334,7 +2356,7 @@ window.saveNeumaticos=async function(){
       if(error) throw error;
     }
     showToast('Neumáticos guardados');
-    closeNeumaticosModal();
+    ACTIONS.closeNeumaticosModal();
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent='Guardar todo'; }
 };
@@ -2361,7 +2383,7 @@ async function loadStockAssignments(){
 
 async function loadStock(){
   const tbody=document.getElementById('tbody-stock');
-  tbody.innerHTML='<tr><td colspan="9"><div class="loading-state"><div class="spinner"></div></div></td></tr>';
+  setHtml(tbody, html`<tr><td colspan="9"><div class="loading-state"><div class="spinner"></div></div></td></tr>`);
   let sq=db.from('stock_neumaticos')
     .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
     .order('created_at',{ascending:false});
@@ -2373,8 +2395,7 @@ async function loadStock(){
   const sel=document.getElementById('filter-cliente-stock');
   const cmap=new Map();
   stockItems.forEach(s=>{ if(s.clientes) cmap.set(s.cliente_id,s.clientes.nombre); });
-  sel.innerHTML='<option value="">Todos los clientes</option>'+
-    [...cmap.entries()].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  setHtml(sel, joinHtml([html`<option value="">Todos los clientes</option>`, [...cmap.entries()].map(([id,n])=>html`<option value="${id}">${n}</option>`)]));
   await loadStockAssignments();
   renderStock();
 }
@@ -2390,28 +2411,28 @@ function renderStock(){
     return mq&&mc;
   });
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`;
+    setHtml(tbody, html`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin resultados</div></div></td></tr>`);
     return;
   }
-  tbody.innerHTML=filtered.map(s=>{
+  setHtml(tbody, joinHtml(filtered.map(s=>{
     const assigns=stockAssignMap[s.id]||{};
     const totalAsig=Object.values(assigns).reduce((a,b)=>a+b,0);
     const libre=(s.cantidad||0)-totalAsig;
     const hasAsig=totalAsig>0;
     const asigBadge=hasAsig
-      ? `<button class="stock-asig-btn" data-sid="${s.id}" title="Ver detalle de asignación">
+      ? html`<button class="stock-asig-btn" data-sid="${s.id}" title="Ver detalle de asignación">
            <span class="badge green">${totalAsig} asig.</span>
            <span style="color:var(--text-secondary);font-size:11px">/ ${s.cantidad} ud.</span>
          </button>`
-      : `<span class="badge" style="background:var(--surface-secondary);color:var(--text-tertiary);border:1px solid var(--border)">0 / ${s.cantidad} ud.</span>`;
-    return `<tr data-srow="${s.id}">
-      <td><strong>${esc(s.marca)}</strong></td>
-      <td>${s.modelo?esc(s.modelo):'<span style="color:var(--text-tertiary)">—</span>'}</td>
-      <td>${s.clientes?esc(s.clientes.nombre):'—'}</td>
+      : html`<span class="badge" style="background:var(--surface-secondary);color:var(--text-tertiary);border:1px solid var(--border)">0 / ${s.cantidad} ud.</span>`;
+    return html`<tr data-srow="${s.id}">
+      <td><strong>${s.marca}</strong></td>
+      <td>${s.modelo?s.modelo:html`<span style="color:var(--text-tertiary)">—</span>`}</td>
+      <td>${s.clientes?s.clientes.nombre:'—'}</td>
       <td>${s.precio_unidad!=null?'$'+parseFloat(s.precio_unidad).toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</td>
       <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
       <td>${asigBadge}</td>
-      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?esc(s.notas):'—'}</td>
+      <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?s.notas:'—'}</td>
       <td><div class="actions">
         <button class="icon-btn" data-sa="edit" data-sid="${s.id}" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -2428,19 +2449,19 @@ function renderStock(){
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             Asignado a:
           </div>
-          ${Object.entries(assigns).map(([vnom,cnt])=>`
+          ${Object.entries(assigns).map(([vnom,cnt])=>html`
             <div class="stock-asig-row">
-              <span class="stock-asig-veh">${esc(vnom)}</span>
+              <span class="stock-asig-veh">${vnom}</span>
               <span class="badge blue">${cnt} ud.</span>
-            </div>`).join('')}
-          ${libre>0?`<div class="stock-asig-row" style="opacity:.6">
+            </div>`)}
+          ${libre>0?html`<div class="stock-asig-row" style="opacity:.6">
             <span style="color:var(--text-tertiary)">Sin asignar</span>
             <span class="badge" style="background:var(--surface-secondary);color:var(--text-tertiary);border:1px solid var(--border)">${libre} ud.</span>
           </div>`:''}
         </div>
       </td>
     </tr>`;
-  }).join('');
+  })));
 
   // Botón asignados: toggle detalle
   tbody.querySelectorAll('.stock-asig-btn').forEach(btn=>{
@@ -2459,21 +2480,21 @@ function renderStock(){
   tbody.querySelectorAll('button[data-sa]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.sid);
-      if(btn.dataset.sa==='del') removeStock(id); else openStockModal('edit',id);
+      if(btn.dataset.sa==='del') removeStock(id); else ACTIONS.openStockModal('edit',id);
     });
   });
 }
 
-window.openStockModal=async function(mode,id){
+ACTIONS.openStockModal=async function(mode,id){
   stockModalMode=mode; stockActiveId=id;
   const sfClienteField=document.getElementById('sf-cliente').closest('.field');
   if(isClienteMode()){
     sfClienteField.style.display='none';
-    document.getElementById('sf-cliente').innerHTML=`<option value="${currentClienteId}">${esc(currentClienteNombre)}</option>`;
+    setHtml(document.getElementById('sf-cliente'), html`<option value="${currentClienteId}">${currentClienteNombre}</option>`);
   } else {
     sfClienteField.style.display='';
     const {data}=await db.from('clientes').select('id,nombre').order('nombre');
-    document.getElementById('sf-cliente').innerHTML=(data||[]).map(c=>`<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    setHtml(document.getElementById('sf-cliente'), joinHtml((data||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
   }
   if(mode==='create'){
     document.getElementById('stock-modal-title').textContent='Nueva compra de neumáticos';
@@ -2499,9 +2520,9 @@ window.openStockModal=async function(mode,id){
   document.getElementById('modal-stock').classList.add('show');
   setTimeout(()=>document.getElementById('sf-marca').focus(),60);
 };
-window.closeStockModal=()=>document.getElementById('modal-stock').classList.remove('show');
+ACTIONS.closeStockModal=()=>document.getElementById('modal-stock').classList.remove('show');
 
-window.saveStock=async function(){
+ACTIONS.saveStock=async function(){
   const marca=document.getElementById('sf-marca').value.trim();
   if(!marca){ showToast('La marca es obligatoria',true); return; }
   const cliente_id=parseInt(document.getElementById('sf-cliente').value);
@@ -2533,7 +2554,7 @@ window.saveStock=async function(){
       if(idx>=0) stockItems[idx]={...data, clientes:{nombre:clienteNombre}};
     }
     renderStock();
-    closeStockModal();
+    ACTIONS.closeStockModal();
     showToast('Guardado');
   } catch(e){ showToast(userError(e),true); }
   finally{ btn.disabled=false; btn.textContent='Guardar'; }
@@ -2553,11 +2574,12 @@ document.getElementById('search-stock').addEventListener('input',renderStock);
 document.getElementById('filter-cliente-stock').addEventListener('change',renderStock);
 
 // ── Sub-tabs de Vehículos ──
-window.switchSubTab=function(tabId, btn){
+ACTIONS.switchSubTab=function(tabId){
+  const btn=document.querySelector(`.sub-tab[data-subtab="${tabId}"]`);
   document.querySelectorAll('.sub-view').forEach(v=>v.style.display='none');
   document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(tabId).style.display='';
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   if(tabId==='sv-stock') loadStock();
 };
 
@@ -2574,7 +2596,7 @@ async function removeVehiculo(id){
 
 document.getElementById('search-vehiculos').addEventListener('input',renderVehiculos);
 document.getElementById('filter-cliente-veh').addEventListener('change',renderVehiculos);
-window.loadVehiculos=loadVehiculos;
+ACTIONS.loadVehiculos=loadVehiculos;
 
 // ── MEDICIONES TABS ──
 let medMode='vehiculo';
@@ -2606,7 +2628,7 @@ function medSwitchMode(mode){
 let medAllDevices=[], medSelDevice=null, medDeviceSessions=[], medSelSession=null;
 
 async function medDeviceLoadDevices(){
-  document.getElementById('med-device-list').innerHTML='<div class="loading-state"><div class="spinner"></div></div>';
+  setHtml(document.getElementById('med-device-list'), html`<div class="loading-state"><div class="spinner"></div></div>`);
 
   // MACs con mediciones (filtrar por cliente si aplica)
   let macQuery=db.from('mediciones').select('device_id').not('device_id','is',null);
@@ -2640,27 +2662,27 @@ function medDeviceRenderList(){
     (d.cliente||'').toLowerCase().includes(q)
   );
   if(!filtered.length){
-    container.innerHTML='<div style="padding:20px;text-align:center;font-size:13px;color:var(--text-tertiary)">Sin dispositivos</div>';
+    setHtml(container, html`<div style="padding:20px;text-align:center;font-size:13px;color:var(--text-tertiary)">Sin dispositivos</div>`);
     return;
   }
-  container.innerHTML=filtered.map(d=>`
-    <div class="device-item ${medSelDevice===d.mac?'active':''}" data-mac="${esc(d.mac)}">
-      <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary)">${esc(d.mac)}</div>
-      ${d.nombre?`<div style="font-size:11px;color:var(--text-secondary);margin-top:1px">${esc(d.nombre)}${d.cliente?' · '+esc(d.cliente):''}</div>`:''}
-      ${!d.registered?'<div style="font-size:10px;color:var(--warning);margin-top:1px">● No registrado</div>':''}
-    </div>`).join('');
+  setHtml(container, joinHtml(filtered.map(d=>html`
+    <div class="device-item ${medSelDevice===d.mac?'active':''}" data-mac="${d.mac}">
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary)">${d.mac}</div>
+      ${d.nombre?html`<div style="font-size:11px;color:var(--text-secondary);margin-top:1px">${d.nombre}${d.cliente?' · '+d.cliente:''}</div>`:''}
+      ${!d.registered?html`<div style="font-size:10px;color:var(--warning);margin-top:1px">● No registrado</div>`:''}
+    </div>`)));
 }
 
 document.getElementById('med-device-search').addEventListener('input',medDeviceRenderList);
 document.getElementById('med-device-list')?.addEventListener('click',e=>{
   const it=e.target.closest('[data-mac]');
-  if(it) medDeviceSelect(it.dataset.mac);
+  if(it) ACTIONS.medDeviceSelect(it.dataset.mac);
 });
 
-window.medDeviceSelect=async function(mac){
+ACTIONS.medDeviceSelect=async function(mac){
   medSelDevice=mac; medDeviceRenderList();
   document.getElementById('med-sessions-sub').textContent=mac;
-  document.getElementById('med-sessions-list').innerHTML='<div class="loading-state"><div class="spinner"></div>Cargando sesiones...</div>';
+  setHtml(document.getElementById('med-sessions-list'), html`<div class="loading-state"><div class="spinner"></div>Cargando sesiones...</div>`);
   document.getElementById('med-sessions-card').style.display='flex';
 
   const {data,error}=await db
@@ -2697,10 +2719,10 @@ window.medDeviceSelect=async function(mac){
 function medDeviceRenderSessions(){
   const container=document.getElementById('med-sessions-list');
   if(!medDeviceSessions.length){
-    container.innerHTML='<div style="padding:32px;text-align:center;font-size:13px;color:var(--text-tertiary)">Sin sesiones registradas</div>';
+    setHtml(container, html`<div style="padding:32px;text-align:center;font-size:13px;color:var(--text-tertiary)">Sin sesiones registradas</div>`);
     return;
   }
-  container.innerHTML=medDeviceSessions.map((s,i)=>{
+  setHtml(container, joinHtml(medDeviceSessions.map((s,i)=>{
     const isActive=medSelSession===i;
     const fecha=new Date(s.firstDate).toLocaleString('es-AR',{
       day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'
@@ -2711,23 +2733,23 @@ function medDeviceRenderSessions(){
     const veh=s.vehiculo;
     const rawLabel=s.patente_raw||s.numero_raw||null;
     const vehNom=veh
-      ?`${esc(veh.nombre)}${veh.patente?' · '+esc(veh.patente):''}`
-      :rawLabel?`<span style="color:var(--warning)">Sin asignar · ${esc(rawLabel)}</span>`:'Sin matrícula';
+      ?`${veh.nombre}${veh.patente?' · '+veh.patente:''}`
+      :rawLabel?html`<span style="color:var(--warning)">Sin asignar · ${rawLabel}</span>`:'Sin matrícula';
     const dotColor=isActive?'var(--accent-dark)':'var(--text-tertiary)';
-    return `<div class="session-item ${isActive?'active':''}" onclick="medDeviceSessionSelect(${i})">
+    return html`<div class="session-item ${isActive?'active':''}" data-action="medDeviceSessionSelect" data-args="[${i}]">
       <div class="session-dot" style="background:${dotColor}"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:${isActive?'600':'500'};color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${vehNom}</div>
         <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">
-          ${fecha} &nbsp;·&nbsp; ${posiciones} rueda${posiciones!==1?'s':''}${prom?' &nbsp;·&nbsp; prom. <b>'+prom+'mm</b>':''}
+          ${fecha} &nbsp;·&nbsp; ${posiciones} rueda${posiciones!==1?'s':''}${prom?html` &nbsp;·&nbsp; prom. <b>${prom}mm</b>`:''}
         </div>
       </div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:var(--text-tertiary);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
     </div>`;
-  }).join('');
+  })));
 }
 
-window.medDeviceSessionSelect=function(i){
+ACTIONS.medDeviceSessionSelect=function(i){
   medSelSession=i;
   medDeviceRenderSessions();
   const session=medDeviceSessions[i];
@@ -2756,3 +2778,28 @@ window.medDeviceSessionSelect=function(i){
 };
 
 checkAuth();
+
+// ── Delegación de eventos (sin handlers inline: la CSP no necesita 'unsafe-inline' en script-src) ──
+// data-action="nombre" [data-args='[...]']  -> click
+// data-change="nombre" [data-args='[...]']  -> change (se añade el value del control como último argumento)
+// data-backdrop-close="nombre"              -> click sobre el propio fondo del modal
+Object.assign(ACTIONS,{loadDashboard,loadStock,exportMedicionesCSV,generarReportePDF});
+function actionArgs(el){
+  try{ const a=JSON.parse(el.dataset.args||'[]'); return Array.isArray(a)?a:[a]; }
+  catch(_e){ return []; }
+}
+function runAction(name,args){
+  const fn=Object.prototype.hasOwnProperty.call(ACTIONS,name)?ACTIONS[name]:null;
+  if(typeof fn!=='function'){ console.error('Acción desconocida: '+name); return; }
+  return fn(...args);
+}
+document.addEventListener('click',e=>{
+  const bd=e.target.closest('[data-backdrop-close]');
+  if(bd&&e.target===bd){ runAction(bd.dataset.backdropClose,[]); return; }
+  const el=e.target.closest('[data-action]');
+  if(el) runAction(el.dataset.action,actionArgs(el));
+});
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-change]');
+  if(el) runAction(el.dataset.change,[...actionArgs(el),el.value]);
+});

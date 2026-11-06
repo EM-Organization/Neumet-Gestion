@@ -59,7 +59,7 @@
   window.supabase={createClient:function(){
     return {
       from:Q,
-      rpc:function(name){ return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,mediciones:3,ultima:D(1)}]:null,error:null}); },
+      rpc:function(name){ return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,total_meds:3,last_seen:D(1)}]:null,error:null}); },
       auth:{
         getSession:function(){ return Promise.resolve({data:{session:session}}); },
         signInWithPassword:function(){ return Promise.resolve({data:{user:session.user},error:null}); },
