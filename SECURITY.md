@@ -9,3 +9,6 @@ Escribí a **contacto.neumet@gmail.com** con el asunto `[SECURITY]`, describiend
 
 ## Estado
 Auditoría inicial y plan de remediación en [`docs/02-auditoria-seguridad.md`](docs/02-auditoria-seguridad.md).
+
+## Dónde está el código
+El panel son módulos ES nativos en `assets/js/` (ver [`assets/js/README.md`](assets/js/README.md)); todo HTML dinámico pasa por `assets/js/core/html.js`. Procedimientos de operación (claves, cuentas, despliegue) en [`docs/11-runbook-operacion.md`](docs/11-runbook-operacion.md).

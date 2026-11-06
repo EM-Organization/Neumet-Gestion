@@ -18,7 +18,7 @@ Reglas del contrato: HTTPS, JSON UTF-8; el éxito exige HTTP 2xx **y** `code = 2
 
 ## 2. Qué cambia respecto a lo que existe hoy
 
-> La columna "Hoy" sale del README y del código del panel (`app.js`). **[verificar]** contra la función desplegada y el esquema real: `guardar-montaje-mm` no está en el repo.
+> La columna "Hoy" sale del README y del código del panel (originalmente `app.js`, hoy módulos en `assets/js/`). **[verificar]** contra la función desplegada y el esquema real: `guardar-montaje-mm` no está en el repo.
 
 | Aspecto | Hoy (`guardar-montaje-mm`, no versionada) | API requerida |
 |---|---|---|
@@ -28,7 +28,7 @@ Reglas del contrato: HTTPS, JSON UTF-8; el éxito exige HTTP 2xx **y** `code = 2
 | Lecturas | `mm1`–`mm3` (3 huellas) | `mm1`–`mm4`, con `mm3 = mm2` siempre |
 | Respuesta | `{ok, vehiculo_id, ruedas_guardadas}` | `{code, data.guardados[{posicion, guardado}]}` con fallo parcial por neumático |
 | Lectura de datos | No existe | `obtener_montaje` |
-| Inventario de neumáticos | `neumaticos` (por `vehiculo_id, posicion`; el panel lee `marca, modelo, fecha_compra, precio_unidad, notas`) y `stock_neumaticos`; `mediciones` ya guarda `idneumatico` (`app.js:680`). **[verificar]** si existen `codigo` y `auxilio` | Requiere `idneumatico`, `codigo`, `posicion`, `auxilio` por neumático |
+| Inventario de neumáticos | `neumaticos` (por `vehiculo_id, posicion`; el panel lee `marca, modelo, fecha_compra, precio_unidad, notas`) y `stock_neumaticos`; `mediciones` ya guarda `idneumatico` (panel, módulo de mediciones). **[verificar]** si existen `codigo` y `auxilio` | Requiere `idneumatico`, `codigo`, `posicion`, `auxilio` por neumático |
 
 Consecuencia: **esta API cierra el hallazgo S7** de la auditoría (ingesta sin autenticación) para el canal de la app, y permite **retirar** el endpoint público basado en MAC una vez migrada la app.
 

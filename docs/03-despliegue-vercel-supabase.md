@@ -45,7 +45,7 @@ La ingesta de dispositivos **permanece en Supabase** (ver `01` §5).
 | Opción | Esfuerzo | Pros | Contras | Decisión |
 |---|---|---|---|---|
 | **A. Static as-is en Vercel** (sin build, `vercel.json` con headers) | ~0,5 día | Rápido; sirve para tener la plataforma disponible ya | No permite inyectar variables por entorno; CSP laxa por `onclick` inline y CDN | **Fase 1** (con staging manual) |
-| **B. Vite + TypeScript** (vanilla/ligero) | 1–2 semanas incremental | Variables `VITE_*` por entorno, módulos, tipos, CSP estricta, supabase-js fijado | Requiere refactor de `app.js` | **Fase 2 (recomendada)** |
+| **B. Vite + TypeScript** (vanilla/ligero) | 1–2 semanas incremental | Variables `VITE_*` por entorno, módulos, tipos, CSP estricta, supabase-js fijado | Requería refactor del monolito `app.js` (ya dividido en módulos ES, ver `assets/js/README.md`) | **Fase 2 (recomendada)** |
 | **C. Next.js (App Router)** | 3–5 semanas | SSR, middleware de auth con cookies (`@supabase/ssr`), mejores defaults de seguridad (sesión en cookie httpOnly) | Reescritura mayor; SSR/SEO sin valor para un panel; más superficie | Posponer; reconsiderar si hay portal de clientes público y crecimiento de equipo |
 
 Argumento para no saltar directo a C: el producto no tiene problema de SSR/SEO; el costo real es la deuda del frontend (A3) y eso se resuelve igual con B. Next.js sí tendría un beneficio de seguridad real (sesión en cookie `httpOnly` vía `@supabase/ssr`, que elimina el robo de token por XSS); queda como **opción de evolución** si el modelo de amenazas lo exige.

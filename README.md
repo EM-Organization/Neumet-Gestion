@@ -200,13 +200,16 @@ Neumet-Gestion/
 │   └── index.html                    # Panel admin (SPA)
 ├── assets/
 │   ├── css/styles.css                # Estilos globales del panel
-│   ├── js/app.js                     # Lógica frontend (Supabase JS SDK)
+│   ├── config.js                     # window.NEUMET_CONFIG (URL y clave publishable de Supabase)
+│   ├── js/                           # Panel en módulos ES: main.js, core/, domain/, views/ (ver assets/js/README.md)
 │   ├── brand/                        # Identidad visual (logos, favicon, PNG)
 │   └── img/                          # Diagrama de onboarding
 ├── supabase/
+│   ├── migrations/                   # Esquema, API de proveedor, vistas y ciclo de vida
 │   └── functions/
-│       ├── guardar-montaje-mm/       # Recibe mediciones del calibre físico
-│       └── contacto/                 # Recibe formulario y envía email vía Resend
+│       ├── api-proveedor/            # API de la app (login, obtener/guardar montaje)
+│       ├── crear-cliente/            # Alta de clientes (solo admin)
+│       └── contacto/                 # Formulario de la landing vía Resend
 ├── .gitignore
 └── README.md
 ```

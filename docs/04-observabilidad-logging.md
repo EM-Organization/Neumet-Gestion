@@ -1,5 +1,7 @@
 # 04 · Observabilidad y logging
 
+> **Nota (2026-11):** las referencias `app.js:N` de este documento apuntan al monolito `assets/js/app.js` previo a la modularización (PR del refactor a módulos ES). Hoy el panel vive en módulos ES bajo `assets/js/` (`main.js`, `core/`, `domain/`, `views/`; ver [`assets/js/README.md`](../assets/js/README.md)); los números de línea ya no existen y se conservan como evidencia histórica.
+
 > Estado: diagnóstico y objetivo (2026-11-06). Sin cambios de código.
 
 ## 1. Estado actual

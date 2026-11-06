@@ -89,27 +89,27 @@ Notas: Michelin (M) distingue verde/amarillo/naranja, no verde/naranja/rojo como
 
 ## 5. Brecha de NEUMET
 
-**Hoy (según el encargo y docs/07):** calibre BT → app → API → panel; dibujo de camión por rueda; semáforo verde ≥8 / naranja 5–7,9 / rojo <5 mm; historial; mm/semana; clientes, vehículos, dispositivos, stock de neumáticos, balance económico. Tablas conocidas (docs/07, **a verificar contra el esquema real**): `neumaticos(vehiculo_id, posicion, marca, modelo, fecha_compra, precio_unidad, notas)`, `stock_neumaticos`, `mediciones` (con `idneumatico`, `mm1`–`mm3`, `promedio`), `dispositivos`, `clientes`. Este repo no contiene migraciones, así que **no verifiqué el esquema**.
+**Hoy (actualizado 2026-11-06):** el esquema ya está versionado en `supabase/migrations/` (ver [docs/08](08-esquema-datos.md)) y aplicado en Supabase `kootszosdejmawanfxug`. Lo que cubre NEUMET frente al benchmark: calibre BT → app → API (`api-proveedor`) → panel; dibujo de camión por rueda; semáforo con umbrales **por cliente** (defecto verde ≥8 / naranja 5–7,9 / rojo <5 mm); historial; mm/semana y predicción; panel de flota con prioridades; centro de alertas (`v_alertas`); salud de dispositivos (`v_salud_dispositivos`); ficha de cliente (`v_resumen_flota_cliente`); odómetro (`mediciones.odometro_km`, `vehiculos.odometro_km`); ciclo de vida (`eventos_neumatico`, `neumaticos.vida/estado`); reportes exportables; baja lógica de clientes (`cliente_eliminar_suave`).
 
-**Qué falta frente al benchmark:** alertas activas, vida/reencauche, eventos de ciclo de vida (rotación/reparación/baja), odómetro, presión/temperatura, costos por neumático completos, reportes exportables, salud de dispositivos.
+**Qué sigue faltando frente al benchmark:** CPK y rendimiento por marca (necesitan km acumulados por neumático y costos reales), reencauche con costos, presión/temperatura (TPMS), inspecciones por técnico. Backlog §6: los ítems 1–9 están implementados en el panel; 10–12 quedan para la siguiente iteración.
 
 | KPI | Datos que ya tenemos | Datos que nos faltan |
 |---|---|---|
-| mm/semana | mm + fecha por neumático | nada (ya existe); depende de `idneumatico` estable |
+| mm/semana | mm + fecha por neumático | nada (ya existe) |
 | Neumáticos críticos / semáforo | mm | nada |
-| Vida remanente (semanas) | mm, tasa mm/semana | umbral de retiro configurable |
-| mm/1.000 km | mm, fecha | **km del vehículo en cada medición** (odómetro) |
-| Vida remanente (km) | — | km + tasa mm/1.000 km |
+| Vida remanente (semanas) | mm, tasa mm/semana | nada: umbral de retiro por cliente (`clientes.umbral_retiro_mm`) |
+| mm/1.000 km | mm, fecha | odómetro ya capturado (`odometro_km`); falta acumulado por neumático |
+| Vida remanente (km) | — | km por neumático (montaje/desmontaje con odómetro) |
 | CPK | precio_unidad, fecha_compra | km acumulados por neumático (montaje/desmontaje con odómetro), reparaciones, reencauches, valor residual, fecha/motivo de baja |
-| % reencauchado | — | campo `vida` (0,1,2…) y evento de reencauche |
+| % reencauchado | — | ya existen `neumaticos.vida` y el evento `reencauche`; faltan costos |
 | Presión fuera de rango | — | presión (medidor ya la lee en otros productos; el nuestro **[verificar]**) y presión objetivo |
 | Desgaste irregular | mm1–mm3 | nada (regla nueva) |
-| Salud de dispositivos | tabla `dispositivos` | último sync/ingesta por dispositivo (**[verificar]** si existe) |
+| Salud de dispositivos | tabla `dispositivos` | nada: `v_salud_dispositivos` |
 | Rendimiento por marca | marca/modelo, mm | km por neumático |
 
 ## 6. Backlog MVP priorizado (~24 h de trabajo de agentes)
 
-Esfuerzo: S ≈ 1–2 h, M ≈ 3–5 h, L ≈ 6–10 h. QW = quick win (solo panel, sin esquema nuevo, valor visible). Todos asumen datos y RLS actuales hasta verificar el esquema.
+Esfuerzo: S ≈ 1–2 h, M ≈ 3–5 h, L ≈ 6–10 h. QW = quick win (solo panel, sin esquema nuevo, valor visible). Todos asumen datos y RLS actuales (esquema ya verificado y aplicado).
 
 | # | Pri | Ítem | Valor | Esf. | Dependencias de datos/esquema | Vista del panel | QW |
 |---|---|---|---|---|---|---|---|
@@ -145,6 +145,6 @@ Conclusión **[I]**: ninguna cubre el dominio de neumáticos de flotas con licen
 - La mayoría de las fuentes son material comercial; la presencia de una función ≠ calidad. Goodyear (2021) y Michelin/Emenube son páginas cortas; el contenido puede estar desactualizado.
 - "no consta" en la matriz refleja solo las páginas leídas (1–2 por plataforma). No hubo demos ni pruebas.
 - **No verificado:** Pirelli+Geotab, Fleetio, Tiremetrix (§0); fórmula exacta de CPK y mm/1.000 km como KPI estándar (la estructura de costos sí tiene fuente, la consolidación es mía); precios; profundidad del módulo de neumáticos de Emenube.
-- **Esquema real de NEUMET no verificado** (no hay migraciones en el repo): existencia de `odometro`, `vida`, `ultimo sync`, `idneumatico` estable. Los esfuerzos S/M/L son estimaciones mías.
+- **Esquema:** ya versionado en migraciones (ver §5); lo que sigue sin probarse es el flujo de punta a punta con sesión y datos reales. Los esfuerzos S/M/L son estimaciones mías.
 - Supuesto: las 24 h son de agentes en paralelo, con el panel como cliente de Supabase y RLS vigente. Cambios de esquema y de API (ítems 6–7) deben coordinarse con docs/07 y con DAC.
 - Los umbrales de color y el umbral de retiro son decisiones de negocio del dueño; no se contrastaron con normativa.
