@@ -786,7 +786,34 @@
     </div>
     <div class="modal-footer">
       <button class="btn ghost" data-action="closeNeumaticosModal">Cerrar</button>
+      <button class="btn" data-action="cicloDesdeNeum">Odómetro y ciclo de vida</button>
       <button class="btn primary" id="neum-save" data-action="saveNeumaticos">Guardar todo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Odómetro y ciclo de vida del vehículo -->
+<div class="modal-backdrop" id="modal-ciclo" data-backdrop-close="closeCicloVida">
+  <div class="modal modal-wide ciclo-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="ciclo-title">Odómetro y ciclo de vida</div>
+      <div class="modal-sub">Kilometraje del vehículo y eventos de cada neumático</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section-title">Odómetro</div>
+      <div id="ciclo-odo" class="ciclo-odo"></div>
+      <div id="ciclo-admin">
+        <div class="modal-section-title">Registrar evento de neumático</div>
+        <div id="ciclo-form"></div>
+      </div>
+      <div class="modal-section-title">Km recorridos por neumático</div>
+      <div id="ciclo-km"></div>
+      <div class="modal-section-title">Línea de tiempo</div>
+      <div class="field"><select id="ciclo-filtro" data-change="cicloFiltro" aria-label="Filtrar por neumático"></select></div>
+      <div id="ciclo-timeline" class="ciclo-timeline"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="closeCicloVida">Cerrar</button>
     </div>
   </div>
 </div>

@@ -12,9 +12,10 @@ import * as mediciones from './views/mediciones.js';
 import * as stock from './views/stock.js';
 import * as neumaticos from './views/neumaticos.js';
 import * as reportes from './views/reportes.js';
+import * as cicloVida from './views/ciclo-vida.js';
 
 initActions();
 initAuth();
 initNav();
-[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes].forEach(v=>v.init());
+[dashboard,clientes,balance,vehiculos,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida].forEach(v=>v.init());
 checkAuth();
