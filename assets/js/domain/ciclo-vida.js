@@ -92,19 +92,14 @@ export function planEvento(tipo, n, d={}, hoy=''){
   return {ok:true, patch, evento, posicionDestino:posDestino};
 }
 
-// Rotación: mueve `n` a `destino`. La unicidad (vehiculo_id, posicion) no es diferible, así que si el destino está
-// ocupado se intercambia pasando por una posición libre temporal. Devuelve los pasos [{id, posicion}] en orden.
+// Rotación: mueve `n` a `destino`. Si el destino está ocupado se intercambian los dos neumáticos. La escritura la hace
+// la RPC atómica neumatico_rotar (posición temporal y eventos dentro de una transacción); aquí solo se valida y se
+// detecta el intercambio para pedir confirmación. Devuelve {ok, intercambio: neumático ocupante | null}.
 export function planRotacion(neumaticos, n, destino){
   const otro=neumaticos.find(x=>x.vehiculo_id===n.vehiculo_id && x.posicion===destino && x.id!==n.id);
-  if(!otro) return {ok:true, pasos:[{id:n.id, posicion:destino}], intercambio:null};
+  if(!otro) return {ok:true, intercambio:null};
   if(otro.estado==='baja') return {ok:false, error:'La posición de destino está ocupada por un neumático dado de baja'};
-  const usadas=new Set(neumaticos.filter(x=>x.vehiculo_id===n.vehiculo_id).map(x=>x.posicion));
-  let tmp=null;
-  for(let p=98;p>=1;p--){ if(!usadas.has(p)){ tmp=p; break; } }
-  if(tmp===null) return {ok:false, error:'No hay posición libre para intercambiar'};
-  return {ok:true, intercambio:otro, pasos:[
-    {id:n.id, posicion:tmp}, {id:otro.id, posicion:n.posicion}, {id:n.id, posicion:destino}
-  ]};
+  return {ok:true, intercambio:otro};
 }
 
 const tsOf=e=>new Date(e.created_at).getTime()||0;

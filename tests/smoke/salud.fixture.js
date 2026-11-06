@@ -2,7 +2,7 @@
 // (y de clientes.fixture.js si va antes): añade las vistas v_salud_dispositivos / v_resumen_flota_cliente, las columnas
 // de umbrales de clientes y un error de check simulable (window.__umbralError).
 (function(){
-  var fx = window.__saludFx = { updates: [], error: null };
+  var fx = window.__saludFx = { updates: [], error: null, sinFilas: false };
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   var salud = [
     {dispositivo_id:100,cliente_id:1,mac_address:'AA:BB:CC:00:00:01',nombre:'Sensor 1',activo:true,ultima_actividad_at:D(1),total_mediciones:30,dias_sin_actividad:1,estado:'activo'},
@@ -40,7 +40,7 @@
         q.then = function(res, rej){
           if(upd && 'umbral_bajo_mm' in upd){
             fx.updates.push(Object.assign({id:eqId}, upd));
-            var out = fx.error ? {data:null, error:fx.error} : (Object.assign(umb(eqId), upd), {data:[Object.assign({id:Number(eqId), nombre:'Cliente'}, umb(eqId))], error:null});
+            var out = fx.error ? {data:null, error:fx.error} : fx.sinFilas ? {data:[], error:null} : (Object.assign(umb(eqId), upd), {data:[Object.assign({id:Number(eqId), nombre:'Cliente'}, umb(eqId))], error:null});
             return Promise.resolve(out).then(res, rej);
           }
           return th.call(q, function(out){

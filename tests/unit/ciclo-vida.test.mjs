@@ -77,14 +77,15 @@ test('planEvento: rotación, reparación, inspección y validación de odómetro
   assert.equal(planEvento('inspeccion', null).ok, false);
 });
 
-test('planRotacion: mover a posición libre o intercambiar con una temporal', () => {
+test('planRotacion: mover a posición libre o detectar intercambio', () => {
   const a = { id: 1, vehiculo_id: 10, posicion: 1, estado: 'montado' };
   const b = { id: 2, vehiculo_id: 10, posicion: 2, estado: 'montado' };
   const otroVeh = { id: 3, vehiculo_id: 11, posicion: 5, estado: 'montado' };
-  assert.deepEqual(planRotacion([a, b, otroVeh], a, 5).pasos, [{ id: 1, posicion: 5 }]);
+  assert.deepEqual(planRotacion([a, b, otroVeh], a, 5), { ok: true, intercambio: null });
   const sw = planRotacion([a, b], a, 2);
   assert.equal(sw.intercambio.id, 2);
-  assert.deepEqual(sw.pasos, [{ id: 1, posicion: 98 }, { id: 2, posicion: 1 }, { id: 1, posicion: 2 }]);
+  assert.equal(sw.ok, true);
+  assert.equal(sw.pasos, undefined);
   assert.equal(planRotacion([a, { ...b, estado: 'baja' }], a, 2).ok, false);
 });
 

@@ -52,10 +52,15 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   await guardar();
   if(fx.updates.length !== 1) fail('ficha: no se envió el update');
   if(errTxt().indexOf('clientes_umbrales_check') === -1) fail('ficha: no se muestra el error de la BD: '+errTxt());
+  // UPDATE que afecta 0 filas (RLS): error visible, nunca éxito silencioso
+  fx.error = null; fx.sinFilas = true; await guardar();
+  if(fx.updates.length !== 2) fail('ficha: no se envió el update sin filas');
+  if(errTxt().indexOf('No se guardó ningún cambio') === -1) fail('ficha: 0 filas sin error visible: '+errTxt());
+  if($('#toast-msg').textContent.indexOf('Umbrales actualizados') !== -1) fail('ficha: éxito mostrado con 0 filas afectadas');
   // guardado correcto
-  fx.error = null; await guardar();
+  fx.sinFilas = false; await guardar();
   var u = fx.updates[fx.updates.length-1];
-  if(fx.updates.length !== 2 || u.umbral_critico_mm !== 5.5 || u.umbral_bajo_mm !== 8) fail('ficha: payload de umbrales: '+JSON.stringify(u));
+  if(fx.updates.length !== 3 || u.umbral_critico_mm !== 5.5 || u.umbral_bajo_mm !== 8) fail('ficha: payload de umbrales: '+JSON.stringify(u));
   if(errTxt()) fail('ficha: queda un error tras guardar bien: '+errTxt());
   if($('#toast-msg').textContent.indexOf('Umbrales actualizados') === -1) fail('ficha: falta aviso de guardado');
   // cambio de cliente y acceso desde la lista de clientes
