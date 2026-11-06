@@ -73,6 +73,14 @@
       Dispositivos
       <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
     </div>
+    <div class="nav-item" data-view="salud">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Salud de dispositivos
+    </div>
+    <div class="nav-item" data-view="ficha">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg>
+      <span data-admin-only>Ficha de cliente</span><span data-cliente-only style="display:none">Mi resumen</span>
+    </div>
     <div class="nav-item" data-view="mediciones">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       Mediciones
@@ -696,6 +704,75 @@
             <thead><tr><th>Severidad</th><th>Tipo</th><th>Mensaje</th><th>Vehículo</th><th>Pos.</th><th>Última medición</th><th></th></tr></thead>
             <tbody id="alert-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- SALUD DE DISPOSITIVOS -->
+      <div class="view" id="view-salud">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Salud de dispositivos</div>
+            <div class="page-subtitle">Actividad de cada medidor: activo (hasta 7 días), sin actividad (hasta 30), caído (más de 30) o sin mediciones.</div>
+          </div>
+          <button class="btn ghost" data-action="loadSalud">Actualizar</button>
+        </div>
+        <div class="salud-chips" id="salud-chips"></div>
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="salud-search" type="text" placeholder="Buscar MAC o nombre..."/>
+          </div>
+          <select id="salud-estado" class="select-filter" aria-label="Estado" data-change="saludEstadoChange">
+            <option value="">Todos los estados</option>
+            <option value="caido">Caído</option>
+            <option value="sin_actividad">Sin actividad</option>
+            <option value="nunca">Nunca midió</option>
+            <option value="activo">Activo</option>
+          </select>
+          <select id="salud-cliente" class="select-filter" aria-label="Cliente" data-change="saludClienteChange">
+            <option value="">Todos los clientes</option>
+          </select>
+          <span class="salud-muted" id="salud-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Estado</th><th>MAC Address</th><th>Nombre</th><th>Cliente</th><th>Última actividad</th><th>Sin actividad</th><th>Mediciones</th>
+            </tr></thead>
+            <tbody id="tbody-salud">
+              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando salud de dispositivos...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FICHA DE CLIENTE -->
+      <div class="view" id="view-ficha">
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="ficha-nombre">Cliente</div>
+            <div class="page-subtitle">Resumen de flota, salud de dispositivos y umbrales de desgaste.</div>
+          </div>
+          <div class="ficha-actions">
+            <label id="ficha-selector" class="ficha-selector" data-admin-only>Cliente
+              <select id="ficha-cliente" class="select-filter" data-change="fichaClienteChange"></select>
+            </label>
+            <button class="btn ghost" data-action="loadFicha">Actualizar</button>
+          </div>
+        </div>
+        <div class="ficha-kpis" id="ficha-kpis"></div>
+        <div class="ficha-card">
+          <div class="ficha-card-title">Dispositivos</div>
+          <div class="ficha-salud" id="ficha-salud"></div>
+        </div>
+        <div class="ficha-card">
+          <div class="ficha-card-title">Umbrales de desgaste</div>
+          <div class="ficha-sub">Se aplican a los estados y alertas de este cliente. Deben cumplir retiro &lt; crítico &lt; bajo.</div>
+          <div class="ficha-umbrales" id="ficha-umbrales-campos"></div>
+          <div class="login-error" id="ficha-umbral-error" role="alert"></div>
+          <div class="ficha-form-actions">
+            <button class="btn primary" id="ficha-guardar" data-admin-only data-action="guardarUmbrales">Guardar umbrales</button>
+          </div>
         </div>
       </div>
 
