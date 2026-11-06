@@ -3,30 +3,45 @@
 window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   var fx = w.__saludFx, $ = function(s){ return d.querySelector(s); };
   var nav = function(v){ $('.nav-item[data-view="'+v+'"]').click(); };
-  var rows = function(){ return d.querySelectorAll('#tbody-salud tr[data-estado]').length; };
+  var rows = function(){ return d.querySelectorAll('#tbody-dispositivos tr[data-estado]').length; };
   var change = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change',{bubbles:true})); };
 
-  // ── Salud de dispositivos ──
-  nav('salud'); await sleep(500);
-  if(!$('#view-salud').classList.contains('active')) fail('salud: vista no activa');
-  if(rows() !== 4) fail('salud: filas esperadas 4, hay '+rows());
-  var first = $('#tbody-salud tr[data-estado]').dataset.estado;
-  if(first !== 'caido') fail('salud: el más grave debe ir primero, va '+first);
-  if($('#view-salud').innerHTML.indexOf('Sensor <2>') !== -1) fail('salud: nombre sin escapar');
-  if($('#tbody-salud').textContent.indexOf('Desactivado') === -1) fail('salud: falta marca de dispositivo desactivado');
+  // ── Dispositivos (vista única con estado de actividad) ──
+  nav('dispositivos'); await sleep(500);
+  if(!$('#view-dispositivos').classList.contains('active')) fail('dispositivos: vista no activa');
+  if($('.nav-item[data-view="salud"]')) fail('dispositivos: queda la entrada de menú "Salud de dispositivos"');
+  if(rows() !== 4) fail('dispositivos: filas esperadas 4, hay '+rows());
+  var first = $('#tbody-dispositivos tr[data-estado]').dataset.estado;
+  if(first !== 'caido') fail('dispositivos: el más grave debe ir primero, va '+first);
+  if($('#view-dispositivos').innerHTML.indexOf('Sensor <2>') !== -1) fail('dispositivos: nombre sin escapar');
+  if($('#tbody-dispositivos').textContent.indexOf('Desactivado') === -1) fail('dispositivos: falta marca de dispositivo desactivado');
+  if($('#tbody-dispositivos').textContent.indexOf('Sin mediciones') === -1) fail('dispositivos: falta "Sin mediciones" del que nunca midió');
+  // Rol cliente: solo lectura (sin editar, eliminar ni alta); admin: acciones por fila y alta
+  var edit = d.querySelectorAll('#tbody-dispositivos [data-action="editarDispositivo"],#tbody-dispositivos [data-action="eliminarDispositivo"]').length;
+  var alta = Array.prototype.some.call(d.querySelectorAll('#view-dispositivos [data-action="openDispositivoModal"]'), function(b){ return b.getClientRects().length > 0; });
+  if(cliMode){
+    if(edit) fail('dispositivos(cliente): ve botones de editar/eliminar ('+edit+')');
+    if(alta) fail('dispositivos(cliente): ve el alta de dispositivos');
+    if($('#unreg-section').style.display !== 'none') fail('dispositivos(cliente): ve dispositivos sin cliente asignado');
+    if(d.querySelectorAll('#view-dispositivos thead th').length && Array.prototype.some.call(d.querySelectorAll('#view-dispositivos thead th'), function(t){ return t.getClientRects().length > 0 && /Cliente|Acciones/.test(t.textContent); })) fail('dispositivos(cliente): columnas de administración visibles');
+  } else {
+    if(edit !== 8) fail('dispositivos(admin): faltan acciones por fila ('+edit+')');
+    if(!alta) fail('dispositivos(admin): falta el alta');
+  }
   // filtro por estado (chip con data-action y select)
   $('.salud-chip[data-args=\'["caido"]\']').click(); await sleep(100);
-  if(rows() !== 1) fail('salud: filtro caido devolvió '+rows());
-  change($('#salud-estado'), 'nunca'); await sleep(100);
-  if(rows() !== 1 || $('#tbody-salud tr[data-estado]').dataset.estado !== 'nunca') fail('salud: filtro nunca');
-  change($('#salud-estado'), ''); await sleep(100);
+  if(rows() !== 1) fail('dispositivos: filtro caido devolvió '+rows());
+  change($('#disp-estado'), 'nunca'); await sleep(100);
+  if(rows() !== 1 || $('#tbody-dispositivos tr[data-estado]').dataset.estado !== 'nunca') fail('dispositivos: filtro nunca');
+  change($('#disp-estado'), ''); await sleep(100);
   // filtro por cliente (solo admin)
   if(!cliMode){
-    change($('#salud-cliente'), '2'); await sleep(100);
-    if(rows() !== 2) fail('salud: filtro cliente 2 devolvió '+rows());
-    change($('#salud-cliente'), ''); await sleep(100);
+    change($('#filter-cliente-disp'), '2'); await sleep(100);
+    if(rows() !== 2) fail('dispositivos: filtro cliente 2 devolvió '+rows());
+    change($('#filter-cliente-disp'), ''); await sleep(100);
   }
-  log.push('salud: filas='+rows());
+  log.push('dispositivos: filas='+rows());
+  if(cliMode) return; // el cliente no accede a la ficha de administración
 
   // ── Ficha de cliente ──
   nav('ficha'); await sleep(600);
@@ -34,12 +49,6 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   var kpis = $('#ficha-kpis').textContent;
   if(!/Vehículos activos/.test(kpis) || !/Críticos/.test(kpis)) fail('ficha: faltan KPIs del resumen');
   if(!$('#fu-umbral_bajo_mm') || $('#fu-umbral_bajo_mm').value !== '8') fail('ficha: umbral bajo no cargado');
-  if(cliMode){
-    if(!$('#fu-umbral_bajo_mm').disabled) fail('ficha: el cliente no debe poder editar umbrales');
-    if($('#ficha-guardar').offsetParent !== null) fail('ficha: el cliente ve el botón guardar');
-    log.push('ficha(cliente): ok');
-    return;
-  }
   var sv = function(k, v){ $('#fu-'+k).value = v; };
   var guardar = async function(){ $('#ficha-guardar').click(); await sleep(250); };
   var errTxt = function(){ return $('#ficha-umbral-error').classList.contains('show') ? $('#ficha-umbral-error').textContent : ''; };

@@ -49,50 +49,39 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
         Inicio
       </button>
-      <div class="nav-section">Flota</div>
-      <button type="button" class="nav-item" data-view="flota">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-        Estado de la flota
+      <button type="button" class="nav-item" data-view="vehiculos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        Vehículos
       </button>
       <button type="button" class="nav-item" data-view="alertas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Alertas
       </button>
-      <button type="button" class="nav-item" data-view="vehiculos">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        Vehículos
+      <button type="button" class="nav-item" data-view="reportes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Reportes
       </button>
-      <button type="button" class="nav-item" data-view="mediciones">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        Mediciones
-      </button>
-      <button type="button" class="nav-item" data-view="dashboard" data-cliente-only style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Mi panel
-      </button>
-      <div class="nav-section">Equipos</div>
       <button type="button" class="nav-item" data-view="dispositivos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
         Dispositivos
         <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
       </button>
-      <button type="button" class="nav-item" data-view="salud">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Salud de dispositivos
+      <div class="nav-section" data-admin-only>Administración</div>
+      <button type="button" class="nav-item" data-view="flota" data-admin-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+        Estado de la flota
       </button>
-      <div class="nav-section">Informes</div>
-      <button type="button" class="nav-item" data-view="reportes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Reportes
+      <button type="button" class="nav-item" data-view="mediciones" data-admin-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Mediciones
       </button>
-      <div class="nav-section"><span data-admin-only>Administración</span><span data-cliente-only style="display:none">Mi cuenta</span></div>
       <button type="button" class="nav-item" data-view="clientes" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Clientes
       </button>
-      <button type="button" class="nav-item" data-view="ficha">
+      <button type="button" class="nav-item" data-view="ficha" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg>
-        <span data-admin-only>Ficha de cliente</span><span data-cliente-only style="display:none">Mi resumen</span>
+        Ficha de cliente
       </button>
       <button type="button" class="nav-item" data-view="balance" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -122,9 +111,10 @@
       <label class="sec-selector" id="sec-selector" style="display:none">Seccional
         <select id="sec-select" class="flota-select" data-change="seccionalCambiar" aria-label="Seccional"></select>
       </label>
-      <div class="status-pill" id="status-pill">
+      <div class="status-pill disconnected" id="status-pill" role="status" hidden>
         <div class="status-dot"></div>
-        <span id="status-text">Conectando...</span>
+        <span id="status-text">Sin conexión</span>
+        <button type="button" class="status-retry" data-action="reintentarConexion">Reintentar</button>
       </div>
     </div>
     <div class="content">
@@ -134,7 +124,7 @@
         <div class="page-header">
           <div>
             <h2 class="page-title" id="inicio-title">Inicio</h2>
-            <div class="page-subtitle" id="inicio-subtitle">¿Qué requiere tu atención hoy?</div>
+            <div class="page-subtitle" id="inicio-subtitle"></div>
           </div>
           <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
         </div>
@@ -143,91 +133,11 @@
         </div>
       </div>
 
-      <!-- DASHBOARD (cliente) -->
-      <div class="view" id="view-dashboard">
-        <div class="page-header">
-          <div>
-            <div class="page-title" id="dash-title">Mi Panel</div>
-            <div class="page-subtitle" id="dash-subtitle">Resumen de tu flota y neumáticos</div>
-          </div>
-          <button class="btn ghost" data-action="loadDashboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Actualizar
-          </button>
-        </div>
-
-        <!-- KPI Cards -->
-        <div class="dash-kpi-row">
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-icon" style="background:rgba(0,122,255,0.1);color:#007aff">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            </div>
-            <div>
-              <div class="dash-kpi-val" id="dash-stat-vehs">—</div>
-              <div class="dash-kpi-label">Vehículos activos</div>
-            </div>
-          </div>
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-icon" style="background:rgba(52,199,89,0.1);color:#1a7f37">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
-            </div>
-            <div>
-              <div class="dash-kpi-val" id="dash-stat-disps">—</div>
-              <div class="dash-kpi-label">Dispositivos</div>
-            </div>
-          </div>
-          <div class="dash-kpi-card">
-            <div class="dash-kpi-icon" style="background:var(--accent-light);color:var(--accent-dark)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-            </div>
-            <div>
-              <div class="dash-kpi-val" id="dash-stat-meds">—</div>
-              <div class="dash-kpi-label">Mediciones totales</div>
-            </div>
-          </div>
-          <div class="dash-kpi-card" id="dash-kpi-criticos">
-            <div class="dash-kpi-icon" style="background:rgba(255,59,48,0.08);color:#c0392b">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <div>
-              <div class="dash-kpi-val" id="dash-stat-criticos">—</div>
-              <div class="dash-kpi-label">Neumáticos críticos</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Estado de la flota por vehículo -->
-        <div class="dash-section-title">Estado de la flota</div>
-        <div id="dash-fleet-grid" class="dash-fleet-grid">
-          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Cargando...</div>
-        </div>
-
-        <!-- Mediciones recientes -->
-        <div class="dash-section-title" style="margin-top:22px">Mediciones recientes</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th scope="col">Vehículo</th>
-              <th scope="col">Posición</th>
-              <th scope="col">Exterior</th>
-              <th scope="col">Medio</th>
-              <th scope="col">Interior</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Hace</th>
-            </tr></thead>
-            <tbody id="dash-recent-body">
-              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- CLIENTES -->
       <div class="view" id="view-clientes">
         <div class="page-header">
           <div>
             <div class="page-title">Clientes</div>
-            <div class="page-subtitle">Gestioná clientes y sus credenciales de acceso.</div>
           </div>
           <button class="btn primary" data-action="openClienteModal" data-args='["create"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -272,7 +182,6 @@
         <div class="page-header">
           <div>
             <div class="page-title">Balance</div>
-            <div class="page-subtitle">Ingresos por clientes, gastos de la empresa y resultado mensual.</div>
           </div>
           <button class="btn primary" data-action="openGastoModal" data-args='["create"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -387,7 +296,7 @@
           </button>
           <button class="sub-tab" data-subtab="sv-stock" data-action="switchSubTab" data-args='["sv-stock"]'>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
-            Stock de Neumáticos
+            Stock de neumáticos
           </button>
         </div>
 
@@ -396,7 +305,6 @@
           <div class="page-header">
             <div>
               <div class="page-title">Vehículos</div>
-              <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
             </div>
             <button class="btn primary" data-action="openVehiculoModal" data-args='["create"]'>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -438,10 +346,9 @@
         <div class="sub-view" id="sv-stock" style="display:none">
           <div class="page-header">
             <div>
-              <div class="page-title">Stock de Neumáticos</div>
-              <div class="page-subtitle">Registrá las compras de cubiertas para asignarlas a los vehículos.</div>
+              <div class="page-title">Stock de neumáticos</div>
             </div>
-            <button class="btn primary" data-action="openStockModal" data-args='["create"]'>
+            <button class="btn primary" data-admin-only data-action="openStockModal" data-args='["create"]'>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Agregar compra
             </button>
@@ -469,7 +376,7 @@
                 <th scope="col">Fecha compra</th>
                 <th scope="col">Asignados</th>
                 <th scope="col">Notas</th>
-                <th scope="col" style="width:80px"></th>
+                <th scope="col" style="width:80px" data-admin-only><span class="sr-only">Acciones</span></th>
               </tr></thead>
               <tbody id="tbody-stock">
                 <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
@@ -483,59 +390,60 @@
       <!-- DISPOSITIVOS -->
       <div class="view" id="view-dispositivos">
         <div class="page-header">
-          <div>
-            <div class="page-title">Dispositivos</div>
-            <div class="page-subtitle">Medidores asignados a cada cliente (identificados por MAC).</div>
+          <h2 class="page-title">Dispositivos</h2>
+          <div class="page-actions">
+            <button type="button" class="btn ghost" data-action="loadDispositivos">Actualizar</button>
+            <button type="button" class="btn primary" data-admin-only data-action="openDispositivoModal" data-args='["create"]'>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Nuevo dispositivo
+            </button>
           </div>
-          <button class="btn primary" data-admin-only data-action="openDispositivoModal" data-args='["create"]'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Nuevo dispositivo
-          </button>
         </div>
+        <div class="salud-chips" id="disp-chips"></div>
         <div class="toolbar">
           <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
             <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre..." aria-label="Buscar MAC o nombre"/>
           </div>
-          <select id="filter-cliente-disp" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+          <select id="disp-estado" class="select-filter" aria-label="Estado" data-change="dispEstadoChange">
+            <option value="">Todos los estados</option>
+            <option value="caido">Caído</option>
+            <option value="sin_actividad">Sin actividad</option>
+            <option value="nunca">Nunca midió</option>
+            <option value="activo">Activo</option>
+          </select>
+          <select id="filter-cliente-disp" class="select-filter" aria-label="Filtrar por cliente" data-change="dispClienteChange">
             <option value="">Todos los clientes</option>
           </select>
-          <button class="btn ghost" data-action="loadDispositivos">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Actualizar
-          </button>
+          <span class="salud-muted" id="disp-count"></span>
         </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th scope="col" style="width:60px">ID</th>
-              <th scope="col">MAC Address</th>
-              <th scope="col">Nombre</th>
-              <th scope="col">Cliente</th>
-              <th scope="col">Última medición</th>
               <th scope="col">Estado</th>
-              <th scope="col" style="width:90px"></th>
+              <th scope="col">MAC</th>
+              <th scope="col">Nombre</th>
+              <th scope="col" data-admin-only>Cliente</th>
+              <th scope="col">Última actividad</th>
+              <th scope="col">Sin actividad</th>
+              <th scope="col">Mediciones</th>
+              <th scope="col" data-admin-only><span class="sr-only">Acciones</span></th>
             </tr></thead>
             <tbody id="tbody-dispositivos">
-              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando dispositivos...</div></td></tr>
+              <tr><td colspan="8"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
             </tbody>
           </table>
         </div>
 
-        <div id="unreg-section" style="display:none;margin-top:22px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <div style="width:7px;height:7px;border-radius:50%;background:#ff9500;flex-shrink:0;animation:pulse 1.8s ease-in-out infinite"></div>
-            <span style="font-size:13px;font-weight:600;color:var(--warning)">Sin cliente asignado</span>
-            <span id="unreg-count" style="background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;color:var(--warning)">0</span>
-            <span style="font-size:12px;color:var(--text-tertiary)">enviaron mediciones pero no están registrados</span>
-          </div>
+        <div id="unreg-section" class="unreg-section" style="display:none">
+          <h3 class="seccion-titulo">Sin cliente asignado <span class="badge orange" id="unreg-count">0</span></h3>
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th scope="col">MAC Address</th>
+                <th scope="col">MAC</th>
                 <th scope="col">Última medición</th>
-                <th scope="col">Mediciones totales</th>
-                <th scope="col" style="width:130px"></th>
+                <th scope="col">Mediciones</th>
+                <th scope="col"><span class="sr-only">Acciones</span></th>
               </tr></thead>
               <tbody id="tbody-unreg"></tbody>
             </table>
@@ -548,7 +456,6 @@
         <div class="page-header" style="align-items:center">
           <div>
             <div class="page-title">Mediciones</div>
-            <div class="page-subtitle">Inspeccioná el estado de los neumáticos.</div>
           </div>
           <div class="med-tabs">
             <button class="med-tab active" data-mode="vehiculo">Por vehículo</button>
@@ -683,8 +590,7 @@
       <div class="view" id="view-flota">
         <div class="page-header">
           <div>
-            <div class="page-title">Flota</div>
-            <div class="page-subtitle">Vehículos ordenados por prioridad: primero los que tienen neumáticos críticos.</div>
+            <div class="page-title">Estado de la flota</div>
           </div>
           <button class="btn ghost" data-action="loadFlota">Actualizar</button>
         </div>
@@ -708,8 +614,7 @@
       <div class="view" id="view-alertas">
         <div class="page-header">
           <div>
-            <div class="page-title">Centro de alertas</div>
-            <div class="page-subtitle">Neumáticos críticos, desgaste irregular, predicciones y mediciones atrasadas.</div>
+            <div class="page-title">Alertas</div>
           </div>
           <button class="btn ghost" data-action="loadAlertas">Actualizar</button>
         </div>
@@ -734,51 +639,11 @@
         </div>
       </div>
 
-      <!-- SALUD DE DISPOSITIVOS -->
-      <div class="view" id="view-salud">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Salud de dispositivos</div>
-            <div class="page-subtitle">Actividad de cada medidor: activo (hasta 7 días), sin actividad (hasta 30), caído (más de 30) o sin mediciones.</div>
-          </div>
-          <button class="btn ghost" data-action="loadSalud">Actualizar</button>
-        </div>
-        <div class="salud-chips" id="salud-chips"></div>
-        <div class="toolbar">
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="salud-search" type="text" placeholder="Buscar MAC o nombre..." aria-label="Buscar MAC o nombre"/>
-          </div>
-          <select id="salud-estado" class="select-filter" aria-label="Estado" data-change="saludEstadoChange">
-            <option value="">Todos los estados</option>
-            <option value="caido">Caído</option>
-            <option value="sin_actividad">Sin actividad</option>
-            <option value="nunca">Nunca midió</option>
-            <option value="activo">Activo</option>
-          </select>
-          <select id="salud-cliente" class="select-filter" aria-label="Cliente" data-change="saludClienteChange">
-            <option value="">Todos los clientes</option>
-          </select>
-          <span class="salud-muted" id="salud-count"></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th scope="col">Estado</th><th scope="col">MAC Address</th><th scope="col">Nombre</th><th scope="col">Cliente</th><th scope="col">Última actividad</th><th scope="col">Sin actividad</th><th scope="col">Mediciones</th>
-            </tr></thead>
-            <tbody id="tbody-salud">
-              <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando salud de dispositivos...</div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- FICHA DE CLIENTE -->
       <div class="view" id="view-ficha">
         <div class="page-header">
           <div>
             <div class="page-title" id="ficha-nombre">Cliente</div>
-            <div class="page-subtitle">Resumen de flota, salud de dispositivos y umbrales de desgaste.</div>
           </div>
           <div class="ficha-actions">
             <label id="ficha-selector" class="ficha-selector" data-admin-only>Cliente
@@ -849,7 +714,6 @@
         <div class="page-header">
           <div>
             <div class="page-title">Reportes</div>
-            <div class="page-subtitle">Exportá mediciones en CSV o generá un reporte imprimible por cliente o vehículo.</div>
           </div>
         </div>
         <div class="rep-card">
@@ -1005,7 +869,6 @@
   <div class="modal modal-wide ciclo-modal">
     <div class="modal-header">
       <div class="modal-title" id="ciclo-title">Odómetro y ciclo de vida</div>
-      <div class="modal-sub">Kilometraje del vehículo y eventos de cada neumático</div>
     </div>
     <div class="modal-body">
       <div id="ciclo-cambio" class="ciclo-cambio"></div>
@@ -1070,7 +933,6 @@
   <div class="modal modal-wide">
     <div class="modal-header">
       <div class="modal-title" id="stock-modal-title">Nueva compra</div>
-      <div class="modal-sub">Registrá una compra de neumáticos</div>
     </div>
     <div class="modal-body">
       <div class="field-row">

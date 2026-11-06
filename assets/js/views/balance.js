@@ -13,12 +13,12 @@ let balanceClients=[];
 const fmt=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
 
 export async function loadBalance(){
-  setStatus(true,'Cargando...');
+  
   const [{data:cData},{data:gData}]=await Promise.all([
     db.from('clientes').select('id,nombre,precio_mensual,created_at').order('nombre'),
     db.from('gastos').select('*').order('created_at',{ascending:false})
   ]);
-  setStatus(true,'Conectado');
+  setStatus(true);
   balanceClients=cData||[];
   gastos=gData||[];
   renderBalance();

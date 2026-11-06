@@ -83,7 +83,7 @@
       throw new Error('__done');
     }
     await window.inicioFlow(w,d,sleep,fail,log,cliMode);
-    var views=cliMode?['dashboard','vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
+    var views=cliMode?['vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);
       // El gráfico de balance se dibuja en requestAnimationFrame: esperar a que exista para que la firma sea estable.
@@ -109,7 +109,12 @@
     nav('vehiculos'); await sleep(300);
     click($('.sub-tab[data-subtab="sv-stock"]'),'subtab stock'); await sleep(500);
     log.push('stock filas='+d.querySelectorAll('#tbody-stock tr').length);
-    if(click(act('openStockModal'),'openStockModal')){ await sleep(400);
+    if(cliMode){
+      // Stock de solo lectura para el cliente: sin alta, edición ni baja
+      var stockAcc=Array.prototype.some.call(d.querySelectorAll('#sv-stock [data-action="openStockModal"]'),function(b){ return b.getClientRects().length>0; });
+      if(stockAcc) fail('stock(cliente): ve el alta de compras');
+      if(d.querySelectorAll('#tbody-stock button[data-sa]').length) fail('stock(cliente): ve botones de editar/eliminar');
+    } else if(click(act('openStockModal'),'openStockModal')){ await sleep(400);
       if(!$('#modal-stock').classList.contains('show')) fail('modal-stock no abierto');
       click(act('closeStockModal'),'closeStockModal'); }
     click($('.sub-tab[data-subtab="sv-vehiculos"]'),'subtab veh'); await sleep(300);

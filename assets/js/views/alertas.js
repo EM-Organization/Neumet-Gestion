@@ -55,8 +55,8 @@ export function render() {
   setHtml($('alert-tbody'), lista.length
     ? joinHtml(lista.map(a => fila(a, mostrarCliente)))
     : filaEstado(7, alertas.length
-      ? estadoVacio('Ninguna alerta coincide con los filtros', 'Probá quitando algún filtro.')
-      : estadoVacio('No hay alertas activas', 'Buena noticia: ningún neumático ni vehículo requiere atención por ahora.')));
+      ? estadoVacio('Ninguna alerta coincide con los filtros')
+      : estadoVacio('No hay alertas activas')));
 }
 
 function fillFiltros() {

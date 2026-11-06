@@ -1,4 +1,4 @@
-// Utilidades de UI compartidas: toast, estado de conexión, diálogo de confirmación, fechas relativas.
+// Utilidades de UI compartidas: toast, aviso de problema de conexión, diálogo de confirmación, fechas relativas.
 import { fmtFecha } from '../domain/formato.js';
 export const AVATARS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 export const avatarFor = id => AVATARS[Math.abs(id) % AVATARS.length];
@@ -12,11 +12,11 @@ export function relDate(d){
   return fmtFecha(d);
 }
 
-export function setStatus(ok,msg){
-  document.getElementById('status-text').textContent=msg;
-  document.getElementById('status-pill').classList.toggle('disconnected',!ok);
-  const dot=document.querySelector('.status-dot');
-  if(dot) dot.style.background=ok?'#34c759':'var(--danger)';
+// Aviso de conexión: oculto mientras todo anda bien. Solo se muestra ante un problema real (sin conexión / error de carga),
+// con botón para reintentar. setStatus(true) lo oculta; setStatus(false) lo muestra. Nunca muestra "Conectando…".
+export function setStatus(ok){
+  const pill=document.getElementById('status-pill');
+  if(pill) pill.hidden=!!ok;
 }
 
 let toastTimer=null;
