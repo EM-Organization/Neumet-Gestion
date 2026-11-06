@@ -73,3 +73,5 @@ jobs:
         run: deno task --config supabase/functions/deno.json check
       - name: deno lint (Edge Functions)
         run: deno lint --config supabase/functions/deno.json supabase/functions
+      - name: deno test (Edge Functions; incluye Postgres local si hay binarios)
+        run: deno task --config supabase/functions/deno.json test

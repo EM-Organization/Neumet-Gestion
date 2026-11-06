@@ -75,7 +75,9 @@ Deno.test('login: límite por IP -> 429', async () => {
   let ultimo = 0;
   for (let i = 0; i <= RATE_LOGIN_IP_POR_MIN; i++) {
     const r = await e.handler(
-      post(R_LOGIN, { email: 'a@a.cl', clave: 'x', tipoLogin: 2 }, { headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1' } }),
+      post(R_LOGIN, { email: 'a@a.cl', clave: 'x', tipoLogin: 2 }, {
+        headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1' },
+      }),
     );
     ultimo = r.status;
   }
@@ -103,8 +105,15 @@ Deno.test('token ausente, malformado o inválido -> 401 code 401 (ambos endpoint
 Deno.test('rol distinto de api (admin, cliente) -> 401 en 2 y 3', async () => {
   const e = crearEntorno();
   for (const u of [U_ADMIN, U_CLI]) {
-    assertEquals((await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: 'tok-' + u }))).status, 401);
-    assertEquals((await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: 'tok-' + u }))).status, 401);
+    assertEquals(
+      (await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: 'tok-' + u }))).status,
+      401,
+    );
+    assertEquals(
+      (await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: 'tok-' + u })))
+        .status,
+      401,
+    );
   }
   assertEquals(e.mediciones.length, 1);
 });
@@ -112,7 +121,16 @@ Deno.test('rol distinto de api (admin, cliente) -> 401 en 2 y 3', async () => {
 // --------------------------------------------------------- obtener_montaje
 Deno.test('obtener por matrícula (normalizada): última medición, auxilio, sin idneumatico omitido', async () => {
   const e = crearEntorno();
-  e.mediciones.push({ vehiculo_id: 10, cliente_id: 1, posicion: 1, mm1: 5, mm2: 4, mm3: 3, sesion_id: 's1', device_id: 'x' });
+  e.mediciones.push({
+    vehiculo_id: 10,
+    cliente_id: 1,
+    posicion: 1,
+    mm1: 5,
+    mm2: 4,
+    mm3: 3,
+    sesion_id: 's1',
+    device_id: 'x',
+  });
   const r = await e.handler(post(R_OBT, { matricula: ' abcd 12 ', numero: '' }, { token: T }));
   assertEquals(r.status, 200);
   assertEquals(await j(r), {
@@ -159,7 +177,12 @@ Deno.test('obtener: cliente_id del cuerpo se ignora', async () => {
 
 Deno.test('obtener: cuerpo inválido -> 400', async () => {
   const e = crearEntorno();
-  for (const b of [{}, { matricula: 'A', numero: 5 }, { matricula: '', numero: '' }, { matricula: 'x'.repeat(65), numero: '' }]) {
+  for (
+    const b of [{}, { matricula: 'A', numero: 5 }, { matricula: '', numero: '' }, {
+      matricula: 'x'.repeat(65),
+      numero: '',
+    }]
+  ) {
     assertEquals((await e.handler(post(R_OBT, b, { token: T }))).status, 400);
   }
   assertEquals((await e.handler(post(R_OBT, [], { token: T }))).status, 400);
@@ -168,12 +191,19 @@ Deno.test('obtener: cuerpo inválido -> 400', async () => {
 // ------------------------------------------------------------- guardar
 Deno.test('guardar OK: mapeo mm4->mm3, un objeto por elemento, device_id api:<cuenta>', async () => {
   const e = crearEntorno();
-  const r = await e.handler(post(R_GUA, montaje([
-    { posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
-    { posicion: 2, mm1: 6, mm2: 5, mm3: 5, mm4: 4 },
-  ]), { token: T }));
+  const r = await e.handler(post(
+    R_GUA,
+    montaje([
+      { posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
+      { posicion: 2, mm1: 6, mm2: 5, mm3: 5, mm4: 4 },
+    ]),
+    { token: T },
+  ));
   assertEquals(r.status, 200);
-  assertEquals(await j(r), { code: 200, data: { guardados: [{ posicion: 1, guardado: true }, { posicion: 2, guardado: true }] } });
+  assertEquals(await j(r), {
+    code: 200,
+    data: { guardados: [{ posicion: 1, guardado: true }, { posicion: 2, guardado: true }] },
+  });
   const m = e.mediciones.at(-2)!;
   assertEquals([m.mm1, m.mm2, m.mm3, m.cliente_id, m.device_id], [9, 8, 7, 1, 'api:' + U_DAC]);
   assertEquals(e.mediciones.at(-1)!.sesion_id, m.sesion_id);
@@ -181,16 +211,24 @@ Deno.test('guardar OK: mapeo mm4->mm3, un objeto por elemento, device_id api:<cu
 
 Deno.test('guardar: patente con minúsculas/espacios se normaliza', async () => {
   const e = crearEntorno();
-  const r = await j(await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }], ' abcd 12 '), { token: T })));
+  const r = await j(
+    await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }], ' abcd 12 '), { token: T })),
+  );
   assertEquals(r.data.guardados, [{ posicion: 1, guardado: true }]);
 });
 
 Deno.test('auxilio con los 4 null: NO se persiste, NO es error, guardado:true', async () => {
   const e = crearEntorno();
   const antes = e.mediciones.length;
-  const r = await j(await e.handler(post(R_GUA, montaje([
-    { posicion: 99, mm1: null, mm2: null, mm3: null, mm4: null },
-  ]), { token: T })));
+  const r = await j(
+    await e.handler(post(
+      R_GUA,
+      montaje([
+        { posicion: 99, mm1: null, mm2: null, mm3: null, mm4: null },
+      ]),
+      { token: T },
+    )),
+  );
   assertEquals(r, { code: 200, data: { guardados: [{ posicion: 99, guardado: true }] } });
   assertEquals(e.mediciones.length, antes);
 });
@@ -204,42 +242,61 @@ Deno.test('rueda NO auxilio con los 4 null -> guardado:false', async () => {
 Deno.test('mm3 distinto de mm2 -> guardado:false solo en esa posición; el resto se guarda', async () => {
   const e = crearEntorno();
   const antes = e.mediciones.length;
-  const r = await j(await e.handler(post(R_GUA, montaje([
-    { posicion: 1, mm1: 9, mm2: 8, mm3: 6, mm4: 7 },
-    { posicion: 2, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
-  ]), { token: T })));
+  const r = await j(
+    await e.handler(post(
+      R_GUA,
+      montaje([
+        { posicion: 1, mm1: 9, mm2: 8, mm3: 6, mm4: 7 },
+        { posicion: 2, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
+      ]),
+      { token: T },
+    )),
+  );
   assertEquals(r.data.guardados, [{ posicion: 1, guardado: false }, { posicion: 2, guardado: true }]);
   assertEquals(e.mediciones.length, antes + 1);
 });
 
 Deno.test('fallo parcial: fuera de rango, incompleta, posición inexistente en el vehículo', async () => {
   const e = crearEntorno();
-  const r = await j(await e.handler(post(R_GUA, montaje([
-    { posicion: 1, mm1: 41, mm2: 8, mm3: 8, mm4: 7 },
-    { posicion: 2, mm1: -1, mm2: 8, mm3: 8, mm4: 7 },
-    { posicion: 5, mm1: 1, mm2: 1, mm3: 1, mm4: 1 },
-    { posicion: 99, mm1: 1, mm2: null, mm3: null, mm4: 1 },
-    { posicion: 50, mm1: 0, mm2: 40, mm3: 40, mm4: 40 },
-  ]), { token: T })));
+  const r = await j(
+    await e.handler(post(
+      R_GUA,
+      montaje([
+        { posicion: 1, mm1: 41, mm2: 8, mm3: 8, mm4: 7 },
+        { posicion: 2, mm1: -1, mm2: 8, mm3: 8, mm4: 7 },
+        { posicion: 5, mm1: 1, mm2: 1, mm3: 1, mm4: 1 },
+        { posicion: 99, mm1: 1, mm2: null, mm3: null, mm4: 1 },
+        { posicion: 50, mm1: 0, mm2: 40, mm3: 40, mm4: 40 },
+      ]),
+      { token: T },
+    )),
+  );
   assertEquals(r.code, 200);
   assertEquals(r.data.guardados.map((g: { guardado: boolean }) => g.guardado), [false, false, false, false, false]);
-  const ok = await j(await e.handler(post(R_GUA, montaje([{ posicion: 2, mm1: 0, mm2: 40, mm3: 40, mm4: 40 }]), { token: T })));
+  const ok = await j(
+    await e.handler(post(R_GUA, montaje([{ posicion: 2, mm1: 0, mm2: 40, mm3: 40, mm4: 40 }]), { token: T })),
+  );
   assertEquals(ok.data.guardados, [{ posicion: 2, guardado: true }]);
 });
 
 Deno.test('duplicados de posición, posición no entera o fuera de 1..99 -> 400', async () => {
   const e = crearEntorno();
   const ok = { mm1: 1, mm2: 1, mm3: 1, mm4: 1 };
-  for (const montajes of [
-    [{ posicion: 1, ...ok }, { posicion: 1, ...ok }],
-    [{ posicion: 1.5, ...ok }],
-    [{ posicion: 0, ...ok }],
-    [{ posicion: 100, ...ok }],
-    [{ posicion: '1', ...ok }],
-    [{ posicion: 1, ...ok, mm1: '9' }],
-    [null],
-  ]) {
-    assertEquals((await e.handler(post(R_GUA, montaje(montajes as Record<string, unknown>[]), { token: T }))).status, 400);
+  for (
+    const montajes of [
+      [{ posicion: 1, ...ok }, { posicion: 1, ...ok }],
+      [{ posicion: 1.5, ...ok }],
+      [{ posicion: 0, ...ok }],
+      [{ posicion: 100, ...ok }],
+      [{ posicion: '1', ...ok }],
+      [{ posicion: 1, ...ok, mm1: '9' }],
+      [null],
+    ]
+  ) {
+    assertEquals(
+      (await e.handler(post(R_GUA, montaje(montajes as Record<string, unknown>[]), { token: T }))).status,
+      400,
+    );
   }
   assertEquals(e.llamadas.guardar, 0);
 });
@@ -259,11 +316,15 @@ Deno.test('límites: patente obligatoria, numero vacío, montajes 1..40, cuerpo 
     { patente: 'ABCD12', numero: '', montajes: 'x' },
   ];
   for (const c of casos) assertEquals((await e.handler(post(R_GUA, c, { token: T }))).status, 400);
-  const grande = await e.handler(post(R_GUA, { patente: 'ABCD12', numero: '', montajes: [ok], relleno: 'x'.repeat(70_000) }, { token: T }));
+  const grande = await e.handler(
+    post(R_GUA, { patente: 'ABCD12', numero: '', montajes: [ok], relleno: 'x'.repeat(70_000) }, { token: T }),
+  );
   assertEquals(grande.status, 400);
   assertEquals((await e.handler(post(R_GUA, null, { token: T, raw: '{"patente":' }))).status, 400);
   // 40 montajes exactos es válido
-  const cuarenta = await e.handler(post(R_GUA, montaje(Array.from({ length: 40 }, (_, i) => ({ ...ok, posicion: i + 1 }))), { token: T }));
+  const cuarenta = await e.handler(
+    post(R_GUA, montaje(Array.from({ length: 40 }, (_, i) => ({ ...ok, posicion: i + 1 }))), { token: T }),
+  );
   assertEquals((await j(cuarenta)).data.guardados.length, 40);
 });
 
@@ -277,7 +338,9 @@ Deno.test('AISLAMIENTO: guardar sobre vehículo de otro cliente == inexistente, 
   assertEquals(await j(ajeno), await j(nada));
   assertEquals(e.mediciones.length, antes);
   // posición que no está en el montaje visible del vehículo (sin idneumatico): falla solo esa
-  const r = await j(await e.handler(post(R_GUA, montaje([{ posicion: 3, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: T })));
+  const r = await j(
+    await e.handler(post(R_GUA, montaje([{ posicion: 3, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: T })),
+  );
   assertEquals(r.data.guardados, [{ posicion: 3, guardado: false }]);
   assertEquals(e.mediciones.length, antes);
 });
@@ -285,10 +348,12 @@ Deno.test('AISLAMIENTO: guardar sobre vehículo de otro cliente == inexistente, 
 Deno.test('el cuerpo no puede elegir cliente_id', async () => {
   const e = crearEntorno();
   const antes = e.mediciones.length;
-  const r = await j(await e.handler(post(R_GUA, {
-    ...montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }], 'ZZZZ99'),
-    cliente_id: 2,
-  }, { token: T })));
+  const r = await j(
+    await e.handler(post(R_GUA, {
+      ...montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }], 'ZZZZ99'),
+      cliente_id: 2,
+    }, { token: T })),
+  );
   assertEquals(r.data.guardados[0].guardado, false);
   assertEquals(e.mediciones.length, antes);
 });
@@ -303,7 +368,9 @@ Deno.test('idempotencia: misma Idempotency-Key -> misma respuesta, sin doble esc
   assertEquals(a, b);
   assertEquals(e.mediciones.length, antes + 1);
   // misma clave con otro contenido -> 409
-  const c = await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: T, headers: h }));
+  const c = await e.handler(
+    post(R_GUA, montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }]), { token: T, headers: h }),
+  );
   assertEquals(c.status, 409);
   // clave inválida -> 400
   const d = await e.handler(post(R_GUA, cuerpo, { token: T, headers: { 'idempotency-key': 'con espacio' } }));
@@ -334,7 +401,10 @@ Deno.test('rate limit por cuenta -> 429 con Retry-After; otra cuenta no se afect
   assertEquals(r.status, 429);
   assertEquals(r.headers.get('retry-after'), '60');
   assertEquals((await j(r)).code, 429);
-  assertEquals((await e.handler(post(R_OBT, { matricula: 'ZZZZ99', numero: '' }, { token: 'tok-' + U_OTRO }))).status, 200);
+  assertEquals(
+    (await e.handler(post(R_OBT, { matricula: 'ZZZZ99', numero: '' }, { token: 'tok-' + U_OTRO }))).status,
+    200,
+  );
 });
 
 Deno.test('fallo interno -> 500 sin detalles; el log registra error', async () => {
@@ -349,16 +419,33 @@ Deno.test('fallo interno -> 500 sin detalles; el log registra error', async () =
 Deno.test('logs: un registro por request a 2 y 3, sin secretos; X-Request-Id coincide; fallo de log no rompe', async () => {
   const e = crearEntorno();
   const r1 = await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T }));
-  const r2 = await e.handler(post(R_GUA, montaje([
-    { posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
-    { posicion: 2, mm1: 9, mm2: 8, mm3: 1, mm4: 7 },
-  ]), { token: T }));
+  const r2 = await e.handler(post(
+    R_GUA,
+    montaje([
+      { posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
+      { posicion: 2, mm1: 9, mm2: 8, mm3: 1, mm4: 7 },
+    ]),
+    { token: T },
+  ));
   assertEquals(e.logs.length, 2);
   const [l1, l2] = e.logs;
   assertEquals(l1.request_id, r1.headers.get('x-request-id'));
-  assertEquals([l1.endpoint, l1.cuenta, l1.cliente_id, l1.vehiculo_id, l1.status, l1.http_code], ['obtener_montaje', U_DAC, 1, 10, 'ok', 200]);
+  assertEquals([l1.endpoint, l1.cuenta, l1.cliente_id, l1.vehiculo_id, l1.status, l1.http_code], [
+    'obtener_montaje',
+    U_DAC,
+    1,
+    10,
+    'ok',
+    200,
+  ]);
   assertEquals(l2.request_id, r2.headers.get('x-request-id'));
-  assertEquals([l2.endpoint, l2.n_guardados, l2.n_fallidos, l2.device_id, l2.motivo], ['guardar_montaje_mm', 1, 1, 'api:' + U_DAC, 'fallo_parcial']);
+  assertEquals([l2.endpoint, l2.n_guardados, l2.n_fallidos, l2.device_id, l2.motivo], [
+    'guardar_montaje_mm',
+    1,
+    1,
+    'api:' + U_DAC,
+    'fallo_parcial',
+  ]);
   const texto = JSON.stringify(e.logs);
   assertFalse(texto.includes('tok-'));
   assertFalse(texto.includes('clave-dac'));

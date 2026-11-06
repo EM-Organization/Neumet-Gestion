@@ -72,7 +72,9 @@ export function crearEntorno() {
       login: (email, clave) => {
         llamadas.login++;
         for (const [id, u] of usuarios) {
-          if (u.email === email && u.clave === clave) return Promise.resolve({ access_token: 'tok-' + id, user_id: id });
+          if (u.email === email && u.clave === clave) {
+            return Promise.resolve({ access_token: 'tok-' + id, user_id: id });
+          }
         }
         return Promise.resolve(null);
       },
@@ -114,7 +116,9 @@ export function crearEntorno() {
         const prev = idem.get(a.cuenta + '|' + a.clave);
         if (prev) {
           return Promise.resolve(
-            prev.hash !== a.hash ? { estado: 'conflicto', replay: false, resultados: [] } : { ...prev.resp, replay: true },
+            prev.hash !== a.hash
+              ? { estado: 'conflicto', replay: false, resultados: [] }
+              : { ...prev.resp, replay: true },
           );
         }
         const v = vehiculos.find((x) => x.cliente_id === a.cliente_id && x.patente_norm === a.patente);
@@ -126,7 +130,9 @@ export function crearEntorno() {
           });
         }
         const resultados = a.montajes.map((m) => {
-          const n = neumaticos.find((x) => x.vehiculo_id === v.id && x.posicion === m.posicion && x.idneumatico !== null);
+          const n = neumaticos.find((x) =>
+            x.vehiculo_id === v.id && x.posicion === m.posicion && x.idneumatico !== null
+          );
           if (m.rechazar || !n) return { posicion: m.posicion, guardado: false };
           if (m.mm1 === null && m.mm2 === null && m.mm3 === null) return { posicion: m.posicion, guardado: n.auxilio };
           mediciones.push({

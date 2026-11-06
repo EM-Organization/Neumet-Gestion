@@ -62,3 +62,6 @@ Nota: `deno check` de las Edge Functions es reproducible vía `supabase/function
 
 ## Criterios de "hecho" de la Fase 0+1 (plataforma disponible de forma responsable)
 Ver checklist final en `03-despliegue-vercel-supabase.md` §8.
+
+## Nota · API de proveedor (app de medición DAC)
+Implementada como Edge Function `supabase/functions/api-proveedor` + migración `20261106010000_api_proveedor.sql` (PR `feat/api-proveedor`). Pendiente antes de producción: aplicar la migración en staging, crear la cuenta `api` (perfil), confirmar el orden interno/externo de `mm1..mm4` con el equipo de la app y probar contra la app real. Detalle y decisiones en `07-api-proveedor.md` (Apéndice A). El job `deno` de CI ejecuta ahora `deno test`.

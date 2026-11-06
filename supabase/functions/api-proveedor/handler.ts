@@ -266,7 +266,12 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     c: Contexto,
     clienteId: number,
     cuenta: string,
-    log: { vehiculo_id: number | null; payload_resumen: Record<string, unknown>; n_guardados: number | null; n_fallidos: number | null },
+    log: {
+      vehiculo_id: number | null;
+      payload_resumen: Record<string, unknown>;
+      n_guardados: number | null;
+      n_fallidos: number | null;
+    },
   ): Promise<{ response: Response; motivo: string | null }> {
     const patente = normalizarPatente(b.patente);
     if (patente === null || !PATENTE_RE.test(patente)) throw new HttpError(400, 'patente');
