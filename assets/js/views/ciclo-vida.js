@@ -1,5 +1,6 @@
 // Odómetro del vehículo y ciclo de vida del neumático (montaje, desmontaje, rotación, reparación, reencauche, baja).
-// Solo el admin escribe (RLS); el cliente ve la línea de tiempo de lo suyo en modo lectura.
+// El admin escribe directo; el cliente (gomero) solo por RPC acotadas (cambio de neumático, rotación, odómetro: nunca
+// escritura directa) y ve la línea de tiempo de lo suyo.
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
@@ -8,6 +9,7 @@ import { ACTIONS } from '../core/actions.js';
 import { getVehiculos } from './vehiculos.js';
 import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { getNeumVehiculoId } from './neumaticos.js';
+import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, kmPorNeumatico, ordenarEventos } from '../domain/ciclo-vida.js';
 
 let vehId=null, veh=null, neums=[], eventos=[], filtroNeum='';
@@ -32,7 +34,7 @@ async function cargar(){
 }
 
 function renderOdometro(){
-  const admin=!isClienteMode();
+  const admin=true; // el cliente también registra el kilometraje (RPC vehiculo_registrar_odometro: solo puede subirlo)
   setHtml($('ciclo-odo'), html`
     <div class="ciclo-odo-actual">
       <div class="ciclo-odo-val" id="ciclo-odo-val">${fmtKm(veh.odometro_km)}</div>
@@ -44,6 +46,23 @@ function renderOdometro(){
       <button class="btn primary" id="ciclo-odo-save" data-action="cicloGuardarOdometro">Registrar</button>
     </div>`:''}`);
 }
+
+// Punto de entrada temporal del cambio de neumático (el botón definitivo vive en el detalle del vehículo).
+// Contrato: data-action="neumatico-cambiar" + data-vehiculo-id + data-posicion.
+function renderCambio(){
+  const disp=neums.filter(n=>n.estado==='montado' || !n.estado);
+  if(!disp.length){ setHtml($('ciclo-cambio'), html``); return; }
+  setHtml($('ciclo-cambio'), html`
+    <div class="field"><label for="ciclo-cambio-pos">Cambiar neumático (taller)</label>
+      <select id="ciclo-cambio-pos" data-change="cicloCambioPos">${disp.map(n=>html`<option value="${n.posicion}">${neumLabel(n)}</option>`)}</select></div>
+    <button class="btn primary" id="ciclo-cambio-btn" data-action="neumatico-cambiar" data-vehiculo-id="${vehId}" data-posicion="${disp[0].posicion}">Cambiar neumático</button>`);
+}
+ACTIONS.cicloCambioPos=function(v){ const b=$('ciclo-cambio-btn'); if(b) b.dataset.posicion=String(v); };
+// Tras un cambio/rotación registrado desde cualquier lugar, refresca este modal si está abierto.
+document.addEventListener(EVENTO_CAMBIO, async ()=>{
+  if(vehId==null || !$('modal-ciclo').classList.contains('show')) return;
+  if(await cargar()) renderTodo();
+});
 
 function renderForm(){
   const wrap=$('ciclo-form');
@@ -107,7 +126,7 @@ function renderTimeline(){
 function renderTodo(){
   $('ciclo-title').textContent=`Odómetro y ciclo de vida · ${veh.nombre||''}`;
   $('ciclo-admin').style.display=isClienteMode()?'none':'';
-  renderOdometro(); renderForm(); renderTimeline();
+  renderOdometro(); renderCambio(); renderForm(); renderTimeline();
 }
 
 ACTIONS.openCicloVida=async function(id){
@@ -121,9 +140,12 @@ ACTIONS.cicloTipoCambio=function(){ renderExtra(); };
 ACTIONS.cicloFiltro=function(v){ filtroNeum=v||''; renderTimeline(); };
 
 ACTIONS.cicloGuardarOdometro=async function(){
-  if(isClienteMode()||!veh) return;
+  if(!veh) return;
+  const cliente=isClienteMode();
   let r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value);
   if(r.requiereConfirmacion){
+    // El cliente no puede bajar el kilometraje (lo corrige el admin); el admin confirma, p. ej. por cambio de tablero.
+    if(cliente){ showToast(`El kilometraje no puede ser menor al actual (${veh.odometro_km} km). Pedí la corrección al administrador`,true); return; }
     if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`))) return;
     r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value, true);
   }
@@ -131,8 +153,13 @@ ACTIONS.cicloGuardarOdometro=async function(){
   const btn=$('ciclo-odo-save'); btn.disabled=true;
   try{
     const ts=new Date().toISOString();
-    const {error}=await db.from('vehiculos').update({odometro_km:r.valor, odometro_actualizado_at:ts}).eq('id',vehId);
-    if(error) throw error;
+    if(cliente){
+      const {error}=await db.rpc('vehiculo_registrar_odometro',{p_vehiculo_id:vehId, p_odometro_km:r.valor});
+      if(error) throw error;
+    } else {
+      const {error}=await db.from('vehiculos').update({odometro_km:r.valor, odometro_actualizado_at:ts}).eq('id',vehId);
+      if(error) throw error;
+    }
     veh.odometro_km=r.valor; veh.odometro_actualizado_at=ts;
     showToast('Kilometraje registrado');
     renderOdometro(); renderTimeline();

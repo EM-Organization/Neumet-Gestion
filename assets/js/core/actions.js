@@ -7,6 +7,13 @@ export const ACTIONS = {};
 export function registerActions(obj){ Object.assign(ACTIONS,obj); }
 
 function actionArgs(el){
+  // Sin data-args, un botón con data-vehiculo-id [data-posicion] pasa esos números como argumentos
+  // (contrato del detalle de vehículo: data-action="neumatico-cambiar" data-vehiculo-id data-posicion).
+  if(el.dataset.args===undefined && el.dataset.vehiculoId!==undefined){
+    const a=[Number(el.dataset.vehiculoId)];
+    if(el.dataset.posicion!==undefined) a.push(Number(el.dataset.posicion));
+    return a;
+  }
   try{ const a=JSON.parse(el.dataset.args||'[]'); return Array.isArray(a)?a:[a]; }
   catch(_e){ return []; }
 }
