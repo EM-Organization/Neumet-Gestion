@@ -28,3 +28,10 @@ Variables: `PORT` (por defecto 8791), `CHROME` (ruta del binario). Capturas: añ
 
 Sólo el cliente Supabase simulado: no prueba RLS, auth real, ni datos reales. Los botones se pulsan con
 `data-action` (o `onclick` en versiones anteriores del panel).
+
+## Notas (módulos ES)
+
+El panel se carga como módulos ES (`assets/js/main.js`); el arnés sigue sustituyendo solo el `<script>` de supabase-js por `stub.js`.
+El iframe congela `Date` (2026-06-15 12:00 UTC) para que las firmas de texto (`texto=<largo>:<hash>`) sean reproducibles, y con
+`?end=<vista>` desactiva transiciones para capturas idénticas byte a byte. Conocido: la firma de `balance` alterna entre dos
+valores (`649:…` / `716:…`) por una carrera con `requestAnimationFrame` del gráfico; ocurre igual en el monolito anterior.
