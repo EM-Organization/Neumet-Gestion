@@ -2,7 +2,8 @@
   "nodeModulesDir": "none",
   "imports": {},
   "tasks": {
-    "check": "deno check */index.ts"
+    "check": "deno check */index.ts */*_test.ts",
+    "test": "deno test --allow-run --allow-read --allow-write --allow-env"
   },
   "lint": {
     "include": ["./"],
