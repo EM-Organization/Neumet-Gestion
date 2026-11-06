@@ -4,6 +4,8 @@ Panel de administración web para la gestión de clientes, vehículos, dispositi
 
 ---
 
+> 📚 Revisión de arquitectura, auditoría de seguridad y plan de despliegue: ver [`docs/`](docs/README.md).
+
 ## Flujo de onboarding
 
 ![Flujo de onboarding de clientes y dispositivos](assets/img/onboarding-flow.svg)
@@ -43,7 +45,7 @@ A partir de ese momento, las nuevas mediciones del dispositivo se enrutan direct
 └─────────────────────┘                                         └──────────┬───────────┘
                                                                            │ INSERT
                                                                            ▼
-┌─────────────────────┐         lee en tiempo real              ┌──────────────────────┐
+┌─────────────────────┐         consulta bajo demanda          ┌──────────────────────┐
 │  Panel Admin (web)  │ ◄────────────────────────────────────── │  Supabase (Postgres) │
 │  neumet-admin       │         Supabase JS SDK                 │  Base de datos       │
 └─────────────────────┘                                         └──────────────────────┘
@@ -70,8 +72,8 @@ Content-Type: application/json
   "patente":   "MAJ2429",
   "numero":    "",
   "montajes": [
-    { "posicion": 1, "mm1": 12, "mm2": 11, "mm3": 10, "mm4": 9 },
-    { "posicion": 2, "mm1": 13, "mm2": 12, "mm3": 11, "mm4": 10 }
+    { "posicion": 1, "mm1": 12, "mm2": 11, "mm3": 10 },
+    { "posicion": 2, "mm1": 13, "mm2": 12, "mm3": 11 }
   ]
 }
 ```
@@ -83,7 +85,7 @@ Content-Type: application/json
 | `numero` | ✓ (o `patente`) | Número interno de 3 dígitos del vehículo (alternativa a patente) |
 | `montajes` | ✓ | Array con una entrada por rueda medida |
 | `posicion` | ✓ | Número de rueda (1 a 10 en camiones de 10 ruedas, 1 a 16 en los de 16) |
-| `mm1`–`mm4` | ✓ | Las 4 lecturas de profundidad en milímetros |
+| `mm1`–`mm3` | ✓ | Las 3 lecturas de profundidad en milímetros (huellas exterior, medio e interior) |
 
 > Se puede identificar el vehículo por `patente` **o** por `numero`. Si ambos vienen, se usa `patente`.
 
@@ -91,7 +93,7 @@ Content-Type: application/json
 1. Valida que venga `patente` o `numero` y al menos un montaje
 2. Busca el vehículo en la tabla `vehiculos` (por `patente_norm` o `numero`)
 3. Obtiene el `vehiculo_id` y `cliente_id`
-4. Calcula el `promedio` de mm1–mm4 por rueda
+4. Calcula el `promedio` de las tres lecturas mm1–mm3 por rueda
 5. Inserta todas las ruedas de una vez en la tabla `mediciones`
 6. Responde `{ ok: true, vehiculo_id, ruedas_guardadas }` o un error descriptivo
 
@@ -99,7 +101,7 @@ Content-Type: application/json
 
 ### 2. Supabase → Panel Admin
 
-El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. Lee y escribe en tiempo real sin servidor intermedio.
+El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. Lee y escribe mediante consultas bajo demanda (sin suscripción Realtime) y sin servidor intermedio.
 
 **Tablas utilizadas:**
 
@@ -108,7 +110,7 @@ El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. L
 | `clientes` | Empresas registradas. Tienen usuario de acceso (Supabase Auth) y precio mensual |
 | `vehiculos` | Vehículos de cada cliente. Campos: `nombre`, `patente`, `numero`, `tipo_ruedas` (10 o 16), `activo` |
 | `dispositivos` | Medidores físicos identificados por MAC Address, asignados a un cliente |
-| `mediciones` | Lecturas de desgaste. Una fila por rueda por sesión. Campos: `vehiculo_id`, `cliente_id`, `device_id`, `posicion`, `mm1`–`mm4`, `promedio`, `created_at` |
+| `mediciones` | Lecturas de desgaste. Una fila por rueda por sesión. Campos: `vehiculo_id`, `cliente_id`, `device_id`, `posicion`, `mm1`–`mm3`, `promedio`, `created_at` |
 | `gastos` | Gastos mensuales de la empresa (para el módulo de Balance) |
 
 **Módulos del panel:**
@@ -180,6 +182,14 @@ Supabase Dashboard → Project Settings → Edge Functions → Secrets:
 
 ---
 
+## Documentación
+
+Revisión de arquitectura, auditoría de seguridad, observabilidad, despliegue e identidad visual: ver [`docs/`](docs/README.md).
+
+## Identidad visual
+
+Logos, isotipo, favicon y paleta viven en `assets/brand/`; guía de uso en [`assets/brand/README.md`](assets/brand/README.md) y criterios en [`docs/06-identidad-visual.md`](docs/06-identidad-visual.md).
+
 ## Estructura del proyecto
 
 ```
@@ -191,7 +201,8 @@ Neumet-Gestion/
 ├── assets/
 │   ├── css/styles.css                # Estilos globales del panel
 │   ├── js/app.js                     # Lógica frontend (Supabase JS SDK)
-│   └── img/                          # Logo e imágenes
+│   ├── brand/                        # Identidad visual (logos, favicon, PNG)
+│   └── img/                          # Diagrama de onboarding
 ├── supabase/
 │   └── functions/
 │       ├── guardar-montaje-mm/       # Recibe mediciones del calibre físico

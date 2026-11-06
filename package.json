@@ -1,0 +1,17 @@
+{
+  "name": "neumet",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Neumet: sitio estático + panel (tooling de calidad)",
+  "scripts": {
+    "lint": "eslint assets/js",
+    "check": "node --check assets/js/app.js",
+    "serve": "npx serve -p 3000 ."
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "eslint-plugin-no-unsanitized": "4.1.5",
+    "globals": "17.13.0"
+  }
+}

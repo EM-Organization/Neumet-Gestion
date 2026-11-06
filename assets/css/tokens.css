@@ -1,0 +1,67 @@
+/* NEUMET · Tokens de diseño (fuente única para landing y panel)
+   Ver docs/06-identidad-visual.md §5. Primitivos = identidad; semánticos = UI. */
+:root {
+  /* Primitivos — identidad.pdf */
+  --n-blanco: #FFFFFF;
+  --n-gris:   #EBEBEB;
+  --n-dorado: #D5C58A;
+  --n-oliva:  #615A3F;
+  --n-oscuro: #383424;
+  --n-negro:  #000000;
+
+  /* Superficies */
+  --bg:                #EBEBEB;          /* = --n-gris */
+  --surface:           #FFFFFF;          /* = --n-blanco */
+  --surface-2:         #F5F5F5;          /* derivado: 50 % blanco + gris */
+  --surface-secondary: var(--surface-2);
+
+  /* Texto (alias landing: --text, --text-2, --text-3) */
+  --text-primary:   #383424;             /* = --n-oscuro, 12,46:1 s/ blanco */
+  --text-secondary: #615A3F;             /* = --n-oliva,   6,90:1 s/ blanco */
+  --text-tertiary:  #908C79;             /* derivado, ~3,4:1: solo texto auxiliar/grande */
+  --text:   var(--text-primary);
+  --text-2: var(--text-secondary);
+  --text-3: var(--text-tertiary);
+
+  /* Acento: el dorado es RELLENO. Nunca texto/borde funcional sobre claro (1,72:1). */
+  --accent:        #D5C58A;              /* = --n-dorado */
+  --on-accent:     #383424;              /* texto sobre dorado (7,23:1) */
+  --accent-dark:   #383424;              /* = --n-oscuro: botones, texto de acento sobre claro */
+  --accent-dark-hover: #2A271B;
+  --accent-light:  rgba(213,197,138,0.15);
+  --accent-border: rgba(213,197,138,0.40);
+
+  /* Bordes: oscuro al 10 / 14 % */
+  --border:        rgba(56,52,36,0.10);
+  --border-strong: rgba(56,52,36,0.14);
+
+  /* Estado de neumáticos / feedback (fuera de la identidad, se conservan) */
+  --success:        #1a7f37;
+  --success-bg:     rgba(52,199,89,0.1);
+  --success-border: rgba(52,199,89,0.25);
+  --warning:        #b25000;
+  --warning-bg:     rgba(255,149,0,0.1);
+  --warning-border: rgba(255,149,0,0.25);
+  --danger:         #c0392b;
+  --danger-bg:      rgba(255,59,48,0.08);
+  --danger-border:  rgba(255,59,48,0.2);
+
+  /* Sidebar (fondo oscuro: el dorado sí puede ser texto) */
+  --sidebar-bg:          #383424;
+  --sidebar-text:        rgba(255,255,255,0.7);
+  --sidebar-text-active: #D5C58A;
+  --sidebar-border:      rgba(255,255,255,0.1);
+  --sidebar-hover:       rgba(255,255,255,0.06);
+  --sidebar-active-bg:   rgba(213,197,138,0.15);
+
+  /* Tipografía — PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) */
+  --font:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-brand:   var(--font-display);
+
+  /* Forma y sombras */
+  --radius:    16px;
+  --shadow:    0 1px 4px rgba(56,52,36,0.06), 0 4px 16px rgba(56,52,36,0.06);
+  --shadow-lg: 0 4px 20px rgba(56,52,36,0.08), 0 20px 60px rgba(56,52,36,0.10);
+}
