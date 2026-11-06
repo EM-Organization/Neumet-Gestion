@@ -36,10 +36,10 @@ Consecuencia: **esta API cierra el hallazgo S7** de la auditoría (ingesta sin a
 
 ### 3.1 Lecturas: 4 valores del contrato vs. 3 columnas del panel
 Spec: `mm1` borde interno · `mm2` centro · `mm3` centro (= `mm2`) · `mm4` borde externo.
-Panel: `mm1`, `mm2`, `mm3` = 3 huellas ("exterior, medio, interior", commit `9cf63e6`) y `promedio`.
+Panel/BD: `mm1`, `mm2`, `mm3` = 3 huellas (commit `9cf63e6`) y `promedio`. **Orden físico confirmado por el dueño (app de DAC): `mm1` interno · `mm2` centro · `mm3` externo**, igual que el contrato (API `mm4` → BD `mm3`).
 
 Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 → mm2`, `mm4 → mm3` y descartar `mm3` (validando que sea igual a `mm2`; si difiere, rechazar esa posición). En lectura devolver `mm1 = mm1`, `mm2 = mm2`, `mm3 = mm2`, `mm4 = mm3`.
-⚠ **El orden físico está invertido o ambiguo**: el panel habla de "exterior, medio, interior" y el contrato de "interno, centro, externo". Hay que confirmar con el desarrollo de la app y con los datos existentes qué es `mm1` en la tabla; un mapeo al revés **intercambia borde interno y externo** sin que nada falle.
+Resuelto: el orden es el de la app (interno-centro-externo) y el panel lo etiqueta igual. Cambiarlo, si hiciera falta, es una sola constante (`LECTURA_MAP` en `supabase/functions/api-proveedor/mapping.ts`); un mapeo al revés intercambiaría borde interno y externo sin que nada falle.
 
 ### 3.2 Entidades
 - `matricula`/`patente` ↔ `vehiculos.patente_norm` (mayúsculas, sin espacios) **[verificar]**; `numero` ↔ `vehiculos.numero`.
@@ -126,7 +126,7 @@ Propuesta: **no cambiar el esquema**; en escritura guardar `mm1 → mm1`, `mm2 �
 ## 8. Riesgos principales
 
 0. **Hipótesis sin verificar:** esquema, RLS y `guardar-montaje-mm` no están en el repo; este documento no puede confirmarlos.
-1. **Datos invertidos** (interno/externo) por mapeo mal confirmado.
+1. **Datos invertidos** (interno/externo) si se toca el mapeo: el orden confirmado es mm1 interno, mm2 centro, mm3 externo.
 2. **Fuga entre clientes** si el aislamiento se apoya solo en filtros de aplicación o en una RLS sin auditar. Además, la cuenta `api` podría ser tratada como admin por la lógica actual ("sin fila en `clientes`") y su JWT sirve directo contra PostgREST: **auditar la RLS y excluir `role = 'api'` antes de crear la primera cuenta**.
 3. **Duplicados** por reintentos tras timeout.
 4. **Inventario sin origen**: la API no sirve si Neumet no tiene los neumáticos cargados.

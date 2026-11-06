@@ -1,9 +1,8 @@
 // Mapeo de lecturas API <-> BD (docs/07 §3.1). FUENTE ÚNICA de verdad.
 //
-// ADVERTENCIA: el orden físico (borde interno/externo) NO está confirmado con el
-// equipo de la app de DAC. El panel habla de "exterior, medio, interior" y el
-// contrato de "interno, centro, externo". Un mapeo al revés intercambia ambos
-// bordes SIN que nada falle. Cambiar SOLO esta constante cuando se confirme
+// Orden físico CONFIRMADO (app móvil de DAC): interno, centro, externo.
+// En BD: mm1=interno, mm2=centro, mm3=externo; el panel usa las mismas etiquetas.
+// Si algún día hubiera que invertirlo, basta cambiar SOLO esta constante
 // (y actualizar mapping_test.ts, que fija el comportamiento).
 
 export type CampoApi = 'mm1' | 'mm2' | 'mm3' | 'mm4';

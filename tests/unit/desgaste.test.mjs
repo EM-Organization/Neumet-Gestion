@@ -118,12 +118,12 @@ describe('predicción a umbral', () => {
 
 describe('unevenWear', () => {
   test('diferencia 1.5 exacta cuenta; 1.49 no', () => {
-    assert.deepEqual(unevenWear({ mm1: 8, mm3: 9.5 }), { diff: 1.5, side: 'exterior' });
+    assert.deepEqual(unevenWear({ mm1: 8, mm3: 9.5 }), { diff: 1.5, side: 'interno' });
     assert.equal(unevenWear({ mm1: 8, mm3: 9.49 }), null);
   });
-  test('lado: mm1 menor = exterior; mm1 mayor = interior', () => {
-    assert.equal(unevenWear({ mm1: 6, mm3: 9 }).side, 'exterior');
-    assert.equal(unevenWear({ mm1: 9, mm3: 6 }).side, 'interior');
+  test('lado: el lado más desgastado es el de menos mm: mm1 menor = interno; mm3 menor = externo', () => {
+    assert.equal(unevenWear({ mm1: 6, mm3: 9 }).side, 'interno');
+    assert.equal(unevenWear({ mm1: 9, mm3: 6 }).side, 'externo');
   });
   test('faltan datos o fila nula -> null', () => {
     assert.equal(unevenWear({ mm1: null, mm3: 6 }), null);
@@ -138,7 +138,7 @@ describe('analyzeTire', () => {
     const a = analyzeTire([row(9, 9, 9)]);
     assert.deepEqual(a, { lastAvg: 9 });
     const b = analyzeTire([row(6, 7, 9)]);
-    assert.equal(b.unevenWear, 3); assert.equal(b.unevenSide, 'exterior');
+    assert.equal(b.unevenWear, 3); assert.equal(b.unevenSide, 'interno');
     assert.equal(b.mmPerWeek, undefined);
   });
   test('historial con desgaste: tasa, días y vida útil', () => {

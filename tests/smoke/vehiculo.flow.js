@@ -63,7 +63,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#vd-panel').classList.contains('abierto')) fail('detalle: el panel no se abrio');
   if(r3.getAttribute('aria-pressed') !== 'true') fail('detalle: rueda seleccionada sin aria-pressed');
   if(d.activeElement !== $('#vd-panel-titulo')) fail('detalle: el foco no paso al panel');
-  ['Posición 3','Eje 2 · izquierda externa','Crítico','Desgaste mayor al normal','Huella 1','4,2','Alertas','Neumático crítico','Rotación'].forEach(function(t){
+  ['Posición 3','Eje 2 · izquierda externa','Crítico','Desgaste mayor al normal','Interno','4,2','Alertas','Neumático crítico','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');

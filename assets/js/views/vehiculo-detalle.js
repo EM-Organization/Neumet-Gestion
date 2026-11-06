@@ -162,7 +162,7 @@ function frase(nombre, semanas, yaPaso) {
 
 function seccionMedicion(fila) {
   if (!fila || nulo(fila.promedio)) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones.</p>`;
-  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Huella 1</th><th scope="col">Huella 2</th><th scope="col">Huella 3</th><th scope="col">Promedio</th></tr></thead>
+  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interno</th><th scope="col">Centro</th><th scope="col">Externo</th><th scope="col">Promedio</th></tr></thead>
     <tbody><tr><td>${fmtNum(fila.mm1, 1)}</td><td>${fmtNum(fila.mm2, 1)}</td><td>${fmtNum(fila.mm3, 1)}</td><td>${fmtNum(fila.promedio, 1)} mm</td></tr></tbody></table>
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
