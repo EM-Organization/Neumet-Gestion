@@ -169,7 +169,8 @@ begin
         v_motivo := v_item->>'rechazar';
       else
         select * into v_n from public.neumaticos
-         where vehiculo_id = v_veh_id and cliente_id = p_cliente_id and posicion = v_pos;
+         where vehiculo_id = v_veh_id and cliente_id = p_cliente_id and posicion = v_pos
+           and idneumatico is not null;   -- mismo montaje visible que api_obtener_montaje
         if not found then
           v_motivo := 'posicion';
         elsif (v_item->>'mm1') is null and (v_item->>'mm2') is null and (v_item->>'mm3') is null then
