@@ -106,7 +106,7 @@ Se añadirá un `.env.example` documentado en la fase de implementación (no se 
 
 ## Decisiones de la CSP (vercel.json)
 
-- `'unsafe-inline'` en `script-src` y `style-src` es temporal: `index.html` y `adminpanel/index.html` contienen scripts, estilos y atributos `style`/`onclick` en linea. Bloquearlos hoy romperia el sitio.
+- **`script-src` ya NO lleva `'unsafe-inline'`** (landing y panel sin `<script>` ni handlers inline; PR #5 y #7). `style-src` **conserva** `'unsafe-inline'` a propósito: hay ~100 atributos `style=""` (y los generados desde JS) y el riesgo de inyección por estilos es mucho menor; endurecerlo exigiría pasar todo a clases CSS. Si se carga un script nuevo, debe ir en archivo propio y su origen listarse en `script-src`.
 - Como endurecer: (1) mover scripts y estilos en linea a archivos en `assets/`; (2) sustituir handlers `onclick=` por `addEventListener`; (3) quitar `'unsafe-inline'` de `script-src` y probar antes con `Content-Security-Policy-Report-Only`; (4) para estilos, usar clases en lugar de `style=`; (5) si hiciera falta algun inline, usar nonces o hashes.
 - `https://cdn.jsdelivr.net` se permite para librerias (p. ej. supabase-js); idealmente fijar version y anadir SRI, o servirlas desde `/assets`.
 - `connect-src` limita las llamadas al proyecto Supabase `dqgrlflrjcarxlfetvoj` (REST, Auth, Functions, Realtime por wss).
