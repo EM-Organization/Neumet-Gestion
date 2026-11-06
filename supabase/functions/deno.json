@@ -1,0 +1,15 @@
+{
+  "nodeModulesDir": "none",
+  "imports": {},
+  "tasks": {
+    "check": "deno check */index.ts"
+  },
+  "lint": {
+    "include": ["./"],
+    "rules": { "exclude": ["no-import-prefix", "no-unversioned-import"] }
+  },
+  "fmt": {
+    "singleQuote": true,
+    "lineWidth": 120
+  }
+}

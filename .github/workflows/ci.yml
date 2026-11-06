@@ -59,3 +59,17 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check
+
+  deno:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: deno check (Edge Functions)
+        run: deno task --config supabase/functions/deno.json check
+      - name: deno lint (Edge Functions)
+        run: deno lint --config supabase/functions/deno.json supabase/functions
