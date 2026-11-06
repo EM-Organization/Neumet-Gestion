@@ -436,6 +436,22 @@
   .ciclo-odo-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
   .ciclo-odo-form .field { margin: 0; }
   .ciclo-sub { font-size: 12px; color: var(--text-tertiary); }
+  /* Cambio de neumático (taller) */
+  .cambio-modal { width: 560px; max-height: 90vh; display: flex; flex-direction: column; }
+  .cambio-modal .modal-body { overflow-y: auto; flex: 1; }
+  .cambio-actual { background: var(--bg, #f6f5f1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 14px; }
+  .cambio-actual strong { font-weight: 600; }
+  .cambio-grupo { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  .cambio-grupo legend { font-size: 13px; font-weight: 600; color: var(--text-secondary); padding: 0; margin-bottom: 6px; }
+  .cambio-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .cambio-op { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 9px 10px; font-size: 14px; cursor: pointer; background: var(--surface); }
+  .cambio-op:has(input:checked) { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
+  .cambio-op:focus-within { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+  .cambio-resumen { font-size: 13px; color: var(--text-secondary); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; min-height: 20px; }
+  .cambio-error { font-size: 13px; color: var(--danger); margin-top: 8px; min-height: 0; }
+  .ciclo-cambio { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+  .ciclo-cambio .field { margin: 0; }
+  @media (max-width: 640px) { .cambio-opciones { grid-template-columns: 1fr; } }
   .ciclo-tabla { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
   .ciclo-tabla th, .ciclo-tabla td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
   .ciclo-timeline { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
@@ -574,3 +590,6 @@
   .vd-panel-backdrop.abierto { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(56,52,36,0.35); }
   .vd-svg { max-width: 340px; }
 }
+.vd-rotar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vd-rotar label { font-size: 13px; color: var(--text-secondary); flex: 1 1 100%; }
+.vd-rotar select { flex: 1 1 160px; min-height: 36px; }

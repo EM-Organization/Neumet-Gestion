@@ -2,8 +2,9 @@
 
 -- Permisos
 begin;
+-- (desde 20261108 el cliente puede rotar en SU vehículo: ver t_70; aquí, el de OTRO cliente sigue denegado)
 select test.become('authenticated', test.u_cli_a());
-select test.denied('cliente no puede rotar', $$select public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)$$);
+select test.denied('cliente no puede rotar el vehículo de otro cliente', $$select public.neumatico_rotar(3::bigint, 1::smallint, 2::smallint)$$);
 rollback;
 begin;
 select test.become('authenticated', test.u_api());

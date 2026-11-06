@@ -200,8 +200,14 @@ function seccionEventos(pos, fila) {
 function acciones(pos) {
   if (!puedeOperar()) return '';
   const args = JSON.stringify([vehiculoId, pos]);
-  const boton = (accion, texto) => html`<button type="button" class="btn" data-action="${accion}" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">${texto}</button>`;
-  return html`<div class="vd-p-acciones">${boton('neumatico-cambiar', 'Cambiar neumático')}${boton('neumatico-rotar-pos', 'Rotar')}</div>`;
+  const cambiar = html`<button type="button" class="btn" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
+  // Rotar: el usuario elige la posición de destino; el botón lleva data-args='[vehiculoId, posA, posB]' (se actualiza al elegir).
+  const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
+  const rotar = html`<div class="vd-rotar">
+    <label for="vd-rotar-destino">Rotar con la posición</label>
+    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegí la posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
+    <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
+  return html`<div class="vd-p-acciones">${cambiar}</div>${rotar}`;
 }
 
 function renderPanel() {
@@ -358,8 +364,16 @@ export function init() {
   // Acciones del taller: si nadie las registró, aviso en vez de error en consola.
   $('vd-panel').addEventListener('click', e => {
     const b = e.target.closest('[data-action^="neumatico-"]');
-    if (b && !Object.prototype.hasOwnProperty.call(ACTIONS, b.dataset.action)) { e.stopPropagation(); showToast('No disponible'); }
+    if (!b) return;
+    if (!Object.prototype.hasOwnProperty.call(ACTIONS, b.dataset.action)) { e.stopPropagation(); showToast('No disponible'); return; }
+    if (b.dataset.action === 'neumatico-rotar-pos' && !b.dataset.destino) { e.stopPropagation(); showToast('Elegí la posición con la que querés rotar', true); }
   }, true);
+  $('vd-panel').addEventListener('change', e => {
+    if (e.target.id !== 'vd-rotar-destino') return;
+    const b = $('vd-rotar-btn');
+    b.dataset.destino = e.target.value;
+    b.dataset.args = JSON.stringify([vehiculoId, Number(b.dataset.posicion), e.target.value ? Number(e.target.value) : null]);
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !nulo(seleccion) && $('view-vehiculo-detalle').classList.contains('active')) cerrarPanel();
   });

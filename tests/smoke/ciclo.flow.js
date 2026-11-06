@@ -11,6 +11,8 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   if(!b){ fail('ciclo: falta botón Odómetro y ciclo de vida'); return; }
   b.click(); await sleep(500);
   if(!$('#modal-ciclo').classList.contains('show')) { fail('ciclo: modal no abierto'); return; }
+  var cb = $('#modal-ciclo [data-action="neumatico-cambiar"]');
+  if(!cb || cb.getAttribute('data-vehiculo-id') !== '10' || !cb.getAttribute('data-posicion')) fail('ciclo: falta el botón Cambiar neumático (punto de entrada temporal)');
 
   // Odómetro: inválido no escribe; válido actualiza vehiculos
   setv('#ciclo-odo-input', '-5'); $('#ciclo-odo-save').click(); await sleep(150);
