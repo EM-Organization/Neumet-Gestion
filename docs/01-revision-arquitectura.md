@@ -1,5 +1,7 @@
 # 01 · Revisión crítica de arquitectura
 
+> **Nota (2026-11):** las referencias `app.js:N` de este documento apuntan al monolito `assets/js/app.js` previo a la modularización (PR del refactor a módulos ES). Hoy el panel vive en módulos ES bajo `assets/js/` (`main.js`, `core/`, `domain/`, `views/`; ver [`assets/js/README.md`](../assets/js/README.md)); los números de línea ya no existen y se conservan como evidencia histórica.
+
 > Estado: diagnóstico (2026-11-06). No se modificó código. Base: commit `188b3fc`.
 > Alcance: todo lo versionado en el repo. Lo que **no** está versionado se señala como hallazgo en sí mismo.
 

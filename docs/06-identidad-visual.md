@@ -165,7 +165,7 @@ Regla: **el dorado nunca representa un estado** (se confundiría con "bajo" en �
 |---|---|---|
 | `index.html` (landing) | 27 | Tokens propios duplicados en `:root` (líneas 14-39) |
 | `assets/css/styles.css` (panel) | 9 | Tokens `:root` (líneas 3-32); `--font-brand: Exo 2` |
-| `assets/js/app.js` | 32 | Hex hardcodeados en templates y SVG de gráficos |
+| `assets/js/app.js` (monolito original; hoy `assets/js/views/` y `core/brand.js`) | 32 | Hex hardcodeados en templates y SVG de gráficos |
 | `adminpanel/index.html` | 1 (+ estilos inline) | Logo anterior (ya reemplazado por `assets/brand/`) en login y sidebar |
 | `supabase/functions/contacto/index.ts` | 15 | Plantilla de email con estilos inline |
 
@@ -182,7 +182,7 @@ La duplicación de tokens (landing y panel definen sus propias variables) debe e
 | B1 | Solicitar a Alegra Studio: vectores originales, fuente/licencia del wordmark, y manual de uso (zonas, tamaños mínimos) | — |
 | B2 | ✅ Crear `tokens.css` con primitivos + semánticos (§5); landing y panel lo importan | B0 |
 | B3 | ✅ Sustituir el logo `WhatsApp…jpeg` por `logo-horizontal-*.svg`/isotipo; añadir favicon, `apple-touch-icon`, `theme-color`, `og:image` | B0 |
-| B4 | 🟡 Reemplazar hex hardcodeados de `app.js` y `index.html` por `var(--…)` (landing y `styles.css` hechos; `app.js` en curso por otra rama) | B2 |
+| B4 | 🟡 Reemplazar hex hardcodeados del panel (`assets/js/`) y `index.html` por `var(--…)` (landing y `styles.css` hechos; panel migrado a `core/brand.js`) | B2 |
 | B5 | Plantilla de email de `contacto` con nueva paleta + logo (los clientes de correo no soportan `var()` ni SVG: usar PNG alojado y colores inline) | B0 |
 | B6 | Autoalojar tipografías elegidas; retirar Google Fonts | decisión §4 |
 | B7 | Verificación de contraste automatizada (axe/Lighthouse) y revisión visual por vista | B2–B4 |
