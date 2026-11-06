@@ -36,6 +36,8 @@
 
 > **Nota (avance 2.8):** ya existen ESLint (`npm run lint`, `eslint.config.js`) y el job `lint` en CI (`.github/workflows/ci.yml`, junto a `secrets` y `static`). La regla `no-unsanitized` queda en `warn` hasta migrar los `innerHTML` existentes (tarea 2.2); entonces pasará a `error`. Pendientes de 2.8: tipos y tests.
 
+> **Nota (avance 2.2):** el panel ya no usa `innerHTML` directo: todo HTML pasa por `html\`...\`` + `setHtml()` (`assets/js/app.js`), `no-unsanitized` está en `error`, y los manejadores inline del panel se sustituyeron por `data-action`/`data-change` con un listener delegado (`ACTIONS`). Eso permite quitar `'unsafe-inline'` de `script-src` en `vercel.json` (cambio aparte). Hay un arnés de humo headless en `tests/smoke/` (ver su README).
+
 ## Fase 3 · Operación y escala
 | ID | Tarea | Doc |
 |---|---|---|
