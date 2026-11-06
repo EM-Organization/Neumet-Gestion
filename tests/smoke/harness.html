@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>SMOKE:RUNNING</title></head>
+<body>
+<script>
+// Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
+// y recorre vistas y modales. Resultado en document.title: SMOKE:OK | SMOKE:FAIL:<mensaje>
+(async function(){
+  var errors=[], log=[];
+  var sleep=function(ms){ return new Promise(function(r){ setTimeout(r,ms); }); };
+  function fail(m){ errors.push(String(m)); }
+  var sig=function(t){ var h=0; for(var k=0;k<t.length;k++) h=(h*31+t.charCodeAt(k))|0; return t.length+':'+(h>>>0).toString(16); };
+  var cliMode=/[?&]cliente=1/.test(location.search);
+  try{
+    var src=await (await fetch('/adminpanel/index.html')).text();
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script>')
+           .replace('<head>','<head><base href="/adminpanel/">');
+    var fr=document.createElement('iframe');
+    fr.style.cssText='width:1400px;height:900px;border:0';
+    document.body.appendChild(fr);
+    // Errores durante la carga de app.js: hook inyectado antes de los scripts
+    src=src.replace('<head>','<head><script>window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
+    window.__fail=fail;
+    fr.srcdoc=src;
+    await new Promise(function(r){ fr.onload=r; });
+    var w=fr.contentWindow, d=w.document;
+    var $=function(s){ return d.querySelector(s); };
+    var act=function(name){ return $('[data-action="'+name+'"],[onclick^="'+name+'("]'); };
+    var click=function(el,what){ if(!el){ fail('no existe elemento: '+what); return false; } el.click(); return true; };
+    var nav=function(v){ return click($('.nav-item[data-view="'+v+'"]'),'nav '+v); };
+    await sleep(600);
+    if($('#app').classList.contains('hidden')) fail('la app no salio del login');
+
+    var views=cliMode?['dashboard','vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
+    for(var i=0;i<views.length;i++){
+      nav(views[i]); await sleep(500);
+      if(!$('#view-'+views[i]).classList.contains('active')) fail('vista no activa: '+views[i]);
+      log.push(views[i]+': filas='+d.querySelectorAll('#view-'+views[i]+' tbody tr, #view-'+views[i]+' .dash-fleet-card').length+' texto='+sig($('#view-'+views[i]).textContent.replace(/\s+/g,' ')));
+    }
+    var modals=cliMode?[['vehiculos','openVehiculoModal','modal-vehiculo','closeVehiculoModal']]:[
+      ['clientes','openClienteModal','modal-cliente','closeClienteModal'],
+      ['balance','openGastoModal','modal-gasto','closeGastoModal'],
+      ['vehiculos','openVehiculoModal','modal-vehiculo','closeVehiculoModal'],
+      ['dispositivos','openDispositivoModal','modal-dispositivo','closeDispositivoModal']
+    ];
+    for(var j=0;j<modals.length;j++){
+      var m=modals[j];
+      nav(m[0]); await sleep(400);
+      if(click(act(m[1]),m[1])){ await sleep(400);
+        if(!$('#'+m[2]).classList.contains('show')) fail('modal no abierto: '+m[2]);
+        click(act(m[3]),m[3]); await sleep(100);
+        if($('#'+m[2]).classList.contains('show')) fail('modal no cerrado: '+m[2]);
+      }
+    }
+    nav('vehiculos'); await sleep(300);
+    click($('.sub-tab[data-subtab="sv-stock"]'),'subtab stock'); await sleep(500);
+    log.push('stock filas='+d.querySelectorAll('#tbody-stock tr').length);
+    if(click(act('openStockModal'),'openStockModal')){ await sleep(400);
+      if(!$('#modal-stock').classList.contains('show')) fail('modal-stock no abierto');
+      click(act('closeStockModal'),'closeStockModal'); }
+    click($('.sub-tab[data-subtab="sv-vehiculos"]'),'subtab veh'); await sleep(300);
+    var nb=d.querySelector('#tbody-vehiculos [data-va="neum"],#tbody-vehiculos [data-action="openNeumaticosModal"], #tbody-vehiculos [onclick*="openNeumaticosModal"]');
+    if(nb){ nb.click(); await sleep(600);
+      if(!$('#modal-neumaticos').classList.contains('show')) fail('modal-neumaticos no abierto');
+      var tire=d.querySelector('#modal-neumaticos svg g[cursor="pointer"], #modal-neumaticos svg g[style*="cursor"]');
+      if(tire){ tire.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300); log.push('neum-panel-len='+$('#neum-detail-panel').innerHTML.length); }
+      else log.push('sin rueda clicable; svg-nodos='+d.querySelectorAll('#neum-assign-svg *').length);
+      click(act('closeNeumaticosModal'),'closeNeumaticosModal'); await sleep(100);
+    } else log.push('sin boton neumaticos en fila');
+    nav('mediciones'); await sleep(500);
+    var dm=d.querySelector('[data-mode="device"],[data-mode="dispositivo"]');
+    if(dm){ dm.click(); await sleep(600); } else log.push('sin tab modo dispositivo');
+    var di=d.querySelector('#med-device-list .device-item');
+    if(di){ di.click(); await sleep(700);
+      var si=d.querySelector('#med-sessions-list .session-item');
+      if(si){ si.click(); await sleep(700); log.push('sesion seleccionada'); } else fail('sin sesiones');
+    } else log.push('sin device-item');
+    var endV=(location.search.match(/[?&]end=([a-z]+)/)||[])[1];
+    if(endV){ nav(endV); await sleep(600); }
+    log.push('svg-nodos='+d.querySelectorAll('#view-mediciones svg *').length);
+    log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
+    log.push('xss(<Beta> crudo)='+(d.body.innerHTML.indexOf('<Beta>')===-1?'no':'SI'));
+  }catch(e){ fail('harness: '+(e&&e.stack||e)); }
+  var out=document.createElement('pre'); out.id='smoke-log'; out.textContent='\n'+log.join('\n')+'\n'+errors.join('\n'); document.body.appendChild(out);
+  document.title = errors.length ? 'SMOKE:FAIL:'+errors.slice(0,5).join(' | ').slice(0,400) : 'SMOKE:OK';
+})();
+</script></body></html>
