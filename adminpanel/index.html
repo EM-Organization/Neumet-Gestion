@@ -396,17 +396,17 @@
           <div class="page-header">
             <div>
               <div class="page-title">Vehículos</div>
-              <div class="page-subtitle">Administrá los vehículos de cada cliente.</div>
+              <div class="page-subtitle" data-admin-only>Administrá los vehículos de cada cliente.</div>
             </div>
-            <button class="btn primary" data-action="openVehiculoModal" data-args='["create"]'>
+            <button class="btn primary" data-admin-only data-action="openVehiculoModal" data-args='["create"]'>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Nuevo vehículo
             </button>
           </div>
           <div class="toolbar">
-            <div class="search">
+            <div class="search search-grande">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input id="search-vehiculos" type="text" placeholder="Buscar vehículo..." aria-label="Buscar vehículo"/>
+              <input id="search-vehiculos" type="search" placeholder="Matrícula o número de coche" aria-label="Matrícula o número de coche" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search"/>
             </div>
             <select id="filter-cliente-veh" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
               <option value="">Todos los clientes</option>
@@ -416,7 +416,11 @@
               Actualizar
             </button>
           </div>
-          <div class="table-wrap">
+          <div class="veh-lista-wrap" id="veh-lista-wrap" data-cliente-only style="display:none">
+            <div class="veh-contador" id="veh-contador" role="status" aria-live="polite"></div>
+            <ul class="veh-lista" id="veh-lista"></ul>
+          </div>
+          <div class="table-wrap" data-admin-only>
             <table>
               <thead><tr>
                 <th scope="col" style="width:60px">ID</th>
@@ -676,6 +680,23 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- DETALLE DE VEHÍCULO (diagrama de ruedas) -->
+      <div class="view" id="view-vehiculo-detalle">
+        <button type="button" class="btn ghost vd-volver" data-action="detalleVolver">&larr; Volver a vehículos</button>
+        <div id="vd-cab" class="vd-cab"></div>
+        <div class="vd-layout">
+          <section class="vd-diagrama-card" aria-label="Diagrama de ruedas">
+            <div id="vd-resumen" class="vd-resumen"></div>
+            <div id="vd-diagrama" class="vd-diagrama"></div>
+            <div id="vd-leyenda" class="vd-leyenda"></div>
+          </section>
+          <div class="vd-panel-backdrop" id="vd-backdrop" data-backdrop-close="detalleCerrarPanel"></div>
+          <aside class="vd-panel" id="vd-panel" aria-label="Detalle del neumático seleccionado">
+            <div id="vd-panel-body"></div>
+          </aside>
         </div>
       </div>
 

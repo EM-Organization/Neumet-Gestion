@@ -11,6 +11,7 @@ sleep 1
 Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = reportes ] && Q="?reportes=1"
 [ "$MODE" = flota ] && Q="?flota=1"
+[ "$MODE" = detalle ] && Q="?cliente=1&detalle=1"
 [ "$MODE" = secuser ] && Q="?cliente=1&secuser=1"
 OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-90000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
 echo "$OUT" | grep -o '<title>[^<]*</title>' | head -1

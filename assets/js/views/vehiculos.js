@@ -1,24 +1,34 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, confirmDialog, avatarFor } from '../core/ui.js';
+import { chipEstado, estadoVacio } from '../core/componentes.js';
 import { isClienteMode, currentClienteId } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { loadStock } from './stock.js';
-import { contextoListo, filtrarConsulta } from '../core/seccional.js';
+import { contextoListo, filtrarConsulta, filtrarFilas } from '../core/seccional.js';
+import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { agruparVehiculos } from '../domain/flota.js';
+import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda.js';
+import { plural } from '../domain/formato.js';
+import { abrirDetalle } from './vehiculo-detalle.js';
 
-let vehiculos=[], vehModalMode='create', vehActiveId=null;
+let vehiculos=[], resumenes=new Map(), vehModalMode='create', vehActiveId=null;
 
 export async function loadVehiculos(){
   setStatus(true,'Cargando...');
   await contextoListo();
   let q=filtrarConsulta(db.from('vehiculos')
-    .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
+    .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,sucursal_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
     .order('nombre'));
   if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
-  const {data,error}=await q;
+  // El cliente ve una lista con el estado resumido de cada vehículo (v_estado_neumaticos); el admin no lo necesita.
+  const [{data,error},est]=await Promise.all([q, isClienteMode()
+    ?fetchAll((from,to)=>db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from,to),{pageSize:PAGE_SIZE,max:20000})
+    :Promise.resolve({rows:[],error:null})]);
   if(error){ setStatus(false,'Error de conexión'); showToast(userError(error),true); return; }
   vehiculos=data||[];
+  resumenes=new Map(est.error?[]:agruparVehiculos(filtrarFilas(est.rows)).map(g=>[g.vehiculo_id,g]));
   setStatus(true,'Conectado');
   // Poblar filtro de clientes
   const filterSel=document.getElementById('filter-cliente-veh');
@@ -28,17 +38,45 @@ export async function loadVehiculos(){
   renderVehiculos();
 }
 
+function resumenTexto(g){
+  if(!g) return '';
+  const p=[]; if(g.n_critico) p.push(plural(g.n_critico,'crítico','críticos')); if(g.n_bajo) p.push(plural(g.n_bajo,'bajo','bajos'));
+  return p.join(' · ');
+}
+
+// Cliente: lista compacta de resultados (solo lectura) con chip de estado; click abre el detalle.
+function renderLista(){
+  const lista=document.getElementById('veh-lista');
+  const q=document.getElementById('search-vehiculos').value;
+  const activos=vehiculos.filter(v=>v.activo!==false);
+  let res=buscarVehiculos(activos,q);
+  // Sin búsqueda: los más urgentes primero.
+  if(!q.trim()) res=res.sort((a,b)=>{ const ga=resumenes.get(a.id), gb=resumenes.get(b.id); return (ga?activosOrden(ga):9)-(gb?activosOrden(gb):9) || String(a.nombre).localeCompare(String(b.nombre),'es'); });
+  document.getElementById('veh-contador').textContent=activos.length?(q.trim()?`${plural(res.length,'coincidencia','coincidencias')} de ${activos.length}`:plural(activos.length,'vehículo','vehículos')):'';
+  if(!res.length){
+    setHtml(lista, html`<li>${activos.length
+      ?estadoVacio('Ningún vehículo coincide','Revisá la matrícula o el número de coche.')
+      :estadoVacio('Todavía no hay vehículos','Cuando se registren vehículos van a aparecer acá.')}</li>`);
+    return;
+  }
+  setHtml(lista, joinHtml(res.map(v=>{
+    const g=resumenes.get(v.id), txt=resumenTexto(g);
+    return html`<li><button type="button" class="veh-fila" data-action="verVehiculoDetalle" data-args="${JSON.stringify([v.id])}">
+      <span class="veh-fila-main"><span class="veh-fila-nombre">${v.nombre}</span>
+        <span class="veh-fila-meta">${[v.patente,v.numero?`Coche ${v.numero}`:''].filter(Boolean).join(' · ')||'Sin matrícula'}</span></span>
+      <span class="veh-fila-estado">${txt}${chipEstado(g?g.semaforo:'sin_datos')}</span></button></li>`;
+  })));
+}
+const activosOrden=g=>({critico:0,bajo:1,sin_datos:2,ok:3}[g.semaforo]??2);
+
 function renderVehiculos(){
-  // En modo cliente ocultamos el filtro y columna de cliente
-  document.getElementById('filter-cliente-veh').style.display=isClienteMode()?'none':'';
-  const q=document.getElementById('search-vehiculos').value.toLowerCase();
-  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-veh').value;
+  const cli=isClienteMode();
+  document.getElementById('filter-cliente-veh').style.display=cli?'none':'';
+  if(cli){ renderLista(); return; }
+  const q=document.getElementById('search-vehiculos').value;
+  const cid=document.getElementById('filter-cliente-veh').value;
   const tbody=document.getElementById('tbody-vehiculos');
-  let filtered=vehiculos.filter(v=>{
-    const matchQ=v.nombre.toLowerCase().includes(q)||(v.patente||'').toLowerCase().includes(q);
-    const matchC=!cid||String(v.cliente_id)===cid;
-    return matchQ&&matchC;
-  });
+  let filtered=buscarVehiculos(vehiculos,q).filter(v=>!cid||String(v.cliente_id)===cid);
   if(!filtered.length){
     setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término o filtro</div></div></td></tr>`);
     return;
@@ -57,6 +95,9 @@ function renderVehiculos(){
       <td><span class="badge blue">${v.tipo_ruedas} WHL</span></td>
       <td>${estadoBadge}</td>
       <td><div class="actions">
+        <button class="icon-btn" data-va="detalle" data-vid="${v.id}" title="Ver detalle del vehículo" aria-label="Ver detalle de ${v.nombre}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
         <button class="icon-btn" data-va="neum" data-vid="${v.id}" title="Neumáticos">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
         </button>
@@ -73,6 +114,7 @@ function renderVehiculos(){
     btn.addEventListener('click',()=>{
       const id=parseInt(btn.dataset.vid);
       if(btn.dataset.va==='del') removeVehiculo(id);
+      else if(btn.dataset.va==='detalle') abrirDetalle(id);
       else if(btn.dataset.va==='neum') ACTIONS.openNeumaticosModal(id);
       else ACTIONS.openVehiculoModal('edit',id);
     });
@@ -183,6 +225,14 @@ registerView('vehiculos','Vehículos',loadVehiculos);
 export function getVehiculos(){ return vehiculos; }
 
 export function init(){
-  document.getElementById('search-vehiculos').addEventListener('input',renderVehiculos);
+  const inp=document.getElementById('search-vehiculos');
+  inp.addEventListener('input',renderVehiculos);
+  // Enter: abre directo si hay una sola coincidencia exacta (o una sola coincidencia a secas).
+  inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    const base=isClienteMode()?vehiculos.filter(v=>v.activo!==false):vehiculos;
+    const v=coincidenciaExacta(base,inp.value)||(inp.value.trim()&&buscarVehiculos(base,inp.value).length===1?buscarVehiculos(base,inp.value)[0]:null);
+    if(v){ e.preventDefault(); abrirDetalle(v.id); }
+  });
   document.getElementById('filter-cliente-veh').addEventListener('change',renderVehiculos);
 }

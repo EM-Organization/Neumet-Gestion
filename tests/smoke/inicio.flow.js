@@ -68,6 +68,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   // --- Modal: role=dialog, foco dentro, Tab atrapado, Esc cierra y devuelve el foco ---
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(400);
   var abre = $('[data-action="openVehiculoModal"]');
+  // El cliente no ve "Nuevo vehículo" (data-admin-only): se muestra solo para probar la accesibilidad del modal.
+  if(abre.offsetParent === null) abre.style.display = '';
   abre.focus();
   abre.click(); await sleep(400);
   var dlg = $('#modal-vehiculo .modal');
