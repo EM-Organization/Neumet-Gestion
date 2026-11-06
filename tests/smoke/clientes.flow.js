@@ -62,11 +62,11 @@ window.clientesFlow = async function(w, d, sleep, fail, log){
   act('crearCuentaApi').click(); await sleep(400);
   var af = fx.apiFetches[fx.apiFetches.length-1];
   if(!af || af.email !== 'api-test@x.cl' || typeof af.cliente_id !== 'number' || 'password' in af) fail('cuenta-api: cuerpo inesperado');
-  if($('#ficha-api-cred-pass').textContent.indexOf('Zx9-generada') === -1) fail('cuenta-api: no muestra la contraseña');
+  if($('#ficha-api-cred-pass').textContent.indexOf('contrasena-de-prueba') === -1) fail('cuenta-api: no muestra la contraseña');
   if($('#ficha-api-cred').style.display === 'none') fail('cuenta-api: credenciales no visibles');
   if(!act('copiarCredencialesApi')) fail('cuenta-api: falta botón copiar');
   if($('#ficha-api-lista').textContent.indexOf('api-test@x.cl') === -1) fail('cuenta-api: la lista no muestra la cuenta');
-  if($('#ficha-api-lista').textContent.indexOf('Zx9-generada') !== -1) fail('cuenta-api: la lista expone la contraseña');
+  if($('#ficha-api-lista').textContent.indexOf('contrasena-de-prueba') !== -1) fail('cuenta-api: la lista expone la contraseña');
   $('.nav-item[data-view="clientes"]').click(); await sleep(300);
   $('.nav-item[data-view="ficha"]').click(); await sleep(600);
   if($('#ficha-api-cred-pass').textContent !== '') fail('cuenta-api: la contraseña sigue tras recargar la ficha');

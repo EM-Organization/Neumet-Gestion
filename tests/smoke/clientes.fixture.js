@@ -10,7 +10,7 @@
     if(String(url).indexOf('/functions/v1/crear-cuenta-api') !== -1){
       var b = JSON.parse(opts.body); fx.apiFetches.push(b);
       apiCuentas.push({user_id:'api-'+apiCuentas.length, email:b.email, created_at:new Date().toISOString()});
-      return Promise.resolve({status:201, ok:true, json:function(){ return Promise.resolve({ok:true, cuenta:{user_id:'api-x', email:b.email, cliente_id:b.cliente_id}, password:'Zx9-generada-UNICA-vez-abcdef'}); }});
+      return Promise.resolve({status:201, ok:true, json:function(){ return Promise.resolve({ok:true, cuenta:{user_id:'api-x', email:b.email, cliente_id:b.cliente_id}, password:'contrasena-de-prueba'}); }});
     }
     if(String(url).indexOf('/functions/v1/crear-cliente') === -1) return orig.apply(this, arguments);
     var body = JSON.parse(opts.body); fx.fetches.push(body);
