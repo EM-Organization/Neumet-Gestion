@@ -20,7 +20,6 @@ Fuente de verdad gráfica. Guía completa: [`docs/06-identidad-visual.md`](../..
 | | `wordmark-bicolor-{claro,oscuro}[-inv].svg` | Solo texto, bicolor (corte NEU \| MET) |
 | `favicon/` | `favicon.svg`, `favicon-{32,192,512}.png`, `apple-touch-icon.png` | Navegadores y PWA |
 | `png/` | Exportaciones de logos e isotipos (2000 px de ancho / 1024 px de alto) | Documentos, presentaciones, email |
-| `source/` | `identidad.pdf` | Entrega original del estudio (Alegra Studio) |
 
 ## Ejemplo de uso (referencia, aún no aplicado en el sitio)
 ```html
@@ -34,3 +33,6 @@ Fuente de verdad gráfica. Guía completa: [`docs/06-identidad-visual.md`](../..
 - Los SVG de wordmark y logo comparten `id` de `clipPath`; si se **incrustan inline** varios en la misma página, usar `<img>` o renombrar los ids para evitar colisiones.
 - No recolorear, estirar ni reescribir "NEUMET" con una fuente.
 - Los SVG de `wordmark`/`logo` son trazados automáticos: no editarlos a mano; reemplazarlos por los vectores originales del estudio cuando lleguen.
+
+## Fuente original
+El `identidad.pdf` del estudio (Alegra Studio) **no se versiona** aquí: es un binario, y la licencia de la tipografía del wordmark está pendiente de confirmar. Solicitarlo al equipo; los vectores originales también se piden al estudio (ver `docs/06-identidad-visual.md` §8, B1).
