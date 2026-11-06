@@ -39,6 +39,19 @@ export async function exportMedicionesCSV(){
   a.click(); URL.revokeObjectURL(url);
 }
 
+// Abre el documento (SafeHtml) en una ventana nueva y lanza la impresión. Reutilizado por la vista Reportes.
+export function printDoc(doc){
+  const w=window.open('','_blank');
+  if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes.',true); return false; }
+  // Documento generado con el helper html`` (todo dato interpolado queda escapado); about:blank del reporte no tiene otro sumidero.
+  // eslint-disable-next-line no-unsanitized/method -- recibe SafeHtml (doc), no un string plano
+  w.document.write(doc.toString());
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),300); // sin <script> inline (CSP sin 'unsafe-inline')
+  return true;
+}
+
 export async function generarReportePDF(){
   const vid=parseInt(document.getElementById('med-vehiculo-select').value);
   if(!vid){ showToast('Seleccioná un vehículo primero',true); return; }
@@ -234,14 +247,7 @@ export async function generarReportePDF(){
 </body>
 </html>`;
 
-    const w=window.open('','_blank');
-    if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes.',true); return; }
-    // Documento generado con el helper html`` (todo dato interpolado queda escapado); about:blank del reporte no tiene otro sumidero.
-    // eslint-disable-next-line no-unsanitized/method -- recibe SafeHtml (doc), no un string plano
-    w.document.write(doc.toString());
-    w.document.close();
-    w.focus();
-    setTimeout(()=>w.print(),300); // sin <script> inline (CSP sin 'unsafe-inline')
+    if(!printDoc(doc)) return;
 
   } catch(e){
     showToast(userError(e),true);

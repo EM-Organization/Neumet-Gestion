@@ -398,3 +398,13 @@
     .med-top { flex-direction:column; }
     .med-top-left { width:100%; }
   }
+
+  /* Reportes */
+  .rep-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; max-width:860px; }
+  .rep-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+  .rep-field { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; color:var(--text-secondary); }
+  .rep-field select, .rep-field input { background:var(--surface-secondary); border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:14px; font-family:var(--font); font-weight:400; color:var(--text-primary); outline:none; }
+  .rep-field select:focus, .rep-field input:focus { border-color:var(--accent-dark); box-shadow:0 0 0 3px var(--accent-light); }
+  .rep-actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .rep-progress { margin-top:14px; font-size:13px; color:var(--text-secondary); min-height:18px; }
+  .rep-progress.warn { color:var(--danger); font-weight:600; }

@@ -69,6 +69,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       Mediciones
     </div>
+    <div class="nav-item" data-view="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Reportes
+    </div>
     <div class="sidebar-footer">
       <div class="user-avatar" id="user-avatar">A</div>
       <div class="user-info">
@@ -629,6 +633,37 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- REPORTES -->
+      <div class="view" id="view-reportes">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Reportes</div>
+            <div class="page-subtitle">Exportá mediciones en CSV o generá un reporte imprimible por cliente o vehículo.</div>
+          </div>
+        </div>
+        <div class="rep-card">
+          <div class="rep-filters">
+            <label class="rep-field" data-admin-only>Cliente
+              <select id="rep-cliente" data-change="repClienteChange"></select>
+            </label>
+            <label class="rep-field">Vehículo
+              <select id="rep-vehiculo"></select>
+            </label>
+            <label class="rep-field">Desde
+              <input type="date" id="rep-desde"/>
+            </label>
+            <label class="rep-field">Hasta
+              <input type="date" id="rep-hasta"/>
+            </label>
+          </div>
+          <div class="rep-actions">
+            <button class="btn primary" id="rep-csv-btn" data-action="repExportCsv">Exportar CSV</button>
+            <button class="btn" id="rep-print-btn" data-action="repPrint">Reporte imprimible</button>
+          </div>
+          <div class="rep-progress" id="rep-progress" role="status" aria-live="polite"></div>
         </div>
       </div>
 
