@@ -24,3 +24,5 @@ servidor.ps1
 
 # Claude Code worktrees
 .claude/worktrees/
+tests/e2e/.cache/
+tests/e2e/capturas/

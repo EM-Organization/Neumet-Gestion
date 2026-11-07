@@ -7,10 +7,12 @@
     "lint": "eslint assets tests",
     "check": "node tests/check-modules.mjs",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/*.test.mjs\"",
-    "serve": "npx serve -p 3000 ."
+    "serve": "npx serve -p 3000 .",
+    "e2e": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/e2e/e2e.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "@supabase/supabase-js": "2.118.0",
     "eslint": "9.39.5",
     "eslint-plugin-no-unsanitized": "4.1.5",
     "globals": "17.13.0"
