@@ -26,3 +26,4 @@ servidor.ps1
 .claude/worktrees/
 tests/e2e/.cache/
 tests/e2e/capturas/
+tests/visual/out/

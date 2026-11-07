@@ -17,7 +17,7 @@ import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
 import { semaforoVehiculo } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import {
-  layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, muestrasLeyenda, NIVEL_INFO,
+  layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
 import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
@@ -79,9 +79,9 @@ function resumen() {
   const bajo = filas.filter(f => f.estado === 'bajo').length;
   const mayor = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal).length;
   setHtml($('vd-resumen'), joinHtml([
-    chip('gray', plural(filas.length, 'neumático montado', 'neumáticos montados'), '●'),
+    chip('gray', plural(filas.length, 'neumático', 'neumáticos'), '●'),
     crit ? chip('red', plural(crit, 'crítico', 'críticos'), '✕') : '',
-    bajo ? chip('orange', plural(bajo, 'con desgaste bajo', 'con desgaste bajo'), '▲') : '',
+    bajo ? chip('orange', plural(bajo, 'bajo', 'bajos'), '▲') : '',
     filas.length - con ? chip('gray', `${filas.length - con} sin datos`, '–') : '',
     mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
   ]));
@@ -89,10 +89,17 @@ function resumen() {
 
 function leyenda() {
   const { u } = datos;
-  const items = muestrasLeyenda(u).map(m => html`<span class="vd-leyenda-item"><span class="vd-muestra" style="background:${m.hex};color:${colorTexto(m.rgb)}" aria-hidden="true">${m.simbolo}</span>${m.texto} (${m.rango})</span>`);
-  items.push(html`<span class="vd-leyenda-item"><span class="vd-muestra" style="background:#eceae0;color:#383424" aria-hidden="true">–</span>Sin datos</span>`);
-  items.push(html`<span class="vd-leyenda-item"><span class="vd-muestra" style="background:#383424;color:#fff" aria-hidden="true">!</span>Desgaste mayor al normal</span>`);
-  setHtml($('vd-leyenda'), joinHtml(items));
+  const span = u.bajo - u.retiro;
+  const paradas = [u.retiro, u.critico, (u.critico + u.bajo) / 2, u.bajo]
+    .map(mm => `${colorDesgaste(mm, u).hex} ${Math.round(((mm - u.retiro) / span) * 100)}%`).join(',');
+  const marca = (mm, txt) => html`<span style="left:${Math.round(((mm - u.retiro) / span) * 100)}%">${txt}</span>`;
+  setHtml($('vd-leyenda'), html`
+    <div class="vd-escala">
+      <div class="vd-escala-barra" style="background:linear-gradient(90deg,${paradas})" aria-hidden="true"></div>
+      <div class="vd-escala-marcas" aria-hidden="true">${marca(u.retiro, `≤ ${fmtNum(u.retiro, 0)}`)}${marca(u.critico, fmtNum(u.critico, 0))}${marca(u.bajo, `≥ ${fmtNum(u.bajo, 0)} mm`)}</div>
+      <p class="vd-escala-nota">Desgaste del neumático en mm. Cada rueda muestra además un símbolo de su estado.</p>
+    </div>
+    <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Sin datos</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span></div>`);
 }
 
 function etiquetaAria(r, info, mm, ind) {
@@ -108,21 +115,22 @@ function dibujarRueda(svg, r) {
   const info = NIVEL_INFO[nivel];
   const ind = fila ? evaluarDesgaste(fila, ref) : null;
   const g = svgEl('g', {
-    class: `vd-rueda${r.posicion === seleccion ? ' sel' : ''}${ind && ind.mayorAlNormal ? ' vd-marca' : ''}`,
+    class: `vd-rueda${r.posicion === seleccion ? ' sel' : ''}`,
     tabindex: '0', role: 'button', 'aria-pressed': String(r.posicion === seleccion),
     'aria-label': etiquetaAria(r, info, mm, ind),
     'data-action': 'detalleRueda', 'data-args': JSON.stringify([r.posicion]), 'data-pos': String(r.posicion),
   });
   const t = svgEl('title'); t.textContent = etiquetaAria(r, info, mm, ind); g.appendChild(t);
-  g.appendChild(svgEl('rect', { class: 'vd-goma', x: r.x, y: r.y, width: r.ancho, height: r.alto, rx: 6, fill: hex || 'url(#vd-sin-datos)' }));
-  const tinta = hex ? colorTexto(rgb) : '#383424';
+  const borde = rgb ? `rgb(${rgb.map(c => Math.round(c * 0.62 + 56 * 0.38)).join(',')})` : '#b9b49d';
+  g.appendChild(svgEl('rect', { class: 'vd-goma', x: r.x, y: r.y, width: r.ancho, height: r.alto, rx: 6, fill: hex || 'url(#vd-sin-datos)', stroke: borde }));
+  const tinta = hex && colorTexto(rgb) === '#ffffff' ? '#ffffff' : '#383424';
   const txt = (cls, y, s) => { const e = svgEl('text', { class: cls, x: r.x + r.ancho / 2, y, fill: tinta }); e.textContent = s; g.appendChild(e); };
   txt('vd-pos', r.y + 12, r.auxilio ? 'AUX' : `P${r.posicion}`);
   txt('vd-mm', r.y + 29, nulo(mm) ? '—' : fmtNum(mm, 1));
   txt('vd-sim', r.y + 45, info.simbolo);
   if (ind && ind.mayorAlNormal) {
-    g.appendChild(svgEl('circle', { class: 'vd-alerta-disco', cx: r.x + r.ancho / 2, cy: r.y - 6, r: 7 }));
-    const s = svgEl('text', { class: 'vd-alerta-signo', x: r.x + r.ancho / 2, y: r.y - 2.5 }); s.textContent = '!'; g.appendChild(s);
+    g.appendChild(svgEl('circle', { class: 'vd-alerta-disco', cx: r.x + r.ancho / 2, cy: r.y - 5, r: 6 }));
+    const s = svgEl('text', { class: 'vd-alerta-signo', x: r.x + r.ancho / 2, y: r.y - 1.8 }); s.textContent = '!'; g.appendChild(s);
   }
   svg.appendChild(g);
 }
@@ -132,8 +140,8 @@ function dibujarDiagrama() {
   const svg = svgEl('svg', { class: 'vd-svg', viewBox: `0 0 ${geo.ancho} ${geo.alto}`, role: 'group', 'aria-label': 'Vehículo visto desde arriba, con el frente hacia arriba. Cada rueda es un botón.' });
   const defs = svgEl('defs');
   const pat = svgEl('pattern', { id: 'vd-sin-datos', width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' });
-  pat.appendChild(svgEl('rect', { width: 6, height: 6, fill: '#eceae0' }));
-  pat.appendChild(svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 6, stroke: '#b9b49d', 'stroke-width': 2 }));
+  pat.appendChild(svgEl('rect', { width: 6, height: 6, fill: '#f1efe7' }));
+  pat.appendChild(svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 6, stroke: '#d3cfbd', 'stroke-width': 1.5 }));
   defs.appendChild(pat); svg.appendChild(defs);
   const c = geo.chasis;
   svg.appendChild(svgEl('rect', { class: 'vd-chasis', x: c.x, y: c.y, width: c.ancho, height: c.alto, rx: 10 }));
@@ -167,13 +175,13 @@ function seccionMedicion(fila) {
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
 
-function seccionTasa(fila, u) {
+function seccionTasa(fila, u, razonMostrada) {
   if (!fila || nulo(fila.promedio)) return '';
   const tasa = fila.tasa_mm_semana;
   if (nulo(tasa)) return html`<p class="vd-p-nota">Todavía no hay mediciones suficientes para calcular la velocidad de desgaste (hacen falta al menos dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
   const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) <= u.retiro;
-  return html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>
+  return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
     <ul class="vd-alertas">${frase(`Nivel crítico (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Retiro (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
@@ -207,7 +215,7 @@ function acciones(pos) {
     <label for="vd-rotar-destino">Rotar con la posición</label>
     <select id="vd-rotar-destino" class="select-filter"><option value="">Elegí la posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
-  return html`<div class="vd-p-acciones">${cambiar}</div>${rotar}`;
+  return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}</div>${rotar}</div>`;
 }
 
 function renderPanel() {
@@ -230,13 +238,15 @@ function renderPanel() {
         <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · reencauche ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}</div></div>
       <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
     </div>
-    <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}${ind && ind.mayorAlNormal ? chip('orange', 'Desgaste mayor al normal', '!') : ''}</div>
-    ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon">${ind.razon}</p>` : ''}
+    <div class="vd-p-scroll">
+    <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}</div>
+    ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon"><strong>Desgaste mayor al normal.</strong> ${ind.razon}</p>` : ''}
     <h4>Última medición</h4>${seccionMedicion(fila)}
-    <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u)}
-    <h4>Alertas</h4>${seccionAlertas(pos)}
     <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
+    <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
+    <h4>Alertas</h4>${seccionAlertas(pos)}
     <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
+    </div>
     ${acciones(pos)}`);
   cargarGrafico(pos, fila);
 }
@@ -259,12 +269,19 @@ async function cargarGrafico(pos, fila) {
   }
   const wrap = $('vd-chart-wrap');
   if (mi !== tokenGrafico || !wrap) return;
-  const d = datosGrafico(serieDesgaste(med), datos.u, fila ? fila.tasa_mm_semana : null);
+  const ancho = Math.max(280, Math.min(720, Math.round(wrap.clientWidth || 480)));
+  const d = datosGrafico(serieDesgaste(med), datos.u, fila ? fila.tasa_mm_semana : null, { ancho, alto: 170 });
   if (!d) { setHtml(wrap, html`<p class="vd-p-nota">Todavía no hay mediciones para graficar.</p>`); return; }
   wrap.replaceChildren(construirGrafico(d));
 }
 
-const COLOR_UMBRAL = { bajo: '#c98a00', critico: '#e06a00', retiro: '#b3261e' };
+const COLOR_UMBRAL = { bajo: '#dcc27c', critico: '#dfa98a', retiro: '#b8777f' };
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+// Fecha corta del eje: "3 sep" (con el año si las marcas son de años distintos).
+function fechaCorta(t, conAnio) {
+  const f = new Date(t);
+  return `${f.getDate()} ${MESES[f.getMonth()]}${conAnio ? ` ${String(f.getFullYear()).slice(2)}` : ''}`;
+}
 function construirGrafico(d) {
   const p0 = d.puntos[0], pn = d.puntos[d.puntos.length - 1];
   const svg = svgEl('svg', { class: 'vd-chart', viewBox: `0 0 ${d.ancho} ${d.alto}`, role: 'img',
@@ -272,20 +289,22 @@ function construirGrafico(d) {
   const m = d.margen;
   d.ejeY.forEach(t => {
     svg.appendChild(svgEl('line', { class: 'vd-g-grid', x1: m.l, y1: t.y, x2: d.ancho - m.r, y2: t.y }));
-    const e = svgEl('text', { class: 'vd-g-eje', x: m.l - 5, y: t.y + 3, 'text-anchor': 'end' }); e.textContent = fmtNum(t.mm); svg.appendChild(e);
+    const e = svgEl('text', { class: 'vd-g-eje', x: m.l - 6, y: t.y + 3, 'text-anchor': 'end' }); e.textContent = fmtNum(t.mm); svg.appendChild(e);
   });
+  // Umbrales: líneas finas discontinuas con su etiqueta en el margen derecho (fuera del área de datos).
   d.umbrales.forEach(t => {
     svg.appendChild(svgEl('line', { class: 'vd-g-umbral', x1: m.l, y1: t.y, x2: d.ancho - m.r, y2: t.y, stroke: COLOR_UMBRAL[t.clave] }));
-    const e = svgEl('text', { class: 'vd-g-eje', x: d.ancho - m.r - 2, y: t.y - 3, 'text-anchor': 'end', fill: COLOR_UMBRAL[t.clave], 'font-weight': '600' });
-    e.textContent = `${t.etiqueta} ${fmtNum(t.mm, 1)}`; svg.appendChild(e);
+    const e = svgEl('text', { class: 'vd-g-eje vd-g-umbral-txt', x: d.ancho - m.r + 6, y: t.y + 3, 'text-anchor': 'start' });
+    e.textContent = `${t.etiqueta} ${fmtNum(t.mm, 0)}`; svg.appendChild(e);
   });
+  const conAnio = new Date(d.ejeX[0].t).getFullYear() !== new Date(d.ejeX[d.ejeX.length - 1].t).getFullYear();
   d.ejeX.forEach((t, i) => {
-    const e = svgEl('text', { class: 'vd-g-eje', x: t.x, y: d.alto - 8, 'text-anchor': i === 0 ? 'start' : 'end' }); e.textContent = fmtFecha(t.t); svg.appendChild(e);
+    const e = svgEl('text', { class: 'vd-g-eje', x: t.x, y: d.alto - 6, 'text-anchor': i === 0 ? 'start' : 'end' }); e.textContent = fechaCorta(t.t, conAnio); svg.appendChild(e);
   });
   if (d.puntos.length > 1) svg.appendChild(svgEl('path', { class: 'vd-g-serie', d: d.linea }));
   if (d.proyeccion) svg.appendChild(svgEl('line', { class: 'vd-g-proy', x1: d.proyeccion.x1, y1: d.proyeccion.y1, x2: d.proyeccion.x2, y2: d.proyeccion.y2 }));
-  d.puntos.forEach(p => {
-    const c = svgEl('circle', { class: 'vd-g-punto', cx: p.x, cy: p.y, r: 3.2 });
+  d.puntos.forEach((p, i) => {
+    const c = svgEl('circle', { class: i === d.puntos.length - 1 ? 'vd-g-punto vd-g-ultimo' : 'vd-g-punto', cx: p.x, cy: p.y, r: i === d.puntos.length - 1 ? 3.5 : 2 });
     const t = svgEl('title'); t.textContent = `${fmtFecha(p.fecha)}: ${fmtMm(p.mm)}`; c.appendChild(t); svg.appendChild(c);
   });
   return svg;
