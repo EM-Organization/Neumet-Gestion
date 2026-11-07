@@ -14,7 +14,7 @@ fi
 [ -n "$CHROME" ] || { echo "No se encontró Chrome (definí CHROME=...)"; exit 2; }
 SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
 # escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
-ALL="login:admin inicio:both vehiculos:both flota:both alertas:both dispositivos:both reportes:both mediciones:both clientes:admin ficha:admin vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente selector-seccional:cliente"
+ALL="login:admin inicio:both vehiculos:both flota:both alertas:both dispositivos:both reportes:both mediciones:both clientes:admin ficha:admin stock:both busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente selector-seccional:cliente"
 mkdir -p "$OUT_DIR"
 python3 -m http.server "$PORT" >/dev/null 2>&1 &
 SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1

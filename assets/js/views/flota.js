@@ -6,7 +6,7 @@ import { showToast, userError, relDate } from '../core/ui.js';
 import { chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import { fmtNum, fmtMm } from '../domain/formato.js';
 import { isClienteMode } from '../core/auth.js';
-import { registerView, switchView } from '../core/nav.js';
+import { registerView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { contextoListo, hayFiltroSeccional, filtrarFilas } from '../core/seccional.js';
@@ -36,24 +36,24 @@ function renderKpis(filtros) {
 }
 
 function card(v, mostrarCliente) {
-  const arg = JSON.stringify([v.patente || v.nombre]);
+  const arg = JSON.stringify([v.vehiculo_id]);
   const clienteNombre = mostrarCliente ? (resumen.find(r => String(r.cliente_id) === String(v.cliente_id)) || {}).nombre : '';
   return html`<div class="dash-fleet-card flota-card ${'sev-' + safeCls(v.semaforo)}" data-vehiculo="${v.vehiculo_id}" data-semaforo="${v.semaforo}">
     <div class="dash-fleet-name">${v.nombre}${v.patente ? html`<span class="dash-fleet-pat">${v.patente}</span>` : ''}
       ${chipEstado(v.semaforo)}</div>
     ${clienteNombre ? html`<div class="flota-cliente">${clienteNombre}</div>` : ''}
     <div class="dash-fleet-stats">
-      <span class="flota-n red">${v.n_critico} crít.</span>
-      <span class="flota-n orange">${v.n_bajo} bajo</span>
-      <span class="flota-n green">${v.n_ok} ok</span>
-      ${v.n_sin_datos ? html`<span class="flota-n gray">${v.n_sin_datos} sin datos</span>` : ''}
+      <span class="flota-n ${v.n_critico ? 'red' : ''}">${v.n_critico} crít.</span>
+      <span class="flota-n">${v.n_bajo} bajo</span>
+      <span class="flota-n">${v.n_ok} ok</span>
+      ${v.n_sin_datos ? html`<span class="flota-n">${v.n_sin_datos} sin datos</span>` : ''}
     </div>
     <div class="flota-meta">
       ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: posición ${v.peor_posicion}, ${fmtMm(v.min_mm)}`}
       ${v.n_sin_medir ? html` · ${v.n_sin_medir} sin medir` : ''}${v.n_irregular ? html` · ${v.n_irregular} con desgaste irregular` : ''}
       <br>Última medición: ${v.ultima_medicion_at ? relDate(v.ultima_medicion_at) : 'nunca'}
     </div>
-    <button class="btn ghost flota-link" data-action="verVehiculoEnLista" data-args="${arg}">Ver vehículo</button>
+    <button class="btn ghost flota-link" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button>
   </div>`;
 }
 
@@ -73,7 +73,7 @@ export function render() {
   if (!lista.length) {
     setHtml($('flota-grid'), vehiculos.length
       ? estadoVacio('Ningún vehículo coincide con los filtros')
-      : estadoVacio('Todavía no hay vehículos con neumáticos', '', { label: 'Ver vehículos', action: 'irA', args: ['vehiculos'], primaria: true }));
+      : estadoVacio('Sin vehículos con neumáticos', '', { label: 'Ver vehículos', action: 'irA', args: ['vehiculos'], primaria: true }));
     return;
   }
   setHtml($('flota-grid'), joinHtml(lista.map(v => card(v, mostrarCliente))));
@@ -115,15 +115,7 @@ export async function load() {
   render();
 }
 
-// Salta a la vista Vehículos con la búsqueda prellenada (patente o nombre).
-registerActions({
-  verVehiculoEnLista(texto) {
-    switchView('vehiculos');
-    const inp = $('search-vehiculos');
-    if (inp) { inp.value = texto || ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }
-  },
-  loadFlota: () => load(),
-});
+registerActions({ loadFlota: () => load() });
 
 export function init() {
   $('flota-cliente').addEventListener('change', render);
@@ -131,4 +123,4 @@ export function init() {
   $('flota-q').addEventListener('input', render);
 }
 
-registerView('flota', 'Flota', load);
+registerView('flota', 'Estado de la flota', load);

@@ -27,7 +27,9 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'reportes': async function(){ nav('reportes'); await sleep(800); },
     'mediciones': async function(){ nav('mediciones'); await sleep(800); },
     'clientes': async function(){ nav('clientes'); await sleep(800); },
-    'ficha': async function(){ nav('ficha'); await sleep(900); },
+    'ficha': async function(){ nav('clientes'); await sleep(800); click('#tbody-clientes [data-action="abrirFichaCliente"]'); await sleep(900); },
+    'stock': async function(){ nav('stock'); await sleep(800); },
+    'busqueda': async function(){ var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 'cam'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
     'selector-seccional': async function(){ nav('flota'); await sleep(800); }
   };
   if(!escenas[name]){ fail('escena desconocida: '+name); return; }
@@ -35,5 +37,6 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   await sleep(300);
   var nv = $('.nav-item.active'), vw = $('.view.active');
   log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
-  if(nv && vw && vw.id !== 'view-vehiculo-detalle' && vw.id !== 'view-'+nv.dataset.view) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
+  var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes'};
+  if(nv && vw && (colgadas[vw.id] ? colgadas[vw.id] !== nv.dataset.view : vw.id !== 'view-'+nv.dataset.view)) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
 };

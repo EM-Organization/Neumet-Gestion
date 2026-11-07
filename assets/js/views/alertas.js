@@ -30,7 +30,7 @@ function filtros() {
 }
 
 function fila(a, mostrarCliente) {
-  const arg = JSON.stringify([a.patente || a.vehiculo_nombre || '']);
+  const arg = JSON.stringify([a.vehiculo_id]);
   const cli = mostrarCliente ? (clientes.find(c => String(c.cliente_id) === String(a.cliente_id)) || {}).nombre : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}">
     <td>${chipSeveridad(a.severidad)}</td>
@@ -39,7 +39,7 @@ function fila(a, mostrarCliente) {
     <td>${a.vehiculo_nombre}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
     <td>${a.posicion ?? '—'}</td>
     <td>${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
-    <td><button class="btn ghost" data-action="verVehiculoEnLista" data-args="${arg}">Ver vehículo</button></td>
+    <td><button class="btn ghost" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button></td>
   </tr>`;
 }
 

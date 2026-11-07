@@ -21,13 +21,14 @@ core/
   conexion.js           eventos online/offline + acción «Reintentar» del aviso de conexión
   actions.js            ACTIONS + registerActions + listener delegado (data-action / data-change / data-backdrop-close)
   auth.js               checkAuth, login/logout, modo cliente (currentClienteId, isClienteMode), hooks onLogin/onLogout
-  nav.js                registerView(nombre, etiqueta, load), switchView, sidebar móvil
+  nav.js                registerView(nombre, etiqueta, load, {menu}), switchView, setTitulo (migas), sidebar móvil
+  buscador.js           buscador de vehículos por matrícula o número (barra superior, Inicio; atajo «/»)
   brand.js              BRAND (paleta para SVG generados por JS)
   svg.js                svgEl(tag, attrs)
 domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
-  inicio.js             PURO: estadoInicio (vacio | sin_mediciones | con_datos)
+  inicio.js             PURO: estadoInicio, proporciones, requierenAtencion, proximosCambios, resumen de dispositivos
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
@@ -39,7 +40,7 @@ views/
 
 Dependencias permitidas: `views/*` -> `core/*` y `domain/*`; `core/*` nunca importa `views/*` (usa los hooks
 `registerView`, `onLogin`, `onLogout`, `ACTIONS`); `domain/*` no importa nada del DOM. Entre vistas solo se importa lo
-estrictamente compartido (p. ej. `neumaticos.js` -> `getVehiculos()` de `vehiculos.js`; `vehiculos.js` -> `loadStock`);
+estrictamente compartido (p. ej. `neumaticos.js` -> `getVehiculos()` de `vehiculos.js`);
 para el resto se usa `ACTIONS.<nombre>` (evita ciclos).
 
 ## Contrato de una vista
@@ -121,8 +122,8 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
   de carga o al perder la red (`setStatus(false)` / evento `offline`). Nunca «Conectando…».
 - **Copy**: si un texto no ayuda a decidir o actuar, se elimina. Títulos cortos, sin subtítulos de relleno; los vacíos dicen
   qué pasa y, si existe, ofrecen la acción concreta.
-- **Menú del cliente**: Inicio, Vehículos, Alertas, Reportes, Dispositivos (solo lectura). Se quitan «Mi panel» (duplicaba Inicio),
+- **Menú del cliente**: Inicio, Vehículos, Alertas, Stock (solo lectura), Reportes, Dispositivos (solo lectura). Se quitan «Mi panel» (duplicaba Inicio),
   «Mi resumen» (la ficha es de administración), «Mediciones» (el detalle por vehículo y el export viven en Vehículos y Reportes)
   y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
-  Clientes, Ficha de cliente y Balance bajo «Administración».
+  Clientes (la ficha se abre desde la lista) y Balance bajo «Administración». Mapa completo: `docs/12-mapa-navegacion.md`.
 - **Solo lectura para el cliente**: Dispositivos y Stock sin alta/edición/baja (UI oculta + guardas en las acciones; la RLS lo impide igual).

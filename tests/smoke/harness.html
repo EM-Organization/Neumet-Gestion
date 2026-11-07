@@ -30,8 +30,9 @@
     document.body.appendChild(fr);
     // Errores durante la carga de los módulos: hook inyectado antes de los scripts. Congela Date (hora fija) para que las firmas de texto sean deterministas.
     src=src.replace('<head>','<head><script>(function(){var R=Date,F=R.UTC(2026,5,15,12,0,0);function FD(){if(!(this instanceof FD))return new R(F).toString();return arguments.length?new (Function.prototype.bind.apply(R,[null].concat([].slice.call(arguments))))():new R(F);}FD.prototype=R.prototype;FD.now=function(){return F};FD.UTC=R.UTC;FD.parse=R.parse;window.Date=FD;})();window.addEventListener("error",function(e){parent.__fail("onerror: "+e.message)});window.addEventListener("error",function(e){var t=e.target;if(t&&t.tagName&&t!==window)parent.__fail("recurso no cargado: "+(t.src||t.href))},true);window.addEventListener("unhandledrejection",function(e){parent.__fail("unhandledrejection: "+(e.reason&&e.reason.message||e.reason))});var __ce=console.error;console.error=function(){parent.__fail("console.error: "+Array.prototype.join.call(arguments," "));__ce.apply(console,arguments)};<\/script>');
-    // Con ?end=<vista> (capturas) se desactivan transiciones/animaciones para que el PNG sea reproducible.
-    if(/[?&]end=/.test(location.search)) src=src.replace('</head>','<style>*{transition:none!important;animation:none!important}</style></head>');
+    // Con ?end=<vista> o ?shot=<escena> (capturas) se desactivan transiciones/animaciones para que el PNG sea reproducible.
+    // Sin esto, Chrome con tiempo virtual puede fotografiar el menú a mitad de la transición (con el ítem anterior aún resaltado).
+    if(/[?&](end|shot)=/.test(location.search)) src=src.replace('</head>','<style>*{transition:none!important;animation:none!important}</style></head>');
     window.__fail=fail;
     fr.srcdoc=src;
     await new Promise(function(r){ fr.onload=r; });
@@ -122,18 +123,17 @@
         if($('#'+m[2]).classList.contains('show')) fail('modal no cerrado: '+m[2]);
       }
     }
-    nav('vehiculos'); await sleep(300);
-    click($('.sub-tab[data-subtab="sv-stock"]'),'subtab stock'); await sleep(500);
+    nav('stock'); await sleep(500);
     log.push('stock filas='+d.querySelectorAll('#tbody-stock tr').length);
     if(cliMode){
       // Stock de solo lectura para el cliente: sin alta, edición ni baja
-      var stockAcc=Array.prototype.some.call(d.querySelectorAll('#sv-stock [data-action="openStockModal"]'),function(b){ return b.getClientRects().length>0; });
+      var stockAcc=Array.prototype.some.call(d.querySelectorAll('#view-stock [data-action="openStockModal"]'),function(b){ return b.getClientRects().length>0; });
       if(stockAcc) fail('stock(cliente): ve el alta de compras');
       if(d.querySelectorAll('#tbody-stock button[data-sa]').length) fail('stock(cliente): ve botones de editar/eliminar');
     } else if(click(act('openStockModal'),'openStockModal')){ await sleep(400);
       if(!$('#modal-stock').classList.contains('show')) fail('modal-stock no abierto');
       click(act('closeStockModal'),'closeStockModal'); }
-    click($('.sub-tab[data-subtab="sv-vehiculos"]'),'subtab veh'); await sleep(300);
+    nav('vehiculos'); await sleep(500);
     var nb=d.querySelector('#tbody-vehiculos [data-va="neum"],#tbody-vehiculos [data-action="openNeumaticosModal"], #tbody-vehiculos [onclick*="openNeumaticosModal"]');
     if(nb){ nb.click(); await sleep(600);
       if(!$('#modal-neumaticos').classList.contains('show')) fail('modal-neumaticos no abierto');

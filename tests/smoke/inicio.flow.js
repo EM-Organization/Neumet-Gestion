@@ -10,23 +10,65 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   await sleep(600);
   if(!$('#view-inicio').classList.contains('active')) fail('inicio('+rol+'): no es la vista inicial');
   if($('#breadcrumb-current').textContent !== 'Inicio') fail('inicio('+rol+'): breadcrumb '+$('#breadcrumb-current').textContent);
-  var tarjetas = all('#inicio-contenido .atencion-card');
-  var nums = tarjetas.map(function(t){ return t.querySelector('.atencion-n').textContent; }).join(',');
-  log.push('inicio('+rol+'): tarjetas='+nums);
-  // críticos, alertas, dispositivos sin actividad (caído + sin actividad), vehículos sin medir (fixtures de flota y salud)
-  if(nums !== '1,4,2,2') fail('inicio('+rol+'): contadores inesperados '+nums);
-  tarjetas.forEach(function(t){
-    if(!t.querySelector('.atencion-estado .badge') || !/\S/.test(t.querySelector('.atencion-estado').textContent)) fail('inicio: tarjeta sin chip con texto');
+  var cont = $('#inicio-contenido');
+  var txt = cont.textContent.replace(/\s+/g, ' ');
+  // Fixtures de flota: 7 neumáticos (3 ok, 2 bajo, 1 crítico, 1 sin datos) en 4 vehículos
+  if(!/3 de 7 neumáticos en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,120));
+  if(all('#inicio-contenido .inicio-seg').length < 3) fail('inicio('+rol+'): falta la barra segmentada');
+  var filas = all('#inicio-contenido [data-action="verVehiculo"]');
+  if(!filas.length) fail('inicio('+rol+'): sin lista de vehículos que requieren atención');
+  if(!/Requieren atención/.test(txt) || !/Próximos cambios/.test(txt)) fail('inicio('+rol+'): faltan bloques');
+  if(!/1 neumático crítico/.test(txt)) fail('inicio('+rol+'): falta la causa del vehículo crítico');
+  if(!/~6 semanas/.test(txt)) fail('inicio('+rol+'): faltan los próximos cambios con semanas');
+  if(!/Dispositivos: \d+ de \d+ activos/.test(txt)) fail('inicio('+rol+'): falta la línea de dispositivos');
+  if(!$('#inicio-contenido [data-action="irA"][data-args=\'["alertas"]\']')) fail('inicio('+rol+'): falta "Ver todas las alertas"');
+  if(!$('#inicio-contenido [data-action="irA"][data-args=\'["dispositivos"]\']')) fail('inicio('+rol+'): los dispositivos sin actividad no enlazan a Dispositivos');
+  // El rojo solo como punto de neumáticos críticos: ni tarjetas ni chips rojos en Inicio
+  if(cont.querySelector('.badge.red')) fail('inicio('+rol+'): chip rojo en Inicio');
+  all('#inicio-contenido .inicio-card').forEach(function(c){
+    var cs = w.getComputedStyle(c);
+    if(/rgb\(192, 57, 43\)/.test(cs.borderLeftColor+cs.backgroundColor)) fail('inicio('+rol+'): tarjeta con borde o fondo rojo');
   });
+  if(all('#inicio-contenido .inicio-fila .inicio-punto.critico').length !== 1) fail('inicio('+rol+'): debe haber un punto rojo (un vehículo crítico)');
   var titulo = $('#inicio-title').textContent;
-  if(cliMode ? titulo.indexOf('Hola, ') !== 0 : titulo !== 'Inicio') fail('inicio('+rol+'): título '+titulo);
-  if(/Todavía no hay datos|Todavía no hay vehículos/.test($('#inicio-contenido').textContent)) fail('inicio('+rol+'): muestra "sin datos" teniendo datos');
-  if(/¿Qué requiere/.test($('#view-inicio').textContent)) fail('inicio('+rol+'): queda el subtítulo de relleno');
-  if(!$('#inicio-contenido .atencion-veh [data-action="verVehiculoEnLista"]')) fail('inicio('+rol+'): sin lista de vehículos que urgen');
-  var listaClientes = /Clientes con más urgencias/.test($('#inicio-contenido').textContent);
+  if(titulo !== 'Inicio') fail('inicio('+rol+'): título '+titulo);
+  if(/Todavía no hay datos|Todavía no hay vehículos/.test(txt)) fail('inicio('+rol+'): muestra "sin datos" teniendo datos');
+  var listaClientes = /Clientes con más urgencias/.test(txt);
   if(cliMode && listaClientes) fail('inicio(cliente): ve la lista de clientes (solo admin)');
   if(!cliMode && !listaClientes) fail('inicio(admin): falta la lista de clientes');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre de vehículo sin escapar');
+  log.push('inicio('+rol+'): '+txt.slice(0,160));
+
+  // --- Buscador de Inicio: Enter abre el detalle con una coincidencia; lista si hay varias ---
+  var bi = $('#busq-inicio-input');
+  if(!bi || !visible(bi)) fail('inicio('+rol+'): falta el buscador prominente');
+  else {
+    if(bi.placeholder !== 'Matrícula o número de coche') fail('inicio: placeholder del buscador: '+bi.placeholder);
+    var escribirB = async function(inp, v){ inp.value = v; inp.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(350); };
+    var enviar = async function(inp){ inp.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(700); };
+    await escribirB(bi, 'cam'); await enviar(bi);
+    if(all('#busq-inicio-res .busq-op').length < 2) fail('inicio: varias coincidencias deben mostrar lista');
+    if($('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: con varias coincidencias no debe abrir el detalle');
+    await escribirB(bi, 'sab 1234'); // matrícula guardada como SAB-1234, escrita con espacio
+    if(all('#busq-inicio-res .busq-op').length !== 1) fail('inicio: la matrícula con guion/espacio no se encuentra');
+    await escribirB(bi, 'ab123cd'); await enviar(bi);
+    if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: Enter con una coincidencia no abre el detalle');
+    if($('.nav-item.active').dataset.view !== 'vehiculos') fail('detalle: el menú debe resaltar Vehículos');
+    if(!/Volver a Inicio/.test($('#vd-volver').textContent)) fail('detalle: "Volver" debe nombrar la vista de origen: '+$('#vd-volver').textContent);
+    $('#vd-volver').click(); await sleep(500);
+    if(!$('#view-inicio').classList.contains('active') || $('.nav-item.active').dataset.view !== 'inicio') fail('detalle: "Volver" no regresa a Inicio');
+    await escribirB(bi, '205'); await enviar(bi); // por número de coche
+    if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: el número de coche no abre el detalle');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    await escribirB(bi, 'zzz'); 
+    if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: falta el mensaje sin coincidencias');
+    bi.value = ''; bi.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(100);
+  }
+  // Lista "Requieren atención" -> detalle
+  var primera = $('#inicio-contenido .inicio-fila[data-action="verVehiculo"]');
+  if(primera){ primera.click(); await sleep(700);
+    if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: la fila no abre el detalle');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(500); }
 
   // --- Sin "Conectando…" permanente: el aviso de conexión solo existe ante un problema real ---
   var pill = $('#status-pill');
@@ -40,34 +82,56 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   pill.querySelector('[data-action="reintentarConexion"]').click(); await sleep(300);
   if(!pill.hidden) fail('conexion: "Reintentar" no oculta el aviso');
 
-  // --- Menú por rol: el cliente ve solo Inicio, Vehículos, Alertas, Reportes y Dispositivos ---
+  // --- Menú por rol ---
   var navVisible = function(v){ return visible($('.nav-item[data-view="'+v+'"]')); };
-  ['inicio','vehiculos','alertas','reportes','dispositivos'].forEach(function(v){
+  ['inicio','vehiculos','alertas','stock','reportes','dispositivos'].forEach(function(v){
     if(!navVisible(v)) fail('menu('+rol+'): falta '+v);
   });
-  ['salud','dashboard'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada duplicada '+v); });
+  ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
+  var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; }).join(',');
-    if(visibles !== 'inicio,vehiculos,alertas,reportes,dispositivos') fail('menu(cliente): menú inesperado: '+visibles);
+    if(visibles.join(',') !== 'inicio,vehiculos,alertas,stock,reportes,dispositivos') fail('menu(cliente): menú inesperado: '+visibles.join(','));
     all('[data-admin-only]').forEach(function(el){ if(visible(el)) fail('menu(cliente): elemento admin visible: '+(el.id||el.className||el.textContent.trim().slice(0,30))); });
-    if(/administración|mi panel|mi resumen|mediciones/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee texto de administración o duplicados');
+    if(/administración|mi panel|mi resumen|mediciones|balance|clientes/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee texto de administración');
+    if(visible($('[data-action="openStockModal"]'))) fail('stock(cliente): ve el alta de compras');
   } else {
-    ['flota','mediciones','clientes','ficha','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
+    ['flota','mediciones','clientes','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
     if(!/administración/i.test($('.sidebar-nav').innerText)) fail('menu(admin): falta sección Administración');
   }
   var activos = all('.nav-item.active');
   if(activos.length !== 1 || activos[0].dataset.view !== 'inicio' || activos[0].getAttribute('aria-current') !== 'page') fail('menu: Inicio debe ser el único activo con aria-current');
   all('.nav-item').forEach(function(n){ if(n.tagName !== 'BUTTON') fail('menu: el ítem '+n.dataset.view+' no es un botón (no se alcanza con teclado)'); });
 
-  // --- Las tarjetas llevan a la vista correspondiente ---
-  var destinos = {alertas:'alertas', dispositivos:'dispositivos', flota: cliMode ? 'vehiculos' : 'flota'};
-  for(var v in destinos){
-    var card = $('#inicio-contenido .atencion-card[data-tarjeta="'+destinos[v]+'"]');
-    if(!card){ fail('inicio('+rol+'): falta la tarjeta que lleva a '+destinos[v]); continue; }
-    card.click(); await sleep(400);
-    if(!$('#view-'+destinos[v]).classList.contains('active')) fail('inicio('+rol+'): la tarjeta '+v+' no abre su vista');
-    $('.nav-item[data-view="inicio"]').click(); await sleep(500);
+  // --- Recorrido de TODO el menú: vista activa, ítem resaltado único y título coherentes (sin errores de consola: lo vigila el arnés) ---
+  for(var mi = 0; mi < visibles.length; mi++){
+    var vv = visibles[mi];
+    $('.nav-item[data-view="'+vv+'"]').click(); await sleep(500);
+    var act = all('.nav-item.active');
+    if(act.length !== 1 || act[0].dataset.view !== vv) fail('menu('+rol+'): al abrir '+vv+' el resaltado es '+act.map(function(n){ return n.dataset.view; }).join(','));
+    if(!$('#view-'+vv) || !$('#view-'+vv).classList.contains('active')) fail('menu('+rol+'): '+vv+' no muestra su vista');
+    if(all('.view.active').length !== 1) fail('menu('+rol+'): más de una vista activa en '+vv);
+    if(!$('#breadcrumb-current').textContent.trim()) fail('menu('+rol+'): '+vv+' sin título');
+    var bus = vv === 'inicio' ? '#busq-inicio-input' : vv === 'vehiculos' ? '#search-vehiculos' : '#busq-global-input';
+    if(!visible($(bus))) fail('buscador ('+rol+'): no hay buscador visible en '+vv);
   }
+  // --- Buscador global (barra superior, atajo "/") desde otra pantalla ---
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(500);
+  d.body.focus(); key('/');
+  if(d.activeElement !== $('#search-vehiculos')) fail('buscador('+rol+'): "/" en Vehículos no enfoca su buscador');
+  $('.nav-item[data-view="alertas"]').click(); await sleep(400);
+  var bg = $('#busq-global-input');
+  d.body.focus(); key('/'); 
+  if(d.activeElement !== bg) fail('buscador global('+rol+'): "/" no enfoca el buscador');
+  bg.value = 'ab 123-cd'; bg.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(400);
+  if(all('#busq-global-res .busq-op').length !== 1) fail('buscador global('+rol+'): no encuentra AB123CD escrito como "ab 123-cd"');
+  bg.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(800);
+  if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('buscador global('+rol+'): Enter no abre el detalle');
+  if(!/Volver a Alertas/.test($('#vd-volver').textContent)) fail('buscador global: "Volver" debe regresar a Alertas');
+  if(bg.value !== '') fail('buscador global: no se limpia tras abrir');
+  var tinp = d.createElement('input'); d.body.appendChild(tinp); tinp.focus(); tinp.dispatchEvent(new w.KeyboardEvent('keydown',{key:'/',bubbles:true,cancelable:true}));
+  if(d.activeElement !== tinp) fail('buscador global: "/" no debe robar el foco de otro campo');
+  tinp.remove();
+  $('.nav-item[data-view="inicio"]').click(); await sleep(500);
 
   // --- Accesibilidad estática ---
   all('th').forEach(function(th){ if(!th.getAttribute('scope')) fail('a11y: <th> sin scope: '+th.textContent.trim().slice(0,30)); });
@@ -75,7 +139,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   all('input:not([type=hidden]):not([type=checkbox]),select,textarea').forEach(function(c){
     if(c.closest('#view-ficha .ficha-umbrales')) return; // generado por otra vista
     var etiquetado = (c.id && d.querySelector('label[for="'+c.id+'"]')) || c.closest('label') || c.getAttribute('aria-label') || c.getAttribute('aria-labelledby');
-    if(!etiquetado) fail('a11y: control sin etiqueta: '+(c.id||c.name||c.type));
+    if(!etiquetado) fail('a11y: control sin etiqueta: '+(c.id||c.name||c.type)+' '+c.outerHTML.slice(0,100));
   });
   if($('#sr-live').getAttribute('aria-live') !== 'polite' || $('#sr-alert').getAttribute('role') !== 'alert') fail('a11y: faltan regiones vivas para avisos');
   if(!$('.skip-link')) fail('a11y: falta el enlace "Saltar al contenido"');
@@ -105,8 +169,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     fxv.vacio = true;
     $('.nav-item[data-view="inicio"]').click(); await sleep(500);
     var txt = $('#inicio-contenido').textContent;
-    if(/Todavía no hay datos|Todavía no hay vehículos/.test(txt)) fail('inicio('+rol+'): "sin datos" con vehículos registrados: '+txt.slice(0,80));
-    if(!/vehículos registrados, sin mediciones todavía/.test(txt)) fail('inicio('+rol+'): falta el estado "vehículos sin mediciones": '+txt.slice(0,80));
+    if(/Sin vehículos registrados/.test(txt)) fail('inicio('+rol+'): "sin datos" con vehículos registrados: '+txt.slice(0,80));
+    if(!/vehículos registrados, sin mediciones/.test(txt)) fail('inicio('+rol+'): falta el estado "vehículos sin mediciones": '+txt.slice(0,80));
     if(!$('#inicio-contenido [data-action="irA"]')) fail('inicio('+rol+'): el estado sin mediciones no ofrece acción');
     fxv.vacio = false;
   }

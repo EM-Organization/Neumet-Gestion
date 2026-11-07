@@ -24,11 +24,11 @@
     <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
       <img class="login-logo" src="../assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="220" height="24"/>
     </div>
-    <div class="login-title">Bienvenido</div>
-    <div class="login-sub">Iniciá sesión para continuar</div>
+    <div class="login-title">Acceso</div>
+    <div class="login-sub">Iniciar sesión para continuar</div>
     <div class="login-error" id="login-error"></div>
     <form class="login-form" id="login-form">
-      <div class="field"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email"/></div>
+      <div class="field"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="correo@empresa.com" required autocomplete="email"/></div>
       <div class="field"><label for="login-password">Contraseña</label><input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password"/></div>
       <button type="submit" class="login-btn" id="login-btn">Iniciar sesión</button>
     </form>
@@ -57,6 +57,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Alertas
       </button>
+      <button type="button" class="nav-item" data-view="stock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+        Stock
+      </button>
       <button type="button" class="nav-item" data-view="reportes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Reportes
@@ -78,10 +82,6 @@
       <button type="button" class="nav-item" data-view="clientes" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Clientes
-      </button>
-      <button type="button" class="nav-item" data-view="ficha" data-admin-only>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg>
-        Ficha de cliente
       </button>
       <button type="button" class="nav-item" data-view="balance" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -106,8 +106,15 @@
         <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <h1 class="breadcrumb" id="breadcrumb-current">Inicio</h1>
+        <h1 class="breadcrumb"><button type="button" class="breadcrumb-parent" id="breadcrumb-parent" data-action="irA" hidden></button><span class="breadcrumb-sep" id="breadcrumb-sep" aria-hidden="true" hidden> › </span><span id="breadcrumb-current">Inicio</span></h1>
       </div>
+      <form class="busq busq-barra" id="busq-global" role="search" data-buscador autocomplete="off">
+        <label class="sr-only" for="busq-global-input">Buscar vehículo por matrícula o número de coche</label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="busq-global-input" type="search" placeholder="Matrícula o número de coche" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-global-res" aria-expanded="false"/>
+        <kbd class="busq-atajo" aria-hidden="true">/</kbd>
+        <ul class="busq-resultados" id="busq-global-res" hidden></ul>
+      </form>
       <label class="sec-selector" id="sec-selector" style="display:none">Seccional
         <select id="sec-select" class="flota-select" data-change="seccionalCambiar" aria-label="Seccional"></select>
       </label>
@@ -128,6 +135,12 @@
           </div>
           <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
         </div>
+        <form class="busq busq-grande" id="busq-inicio" role="search" data-buscador autocomplete="off">
+          <label class="sr-only" for="busq-inicio-input">Buscar vehículo por matrícula o número de coche</label>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="busq-inicio-input" type="search" placeholder="Matrícula o número de coche" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
+          <ul class="busq-resultados" id="busq-inicio-res" hidden></ul>
+        </form>
         <div id="inicio-contenido" aria-live="polite">
           <div class="loading-state" role="status"><div class="spinner" aria-hidden="true"></div>Cargando…</div>
         </div>
@@ -153,7 +166,7 @@
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-clientes" type="text" placeholder="Buscar cliente..." aria-label="Buscar cliente"/>
+            <input id="search-clientes" type="text" placeholder="Buscar cliente…" aria-label="Buscar cliente"/>
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary)"><input type="checkbox" id="chk-clientes-deleted"/> Mostrar eliminados</label>
           <button class="btn ghost" data-action="loadClients">
@@ -171,7 +184,7 @@
               <th scope="col" style="width:90px"></th>
             </tr></thead>
             <tbody id="tbody-clientes">
-              <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div>Cargando clientes...</div></td></tr>
+              <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div>Cargando clientes…</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -219,7 +232,7 @@
             <div class="balance-card-header">
               <div>
                 <div class="balance-card-title">Ingresos por cliente</div>
-                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">Editá el precio mensual de cada uno</div>
+                <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">Precio mensual por cliente</div>
               </div>
               <div class="balance-card-total ingreso" id="total-ingresos-lbl">$0</div>
             </div>
@@ -288,20 +301,8 @@
       <!-- VEHÍCULOS -->
       <div class="view" id="view-vehiculos">
 
-        <!-- Sub-tabs -->
-        <div class="sub-tabs-bar">
-          <button class="sub-tab active" data-subtab="sv-vehiculos" data-action="switchSubTab" data-args='["sv-vehiculos"]'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            Vehículos
-          </button>
-          <button class="sub-tab" data-subtab="sv-stock" data-action="switchSubTab" data-args='["sv-stock"]'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
-            Stock de neumáticos
-          </button>
-        </div>
-
         <!-- Sub-view: Vehículos -->
-        <div class="sub-view" id="sv-vehiculos">
+        <div id="sv-vehiculos">
           <div class="page-header">
             <div>
               <div class="page-title">Vehículos</div>
@@ -333,62 +334,61 @@
               <thead><tr>
                 <th scope="col" style="width:60px">ID</th>
                 <th scope="col">Nombre</th>
-                <th scope="col">Patente</th>
+                <th scope="col">Matrícula</th>
                 <th scope="col">Cliente</th>
                 <th scope="col">Ruedas</th>
                 <th scope="col">Estado</th>
                 <th scope="col" style="width:110px"></th>
               </tr></thead>
               <tbody id="tbody-vehiculos">
-                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos...</div></td></tr>
+                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando vehículos…</div></td></tr>
               </tbody>
             </table>
           </div>
         </div>
+      </div>
 
-        <!-- Sub-view: Stock de Neumáticos -->
-        <div class="sub-view" id="sv-stock" style="display:none">
-          <div class="page-header">
-            <div>
-              <div class="page-title">Stock de neumáticos</div>
-            </div>
-            <button class="btn primary" data-admin-only data-action="openStockModal" data-args='["create"]'>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-              Agregar compra
-            </button>
+      <!-- STOCK -->
+      <div class="view" id="view-stock">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Stock de neumáticos</div>
           </div>
-          <div class="toolbar">
-            <div class="search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input id="search-stock" type="text" placeholder="Buscar marca o modelo..." aria-label="Buscar marca o modelo"/>
-            </div>
-            <select id="filter-cliente-stock" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
-              <option value="">Todos los clientes</option>
-            </select>
-            <button class="btn ghost" data-action="loadStock">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              Actualizar
-            </button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th scope="col">Marca</th>
-                <th scope="col">Modelo</th>
-                <th scope="col">Cliente</th>
-                <th scope="col">Precio/ud</th>
-                <th scope="col">Fecha compra</th>
-                <th scope="col">Asignados</th>
-                <th scope="col">Notas</th>
-                <th scope="col" style="width:80px" data-admin-only><span class="sr-only">Acciones</span></th>
-              </tr></thead>
-              <tbody id="tbody-stock">
-                <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando...</div></td></tr>
-              </tbody>
-            </table>
-          </div>
+          <button class="btn primary" data-admin-only data-action="openStockModal" data-args='["create"]'>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Agregar compra
+          </button>
         </div>
-
+        <div class="toolbar">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="search-stock" type="text" placeholder="Buscar marca o modelo…" aria-label="Buscar marca o modelo"/>
+          </div>
+          <select id="filter-cliente-stock" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+            <option value="">Todos los clientes</option>
+          </select>
+          <button class="btn ghost" data-action="loadStock">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Actualizar
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th scope="col">Marca</th>
+              <th scope="col">Modelo</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Precio/ud</th>
+              <th scope="col">Fecha compra</th>
+              <th scope="col">Asignados</th>
+              <th scope="col">Notas</th>
+              <th scope="col" style="width:80px" data-admin-only><span class="sr-only">Acciones</span></th>
+            </tr></thead>
+            <tbody id="tbody-stock">
+              <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- DISPOSITIVOS -->
@@ -407,7 +407,7 @@
         <div class="toolbar">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre..." aria-label="Buscar MAC o nombre"/>
+            <input id="search-dispositivos" type="text" placeholder="Buscar MAC o nombre…" aria-label="Buscar MAC o nombre"/>
           </div>
           <select id="disp-estado" class="select-filter" aria-label="Estado" data-change="dispEstadoChange">
             <option value="">Todos los estados</option>
@@ -475,7 +475,7 @@
               <div class="med-select-block">
                 <div class="med-search">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-                  <input id="med-cliente-search" aria-label="Buscar cliente" type="text" placeholder="Buscar cliente..."/>
+                  <input id="med-cliente-search" aria-label="Buscar cliente" type="text" placeholder="Buscar cliente…"/>
                 </div>
                 <select id="med-cliente-select" aria-label="Cliente"><option value="">— Seleccionar cliente —</option></select>
                 <select id="med-vehiculo-select" aria-label="Vehículo" disabled><option value="">— Seleccionar vehículo —</option></select>
@@ -484,12 +484,12 @@
 
             <div class="med-card med-top-left" id="med-panel-dispositivo" style="display:none">
               <div class="med-card-header">
-                <div><div class="med-card-title">Dispositivo</div><div class="med-card-sub">Seleccioná un medidor</div></div>
+                <div><div class="med-card-title">Dispositivo</div><div class="med-card-sub">Elegir un medidor</div></div>
               </div>
               <div style="padding:10px 14px 6px">
                 <div class="med-search">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-                  <input id="med-device-search" aria-label="Buscar dispositivo" type="text" placeholder="Buscar MAC o nombre..."/>
+                  <input id="med-device-search" aria-label="Buscar dispositivo" type="text" placeholder="Buscar MAC o nombre…"/>
                 </div>
               </div>
               <div class="device-list" id="med-device-list">
@@ -516,18 +516,18 @@
                 </button>
                 <button id="med-report-btn" data-action="generarReportePDF" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                  Reporte PDF
+                  Reporte imprimible
                 </button>
               </div>
             </div>
 
             <div class="med-card med-top-right" id="med-sessions-card" style="display:none;flex-direction:column">
               <div class="med-card-header">
-                <div><div class="med-card-title">Sesiones de medición</div><div class="med-card-sub" id="med-sessions-sub">Seleccioná una sesión para ver el estado del camión</div></div>
+                <div><div class="med-card-title">Sesiones de medición</div><div class="med-card-sub" id="med-sessions-sub">Elegir una sesión para ver el estado del camión</div></div>
               </div>
               <div class="session-list" id="med-sessions-list">
                 <div class="med-empty" style="padding:32px">
-                  <div style="font-size:13px;color:var(--text-tertiary)">Seleccioná un dispositivo</div>
+                  <div style="font-size:13px;color:var(--text-tertiary)">Elegir un dispositivo</div>
                 </div>
               </div>
             </div>
@@ -543,12 +543,12 @@
             <div class="med-card" id="med-detail-card">
               <div class="med-empty" id="med-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8l4 4-4 4"/></svg>
-                <div style="font-weight:500;color:var(--text-secondary);margin-bottom:4px" id="med-empty-title">Seleccioná un vehículo</div>
-                <div style="font-size:13px" id="med-empty-sub">Luego hacé clic en un neumático para ver sus mediciones</div>
+                <div style="font-weight:500;color:var(--text-secondary);margin-bottom:4px" id="med-empty-title">Elegir un vehículo</div>
+                <div style="font-size:13px" id="med-empty-sub">Después, elegir un neumático para ver sus mediciones</div>
               </div>
               <div id="med-loading" style="display:none" class="med-empty">
                 <div class="spinner"></div>
-                <div>Cargando mediciones...</div>
+                <div>Cargando mediciones…</div>
               </div>
               <div id="med-tire-detail" style="display:none">
                 <div class="tire-detail-header">
@@ -592,7 +592,7 @@
 
       <!-- DETALLE DE VEHÍCULO (diagrama de ruedas) -->
       <div class="view" id="view-vehiculo-detalle">
-        <button type="button" class="btn ghost vd-volver" data-action="detalleVolver">&larr; Volver a vehículos</button>
+        <button type="button" class="btn ghost vd-volver" id="vd-volver" data-action="detalleVolver">&larr; Volver</button>
         <div id="vd-cab" class="vd-cab"></div>
         <div class="vd-layout">
           <section class="vd-diagrama-card" aria-label="Diagrama de ruedas">
@@ -625,7 +625,7 @@
             <option value="sin_datos">Sin datos</option>
             <option value="ok">OK</option>
           </select>
-          <div class="search"><input id="flota-q" type="text" placeholder="Buscar vehículo o patente..." aria-label="Buscar vehículo"/></div>
+          <div class="search"><input id="flota-q" type="text" placeholder="Matrícula o nombre" aria-label="Filtrar por matrícula o nombre"/></div>
         </div>
         <div class="rep-progress" id="flota-msg" role="status" aria-live="polite"></div>
         <div class="dash-fleet-grid" id="flota-grid"></div>
@@ -662,15 +662,13 @@
 
       <!-- FICHA DE CLIENTE -->
       <div class="view" id="view-ficha">
+        <button type="button" class="btn ghost vd-volver" id="ficha-volver" data-action="volverAClientes">&larr; Volver a Clientes</button>
         <div class="page-header">
           <div>
             <div class="page-title" id="ficha-nombre">Cliente</div>
           </div>
           <div class="ficha-actions">
-            <label id="ficha-selector" class="ficha-selector" data-admin-only>Cliente
-              <select id="ficha-cliente" class="select-filter" data-change="fichaClienteChange"></select>
-            </label>
-            <button class="btn ghost" data-action="loadFicha">Actualizar</button>
+            <button type="button" class="btn ghost" data-action="loadFicha">Actualizar</button>
           </div>
         </div>
         <div class="ficha-kpis" id="ficha-kpis"></div>
@@ -691,7 +689,7 @@
           <div class="ficha-card-title">Seccionales y usuarios</div>
           <div class="ficha-sub">Un usuario global ve toda la flota del cliente; un usuario de seccional solo ve los vehículos y dispositivos de su seccional (y no puede editar umbrales).</div>
           <div class="sec-alta">
-            <input type="text" id="sec-nombre" maxlength="100" placeholder="Nueva seccional (p. ej. Salto)" aria-label="Nombre de la nueva seccional"/>
+            <input type="text" id="sec-nombre" maxlength="100" placeholder="Nueva seccional" aria-label="Nombre de la nueva seccional"/>
             <button class="btn primary" data-action="seccionalCrear">Agregar seccional</button>
           </div>
           <div class="login-error" id="sec-error" role="alert"></div>
@@ -705,7 +703,7 @@
           <div class="sec-user-form">
             <div class="field"><label for="sec-user-email">Email del nuevo usuario</label><input type="text" id="sec-user-email" autocomplete="off"/></div>
             <div class="field"><label for="sec-user-sucursal">Alcance</label><select id="sec-user-sucursal" class="select-filter"></select></div>
-            <div class="field"><label for="sec-user-password">Contraseña (opcional)</label><input type="password" id="sec-user-password" autocomplete="new-password"/><div class="ficha-ayuda">Vacía = se envía una invitación por email. Mínimo 12 caracteres.</div></div>
+            <div class="field"><label for="sec-user-password">Contraseña (opcional)</label><input type="password" id="sec-user-password" autocomplete="new-password"/><div class="ficha-ayuda">Vacía: se envía una invitación por email. Mínimo 12 caracteres.</div></div>
             <button class="btn primary" id="sec-user-crear" data-action="seccionalCrearUsuario">Crear usuario</button>
           </div>
         </div>
@@ -719,7 +717,7 @@
           </div>
           <div class="login-error" id="ficha-api-error" role="alert"></div>
           <div id="ficha-api-cred" style="display:none">
-            <div class="ficha-ayuda"><strong>Guardá estas credenciales ahora: no se volverán a mostrar.</strong></div>
+            <div class="ficha-ayuda"><strong>Guardar estas credenciales: no se vuelven a mostrar.</strong></div>
             <div class="field"><label>Email</label><div id="ficha-api-cred-email"></div></div>
             <div class="field"><label>Contraseña</label><code id="ficha-api-cred-pass"></code></div>
             <button class="btn" id="ficha-api-copiar" data-action="copiarCredencialesApi">Copiar credenciales</button>
@@ -743,7 +741,7 @@
               <select id="rep-cliente" data-change="repClienteChange"></select>
             </label>
             <label class="rep-field">Vehículo
-              <select id="rep-vehiculo"></select>
+              <select id="rep-vehiculo" data-change="repVehiculoChange"></select>
             </label>
             <label class="rep-field">Desde
               <input type="date" id="rep-desde"/>
@@ -755,6 +753,7 @@
           <div class="rep-actions">
             <button class="btn primary" id="rep-csv-btn" data-action="repExportCsv">Exportar CSV</button>
             <button class="btn" id="rep-print-btn" data-action="repPrint">Reporte imprimible</button>
+            <button class="btn ghost" id="rep-ver-vehiculo" data-action="repVerVehiculo" hidden>Ver vehículo</button>
           </div>
           <div class="rep-progress" id="rep-progress" role="status" aria-live="polite"></div>
         </div>
@@ -769,15 +768,15 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="cli-modal-title">Nuevo cliente</div>
-      <div class="modal-sub" id="cli-modal-sub">Creá el cliente y sus credenciales de acceso</div>
+      <div class="modal-sub" id="cli-modal-sub">Datos del cliente y credenciales de acceso</div>
     </div>
     <div class="modal-body">
-      <div class="field" id="field-name"><label for="f-name">Nombre de la empresa</label><input type="text" id="f-name" placeholder="Ej: Transportes S.A."/></div>
+      <div class="field" id="field-name"><label for="f-name">Nombre de la empresa</label><input type="text" id="f-name" placeholder="Transportes S.A."/></div>
       <div class="field" id="field-email"><label for="f-email">Email de acceso</label><input type="email" id="f-email" placeholder="cliente@empresa.com" autocomplete="off"/></div>
       <div class="field" id="field-password">
         <label for="f-password">Contraseña inicial (opcional)</label>
         <div style="position:relative">
-          <input type="password" id="f-password" placeholder="Dejar vacío para enviar invitación por email (mín. 12 si se escribe)" autocomplete="new-password"/>
+          <input type="password" id="f-password" placeholder="Vacía: se envía una invitación por email. Mínimo 12 caracteres" autocomplete="new-password"/>
           <button type="button" data-action="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:11px;font-family:var(--font)">VER</button>
         </div>
       </div>
@@ -797,23 +796,23 @@
   <div class="modal modal-wide">
     <div class="modal-header">
       <div class="modal-title" id="veh-modal-title">Nuevo vehículo</div>
-      <div class="modal-sub" id="veh-modal-sub">Completá los datos del vehículo</div>
+      <div class="modal-sub" id="veh-modal-sub">Datos del vehículo</div>
     </div>
     <div class="modal-body">
       <!-- Sección: Datos básicos -->
       <div class="modal-section-title">Datos del vehículo</div>
       <div class="field-row">
         <div class="field"><label for="vf-cliente">Cliente</label><select id="vf-cliente"></select></div>
-        <div class="field"><label for="vf-nombre">Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Ej: Unidad 07"/></div>
+        <div class="field"><label for="vf-nombre">Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Unidad 07"/></div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label for="vf-patente">Patente <span class="label-opt">(opcional)</span></label>
-          <input type="text" id="vf-patente" placeholder="Ej: AB 123 CD" style="text-transform:uppercase"/>
+          <label for="vf-patente">Matrícula <span class="label-opt">(opcional)</span></label>
+          <input type="text" id="vf-patente" placeholder="AB 123 CD" style="text-transform:uppercase"/>
         </div>
         <div class="field">
           <label for="vf-numero">Número de coche <span class="label-opt">(opcional)</span></label>
-          <input type="text" id="vf-numero" placeholder="Ej: 007" maxlength="10"/>
+          <input type="text" id="vf-numero" placeholder="007" maxlength="10"/>
         </div>
       </div>
       <div class="field-row">
@@ -838,7 +837,7 @@
       </div>
       <div class="field">
         <label for="vf-notas">Notas internas <span class="label-opt">(opcional)</span></label>
-        <textarea id="vf-notas" placeholder="Observaciones, historial, etc." rows="2" style="resize:vertical"></textarea>
+        <textarea id="vf-notas" placeholder="Observaciones" rows="2" style="resize:vertical"></textarea>
       </div>
       <div class="toggle-row">
         <span class="toggle-label">Vehículo activo</span>
@@ -861,19 +860,19 @@
   <div class="modal modal-neum">
     <div class="modal-header">
       <div class="modal-title" id="neum-modal-title">Neumáticos</div>
-      <div class="modal-sub" id="neum-modal-sub">Hacé clic en una rueda para editarla</div>
+      <div class="modal-sub" id="neum-modal-sub">Elegir una rueda para editarla</div>
     </div>
     <div class="neum-assign-layout">
       <!-- Panel izquierdo: dibujo del vehículo -->
       <div class="neum-svg-panel">
         <svg id="neum-assign-svg" style="width:100%;display:block"></svg>
-        <div class="neum-svg-hint">Hacé clic en una rueda para ver o editar su neumático</div>
+        <div class="neum-svg-hint">Elegir una rueda para ver o editar su neumático</div>
       </div>
       <!-- Panel derecho: detalle de la posición seleccionada -->
       <div class="neum-detail-panel" id="neum-detail-panel">
         <div class="neum-no-sel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
-          <span>Seleccioná una rueda</span>
+          <span>Elegir una rueda</span>
         </div>
       </div>
     </div>
@@ -916,11 +915,11 @@
   <div class="modal cambio-modal">
     <div class="modal-header">
       <div class="modal-title" id="cambio-title">Cambiar neumático</div>
-      <div class="modal-sub" id="cambio-sub">Registrá el cambio que hizo el taller</div>
+      <div class="modal-sub" id="cambio-sub">Registro del cambio hecho en el taller</div>
     </div>
     <div class="modal-body">
       <div id="cambio-actual" class="cambio-actual"></div>
-      <fieldset class="cambio-grupo"><legend>¿Qué se hace con el neumático viejo?</legend>
+      <fieldset class="cambio-grupo"><legend>Destino del neumático retirado</legend>
         <div id="cambio-destinos" class="cambio-opciones"></div></fieldset>
       <div class="field"><label for="cambio-motivo">Motivo <span class="label-opt" id="cambio-motivo-opt">(opcional)</span></label>
         <input id="cambio-motivo" type="text" maxlength="200" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
@@ -958,17 +957,17 @@
     <div class="modal-body">
       <div class="field-row">
         <div class="field"><label for="sf-cliente">Cliente</label><select id="sf-cliente"></select></div>
-        <div class="field"><label for="sf-marca">Marca</label><input type="text" id="sf-marca" placeholder="Ej: Michelin"/></div>
+        <div class="field"><label for="sf-marca">Marca</label><input type="text" id="sf-marca" placeholder="Michelin"/></div>
       </div>
       <div class="field-row">
-        <div class="field"><label for="sf-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="Ej: X MultiWay 3D"/></div>
+        <div class="field"><label for="sf-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="sf-modelo" placeholder="X MultiWay 3D"/></div>
         <div class="field"><label for="sf-cantidad">Cantidad</label><input type="number" id="sf-cantidad" value="1" min="1" step="1"/></div>
       </div>
       <div class="field-row">
         <div class="field"><label for="sf-precio">Precio por unidad <span class="label-opt">(opcional)</span></label><input type="number" id="sf-precio" placeholder="0.00" min="0" step="0.01"/></div>
         <div class="field"><label for="sf-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="sf-fecha"/></div>
       </div>
-      <div class="field"><label for="sf-notas">Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor..."></textarea></div>
+      <div class="field"><label for="sf-notas">Notas <span class="label-opt">(opcional)</span></label><textarea id="sf-notas" rows="2" placeholder="Dimensión, garantía, proveedor"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn ghost" data-action="closeStockModal">Cancelar</button>
@@ -982,10 +981,10 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="gasto-modal-title">Nuevo gasto</div>
-      <div class="modal-sub" id="gasto-modal-sub">Agregá un gasto mensual de la empresa</div>
+      <div class="modal-sub" id="gasto-modal-sub">Gasto mensual de la empresa</div>
     </div>
     <div class="modal-body">
-      <div class="field"><label for="gf-nombre">Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler oficina"/></div>
+      <div class="field"><label for="gf-nombre">Concepto</label><input type="text" id="gf-nombre" placeholder="Alquiler oficina"/></div>
       <div class="field">
         <label for="gf-categoria">Categoría</label>
         <select id="gf-categoria">
@@ -1000,7 +999,7 @@
       <div class="field"><label for="gf-monto">Monto mensual ($)</label><input type="number" id="gf-monto" placeholder="0.00" min="0" step="0.01"/></div>
       <div class="field">
         <label for="gf-notas">Notas <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
-        <input type="text" id="gf-notas" placeholder="Descripción adicional..."/>
+        <input type="text" id="gf-notas" placeholder="Descripción adicional"/>
       </div>
       <div class="toggle-row">
         <span class="toggle-label">Gasto recurrente (mensual)</span>
@@ -1031,14 +1030,14 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="disp-modal-title">Nuevo dispositivo</div>
-      <div class="modal-sub" id="disp-modal-sub">Registrá el medidor y asignalo a un cliente</div>
+      <div class="modal-sub" id="disp-modal-sub">Datos del medidor y cliente asignado</div>
     </div>
     <div class="modal-body">
       <div class="field"><label for="df-cliente">Cliente</label><select id="df-cliente"></select></div>
-      <div class="field"><label for="df-mac">MAC Address</label><input type="text" id="df-mac" placeholder="Ej: AA:BB:CC:DD:EE:FF" style="font-family:var(--font-mono);text-transform:uppercase"/></div>
+      <div class="field"><label for="df-mac">MAC Address</label><input type="text" id="df-mac" placeholder="AA:BB:CC:DD:EE:FF" style="font-family:var(--font-mono);text-transform:uppercase"/></div>
       <div class="field">
         <label for="df-nombre">Nombre <span style="color:var(--text-tertiary);font-weight:400">(opcional)</span></label>
-        <input type="text" id="df-nombre" placeholder="Ej: Medidor 01"/>
+        <input type="text" id="df-nombre" placeholder="Medidor 01"/>
       </div>
       <div class="toggle-row">
         <span class="toggle-label">Dispositivo activo</span>
