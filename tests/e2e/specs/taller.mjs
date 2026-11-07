@@ -61,16 +61,17 @@ export function registrar(env) {
     });
   }
 
-  test('Taller (global): tras rotar, el historial de la rueda muestra la rotación y el diagrama sigue por posición', async () => {
-    // Las mediciones son por POSICIÓN (las toma el sensor del eje): al rotar, la rueda P5 sigue mostrando su última
-    // medición hasta que el sensor mida el neumático nuevo que quedó ahí.
+  test('Taller (global): tras rotar, el historial muestra la rotación y la rueda crítica sigue al neumático a su nueva posición', async () => {
+    // Las mediciones son del NEUMÁTICO: el crítico de DEMO010 estaba en P5 y la rotación 5<->1 lo llevó a P1.
     const id = vehId(env, 'DEMO010');
     const critico = json(env, `select posicion from public.v_estado_neumaticos where vehiculo_id = ${id} and estado = 'critico'`);
-    assert.deepEqual(critico, [{ posicion: 5 }]);
+    assert.deepEqual(critico, [{ posicion: 1 }]);
     await flujo(env, 'historial-tras-rotar', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO010');
       await seleccionarRueda(p, 1);
       assert.match(await texto(p, '#vd-panel'), /Rotación/);
+      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /Crítico/);
+      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /Crítico/);
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-rueda').length`), 10);
     });
   });

@@ -41,7 +41,9 @@
         vehiculos:{nombre:'=Camión 01',patente:veh[0].patente,tipo_ruedas:10},patente_raw:null,numero_raw:null});
     }
   }
-  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,neumaticos:neu,stock_neumaticos:stock,gastos:gas};
+  // v_mediciones_neumatico: las mismas mediciones atribuidas al neumático montado en esa posición.
+  var medNeu = med.map(function(m){ return Object.assign({}, m, {posicion_actual:m.posicion, estado_montaje:'montado', medicion_id:m.id}); });
+  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu,stock_neumaticos:stock,gastos:gas};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;
