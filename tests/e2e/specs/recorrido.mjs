@@ -1,0 +1,108 @@
+// Recorrido de todas las vistas de cada rol contra la base real: sin console.error, sin excepciones y sin 4xx/5xx.
+// Además ejercita Reportes (CSV paginado contra PostgREST con tope de 1000 filas), Mediciones, Flota, Clientes y Ficha.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { flujo, irA, dormir, texto } from '../lib/flujo.mjs';
+import { json, ALCANCE } from '../lib/verdad.mjs';
+
+const VISTAS = {
+  admin: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'ficha', 'balance'],
+  global: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
+  salto: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
+  montevideo: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
+  otra: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos']
+};
+
+// Intercepta las descargas y ventanas de impresión del panel para poder leer el CSV generado.
+const CAPTURAR_DESCARGAS = `(() => {
+  window.__blobs = [];
+  const orig = URL.createObjectURL.bind(URL);
+  URL.createObjectURL = b => { window.__blobs.push(b); return orig(b); };
+  HTMLAnchorElement.prototype.click = function () { window.__descargas = (window.__descargas || []).concat(this.download); };
+  window.open = () => ({ document: { write: h => { window.__impreso = h; }, close() {} }, focus() {}, print() {} });
+})()`;
+
+export function registrar(env) {
+  for (const rol of Object.keys(VISTAS)) {
+    test(`Recorrido (${rol}): todas las vistas cargan sin errores`, async () => {
+      await flujo(env, 'recorrido', rol, async p => {
+        const visibles = await p.eval(`[...document.querySelectorAll('.nav-item[data-view]')].filter(n => n.getClientRects().length).map(n => n.dataset.view)`);
+        assert.deepEqual(visibles, VISTAS[rol], `menú visible para ${rol}`);
+        for (const v of VISTAS[rol]) {
+          await irA(p, v);
+          await dormir(500); // deja terminar las consultas de la vista
+          assert.equal(await p.eval(`document.querySelectorAll('.nav-item.active').length`), 1);
+          assert.doesNotMatch(await texto(p, `#view-${v}`), /Error de conexión|No se pudo cargar|Algo salió mal/i, `vista ${v}`);
+        }
+        if (rol !== 'admin') {
+          // El cliente no ve controles de administración.
+          assert.equal(await p.eval(`[...document.querySelectorAll('[data-admin-only]')].filter(e => e.getClientRects().length).length`), 0);
+        }
+      });
+    });
+  }
+
+  for (const rol of ['global', 'salto', 'admin']) {
+    test(`Reportes (${rol}): el CSV de un camión trae todas sus mediciones (paginado contra PostgREST)`, async () => {
+      // Camión con más mediciones del alcance: más de una página si es posible.
+      const a = ALCANCE[rol];
+      const v = json(env, `select v.id, v.patente, count(m.id) as n from public.vehiculos v join public.mediciones m on m.vehiculo_id = v.id where ${a.veh} group by 1, 2 order by 3 desc, 1 limit 1`)[0];
+      assert.ok(v && Number(v.n) > 100);
+      await flujo(env, 'reportes-csv', rol, async p => {
+        await irA(p, 'reportes');
+        await p.eval(CAPTURAR_DESCARGAS);
+        await p.esperar(`document.querySelector('#rep-vehiculo option[value="${v.id}"]')`, { que: 'opciones de vehículo' });
+        await p.eval(`(() => { const s = document.querySelector('#rep-vehiculo'); s.value = '${v.id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await p.click('#rep-csv-btn');
+        await p.esperar(`window.__blobs.length === 1 && !document.querySelector('#rep-csv-btn').disabled`, { que: 'CSV generado', ms: 30000 });
+        const filas = await p.eval(`window.__blobs[0].text().then(t => t.replace(/^\\uFEFF/, '').split(/\\r?\\n/).filter(Boolean).length - 1)`);
+        assert.equal(filas, Number(v.n), `filas del CSV de ${v.patente}`);
+        assert.match(await texto(p, '#rep-progress'), new RegExp(`^${Number(v.n).toLocaleString('es-UY')} filas|${v.n} filas`));
+      });
+    });
+  }
+
+  test('Mediciones / Flota / Clientes / Ficha (admin): muestran los datos de la base', async () => {
+    const nVeh = Number(env.sql(`select count(*) from public.vehiculos where activo`));
+    const nCri = Number(env.sql(`select count(*) from public.v_estado_neumaticos where estado = 'critico'`));
+    await flujo(env, 'vistas-admin', 'admin', async p => {
+      await irA(p, 'flota');
+      await p.esperar(`/${nVeh}\\s*Vehículos activos/.test(document.querySelector('#view-flota').innerText.replace(/\\n+/g, ' '))`, { que: `Flota con ${nVeh} vehículos` });
+      assert.match((await texto(p, '#view-flota')), new RegExp(`${nCri} Neumáticos críticos`));
+      await irA(p, 'clientes');
+      await p.esperar(`document.querySelectorAll('#view-clientes tbody tr').length === 2`, { que: '2 clientes' });
+      const t = await texto(p, '#view-clientes');
+      assert.match(t, /Demo Transportes/); assert.match(t, /Otra Empresa SA/);
+      await irA(p, 'ficha');
+      await p.esperar(`document.querySelector('#ficha-selector') && document.querySelectorAll('#ficha-selector option').length >= 2`, { que: 'selector de ficha' });
+      await irA(p, 'mediciones');
+      await p.esperar(`document.querySelectorAll('#med-cliente-select option').length >= 3`, { que: 'clientes en Mediciones' });
+      const demo = env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`);
+      await p.eval(`(() => { const s = document.querySelector('#med-cliente-select'); s.value = '${demo}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+      const veh = env.sql(`select id from public.vehiculos where patente = 'DEMO010'`);
+      await p.esperar(`document.querySelector('#med-vehiculo-select option[value="${veh}"]')`, { que: 'DEMO010 en el selector' });
+      await p.eval(`(() => { const s = document.querySelector('#med-vehiculo-select'); s.value = '${veh}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+      await p.esperar(`document.querySelector('#med-truck-card') && document.querySelector('#med-truck-card').getClientRects().length && document.querySelectorAll('#med-truck-card svg *').length > 10`, { que: 'camión dibujado en Mediciones' });
+    });
+  });
+
+  test('Vehículos (global): el stock del cliente se lista y es de solo lectura; la seccional no lo ve', async () => {
+    const lotes = json(env, `select marca, cantidad from public.stock_neumaticos where cliente_id = (select id from public.clientes where nombre = 'Demo Transportes') order by marca`);
+    assert.ok(lotes.length >= 3);
+    const marcas = () => `[...document.querySelectorAll('#tbody-stock tr:not(.stock-asig-detail)')].map(r => r.cells[0] && r.cells[0].textContent.trim()).filter(Boolean).sort()`;
+    await flujo(env, 'stock-global', 'global', async p => {
+      await irA(p, 'vehiculos');
+      await p.click('.sub-tab[data-subtab="sv-stock"]');
+      await p.esperar(`${marcas()}.length === ${lotes.length}`, { que: `${lotes.length} lotes de stock` });
+      assert.deepEqual(await p.eval(marcas()), lotes.map(l => l.marca));
+      assert.match(await texto(p, '#tbody-stock'), new RegExp(`0 / ${lotes[0].cantidad} ud\\.`));
+      assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'el cliente no edita ni elimina stock');
+    });
+    await flujo(env, 'stock-seccional', 'salto', async p => {
+      await irA(p, 'vehiculos');
+      await p.click('.sub-tab[data-subtab="sv-stock"]');
+      await dormir(700);
+      assert.deepEqual(await p.eval(marcas()), ['Sin neumáticos en stock'], 'la seccional no ve lotes de stock');
+    });
+  });
+}

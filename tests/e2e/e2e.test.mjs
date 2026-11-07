@@ -1,0 +1,24 @@
+// Pruebas E2E: el panel real en Chrome headless contra Postgres + migraciones + RLS + seed demo + PostgREST reales.
+// Solo la autenticación está sustituida (ver browser/auth-shim.js). Ejecutar: npm run e2e  (README en tests/e2e/).
+import { after } from 'node:test';
+import { iniciarEntorno } from './lib/env.mjs';
+import { registrar as inicio } from './specs/inicio.mjs';
+import { registrar as buscador } from './specs/buscador.mjs';
+import { registrar as detalle } from './specs/detalle.mjs';
+import { registrar as aislamiento } from './specs/aislamiento.mjs';
+import { registrar as alertasDispositivos } from './specs/alertas-dispositivos.mjs';
+import { registrar as recorrido } from './specs/recorrido.mjs';
+import { registrar as contrato } from './specs/contrato.mjs';
+import { registrar as taller } from './specs/taller.mjs';
+
+const env = await iniciarEntorno();
+after(async () => { await env.cerrar(); });
+
+inicio(env);
+buscador(env);
+detalle(env);
+aislamiento(env);
+alertasDispositivos(env);
+recorrido(env);
+taller(env);
+contrato(env);
