@@ -3,6 +3,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
+import { registerView } from '../core/nav.js';
 
 let stockItems=[], stockModalMode='create', stockActiveId=null;
 let stockAssignMap={}; // stock_id → [{vehiculo_nombre, count}]
@@ -31,7 +32,6 @@ export async function loadStock(){
   const {data,error}=await sq;
   if(error){ showToast(userError(error),true); return; }
   stockItems=data||[];
-  // Poblar filtro clientes
   const sel=document.getElementById('filter-cliente-stock');
   const cmap=new Map();
   stockItems.forEach(s=>{ if(s.clientes) cmap.set(s.cliente_id,s.clientes.nombre); });
@@ -110,7 +110,6 @@ function renderStock(){
       const sid=btn.dataset.sid;
       const detail=tbody.querySelector(`tr[data-detail="${sid}"]`);
       const isOpen=detail.style.display!=='none';
-      // Cerrar todos
       tbody.querySelectorAll('.stock-asig-detail').forEach(r=>r.style.display='none');
       tbody.querySelectorAll('.stock-asig-btn').forEach(b=>b.classList.remove('active'));
       if(!isOpen){ detail.style.display=''; btn.classList.add('active'); }
@@ -179,7 +178,7 @@ ACTIONS.saveStock=async function(){
     notas:document.getElementById('sf-notas').value.trim()||null
   };
   const btn=document.getElementById('stock-save');
-  btn.disabled=true; btn.textContent='Guardando...';
+  btn.disabled=true; btn.textContent='Guardando…';
   // Buscar el nombre del cliente desde el select del formulario
   const clienteNombre=document.getElementById('sf-cliente').selectedOptions[0]?.text||'';
   try{
@@ -215,6 +214,7 @@ async function removeStock(id){
 
 ACTIONS.loadStock=loadStock;
 export const load=loadStock;
+registerView('stock','Stock',loadStock);
 
 export function init(){
   document.getElementById('search-stock').addEventListener('input',renderStock);

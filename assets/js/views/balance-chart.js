@@ -61,7 +61,7 @@ export function renderBalanceChart(balanceClients,gastos){
   if(maxInc===0&&expTotal===0){
     const t=ns('text',{x:W/2,y:H/2,'text-anchor':'middle','font-size':'14',
       'font-family':"'Inter',sans-serif",fill:BRAND.textSecondary});
-    t.textContent='Configurá precios de clientes y gastos para ver la evolución';
+    t.textContent='Cargar precios de clientes y gastos para ver la evolución';
     svgEl.appendChild(t); return;
   }
 

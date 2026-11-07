@@ -33,7 +33,7 @@ describe('mensajeErrorCrearCliente', () => {
   test('403', () => assert.match(mensajeErrorCrearCliente(403, 'forbidden'), /permiso/));
   test('400 password', () => assert.match(mensajeErrorCrearCliente(400, 'password too short'), /12 caracteres/));
   test('400 email', () => assert.match(mensajeErrorCrearCliente(400, 'email inválido'), /email/));
-  test('400 genérico', () => assert.match(mensajeErrorCrearCliente(400, ''), /Datos inválidos/));
+  test('400 genérico', () => assert.match(mensajeErrorCrearCliente(400, ''), /inválidos/));
   test('otro', () => assert.match(mensajeErrorCrearCliente(undefined, undefined), /No se pudo/));
 });
 

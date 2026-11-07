@@ -206,13 +206,13 @@ ACTIONS.neumApplyPos=function(pos){
     notas:document.getElementById('ndp-notas').value.trim()||null
   };
   neumDrawTruck(); // actualizar colores
-  showToast(`P${pos} actualizada — guardá para confirmar`,false);
+  showToast(`P${pos} actualizada. Guardar para confirmar`,false);
 };
 
 ACTIONS.neumClearPos=function(pos){
   delete neumAssignments[pos];
   neumSelPos=null;
-  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>`);
+  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Elegir una rueda</span></div>`);
   neumDrawTruck();
 };
 
@@ -221,7 +221,7 @@ ACTIONS.openNeumaticosModal=async function(vehiculoId){
   const v=getVehiculos().find(x=>x.id===vehiculoId);
   document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
   document.getElementById('modal-neumaticos').classList.add('show');
-  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Seleccioná una rueda</span></div>`);
+  setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Elegir una rueda</span></div>`);
 
   // Carga paralela: registros existentes + stock del cliente
   const [{data:nData},{data:sData}]=await Promise.all([
@@ -240,7 +240,7 @@ ACTIONS.closeNeumaticosModal=function(){
 ACTIONS.saveNeumaticos=async function(){
   const v=getVehiculos().find(x=>x.id===neumVehiculoId); if(!v) return;
   const btn=document.getElementById('neum-save');
-  btn.disabled=true; btn.textContent='Guardando...';
+  btn.disabled=true; btn.textContent='Guardando…';
   try{
     const rows=Object.entries(neumAssignments).map(([pos,n])=>({
       vehiculo_id:neumVehiculoId,

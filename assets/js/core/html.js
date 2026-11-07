@@ -19,7 +19,7 @@ export function html(strings,...vals){
 }
 export const joinHtml=arr=>new SafeHtml(htmlPart(arr)); // array de SafeHtml/strings -> SafeHtml
 export function setHtml(el,safe){
-  if(!(safe instanceof SafeHtml)) throw new TypeError('setHtml requiere SafeHtml (usá html`...`)');
+  if(!(safe instanceof SafeHtml)) throw new TypeError('setHtml requiere SafeHtml (usar html`...`)');
   // eslint-disable-next-line no-unsanitized/property -- único sumidero; recibe SafeHtml
   el.innerHTML=safe.toString();
 }

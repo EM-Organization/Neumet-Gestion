@@ -43,6 +43,7 @@ export async function load() {
     fillSelect($('rep-cliente'), 'Todos los clientes', (data || []).map(c => ({ id: c.id, label: c.nombre })));
   }
   await loadVehiculos();
+  $('rep-ver-vehiculo').hidden = true;
 }
 
 // Lee TODAS las mediciones del alcance elegido por lotes de PAGE_SIZE con range(); tope MAX_ROWS con aviso.
@@ -68,7 +69,7 @@ async function fetchMediciones() {
   const res = await fetchAll(page, { pageSize: PAGE_SIZE, max: MAX_ROWS, onProgress: n => setProgress(`Descargando mediciones… ${n} filas`) });
   if (res.error) { showToast(userError(res.error), true); setProgress(''); return null; }
   if (res.truncated) {
-    const msg = `Se alcanzó el tope de ${MAX_ROWS} filas: el resultado está INCOMPLETO. Acotá el rango de fechas o el vehículo.`;
+    const msg = `Se alcanzó el tope de ${MAX_ROWS} filas: el resultado está incompleto. Acotar el rango de fechas o el vehículo.`;
     setProgress(msg, true); showToast(msg, true);
   } else setProgress(`${res.rows.length} filas descargadas`);
   return res;
@@ -145,9 +146,9 @@ function buildDoc(rows, truncated) {
 <div class="meta"><strong>${titulo}</strong><br>Última medición de cada neumático · Generado el ${fmtDate(new Date().toISOString())}</div></div>
 ${truncated ? html`<div class="warn">Datos incompletos: se alcanzó el tope de ${MAX_ROWS} mediciones.</div>` : ''}
 <div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('ok', r.ok, 'OK (≥8mm)')}${kpi('bajo', r.bajo, 'Bajo (5–7.9mm)')}${kpi('critico', r.critico, 'Crítico (<5mm)')}</div>
-${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Patente</th><th>Neumáticos</th><th>OK</th><th>Bajo</th><th>Crítico</th></tr></thead><tbody>${porVeh}</tbody></table>`}
+${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>OK</th><th>Bajo</th><th>Crítico</th></tr></thead><tbody>${porVeh}</tbody></table>`}
 <h3>Estado por neumático</h3>
-<table><thead><tr><th>Vehículo</th><th>Patente</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
+<table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
 <div class="footer">NEUMET · Sistema de gestión de neumáticos</div>
 </body></html>`;
 }
@@ -158,7 +159,9 @@ function printReport() {
 
 ACTIONS.repExportCsv = exportCsv;
 ACTIONS.repPrint = printReport;
-ACTIONS.repClienteChange = loadVehiculos;
+ACTIONS.repClienteChange = async v => { await loadVehiculos(); ACTIONS.repVehiculoChange(''); };
+ACTIONS.repVehiculoChange = v => { $('rep-ver-vehiculo').hidden = !v; };
+ACTIONS.repVerVehiculo = () => { const v = $('rep-vehiculo').value; if (v) ACTIONS.verVehiculo(v); };
 registerView('reportes', 'Reportes', load);
 
 export function init() { /* sin listeners propios: todo va por data-action / data-change */ }

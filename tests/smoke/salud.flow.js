@@ -44,7 +44,11 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   if(cliMode) return; // el cliente no accede a la ficha de administración
 
   // ── Ficha de cliente ──
-  nav('ficha'); await sleep(600);
+  nav('clientes'); await sleep(500);
+  if($('.nav-item[data-view="ficha"]')) fail('menu: queda la entrada "Ficha de cliente" (se abre desde Clientes)');
+  $('#tbody-clientes [data-action="abrirFichaCliente"]').click(); await sleep(600);
+  if($('.nav-item.active').dataset.view !== 'clientes') fail('ficha: el menú debe resaltar Clientes');
+  if($('#breadcrumb-current').textContent === 'Inicio' || $('#breadcrumb-parent').hidden) fail('ficha: título sin migas (Clientes › nombre)');
   if(!$('#view-ficha').classList.contains('active')) fail('ficha: vista no activa');
   var kpis = $('#ficha-kpis').textContent;
   if(!/Vehículos activos/.test(kpis) || !/Críticos/.test(kpis)) fail('ficha: faltan KPIs del resumen');
@@ -72,10 +76,9 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   if(fx.updates.length !== 3 || u.umbral_critico_mm !== 5.5 || u.umbral_bajo_mm !== 8) fail('ficha: payload de umbrales: '+JSON.stringify(u));
   if(errTxt()) fail('ficha: queda un error tras guardar bien: '+errTxt());
   if($('#toast-msg').textContent.indexOf('Umbrales actualizados') === -1) fail('ficha: falta aviso de guardado');
-  // cambio de cliente y acceso desde la lista de clientes
-  change($('#ficha-cliente'), '2'); await sleep(400);
-  if($('#ficha-nombre').textContent === '') fail('ficha: sin nombre tras cambiar de cliente');
-  nav('clientes'); await sleep(400);
+  // volver a Clientes y reabrir otra ficha
+  $('#ficha-volver').click(); await sleep(400);
+  if(!$('#view-clientes').classList.contains('active')) fail('ficha: "Volver" no regresa a Clientes');
   var b = $('#tbody-clientes [data-action="abrirFichaCliente"]');
   if(!b){ fail('ficha: falta acceso desde clientes'); return; }
   b.click(); await sleep(500);

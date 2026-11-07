@@ -14,7 +14,7 @@ imágenes (por ejemplo con la herramienta Read de Claude Code) y anotar defectos
 
 Tamaños: desktop (1440x900), mobile (390x844) y laptop (1280x720, opcional con SIZES).
 Escenas: `login`, `inicio`, `vehiculos`, `vehiculos-busqueda`, `detalle`, `detalle-rueda`, `cambio-neumatico`, `flota`,
-`alertas`, `dispositivos`, `reportes`, `mediciones`, `clientes` y `ficha` (solo admin), `selector-seccional` (cliente global).
+`alertas`, `stock`, `busqueda`, `dispositivos`, `reportes`, `mediciones`, `clientes` y `ficha` (solo admin), `selector-seccional` (cliente global).
 Las de detalle/búsqueda/cambio solo existen como cliente (las fixtures de `vehiculo.fixture.js` son de cliente).
 
 Cómo funciona: `tests/smoke/harness.html?shot=<escena>&vw=<ancho>&vh=<alto>[&cliente=1][&detalle=1][&nosession=1]` deja la
@@ -23,5 +23,6 @@ que el título sea `SMOKE:OK`: cualquier `console.error`, `Acción desconocida`,
 vista distinta de la activa, hace fallar la escena.
 
 Requisitos: Google Chrome (se busca en la ruta de macOS y en `google-chrome`/`chromium`; o `CHROME=/ruta`) y `python3`.
+Las capturas desactivan transiciones y animaciones: con tiempo virtual, Chrome fotografiaba el menú a mitad de la transición y parecía resaltar el ítem anterior (por ejemplo Inicio con otra vista abierta). El estado real del DOM era correcto.
 Limitaciones: el stub no reproduce datos reales, RLS ni la caché de módulos del CDN; las fuentes se cargan de la red (sin
 red cae a la tipografía del sistema); las animaciones no se capturan. Cada captura tarda unos segundos (44 capturas ~ 5 min).

@@ -33,7 +33,7 @@ export function estadoCarga(texto = 'Cargando…') {
 
 // Estado de error con acción de reintentar: reintentar = nombre de la acción (data-action) que vuelve a cargar la vista.
 export function estadoError(mensaje, reintentar) {
-  return html`<div class="empty-state error-state" role="alert"><div class="empty-title">No pudimos cargar los datos</div><div class="empty-sub">${mensaje || 'Revisá tu conexión e intentá de nuevo.'}</div>${reintentar ? html`<div class="empty-action">${boton({ label: 'Reintentar', action: reintentar, primaria: true })}</div>` : ''}</div>`;
+  return html`<div class="empty-state error-state" role="alert"><div class="empty-title">No se pudieron cargar los datos</div><div class="empty-sub">${mensaje || 'Revisar la conexión y reintentar.'}</div>${reintentar ? html`<div class="empty-action">${boton({ label: 'Reintentar', action: reintentar, primaria: true })}</div>` : ''}</div>`;
 }
 
 // Fila de tabla que ocupa todas las columnas (vacío, carga o error dentro de un <tbody>).

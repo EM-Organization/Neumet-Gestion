@@ -7,7 +7,7 @@ window.seccionalesAdminFlow = async function(w, d, sleep, fail, log){
   var toast = function(){ return $('#toast-msg').textContent; };
   var setSel = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
   var lista = function(){ return all('#sec-lista tr[data-sucursal]').length; };
-  $('.nav-item[data-view="ficha"]').click(); await sleep(700);
+  $('.nav-item[data-view="clientes"]').click(); await sleep(500); $('#tbody-clientes [data-action="abrirFichaCliente"]').click(); await sleep(700);
   if (!$('#view-ficha').classList.contains('active')) { fail('seccionales: ficha no activa'); return; }
   if (!$('#ficha-seccionales') || $('#ficha-seccionales').style.display === 'none') { fail('seccionales: falta la tarjeta del ABM'); return; }
   if (lista() !== 2) fail('seccionales: se esperaban 2 seccionales del cliente 1, hay ' + lista());

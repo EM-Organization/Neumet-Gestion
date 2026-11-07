@@ -42,7 +42,7 @@ function renderOdometro(){
     </div>
     ${admin?html`<div class="ciclo-odo-form">
       <div class="field"><label for="ciclo-odo-input">Nuevo kilometraje</label>
-        <input id="ciclo-odo-input" type="number" inputmode="numeric" min="0" step="1" placeholder="Ej: 128500"/></div>
+        <input id="ciclo-odo-input" type="number" inputmode="numeric" min="0" step="1" placeholder="128500"/></div>
       <button class="btn primary" id="ciclo-odo-save" data-action="cicloGuardarOdometro">Registrar</button>
     </div>`:''}`);
 }
@@ -145,7 +145,7 @@ ACTIONS.cicloGuardarOdometro=async function(){
   let r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value);
   if(r.requiereConfirmacion){
     // El cliente no puede bajar el kilometraje (lo corrige el admin); el admin confirma, p. ej. por cambio de tablero.
-    if(cliente){ showToast(`El kilometraje no puede ser menor al actual (${veh.odometro_km} km). Pedí la corrección al administrador`,true); return; }
+    if(cliente){ showToast(`El kilometraje no puede ser menor al actual (${veh.odometro_km} km). La corrección la hace el administrador`,true); return; }
     if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`))) return;
     r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value, true);
   }

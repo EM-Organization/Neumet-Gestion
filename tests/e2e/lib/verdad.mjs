@@ -16,14 +16,21 @@ export const json = (env, sql) => JSON.parse(env.sql(`select coalesce(json_agg(t
 export const vehiculosVisibles = (env, rol) =>
   json(env, `select v.id, v.nombre, v.patente, v.numero, v.tipo_ruedas, v.sucursal_id from public.vehiculos v where v.activo and ${ALCANCE[rol].veh} order by v.nombre`);
 
-// Cifras que debe mostrar Inicio (misma definición que las tarjetas, calculada desde las vistas SQL).
+// Cifras que debe mostrar Inicio, calculadas desde las vistas SQL con el alcance del rol (referencia independiente del panel).
 export function cifrasInicio(env, rol) {
   const a = ALCANCE[rol];
   const n = sql => Number(env.sql(sql));
+  const porEstado = e => n(`select count(*) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where ${e} and ${a.veh}`);
   return {
-    criticos: n(`select count(*) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where e.estado = 'critico' and ${a.veh}`),
+    total: porEstado('true'),
+    ok: porEstado(`e.estado = 'ok'`),
+    bajo: porEstado(`e.estado = 'bajo'`),
+    criticos: porEstado(`e.estado = 'critico'`),
+    sinDatos: porEstado(`e.estado not in ('ok','bajo','critico')`),
+    vehCriticos: n(`select count(distinct e.vehiculo_id) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where e.estado = 'critico' and ${a.veh}`),
+    proximos: porEstado(`e.estado in ('ok','bajo') and e.semanas_hasta_critico is not null and e.semanas_hasta_critico <= 12`),
     alertas: n(`select count(*) from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`),
-    dispositivos: n(`select count(*) from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where s.estado in ('caido','sin_actividad') and ${a.dis}`),
-    sinMedir: n(`select count(distinct e.vehiculo_id) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where (e.sin_medir or e.estado = 'sin_datos') and ${a.veh}`)
+    dispTotal: n(`select count(*) from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where ${a.dis}`),
+    dispActivos: n(`select count(*) from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where s.estado = 'activo' and ${a.dis}`)
   };
 }

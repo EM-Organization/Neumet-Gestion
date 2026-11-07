@@ -21,8 +21,8 @@ export function medSwitchMode(mode){
   document.getElementById('med-empty').style.display            = 'flex';
   document.getElementById('med-tire-detail').style.display      = 'none';
   document.getElementById('med-loading').style.display          = 'none';
-  document.getElementById('med-empty-title').textContent        = isVeh?'Seleccioná un vehículo':'Seleccioná una sesión';
-  document.getElementById('med-empty-sub').textContent          = isVeh?'Luego hacé clic en un neumático para ver sus mediciones':'Elegí un dispositivo y una sesión para ver el estado del camión';
+  document.getElementById('med-empty-title').textContent        = isVeh?'Elegir un vehículo':'Elegir una sesión';
+  document.getElementById('med-empty-sub').textContent          = isVeh?'Después, elegir un neumático para ver sus mediciones':'Elegir un dispositivo y una sesión para ver el estado del camión';
   med.tireData={}; med.selPos=null;
   if(!isVeh) medDeviceLoadDevices();
 }
@@ -87,7 +87,7 @@ export function initDispositivoMode(){
 ACTIONS.medDeviceSelect=async function(mac){
   med.selDevice=mac; medDeviceRenderList();
   document.getElementById('med-sessions-sub').textContent=mac;
-  setHtml(document.getElementById('med-sessions-list'), html`<div class="loading-state"><div class="spinner"></div>Cargando sesiones...</div>`);
+  setHtml(document.getElementById('med-sessions-list'), html`<div class="loading-state"><div class="spinner"></div>Cargando sesiones…</div>`);
   document.getElementById('med-sessions-card').style.display='flex';
 
   const {data,error}=await db
@@ -173,7 +173,6 @@ ACTIONS.medDeviceSessionSelect=function(i){
     med.tireData[p].push(m);
   });
 
-  // Mostrar diagrama
   document.getElementById('med-truck-card').style.display='block';
   document.getElementById('med-counters-card').style.display='block';
   document.getElementById('med-empty').style.display='flex';

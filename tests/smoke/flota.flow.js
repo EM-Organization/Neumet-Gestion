@@ -25,13 +25,12 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(all('#flota-grid .flota-card').length !== 1) fail('flota: filtro por estado');
   setSel('#flota-estado', '');
 
-  // Enlace al vehículo: salta a Vehículos con la búsqueda prellenada
-  var link = $('#flota-grid .flota-card [data-action="verVehiculoEnLista"]');
+  // Enlace al vehículo: abre el detalle
+  var link = $('#flota-grid .flota-card [data-action="verVehiculo"]');
   if(!link){ fail('flota: sin enlace Ver vehiculo'); return; }
   link.click(); await sleep(400);
-  if(!$('#view-vehiculos').classList.contains('active')) fail('flota: el enlace no abre Vehiculos');
-  if($('#search-vehiculos').value !== 'CR0001') fail('flota: busqueda no prellenada: '+$('#search-vehiculos').value);
-  $('#search-vehiculos').value = ''; $('#search-vehiculos').dispatchEvent(new w.Event('input',{bubbles:true}));
+  if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('flota: el enlace no abre el detalle');
+  if(!/Volver a /.test($('#vd-volver').textContent)) fail('flota: falta el botón Volver');
 
   // --- Alertas ---
   if(!nav('alertas')) return;
@@ -42,7 +41,7 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(rows().length !== 4) fail('alertas: se esperaban 4 filas, hay '+rows().length);
   if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
   if(rows()[0].textContent.indexOf('Neumático crítico: 3 mm') === -1) fail('alertas: falta mensaje');
-  if(!rows()[0].querySelector('[data-action="verVehiculoEnLista"]')) fail('alertas: falta enlace al vehiculo');
+  if(!rows()[0].querySelector('[data-action="verVehiculo"]')) fail('alertas: falta enlace al vehiculo');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1 || d.body.innerHTML.indexOf('<Beta>') !== -1) fail('alertas: HTML sin escapar');
   setSel('#alert-severidad', '2'); await sleep(100);
   if(rows().length !== 2) fail('alertas: filtro severidad 2 -> '+rows().length);
