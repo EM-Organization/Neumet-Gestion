@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, irA, abrirDetallePorMatricula } from '../lib/flujo.mjs';
 import { json, cifrasInicio } from '../lib/verdad.mjs';
+import { INICIO_LISTO, LEER_INICIO } from './inicio.mjs';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
 const fila = (env, id, pos) => json(env, `select posicion, idneumatico, estado, round(promedio, 1)::text as mm, promedio, sin_medir, n_mediciones_90d, tasa_mm_semana
@@ -19,10 +20,10 @@ const mmUi = mm => (mm === null ? '—' : mm.replace('.', ','));
 const rueda = (p, pos) => p.eval(`(() => { const g = document.querySelector('#vd-diagrama .vd-rueda[data-pos="${pos}"]');
   return g && { mm: g.querySelector('.vd-mm').textContent, fill: g.querySelector('rect.vd-goma').getAttribute('fill'), aria: g.getAttribute('aria-label') }; })()`);
 
+// Neumáticos críticos que muestra Inicio (proporciones: OK, bajo, críticos, sin datos).
 const criticosInicio = async p => {
-  await p.esperar(`document.querySelectorAll('#inicio-contenido .atencion-card').length === 4`, { que: 'las 4 tarjetas de Inicio' });
-  return p.eval(`Number([...document.querySelectorAll('#inicio-contenido .atencion-card')]
-    .find(c => c.querySelector('.atencion-titulo').textContent.trim() === 'Neumáticos críticos').querySelector('.atencion-n').textContent.replace(/\\D/g, ''))`);
+  await p.esperar(INICIO_LISTO, { que: 'proporciones de Inicio' });
+  return (await p.eval(LEER_INICIO)).cifras[2];
 };
 
 // Filas de la tabla de alertas de un camión: [{tipo, posicion}]
@@ -72,7 +73,7 @@ export function registrar(env) {
       // Panel: sin medición ni gráfico del viejo
       await seleccionarRueda(p, pos);
       await p.esperar(`/todavía no tiene mediciones/.test(document.querySelector('#vd-panel').textContent)`, { que: 'el panel dice que no tiene mediciones' });
-      await p.esperar(`/Todavía no hay mediciones para graficar/.test(document.querySelector('#vd-chart-wrap').textContent)`, { que: 'sin gráfico heredado' });
+      await p.esperar(`/Sin mediciones para graficar/.test(document.querySelector('#vd-chart-wrap').textContent)`, { que: 'sin gráfico heredado' });
     });
 
     const despues = fila(env, id, pos);
