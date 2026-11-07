@@ -35,6 +35,7 @@
 | Cuenta con rol `api` para la app | Auth + fila en `perfiles` (runbook §2) |
 | Confirmar con DAC el orden físico de `mm1..mm4` | Constante en el código |
 | RPC de rotación | PR en curso |
+| Recomendación de rotación, alerta única de estado crítico y rendimiento del indicador de desgaste | Investigación y diseño en [15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md); implementación pendiente |
 | Prueba de punta a punta con sesión y datos reales | No realizada |
 
 ### Sugerencias del revisor (sin resolver)
