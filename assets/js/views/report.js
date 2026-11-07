@@ -63,15 +63,16 @@ export async function generarReportePDF(){
 
     // Traer neumáticos asignados y últimas 10 mediciones por posición
     const [{data:neums},{data:meds}]=await Promise.all([
-      db.from('neumaticos').select('posicion,marca,modelo,fecha_compra,precio_unidad,notas').eq('vehiculo_id',vid),
-      db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at').eq('vehiculo_id',vid).order('created_at',{ascending:false}).limit(500)
+      db.from('neumaticos').select('posicion,marca,modelo,fecha_compra,precio_unidad,notas').eq('vehiculo_id',vid).eq('estado','montado'),
+      // Mediciones del neumático montado en cada posición (no las del que estuvo antes ahí).
+      db.from('v_mediciones_neumatico').select('posicion_actual,mm1,mm2,mm3,promedio,created_at').eq('vehiculo_id',vid).eq('estado_montaje','montado').order('created_at',{ascending:false}).limit(500)
     ]);
 
-    // Agrupar mediciones por posición, máximo 8 últimas por posición
+    // Agrupar mediciones por posición actual, máximo 8 últimas por posición
     const medPorPos={};
     (meds||[]).forEach(m=>{
-      if(!medPorPos[m.posicion]) medPorPos[m.posicion]=[];
-      if(medPorPos[m.posicion].length<8) medPorPos[m.posicion].push(m);
+      if(!medPorPos[m.posicion_actual]) medPorPos[m.posicion_actual]=[];
+      if(medPorPos[m.posicion_actual].length<8) medPorPos[m.posicion_actual].push(m);
     });
 
     // Determinar posiciones del camión

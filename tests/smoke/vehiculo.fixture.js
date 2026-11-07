@@ -43,10 +43,10 @@
   estado.filter(function(f){ return f.vehiculo_id === 10 && f.promedio !== null; }).forEach(function(f){
     for(var k = 9; k >= 0; k--){
       var mm = Math.round((f.promedio + (f.tasa_mm_semana || 0.4) * k + (k % 3 === 1 ? 0.15 : 0)) * 10) / 10;
-      mediciones.push({id:f.posicion*100+k, vehiculo_id:10, cliente_id:1, posicion:f.posicion, mm1:mm+0.2, mm2:mm, mm3:mm-0.2, promedio:mm, created_at:D(k*7+2)});
+      mediciones.push({id:f.posicion*100+k, medicion_id:f.posicion*100+k, estado_montaje:'montado', posicion_actual:f.posicion, vehiculo_id:10, cliente_id:1, posicion:f.posicion, mm1:mm+0.2, mm2:mm, mm3:mm-0.2, promedio:mm, created_at:D(k*7+2)});
     }
   });
-  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones};
+  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones};
   var fx = window.__vehFx = { queries: [] };
 
   function Q(table){
