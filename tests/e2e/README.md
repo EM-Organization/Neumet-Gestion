@@ -40,6 +40,9 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
 - **mediciones-neumatico**: cambiar un neumático crítico (ingresando uno nuevo) deja la rueda en "sin datos", quita su alerta
   crítica y baja el contador de Inicio; al medir el nuevo toma su valor sin arrastrar el gráfico del viejo; rotar dos ruedas
   lleva mm, color, historial y alertas con el neumático.
+- **sucursales**: el perfil global crea, renombra y elimina sucursales, agrega vehículos y los mueve con confirmación (historial
+  de mediciones, neumáticos y eventos intacto, auditoría `MOVER_SUCURSAL`); el perfil de sucursal no puede gestionar; Otra Empresa SA
+  no ve ni mueve nada de Demo Transportes (RPC directas rechazadas con 42501 y la base sin cambios).
 - **contrato**: ninguna petición real falló por columna/relación/función inexistente; cada `select()`/`rpc()` escrito
   en `assets/js` existe en la base.
 

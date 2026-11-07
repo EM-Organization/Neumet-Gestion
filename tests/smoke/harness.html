@@ -161,6 +161,7 @@
     if(!cliMode) await window.seccionalesAdminFlow(w,d,sleep,fail,log);
     else if(/[?&]secuser=1/.test(location.search)) await window.seccionalesUsuarioFlow(w,d,sleep,fail,log);
     else await window.seccionalesClienteFlow(w,d,sleep,fail,log);
+    if(cliMode && !/[?&]secuser=1/.test(location.search)) await window.sucursalesClienteFlow(w,d,sleep,fail,log);
     var endV=(location.search.match(/[?&]end=([a-z]+)/)||[])[1];
     if(endV){ nav(endV); await sleep(600); }
     log.push('svg-nodos='+d.querySelectorAll('#view-mediciones svg *').length);

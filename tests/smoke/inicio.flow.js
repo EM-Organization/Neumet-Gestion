@@ -90,7 +90,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    if(visibles.join(',') !== 'inicio,vehiculos,alertas,stock,reportes,dispositivos') fail('menu(cliente): menú inesperado: '+visibles.join(','));
+    // Sucursales solo para el perfil global; el de sucursal no lo ve.
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes,dispositivos' : 'inicio,vehiculos,alertas,stock,reportes,sucursales,dispositivos';
+    if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
     all('[data-admin-only]').forEach(function(el){ if(visible(el)) fail('menu(cliente): elemento admin visible: '+(el.id||el.className||el.textContent.trim().slice(0,30))); });
     if(/administración|mi panel|mi resumen|mediciones|balance|clientes/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee texto de administración');
     if(visible($('[data-action="openStockModal"]'))) fail('stock(cliente): ve el alta de compras');

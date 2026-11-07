@@ -7,10 +7,10 @@ import { json, ALCANCE } from '../lib/verdad.mjs';
 
 const VISTAS = {
   admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
-  global: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
+  global: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'sucursales', 'dispositivos'],
   salto: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
   montevideo: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
-  otra: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos']
+  otra: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'sucursales', 'dispositivos']
 };
 
 // Intercepta las descargas y ventanas de impresión del panel para poder leer el CSV generado.
