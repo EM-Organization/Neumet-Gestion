@@ -82,5 +82,8 @@ export function prepararBase(url) {
   runFile(url, join(sqlDir, '10_usuarios_y_cliente.sql'));
   runFile(url, join(ROOT, 'supabase/seed/demo.sql'));
   runFile(url, join(sqlDir, '20_perfiles_seccional.sql'));
+  // Estadísticas del planificador: una base recién cargada no tiene (autovacuum tarda) y los planes salen distintos
+  // a los de producción.
+  psql(url, ['-c', 'analyze']);
   return { migraciones: migs };
 }

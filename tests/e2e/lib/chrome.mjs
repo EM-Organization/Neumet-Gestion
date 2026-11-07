@@ -35,21 +35,49 @@ class Cdp {
   }
 }
 
-export async function lanzarChrome() {
+// Un intento de arranque: espera hasta ~20 s a que Chrome publique su puerto de depuración. Si no lo hace, mata el
+// proceso y devuelve el motivo (código de salida y últimas líneas de stderr) para que el error sea diagnosticable.
+async function arrancar(binario) {
   const dir = mkdtempSync(join(tmpdir(), 'neumet-e2e-chrome-'));
-  const proc = spawn(buscarChrome(), [
+  const proc = spawn(binario, [
     '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check',
     '--disable-extensions', '--disable-background-networking', '--remote-debugging-port=0', `--user-data-dir=${dir}`, 'about:blank'
-  ], { stdio: 'ignore' });
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '', salida = null;
+  proc.stderr.on('data', d => { stderr = (stderr + d).slice(-2000); });
+  proc.on('exit', (code, sig) => { salida = `código ${code ?? sig}`; });
+  proc.on('error', e => { salida = `no se pudo ejecutar: ${e.message}`; });
   let ws;
-  for (let i = 0; i < 100 && !ws; i++) {
+  for (let i = 0; i < 130 && !ws && !salida; i++) {
     await new Promise(r => setTimeout(r, 150));
     const f = join(dir, 'DevToolsActivePort');
     if (!existsSync(f)) continue;
     const [port, path] = readFileSync(f, 'utf8').trim().split('\n');
-    ws = `ws://127.0.0.1:${port}${path}`;
+    if (port && path) ws = `ws://127.0.0.1:${port}${path}`;
   }
-  if (!ws) { proc.kill(); throw new Error('Chrome no expuso el puerto de depuración'); }
+  if (!ws) {
+    proc.kill('SIGKILL');
+    try { rmSync(dir, { recursive: true, force: true }); } catch { /* temporal */ }
+    return { motivo: `${salida ? `Chrome terminó (${salida})` : 'Chrome no publicó el puerto en 20 s'}${stderr ? `; stderr: ${stderr.trim().split('\n').slice(-5).join(' | ')}` : ''}` };
+  }
+  return { ws, proc, dir };
+}
+
+// Reintenta el arranque (el primer arranque en un runner frío puede tardar o fallar de forma esporádica). Si todos los
+// intentos fallan, el error incluye el motivo de cada uno: no se oculta un Chrome realmente roto.
+export async function lanzarChrome() {
+  const binario = buscarChrome();
+  const motivos = [];
+  let r;
+  for (let intento = 1; intento <= 3; intento++) {
+    r = await arrancar(binario);
+    if (r.ws) break;
+    motivos.push(`intento ${intento}: ${r.motivo}`);
+    console.error(`[e2e] ${motivos.at(-1)}`);
+    await new Promise(ok => setTimeout(ok, 1000));
+  }
+  if (!r.ws) throw new Error(`Chrome no expuso el puerto de depuración (${binario}). ${motivos.join(' / ')}`);
+  const { ws, proc, dir } = r;
   const sock = new WebSocket(ws);
   await new Promise((ok, ko) => { sock.addEventListener('open', ok); sock.addEventListener('error', () => ko(new Error('WebSocket CDP'))); });
   const cdp = new Cdp(sock);

@@ -105,6 +105,8 @@ PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261109000000_medici
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
 run -f "$SQL/01_fixtures.sql"
+echo "== estadísticas del planificador (una base recién cargada no las tiene)"
+run -c "analyze"
 echo "== seed demo sin cliente: debe fallar con mensaje claro"
 if "${PSQL[@]}" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/supabase/seed/demo.sql" >"$WORK/seed.txt" 2>&1; then
   echo "FALLO: el seed no debería ejecutarse sin el cliente Demo" >&2; exit 1
