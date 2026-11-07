@@ -6,11 +6,11 @@ import { flujo, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json, ALCANCE } from '../lib/verdad.mjs';
 
 const VISTAS = {
-  admin: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'ficha', 'balance'],
-  global: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
-  salto: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
-  montevideo: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos'],
-  otra: ['inicio', 'vehiculos', 'alertas', 'reportes', 'dispositivos']
+  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
+  global: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
+  salto: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
+  montevideo: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos'],
+  otra: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos']
 };
 
 // Intercepta las descargas y ventanas de impresión del panel para poder leer el CSV generado.
@@ -73,8 +73,14 @@ export function registrar(env) {
       await p.esperar(`document.querySelectorAll('#view-clientes tbody tr').length === 2`, { que: '2 clientes' });
       const t = await texto(p, '#view-clientes');
       assert.match(t, /Demo Transportes/); assert.match(t, /Otra Empresa SA/);
-      await irA(p, 'ficha');
-      await p.esperar(`document.querySelector('#ficha-selector') && document.querySelectorAll('#ficha-selector option').length >= 2`, { que: 'selector de ficha' });
+      // La ficha se abre desde el nombre del cliente (no hay entrada propia en el menú).
+      assert.equal(await p.eval(`document.querySelectorAll('.nav-item[data-view="ficha"]').length`), 0, 'Ficha no es una entrada del menú');
+      await p.click('#view-clientes [data-action="abrirFichaCliente"]');
+      await p.esperar(`document.querySelector('#view-ficha').classList.contains('active') && document.querySelector('#ficha-nombre').textContent !== 'Cliente'`, { que: 'ficha del cliente' });
+      assert.equal(await p.eval(`document.querySelector('.nav-item.active').dataset.view`), 'clientes', 'la ficha resalta Clientes');
+      assert.match(await texto(p, '#breadcrumb-current'), /\S/);
+      await p.click('#ficha-volver');
+      await p.esperar(`document.querySelector('#view-clientes').classList.contains('active')`, { que: 'volver a Clientes' });
       await irA(p, 'mediciones');
       await p.esperar(`document.querySelectorAll('#med-cliente-select option').length >= 3`, { que: 'clientes en Mediciones' });
       const demo = env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`);
@@ -86,21 +92,19 @@ export function registrar(env) {
     });
   });
 
-  test('Vehículos (global): el stock del cliente se lista y es de solo lectura; la seccional no lo ve', async () => {
+  test('Stock (global): el stock del cliente se lista y es de solo lectura; la seccional no lo ve', async () => {
     const lotes = json(env, `select marca, cantidad from public.stock_neumaticos where cliente_id = (select id from public.clientes where nombre = 'Demo Transportes') order by marca`);
     assert.ok(lotes.length >= 3);
     const marcas = () => `[...document.querySelectorAll('#tbody-stock tr:not(.stock-asig-detail)')].map(r => r.cells[0] && r.cells[0].textContent.trim()).filter(Boolean).sort()`;
     await flujo(env, 'stock-global', 'global', async p => {
-      await irA(p, 'vehiculos');
-      await p.click('.sub-tab[data-subtab="sv-stock"]');
+      await irA(p, 'stock');
       await p.esperar(`${marcas()}.length === ${lotes.length}`, { que: `${lotes.length} lotes de stock` });
       assert.deepEqual(await p.eval(marcas()), lotes.map(l => l.marca));
       assert.match(await texto(p, '#tbody-stock'), new RegExp(`0 / ${lotes[0].cantidad} ud\\.`));
       assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'el cliente no edita ni elimina stock');
     });
     await flujo(env, 'stock-seccional', 'salto', async p => {
-      await irA(p, 'vehiculos');
-      await p.click('.sub-tab[data-subtab="sv-stock"]');
+      await irA(p, 'stock');
       await dormir(700);
       assert.deepEqual(await p.eval(marcas()), ['Sin neumáticos en stock'], 'la seccional no ve lotes de stock');
     });

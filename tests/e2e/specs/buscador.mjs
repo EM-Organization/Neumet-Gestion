@@ -81,4 +81,93 @@ export function registrar(env) {
       assert.deepEqual(await nombres(), ['Camión 201'].map(n => n.slice(0)));
     });
   });
+
+  // Matrículas guardadas con guion o con espacios se encuentran escribiéndolas de cualquier forma (cliente "Otra Empresa SA").
+  test('Buscador (otra): SAB-1234 se encuentra como SAB1234, sab 1234, sab-1234 y por número de coche', async () => {
+    await flujo(env, 'buscador-guion', 'otra', async p => {
+      await irA(p, 'vehiculos');
+      await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === 4`, { que: '4 vehículos de Otra Empresa' });
+      for (const [q, esperado] of [['SAB-1234', ['SAB-1234']], ['SAB1234', ['SAB-1234']], ['sab 1234', ['SAB-1234']], ['sab-1234', ['SAB-1234']], ['1234', ['SAB-1234']], ['301', ['SAB-1234']],
+        ['ab123cd', ['ab 123 cd']], ['AB-123-CD', ['ab 123 cd']], ['demo010', []]]) {
+        await p.escribir('#search-vehiculos', q);
+        await dormir(120);
+        const halladas = (await filasVehiculos(p)).map(f => f.meta.split(' · ')[0]).sort();
+        assert.deepEqual(halladas, esperado, `[otra] ${JSON.stringify(q)}`);
+      }
+    });
+  });
+
+  test('Buscador (admin): SAB-1234 y SAB1234 dan el mismo camión en la tabla', async () => {
+    await flujo(env, 'buscador-guion-admin', 'admin', async p => {
+      await irA(p, 'vehiculos');
+      await p.esperar(`document.querySelectorAll('#tbody-vehiculos tr .mono-cell').length >= 15`);
+      for (const q of ['SAB-1234', 'SAB1234', 'sab 1234', '301']) {
+        await p.escribir('#search-vehiculos', q);
+        await dormir(120);
+        assert.deepEqual(await p.eval(`[...document.querySelectorAll('#tbody-vehiculos tr .mono-cell')].map(e => e.textContent.trim())`), ['SAB-1234'], `[admin] ${q}`);
+      }
+    });
+  });
+
+  // Buscador global de la barra superior (se prueba desde Alertas) y el de Inicio: matrícula, número de coche y espacios.
+  const ABRIR_GLOBAL = [['DEMO010', 'Camión 201'], ['demo 010', 'Camión 201'], ['110', 'Camión 201'], ['201', 'Camión 201']];
+  for (const rol of ['global', 'salto']) {
+    test(`Buscador global (${rol}): desde Alertas, Enter abre el detalle y Volver regresa a Alertas`, async () => {
+      await flujo(env, 'buscador-global', rol, async p => {
+        for (const [q, nombre] of ABRIR_GLOBAL) {
+          await irA(p, 'alertas');
+          await p.send('Input.dispatchKeyEvent', { type: 'keyDown', key: '/', code: 'Slash', text: '/' });
+          await p.send('Input.dispatchKeyEvent', { type: 'keyUp', key: '/', code: 'Slash' });
+          assert.equal(await p.eval(`document.activeElement && document.activeElement.id`), 'busq-global-input', 'la tecla / enfoca el buscador');
+          assert.equal(await p.eval(`document.querySelector('#busq-global-input').value`), '', 'la tecla / no escribe en el campo');
+          await p.escribir('#busq-global-input', q);
+          await p.enter();
+          await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: `detalle tras buscar ${q}` });
+          assert.match(await texto(p, '#vd-cab'), new RegExp(nombre));
+          assert.equal(await p.eval(`document.querySelector('.nav-item.active').dataset.view`), 'vehiculos');
+          assert.match(await texto(p, '#vd-volver'), /Volver a Alertas/);
+          await p.click('#vd-volver');
+          await p.esperar(`document.querySelector('#view-alertas').classList.contains('active')`);
+        }
+      });
+    });
+
+    test(`Buscador de Inicio (${rol}): varias coincidencias muestran lista; una abre el detalle`, async () => {
+      await flujo(env, 'buscador-inicio', rol, async p => {
+        await p.esperar(`document.querySelector('#busq-inicio-input') && document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 4`);
+        await p.escribir('#busq-inicio-input', 'demo01');
+        await p.enter();
+        await p.esperar(`document.querySelectorAll('#busq-inicio-res .busq-op').length > 1`, { que: 'lista de resultados' });
+        assert.equal(await p.eval(`document.querySelector('#view-vehiculo-detalle').classList.contains('active')`), false, 'varias coincidencias no abren el detalle');
+        await p.escribir('#busq-inicio-input', 'demo 010');
+        await p.enter();
+        await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: 'detalle de DEMO010' });
+        assert.match(await texto(p, '#vd-volver'), /Volver a Inicio/);
+      });
+    });
+  }
+
+  test('Buscador global (salto): una matrícula de Montevideo o de otro cliente no se encuentra ni se abre', async () => {
+    await flujo(env, 'buscador-global-ajeno', 'salto', async p => {
+      await irA(p, 'alertas');
+      for (const q of ['DEMO001', 'demo 005', '101', 'OTRA001', 'SAB-1234']) {
+        await p.escribir('#busq-global-input', q);
+        await p.enter();
+        await p.esperar(`/Ningún vehículo coincide/.test(document.querySelector('#busq-global-res').innerText)`, { que: `sin resultados para ${q}` });
+        assert.equal(await p.eval(`document.querySelector('#view-vehiculo-detalle').classList.contains('active')`), false, `${q} no debe abrir un detalle`);
+      }
+    });
+  });
+
+  test('Buscador global (otra): encuentra SAB-1234 como SAB1234 y abre su detalle', async () => {
+    await flujo(env, 'buscador-global-otra', 'otra', async p => {
+      await irA(p, 'dispositivos');
+      for (const q of ['SAB1234', 'sab-1234', '301']) {
+        await irA(p, 'dispositivos');
+        await p.escribir('#busq-global-input', q);
+        await p.enter();
+        await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /SAB-1234/.test(document.querySelector('#vd-cab').innerText)`, { que: `detalle tras buscar ${q}` });
+      }
+    });
+  });
 }

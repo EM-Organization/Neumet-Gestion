@@ -240,7 +240,7 @@ export function registrar(env) {
 
   test('Taller (global): tras los cambios, la interfaz sigue sin errores en Inicio y Alertas', async () => {
     await flujo(env, 'post-taller', 'global', async p => {
-      await p.esperar(`document.querySelectorAll('#inicio-contenido .atencion-card').length === 4`);
+      await p.esperar(`document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 4`);
       await p.click('.nav-item[data-view="alertas"]');
       await p.esperar(`/\\d+ alertas?/.test(document.querySelector('#alert-count').textContent)`);
       assert.ok((await texto(p, '#alert-count')).length > 0);
