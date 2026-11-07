@@ -1,6 +1,6 @@
 // Inicio: panel de decisión. Buscador de vehículos, proporciones de la flota, vehículos que requieren atención y
 // próximos cambios, con enlace directo al detalle de cada vehículo. Usa las vistas SQL v_estado_neumaticos,
-// v_alertas y v_salud_dispositivos (security_invoker: la RLS decide qué ve cada rol; la seccional elegida se aplica además aquí).
+// v_alertas y v_salud_dispositivos (security_invoker: la RLS decide qué ve cada rol; la sucursal elegida se aplica además aquí).
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -15,6 +15,7 @@ import {
   clientesConUrgencias, textoSemanas,
 } from '../domain/inicio.js';
 import { fmtNum, fmtFechaLarga, plural } from '../domain/formato.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -25,14 +26,14 @@ const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '')
 function filaAtencion(v) {
   return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
     <span class="inicio-punto ${v.nivel === 'critico' ? 'critico' : ''}" aria-hidden="true"></span>
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${v.nombre} ${matricula(v.patente)}</span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
       <span class="inicio-fila-causa">${v.nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${v.causa}</span></span>
     <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
 }
 
 function filaProximo(p) {
   return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(p.vehiculo_id)}">
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${p.nombre} ${matricula(p.patente)}</span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(p.nombre)} ${matricula(p.patente)}</span>
       <span class="inicio-fila-causa">Posición ${p.posicion}${p.mm !== null ? ` · ${fmtNum(p.mm, 1)} mm` : ''}</span></span>
     <span class="inicio-semanas">${textoSemanas(p.semanas)}</span></button></li>`;
 }

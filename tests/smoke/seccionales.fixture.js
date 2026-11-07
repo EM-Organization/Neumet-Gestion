@@ -1,7 +1,7 @@
-// Fixture del arnés de humo para seccionales. Se carga en el iframe DESPUÉS de stub.js (no lo modifica):
-// sirve las tablas sucursales/perfiles, el mapa vehículo->seccional y registra las escrituras del ABM.
+// Fixture del arnés de humo para sucursales. Se carga en el iframe DESPUÉS de stub.js (no lo modifica):
+// sirve las tablas sucursales/perfiles, el mapa vehículo->sucursal y registra las escrituras del ABM.
 //   ?cliente=1            perfil GLOBAL del cliente 1 (ve el selector)
-//   ?cliente=1&secuser=1  perfil de SECCIONAL (Salto): el selector no debe aparecer
+//   ?cliente=1&secuser=1  perfil de SUCURSAL (Salto): el selector no debe aparecer
 (function(){
   var parentSearch = window.parent.location.search;
   var asCliente = /[?&](cliente|secuser)=1/.test(parentSearch);
@@ -14,7 +14,7 @@
     { id: 2, cliente_id: 1, nombre: 'Salto & <Norte>' },
     { id: 3, cliente_id: 2, nombre: 'Ajena' }
   ];
-  // Mapa vehículo -> seccional que lee el selector del cliente (ids de v_estado_neumaticos de flota.fixture.js)
+  // Mapa vehículo -> sucursal que lee el selector del cliente (ids de v_estado_neumaticos de flota.fixture.js)
   var vehMap = [
     { id: 10, sucursal_id: 1 }, { id: 12, sucursal_id: 2 }, { id: 11, sucursal_id: null }, { id: 13, sucursal_id: null }
   ];
@@ -54,7 +54,7 @@
           rows.forEach(function(r){ Object.assign(r, payload); }); fx.updates.push({ table: table, patch: payload, filters: filters }); out = { data: rows, error: null };
         } else if (op === 'delete') {
           fx.deletes.push({ table: table, filters: filters });
-          if (rows.some(function(r){ return r.id === 2; })) out = { data: null, error: { code: '23503', message: 'fk' } }; // la seccional 2 tiene vehículos
+          if (rows.some(function(r){ return r.id === 2; })) out = { data: null, error: { code: '23503', message: 'fk' } }; // la sucursal 2 tiene vehículos
           else { store[table] = store[table].filter(function(r){ return rows.indexOf(r) === -1; }); out = { data: null, error: null }; }
         } else if (op === 'single') out = { data: rows[0] || null, error: null };
         else out = { data: rows, error: null };

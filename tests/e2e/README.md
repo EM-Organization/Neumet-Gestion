@@ -12,7 +12,7 @@ ejercen el **panel real** en Chrome headless contra una base real.
   registrando cada petición. En `adminpanel/index.html` sustituye solo: el CDN de supabase-js (la misma versión,
   desde `node_modules`), `assets/config.js` y añade `browser/auth-shim.js`, que reemplaza únicamente la autenticación
   (`getSession`, login, logout) por un JWT HS256 de prueba. Todas las consultas `from`/`rpc` van por HTTP a PostgREST.
-- **Sesiones**: `admin`, `global` (Demo), `salto`, `montevideo` (perfiles de seccional), `otra` (otro cliente), `sinperfil`.
+- **Sesiones**: `admin`, `global` (Demo), `salto`, `montevideo` (perfiles de sucursal), `otra` (otro cliente), `sinperfil`.
 
 ## Correrlo en local
 Requisitos: Node 22, `psql` y binarios de Postgres (`initdb`, `pg_ctl`; p. ej. `brew install postgresql@17`) o una base
@@ -35,7 +35,7 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
   el selector del perfil global.
 - **alertas-dispositivos**: conteos, filtros y estados contra `v_alertas` y `v_salud_dispositivos`.
 - **recorrido**: todas las vistas por rol, CSV de Reportes paginado, Mediciones, Flota, Clientes, Ficha, Stock.
-- **taller**: rotar y cambiar neumático con RPC reales (admin, global, seccional), rechazos 42501 con la base intacta,
+- **taller**: rotar y cambiar neumático con RPC reales (admin, global, sucursal), rechazos 42501 con la base intacta,
   stock solo para el perfil global, odómetro que no baja.
 - **mediciones-neumatico**: cambiar un neumático crítico (ingresando uno nuevo) deja la rueda en "sin datos", quita su alerta
   crítica y baja el contador de Inicio; al medir el nuevo toma su valor sin arrastrar el gráfico del viejo; rotar dos ruedas

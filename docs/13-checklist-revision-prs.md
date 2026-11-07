@@ -5,7 +5,7 @@ Lo que debe cumplir un PR para fusionarse. Lo aplica el revisor y el autor lo ve
 ## 1. Rigor al buscar bugs
 El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - Probar con datos vacíos, con `null`, con un solo registro y con muchos.
-- Probar con cada rol (admin, cliente global, cliente de seccional) y con una sesión sin perfil.
+- Probar con cada rol (admin, cliente global, cliente de sucursal) y con una sesión sin perfil.
 - Pensar qué cambia respecto a producción: caché del navegador, orden de carga de módulos, datos reales vs datos de prueba.
 - Buscar el caso negativo: qué pasa si la consulta falla, si el campo no existe, si el usuario no tiene permiso.
 - Un PR que arregla un bug incluye un test que **falla sin el arreglo**.

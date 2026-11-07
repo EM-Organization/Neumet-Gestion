@@ -50,7 +50,7 @@ async function cargarCliente(){
   renderResumen((res.data||[])[0]||null);
   renderSalud(salud.data||[]);
   renderUmbrales(c);
-  cargarSeccionalesAdmin(id); // ABM de seccionales (solo admin; no hace nada en modo cliente)
+  cargarSeccionalesAdmin(id); // ABM de sucursales (solo admin; no hace nada en modo cliente)
   cargarCuentasApi();
 }
 

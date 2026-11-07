@@ -1,5 +1,5 @@
 // Detalle de un vehículo: cabecera, diagrama SVG de ruedas coloreado por desgaste y panel del neumático seleccionado.
-// Datos: vehiculos, v_estado_neumaticos, v_alertas, v_mediciones_neumatico (mediciones del neumático montado) y eventos_neumatico (la RLS filtra por cliente/seccional).
+// Datos: vehiculos, neumaticos (n.º de quema y km previos), v_estado_neumaticos, v_alertas, v_mediciones_neumatico (mediciones del neumático montado) y eventos_neumatico (la RLS filtra por cliente/seccional).
 // Contrato con el flujo de taller: los botones del panel llevan data-action="neumatico-cambiar" / "neumatico-rotar-pos"
 // con data-vehiculo-id y data-posicion (y data-args='[vehiculoId, posicion]'). Esta vista NO implementa esas acciones:
 // si no están registradas en ACTIONS muestra el aviso "No disponible". Tras operar, la acción puede llamar a
@@ -15,12 +15,14 @@ import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.j
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
 import { semaforoVehiculo } from '../domain/flota.js';
-import { TIPO_LABEL } from '../domain/ciclo-vida.js';
+import { TIPO_LABEL, kmPorNeumatico } from '../domain/ciclo-vida.js';
+import { kmTotalesNeumatico } from '../domain/quema.js';
 import {
   layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
 import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const nulo = v => v === null || v === undefined;
@@ -61,18 +63,18 @@ function cabecera() {
   const { veh, filas } = datos;
   const sem = semaforoVehiculo(filas.map(f => f.estado));
   const ult = filas.reduce((m, f) => (f.ultima_medicion_at && (!m || f.ultima_medicion_at > m) ? f.ultima_medicion_at : m), null);
-  const seccional = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
+  const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
-    <div class="vd-cab-titulo"><h2>${veh.nombre}</h2>${chipEstado(sem)}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}</div>
+    <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${chipEstado(sem)}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}</div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
-      ${dato('Número de coche', veh.numero || '—')}
-      ${seccional ? dato('Seccional', seccional) : ''}
+      ${veh.numero && String(veh.numero) !== String(veh.nombre) ? dato('Número de coche', veh.numero) : ''}
+      ${sucursal ? dato('Sucursal', sucursal) : ''}
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
-  setTitulo(veh.nombre, 'vehiculos');
+  setTitulo(etiquetaCoche(veh.nombre), 'vehiculos');
 }
 
 function resumen() {
@@ -188,6 +190,25 @@ function seccionTasa(fila, u, razonMostrada) {
     <ul class="vd-alertas">${frase(`Nivel crítico (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Retiro (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
+// Datos propios del neumático montado: número de quema y km (previos + recorridos desde el montaje).
+function seccionNeumatico(fila) {
+  const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
+  if (!n) return html`<p class="vd-p-nota">Sin datos del neumático.</p>`;
+  const k = kmTotalesNeumatico(n, datos.km['n' + n.id]);
+  const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
+  return html`<dl class="vd-datos vd-datos-neum">
+    ${dato('Número de quema', n.numero_quema || 'Sin registrar')}
+    ${dato('Km que ya traía', `${fmtNum(k.previos)} km`)}
+    ${dato('Km recorridos', k.completo ? `${fmtNum(k.recorridos)} km` : (k.recorridos > 0 ? `${fmtNum(k.recorridos)} km (parcial)` : 'Sin odómetro al montar'))}
+    ${dato('Km totales', `${fmtNum(k.total)} km`)}
+  </dl>`;
+}
+
+function quemaDe(fila) {
+  const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
+  return n ? n.numero_quema : null;
+}
+
 function seccionAlertas(pos) {
   const al = datos.alertas.filter(a => Number(a.posicion) === pos).sort((a, b) => Number(b.severidad) - Number(a.severidad));
   if (!al.length) return html`<p class="vd-p-nota">Sin alertas activas.</p>`;
@@ -240,12 +261,13 @@ function renderPanel() {
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
-        <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · reencauche ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}</div></div>
+        <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · reencauche ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
       <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
     </div>
     <div class="vd-p-scroll">
     <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}</div>
     ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon"><strong>Desgaste mayor al normal.</strong> ${ind.razon}</p>` : ''}
+    <h4>Neumático</h4>${seccionNeumatico(fila)}
     <h4>Última medición</h4>${seccionMedicion(fila)}
     <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
     <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
@@ -353,12 +375,13 @@ export async function load() {
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren();
   await contextoListo();
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
-  const [v, est, al, ev] = await Promise.all([
+  const [v, est, al, ev, nm] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_alertas').select('*').eq('vehiculo_id', vehiculoId).order('severidad', { ascending: false }),
     db.from('eventos_neumatico').select('id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_at')
       .eq('vehiculo_id', vehiculoId).order('created_at', { ascending: false }).limit(100),
+    db.from('neumaticos').select('id,posicion,estado,numero_quema,km_previos').eq('vehiculo_id', vehiculoId),
   ]);
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
@@ -368,6 +391,8 @@ export async function load() {
   const layout = layoutRuedas(posiciones, v.data.tipo_ruedas);
   datos = {
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
+    neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
+    km: kmPorNeumatico(ev.error ? [] : (ev.data || []), nulo(v.data.odometro_km) ? null : v.data.odometro_km),
     layout, geo: geometriaDiagrama(layout), u: umbralesDe(filas[0]), porPos: new Map(filas.map(f => [Number(f.posicion), f])),
   };
   cabecera(); resumen(); leyenda(); dibujarDiagrama();

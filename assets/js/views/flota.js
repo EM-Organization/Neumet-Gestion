@@ -14,6 +14,7 @@ import { resumenDesdeFilas } from '../domain/seccional.js';
 import {
   agruparVehiculos, filtrarVehiculos, kpisFlota,
 } from '../domain/flota.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -39,7 +40,7 @@ function card(v, mostrarCliente) {
   const arg = JSON.stringify([v.vehiculo_id]);
   const clienteNombre = mostrarCliente ? (resumen.find(r => String(r.cliente_id) === String(v.cliente_id)) || {}).nombre : '';
   return html`<div class="dash-fleet-card flota-card ${'sev-' + safeCls(v.semaforo)}" data-vehiculo="${v.vehiculo_id}" data-semaforo="${v.semaforo}">
-    <div class="dash-fleet-name">${v.nombre}${v.patente ? html`<span class="dash-fleet-pat">${v.patente}</span>` : ''}
+    <div class="dash-fleet-name">${etiquetaCoche(v.nombre)}${v.patente ? html`<span class="dash-fleet-pat">${v.patente}</span>` : ''}
       ${chipEstado(v.semaforo)}</div>
     ${clienteNombre ? html`<div class="flota-cliente">${clienteNombre}</div>` : ''}
     <div class="dash-fleet-stats">
@@ -97,7 +98,7 @@ export async function load() {
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_resumen_flota_cliente').select('*').order('nombre'),
-    // Con una seccional elegida el resumen del servidor (por cliente) no sirve: se recalcula con las alertas filtradas.
+    // Con una sucursal elegida el resumen del servidor (por cliente) no sirve: se recalcula con las alertas filtradas.
     filtrando ? fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }) : Promise.resolve({ rows: [], error: null }),
   ]);

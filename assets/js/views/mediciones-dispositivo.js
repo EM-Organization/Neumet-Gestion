@@ -6,6 +6,7 @@ import { isClienteMode, currentClienteId } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { med } from './mediciones-state.js';
 import { medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 // ── MEDICIONES TABS ──
 export function medSwitchMode(mode){
@@ -138,7 +139,7 @@ function medDeviceRenderSessions(){
     const veh=s.vehiculo;
     const rawLabel=s.patente_raw||s.numero_raw||null;
     const vehNom=veh
-      ?`${veh.nombre}${veh.patente?' · '+veh.patente:''}`
+      ?`${etiquetaCoche(veh.nombre)}${veh.patente?' · '+veh.patente:''}`
       :rawLabel?html`<span style="color:var(--warning)">Sin asignar · ${rawLabel}</span>`:'Sin matrícula';
     const dotColor=isActive?'var(--accent-dark)':'var(--text-tertiary)';
     return html`<div class="session-item ${isActive?'active':''}" data-action="medDeviceSessionSelect" data-args="[${i}]">

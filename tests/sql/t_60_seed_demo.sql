@@ -12,12 +12,20 @@ insert into public.clientes (id, nombre, auth_user_id) values (50, 'Demo Transpo
 \ir ../../supabase/seed/demo.sql
 
 begin;
-select test.eq('2 seccionales', (select count(*) from public.sucursales where cliente_id = 50), 2::bigint);
+select test.eq('2 sucursales', (select count(*) from public.sucursales where cliente_id = 50), 2::bigint);
 select test.eq('14 vehículos', (select count(*) from public.vehiculos where cliente_id = 50), 14::bigint);
 select test.eq('9 vehículos en Montevideo',
   (select count(*) from public.vehiculos v join public.sucursales s on s.id = v.sucursal_id where v.cliente_id = 50 and s.nombre = 'Montevideo'), 9::bigint);
 select test.eq('5 vehículos en Salto',
   (select count(*) from public.vehiculos v join public.sucursales s on s.id = v.sucursal_id where v.cliente_id = 50 and s.nombre = 'Salto'), 5::bigint);
+select test.eq('el nombre de cada vehículo es solo el número de coche (igual a numero)',
+  (select count(*) from public.vehiculos where cliente_id = 50 and (nombre !~ '^[0-9]+$' or nombre is distinct from numero)), 0::bigint);
+select test.eq('número de coche de DEMO006 y DEMO010', (select string_agg(nombre, ',' order by patente) from public.vehiculos where patente in ('DEMO006', 'DEMO010')), '106,201');
+select test.eq('cada neumático del demo tiene número de quema único',
+  (select count(*) from public.neumaticos where cliente_id = 50 and numero_quema is not null),
+  (select count(distinct lower(numero_quema)) from public.neumaticos where cliente_id = 50));
+select test.eq('quema del demo: neumático montado en DEMO006 posición 1',
+  (select v.patente from public.neumaticos n join public.vehiculos v on v.id = n.vehiculo_id where n.numero_quema = 'Q06-01'), 'DEMO006');
 select test.eq('6 dispositivos', (select count(*) from public.dispositivos where cliente_id = 50), 6::bigint);
 select test.eq('6 neumáticos en camiones de 6', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO003')), 6::bigint);
 select test.eq('10 neumáticos + auxilio en DEMO001', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO001')), 11::bigint);
@@ -33,7 +41,7 @@ select test.eq('odómetro creciente en el tiempo (DEMO002 pos 1)',
      select odometro_km, coalesce(lag(odometro_km) over (order by created_at), 0) prev
      from public.mediciones where cliente_id = 50 and idneumatico = 'DEMO-02-01') q), true);
 select test.eq('stock de ejemplo', (select count(*) from public.stock_neumaticos where cliente_id = 50), 3::bigint);
-select test.eq('otros clientes intactos (cliente 1: sin seccionales ni stock demo)',
+select test.eq('otros clientes intactos (cliente 1: sin sucursales ni stock demo)',
   (select count(*) from public.sucursales where cliente_id in (1,2)), 0::bigint);
 
 -- Las vistas devuelven filas ricas para el cliente Demo (como superusuario)
@@ -52,7 +60,7 @@ select test.eq('salud: un dispositivo sin actividad', (select count(*) from publ
 select test.eq('salud: un dispositivo caído', (select count(*) from public.v_salud_dispositivos where cliente_id = 50 and estado = 'caido'), 1::bigint);
 select test.eq('resumen de flota del demo', (select n_vehiculos_activos from public.v_resumen_flota_cliente where cliente_id = 50), 14::bigint);
 
--- Perfil global del demo ve los 14; un perfil de seccional ve solo los suyos
+-- Perfil global del demo ve los 14; un perfil de sucursal ve solo los suyos
 insert into auth.users (id, email) values ('a0000000-0000-0000-0000-0000000000d2', 'demo-slt@t');
 insert into public.perfiles (user_id, rol, cliente_id, sucursal_id)
   select 'a0000000-0000-0000-0000-0000000000d2', 'cliente', 50, id from public.sucursales where cliente_id = 50 and nombre = 'Salto';

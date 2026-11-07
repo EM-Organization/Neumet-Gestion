@@ -14,6 +14,7 @@ import { fmtNum } from '../domain/formato.js';
 import { mLast, mTireColor, medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
 import { medSwitchMode, initDispositivoMode } from './mediciones-dispositivo.js';
 import './report.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 function mRenderAnalysis(pos){
   const block = document.getElementById('med-analysis-block');
@@ -85,7 +86,7 @@ export async function medInit(){
       .eq('cliente_id',currentClienteId).eq('activo',true)).order('nombre');
     med.vehs=data||[];
     const vs=document.getElementById('med-vehiculo-select');
-    setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, med.vehs.map(v=>html`<option value="${v.id}">${v.nombre}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
+    setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, med.vehs.map(v=>html`<option value="${v.id}">${etiquetaCoche(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
     vs.disabled=false;
   } else {
     const {data}=await db.from('clientes').select('id,nombre').order('nombre');
@@ -124,7 +125,7 @@ export function init(){
     if(!cid){ setHtml(vs, html`<option value="">— Seleccionar vehículo —</option>`); vs.disabled=true; return; }
     const {data}=await db.from('vehiculos').select('id,nombre,patente,tipo_ruedas').eq('cliente_id',cid).eq('activo',true).order('nombre');
     med.vehs=data||[];
-    setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, med.vehs.map(v=>html`<option value="${v.id}">${v.nombre}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
+    setHtml(vs, joinHtml([html`<option value="">— Seleccionar vehículo —</option>`, med.vehs.map(v=>html`<option value="${v.id}">${etiquetaCoche(v.nombre)}${v.patente?' · '+v.patente:''} (${v.tipo_ruedas} WHL)</option>`)]));
     vs.disabled=false;
   });
 

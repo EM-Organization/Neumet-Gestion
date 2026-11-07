@@ -8,8 +8,8 @@ import {
   validarNombreSeccional, mensajeErrorSeccional, cuerpoCrearUsuario, mensajeErrorCrearUsuario,
 } from '../domain/seccional.js';
 
-// ABM de seccionales en la ficha de cliente (solo admin): crear/renombrar/eliminar seccionales, asignar vehículos y
-// dispositivos, y crear usuarios (de seccional o globales) con la función crear-usuario-seccional.
+// ABM de sucursales en la ficha de cliente (solo admin): crear/renombrar/eliminar sucursales, asignar vehículos y
+// dispositivos, y crear usuarios (de sucursal o globales) con la función crear-usuario-seccional.
 const $ = id => document.getElementById(id);
 let clienteId = null;
 let secs = [], vehs = [], disps = [], perfiles = [];
@@ -24,9 +24,9 @@ function opciones(seleccion, primera) {
 }
 
 function renderLista() {
-  setHtml($('sec-lista'), secs.length ? html`<table class="sec-tabla"><thead><tr><th>Seccional</th><th>Vehículos</th><th>Dispositivos</th><th>Usuarios</th><th></th></tr></thead><tbody>${
+  setHtml($('sec-lista'), secs.length ? html`<table class="sec-tabla"><thead><tr><th>Sucursal</th><th>Vehículos</th><th>Dispositivos</th><th>Usuarios</th><th></th></tr></thead><tbody>${
     secs.map(s => html`<tr data-sucursal="${s.id}">
-      <td><input type="text" id="sec-n-${s.id}" value="${s.nombre}" maxlength="100" aria-label="Nombre de la seccional"/></td>
+      <td><input type="text" id="sec-n-${s.id}" value="${s.nombre}" maxlength="100" aria-label="Nombre de la sucursal"/></td>
       <td>${vehs.filter(v => String(v.sucursal_id) === String(s.id)).length}</td>
       <td>${disps.filter(d => String(d.sucursal_id) === String(s.id)).length}</td>
       <td>${perfiles.filter(p => String(p.sucursal_id) === String(s.id)).length}</td>
@@ -34,26 +34,26 @@ function renderLista() {
         <button class="btn ghost" data-action="seccionalRenombrar" data-args="[${s.id}]">Guardar nombre</button>
         <button class="btn ghost danger" data-action="seccionalEliminar" data-args="[${s.id}]">Eliminar</button>
       </td></tr>`)}</tbody></table>`
-    : html`<div class="salud-muted">Este cliente aún no tiene seccionales: todos sus usuarios ven toda la flota.</div>`);
+    : html`<div class="salud-muted">Este cliente aún no tiene sucursales: todos sus usuarios ven toda la flota.</div>`);
 }
 
 function renderAsignacion() {
-  setHtml($('sec-vehiculos'), vehs.length ? html`<table class="sec-tabla"><thead><tr><th>Vehículo</th><th>Seccional</th></tr></thead><tbody>${
+  setHtml($('sec-vehiculos'), vehs.length ? html`<table class="sec-tabla"><thead><tr><th>Vehículo</th><th>Sucursal</th></tr></thead><tbody>${
     vehs.map(v => html`<tr data-vehiculo="${v.id}"><td>${v.nombre}${v.patente ? html` <span class="dash-fleet-pat">${v.patente}</span>` : ''}</td>
-      <td><select class="flota-select" data-change="seccionalAsignarVeh" data-args="[${v.id}]" aria-label="Seccional del vehículo">${opciones(v.sucursal_id, 'Sin seccional (solo perfil global)')}</select></td></tr>`)}</tbody></table>`
+      <td><select class="flota-select" data-change="seccionalAsignarVeh" data-args="[${v.id}]" aria-label="Sucursal del vehículo">${opciones(v.sucursal_id, 'Sin sucursal (solo perfil global)')}</select></td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin vehículos.</div>`);
-  setHtml($('sec-dispositivos'), disps.length ? html`<table class="sec-tabla"><thead><tr><th>Dispositivo</th><th>Seccional</th></tr></thead><tbody>${
+  setHtml($('sec-dispositivos'), disps.length ? html`<table class="sec-tabla"><thead><tr><th>Dispositivo</th><th>Sucursal</th></tr></thead><tbody>${
     disps.map(d => html`<tr data-dispositivo="${d.id}"><td>${d.nombre || 'Sin nombre'} <span class="mono-cell">${d.mac_address}</span></td>
-      <td><select class="flota-select" data-change="seccionalAsignarDisp" data-args="[${d.id}]" aria-label="Seccional del dispositivo">${opciones(d.sucursal_id, 'Sin seccional (solo perfil global)')}</select></td></tr>`)}</tbody></table>`
+      <td><select class="flota-select" data-change="seccionalAsignarDisp" data-args="[${d.id}]" aria-label="Sucursal del dispositivo">${opciones(d.sucursal_id, 'Sin sucursal (solo perfil global)')}</select></td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin dispositivos.</div>`);
 }
 
 function renderUsuarios() {
   setHtml($('sec-usuarios'), perfiles.length ? html`<table class="sec-tabla"><thead><tr><th>Usuario</th><th>Alcance</th></tr></thead><tbody>${
     perfiles.map(p => html`<tr><td>${p.email || ('ID ' + String(p.user_id).slice(0, 8))}</td>
-      <td>${sinValor(p.sucursal_id) ? html`<span class="badge blue">Global (todas)</span>` : html`<span class="badge orange">${nombreDe(p.sucursal_id) || 'Seccional'}</span>`}</td></tr>`)}</tbody></table>`
+      <td>${sinValor(p.sucursal_id) ? html`<span class="badge blue">Global (todas)</span>` : html`<span class="badge orange">${nombreDe(p.sucursal_id) || 'Sucursal'}</span>`}</td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin usuarios.</div>`);
-  setHtml($('sec-user-sucursal'), joinHtml([html`<option value="">Global (ve todas las seccionales)</option>`,
+  setHtml($('sec-user-sucursal'), joinHtml([html`<option value="">Global (ve todas las sucursales)</option>`,
     ...secs.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
 }
 
@@ -94,7 +94,7 @@ async function crearUsuario() {
   err('');
   const email = $('sec-user-email').value.trim();
   const password = $('sec-user-password').value;
-  if (!email) { err('Escribe el email del usuario'); return; }
+  if (!email) { err('Falta el email del usuario'); return; }
   if (password && password.length < 12) { err('La contraseña debe tener al menos 12 caracteres (o déjala vacía para enviar una invitación)'); return; }
   const btn = $('sec-user-crear');
   btn.disabled = true;
@@ -122,16 +122,16 @@ registerActions({
   async seccionalCrear() {
     const v = validarNombreSeccional($('sec-nombre').value);
     if (!v.ok) { err(v.error); return; }
-    if (await guardar(() => db.from('sucursales').insert({ cliente_id: clienteId, nombre: v.valor }), 'Seccional creada')) $('sec-nombre').value = '';
+    if (await guardar(() => db.from('sucursales').insert({ cliente_id: clienteId, nombre: v.valor }), 'Sucursal creada')) $('sec-nombre').value = '';
   },
   async seccionalRenombrar(id) {
     const v = validarNombreSeccional($(`sec-n-${id}`).value);
     if (!v.ok) { err(v.error); return; }
-    await guardar(() => db.from('sucursales').update({ nombre: v.valor }).eq('id', id), 'Seccional actualizada');
+    await guardar(() => db.from('sucursales').update({ nombre: v.valor }).eq('id', id), 'Sucursal actualizada');
   },
   async seccionalEliminar(id) {
-    if (!await confirmDialog('Eliminar seccional', `¿Eliminar la seccional "${nombreDe(id)}"? Solo es posible si no tiene vehículos, dispositivos ni usuarios.`)) return;
-    await guardar(() => db.from('sucursales').delete().eq('id', id), 'Seccional eliminada');
+    if (!await confirmDialog('Eliminar sucursal', `¿Eliminar la sucursal "${nombreDe(id)}"? Solo es posible si no tiene vehículos, dispositivos ni usuarios.`)) return;
+    await guardar(() => db.from('sucursales').delete().eq('id', id), 'Sucursal eliminada');
   },
   async seccionalAsignarVeh(id, valor) {
     await guardar(() => db.from('vehiculos').update({ sucursal_id: valor ? Number(valor) : null }).eq('id', id), 'Vehículo asignado');

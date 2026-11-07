@@ -69,6 +69,10 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');
+  // Número de quema y km del neumático: previos 20.000 + recorridos (123.456 - 120.000 del montaje) = 23.456
+  ['Número de quema','Q-0103','Km que ya traía','20.000 km','Km recorridos','3.456 km','Km totales','23.456 km'].forEach(function(t){
+    if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
+  });
   if(d.body.innerHTML.indexOf('<programada>') !== -1) fail('detalle: evento sin escapar');
   for(var t = 0; t < 40 && !$('#vd-chart-wrap svg'); t++) await sleep(50);
   var ch = $('#vd-chart-wrap svg');
@@ -133,6 +137,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
 
   // Click en la rueda sin datos (5) y en una rueda normal
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
+  if($('#vd-panel').textContent.indexOf('Sin registrar') === -1 || $('#vd-panel').textContent.indexOf('Sin odómetro al montar') === -1) fail('detalle: rueda sin quema ni montaje deberia decirlo');
   if($('#vd-panel').textContent.indexOf('todavía no tiene mediciones') === -1) fail('detalle: rueda sin datos deberia explicarlo');
   $('#vd-panel [data-action="detalleCerrarPanel"]').click(); await sleep(100);
 
@@ -150,6 +155,19 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   log.push('ruedas-tipo16='+n16);
   if(n16 !== 17) fail('detalle: tipo 16 con auxilio deberia dibujar 17 ruedas, hay '+n16);
   if(!$('#vd-diagrama .vd-rueda[data-pos="99"]')) fail('detalle: falta el auxilio');
+
+  // Buscador global: matrícula, número de coche y número de quema abren el vehículo (la quema, el de su neumático montado)
+  var bg = $('#busq-global-input');
+  var buscarGlobal = async function(txt, esperado, que){
+    $('[data-action="detalleVolver"]').click(); await sleep(500);
+    bg.value = txt; bg.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(400);
+    bg.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(900);
+    if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf(esperado) === -1) fail('detalle: el buscador global no abrió '+esperado+' por '+que+' ('+txt+')');
+  };
+  await buscarGlobal('Q1401', 'Tractor 16', 'quema (sin guion ni mayúsculas)');
+  await buscarGlobal('cr 0001', 'Unidad', 'matrícula');
+  await buscarGlobal('112', 'Unidad', 'número de coche');
+  await buscarGlobal('q-0103', 'Camión 01', 'quema');
 
   var q = w.__vehFx.queries.join(',');
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
