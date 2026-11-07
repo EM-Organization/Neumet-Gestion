@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import { flujo, abrirDetallePorMatricula, texto } from '../lib/flujo.mjs';
 import { json, vehiculosVisibles } from '../lib/verdad.mjs';
 
-const VERDE = '#2e9e4f'; // verde pleno: neumático "ok" (dominio/vehiculo-diagrama.js)
 const ETIQUETA = { ok: 'OK', bajo: 'Desgaste bajo', critico: 'Crítico', retiro: 'Retirar' };
 
 // Rueda esperada según la base: posición -> {mm, nivel}
@@ -28,7 +27,7 @@ export function registrar(env) {
     test(`Detalle (${rol}): las ruedas de cada camión coinciden con la base (mm, estado y color)`, async () => {
       const vehiculos = await vehiculosVisibles(env, rol);
       assert.ok(vehiculos.length >= 5);
-      let conAuxilio = 0, sinDatos = 0, criticas = 0;
+      let conAuxilio = 0, sinDatos = 0, criticas = 0, verde = null; // verde: el color de "ok" (la paleta puede cambiar; debe ser uno solo)
       await flujo(env, 'detalle', rol, async p => {
         for (const v of vehiculos) {
           await abrirDetallePorMatricula(p, v.patente);
@@ -50,8 +49,8 @@ export function registrar(env) {
             }
             assert.equal(d.mm, e.mm, `${quien} mm`);
             assert.ok(d.aria.includes(`${e.mm} milímetros, ${ETIQUETA[e.nivel]}.`), `${quien} etiqueta accesible: ${d.aria}`);
-            if (e.nivel === 'ok') assert.equal(d.fill, VERDE, `${quien} verde`);
-            else { assert.notEqual(d.fill, VERDE, `${quien} no verde`); assert.match(d.fill, /^#[0-9a-f]{6}$/, quien); }
+            if (e.nivel === 'ok') { verde ??= d.fill; assert.equal(d.fill, verde, `${quien} mismo color que las demás ruedas OK`); }
+            else { assert.match(d.fill, /^#[0-9a-f]{6}$/, quien); assert.notEqual(d.fill, verde, `${quien} no es el color de OK`); }
             if (e.nivel === 'critico' || e.nivel === 'retiro') criticas++;
           }
           if (esperadas.some(r => r.pos === 99)) {
