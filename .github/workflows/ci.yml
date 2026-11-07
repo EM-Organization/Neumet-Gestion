@@ -108,3 +108,41 @@ jobs:
         env:
           TEST_PG_URL: postgresql://postgres:postgres@localhost:5432/postgres
         run: tests/sql/run.sh
+
+  e2e:
+    # Panel real en Chrome headless contra Postgres 16 (todas las migraciones + seed demo) y PostgREST real.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cliente psql
+        run: command -v psql >/dev/null || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: E2E (PostgREST v16.5 con SHA-256 fijado; Chrome del runner)
+        env:
+          E2E_PG_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          E2E_CAPTURAS: ${{ github.workspace }}/e2e-capturas
+        run: npm run e2e
+      - name: Capturas de los fallos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-capturas
+          path: e2e-capturas/
+          if-no-files-found: ignore
