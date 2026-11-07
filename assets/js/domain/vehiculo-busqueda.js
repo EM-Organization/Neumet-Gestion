@@ -6,9 +6,11 @@ export function normalizarPatente(p) {
   return s === '' ? null : s;
 }
 
-// Clave de comparación para el buscador: como normalizarPatente, y además sin tildes (sirve para nombres: "Camión" = "camion").
+// Clave de comparación del buscador: mayúsculas, sin tildes y solo letras y dígitos. "ab-123 cd", "AB 123 CD" y "AB123CD"
+// dan la misma clave, y "Camión 01" = "camion01". Antes solo se quitaban los espacios: una matrícula guardada como
+// "SAB-1234" no se encontraba escribiendo "SAB1234", ni al revés.
 export function claveBusqueda(s) {
-  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '').toUpperCase();
+  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 // Puntaje de coincidencia de un vehículo con el texto buscado (0 = no coincide).
@@ -41,4 +43,19 @@ export function coincidenciaExacta(vehiculos, texto) {
   if (!needle) return null;
   const exactos = (vehiculos || []).filter(v => claveBusqueda(v.patente) === needle || claveBusqueda(v.numero) === needle);
   return exactos.length === 1 ? exactos[0] : null;
+}
+
+// Qué hace el buscador con el texto escrito (lo usan el buscador global y el de Inicio).
+//   vacio   -> no hay texto
+//   abrir   -> una coincidencia exacta de matrícula o número, o una única coincidencia: se abre el detalle
+//   lista   -> varias coincidencias: se muestra la lista (items = las primeras `max`, total = todas)
+//   ninguno -> sin coincidencias
+export function resolverBusqueda(vehiculos, texto, max = 8) {
+  if (!claveBusqueda(texto)) return { accion: 'vacio', items: [], total: 0, vehiculo: null };
+  const todos = buscarVehiculos(vehiculos, texto);
+  const exacto = coincidenciaExacta(vehiculos, texto);
+  if (exacto) return { accion: 'abrir', items: [exacto], total: todos.length, vehiculo: exacto };
+  if (todos.length === 1) return { accion: 'abrir', items: todos, total: 1, vehiculo: todos[0] };
+  if (!todos.length) return { accion: 'ninguno', items: [], total: 0, vehiculo: null };
+  return { accion: 'lista', items: todos.slice(0, max), total: todos.length, vehiculo: null };
 }

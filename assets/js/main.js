@@ -6,6 +6,7 @@ import { initConexion } from './core/conexion.js';
 import { initAuth, checkAuth } from './core/auth.js';
 import './core/seccional.js'; // sus hooks de login deben registrarse antes que los de las vistas
 import { initModales } from './core/modal-a11y.js';
+import { initBuscador } from './core/buscador.js';
 import * as inicio from './views/inicio.js';
 import * as clientes from './views/clientes.js';
 import * as balance from './views/balance.js';
@@ -28,5 +29,6 @@ initAuth();
 initNav();
 initModales();
 initConexion();
+initBuscador();
 [inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,flota,alertas,ficha,seccionalesAdmin].forEach(v=>v.init());
 checkAuth();
