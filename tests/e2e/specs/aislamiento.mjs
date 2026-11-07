@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, filasVehiculos, irA, dormir, texto } from '../lib/flujo.mjs';
 import { ALCANCE, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
+import { LEER_INICIO, INICIO_LISTO } from './inicio.mjs';
 
 // Pide a la API con el JWT de la sesión (el mismo que usa el panel). Devuelve las filas de todas las páginas.
 const LEER_API = `async (tabla, cols) => {
@@ -17,7 +18,7 @@ const LEER_API = `async (tabla, cols) => {
 
 export function registrar(env) {
   test('Aislamiento: cada rol ve en Vehículos exactamente los camiones de su alcance', async () => {
-    const cuentas = { admin: 17, global: 14, salto: 5, montevideo: 9, otra: 3 };
+    const cuentas = { admin: 18, global: 14, salto: 5, montevideo: 9, otra: 4 };
     for (const [rol, n] of Object.entries(cuentas)) {
       const esperados = await vehiculosVisibles(env, rol === 'otra' ? 'admin' : rol);
       const propios = rol === 'otra' ? json(env, `select nombre, patente from public.vehiculos v where v.cliente_id = (select id from public.clientes where nombre = 'Otra Empresa SA')`) : esperados;
@@ -63,7 +64,7 @@ export function registrar(env) {
       const id = Number(env.sql(`select id from public.vehiculos where patente = '${ajena}'`));
       await flujo(env, 'detalle-ajeno', rol, async p => {
         await p.eval(`import('/assets/js/views/vehiculo-detalle.js').then(m => m.abrirDetalle(${id}))`);
-        await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /No encontramos ese vehículo/.test(document.querySelector('#vd-cab').innerText)`, { que: 'aviso de vehículo no encontrado' });
+        await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Vehículo no encontrado/.test(document.querySelector('#vd-cab').innerText)`, { que: 'aviso de vehículo no encontrado' });
         assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-rueda').length`), 0, 'no debe dibujar ruedas');
         const vista = await texto(p, '#view-vehiculo-detalle');
         assert.doesNotMatch(vista, new RegExp(ajena));
@@ -116,7 +117,9 @@ export function registrar(env) {
         await p.eval(`(() => { const s = document.querySelector('#sec-select'); s.value = '${id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
         await irA(p, 'inicio');
         const e = cifrasInicio(env, rol);
-        await p.esperar(`(() => { const c = document.querySelectorAll('#inicio-contenido .atencion-n'); return c.length === 4 && Number(c[1].textContent.replace(/\\D/g, '')) === ${e.alertas} && Number(c[0].textContent.replace(/\\D/g, '')) === ${e.criticos}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertas} alertas` });
+        await p.esperar(`${INICIO_LISTO} && (() => { const c = document.querySelectorAll('#inicio-contenido .inicio-cifra strong'); const a = document.querySelector('#inicio-contenido [data-args=\\'["alertas"]\\']'); return Number(c[2].textContent) === ${e.criticos} && a && Number(a.textContent.replace(/\\D/g, '')) === ${e.alertas}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertas} alertas` });
+        const l = await p.eval(LEER_INICIO);
+        assert.deepEqual(l.cifras, [e.ok, e.bajo, e.criticos, e.sinDatos], `proporciones de Inicio (${valor || 'todas'})`);
         await irA(p, 'vehiculos');
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === ${n}`, { que: `${n} vehículos (${valor || 'todas'})` });
       }

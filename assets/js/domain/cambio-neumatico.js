@@ -26,12 +26,12 @@ export function validarCambio(f) {
   const n = f && f.neum;
   if (!n) return { ok: false, error: 'No hay un neumático montado en esa posición' };
   if (n.estado === 'baja') return { ok: false, error: 'El neumático de esa posición ya está dado de baja' };
-  if (!DESTINO_IDS.includes(f.destino)) return { ok: false, error: 'Elegí qué hacer con el neumático viejo' };
+  if (!DESTINO_IDS.includes(f.destino)) return { ok: false, error: 'Elegir el destino del neumático retirado' };
   if (f.destino === 'reencauche' && (n.vida || 0) >= VIDA_MAX) {
     return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dalo de baja` };
   }
   const motivo = String(f.motivo == null ? '' : f.motivo).trim();
-  if (f.destino === 'baja' && !motivo) return { ok: false, error: 'Indicá el motivo de la baja' };
+  if (f.destino === 'baja' && !motivo) return { ok: false, error: 'Falta el motivo de la baja' };
   if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo es demasiado largo (máx. ${MAX_MOTIVO})` };
 
   const odoTxt = f.odometro == null ? '' : String(f.odometro).trim();
@@ -47,14 +47,14 @@ export function validarCambio(f) {
   let stockId = null, nuevo = null, nuevoTxt;
   if (f.origen === 'stock') {
     const s = stockDisponible(f.stock).find(x => String(x.id) === String(f.stockId));
-    if (!s) return { ok: false, error: 'Elegí un neumático del stock con unidades disponibles' };
+    if (!s) return { ok: false, error: 'Elegir un neumático del stock con unidades disponibles' };
     stockId = Number(s.id);
     nuevoTxt = `${[s.marca, s.modelo].filter(Boolean).join(' ')} (del stock)`;
   } else if (f.origen === 'nuevo') {
     const marca = String(f.marca == null ? '' : f.marca).trim();
     const modelo = String(f.modelo == null ? '' : f.modelo).trim();
     const codigo = String(f.codigo == null ? '' : f.codigo).trim();
-    if (!marca) return { ok: false, error: 'Indicá la marca del neumático nuevo' };
+    if (!marca) return { ok: false, error: 'Falta la marca del neumático nuevo' };
     if (marca.length > MAX_TXT || modelo.length > MAX_TXT || codigo.length > MAX_TXT) {
       return { ok: false, error: `Marca, modelo y código admiten hasta ${MAX_TXT} caracteres` };
     }
@@ -63,7 +63,7 @@ export function validarCambio(f) {
     if (codigo) nuevo.codigo = codigo;
     nuevoTxt = [marca, modelo].filter(Boolean).join(' ');
   } else {
-    return { ok: false, error: 'Elegí de dónde sale el neumático nuevo' };
+    return { ok: false, error: 'Elegir el origen del neumático nuevo' };
   }
 
   return {
@@ -92,30 +92,30 @@ export function traducirErrorCambio(err) {
   const code = err && err.code ? String(err.code) : '';
   const msg = (err && err.message ? String(err.message) : '').toLowerCase();
   if (code === '42501' || msg.includes('permiso denegado') || msg.includes('permission denied')) {
-    return 'No tenés permiso para cambiar neumáticos de este vehículo';
+    return 'Sin permiso para cambiar neumáticos de este vehículo';
   }
-  if (msg.includes('stock lo gestiona')) return 'Tu usuario no puede usar el stock: ingresá el neumático nuevo a mano';
+  if (msg.includes('stock lo gestiona')) return 'Este usuario no puede usar el stock. Cargar el neumático nuevo a mano';
   if (code === '55000' || msg.includes('sin unidades')) return 'No quedan unidades de ese neumático en el stock';
   if (code === 'P0002') {
-    if (msg.includes('stock')) return 'Ese neumático ya no está en el stock: actualizá la lista y elegí otro';
-    if (msg.includes('neumático')) return 'Ya no hay un neumático montado en esa posición: actualizá la pantalla';
-    return 'No se encontró el vehículo o el neumático: actualizá la pantalla';
+    if (msg.includes('stock')) return 'Ese neumático ya no está en el stock. Actualizar la lista y elegir otro';
+    if (msg.includes('neumático')) return 'Ya no hay un neumático montado en esa posición. Actualizar la pantalla';
+    return 'No se encontró el vehículo o el neumático. Actualizar la pantalla';
   }
   if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dalo de baja`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja';
-  if (msg.includes('motivo')) return 'Revisá el motivo (obligatorio para la baja, máx. 200 caracteres)';
-  if (msg.includes('odómetro') || msg.includes('kilometraje')) return 'Revisá el kilometraje: no puede ser negativo ni menor al actual';
-  if (msg.includes('marca') || msg.includes('precio') || msg.includes('vida fuera')) return 'Revisá los datos del neumático nuevo';
+  if (msg.includes('motivo')) return 'Motivo obligatorio para la baja (máx. 200 caracteres)';
+  if (msg.includes('odómetro') || msg.includes('kilometraje')) return 'Kilometraje inválido: no puede ser negativo ni menor al actual';
+  if (msg.includes('marca') || msg.includes('precio') || msg.includes('vida fuera')) return 'Datos del neumático nuevo inválidos';
   if (msg.includes('posición libre')) return 'No hay lugar para guardar el neumático retirado en este vehículo';
-  if (code === '22023' || code === '22004' || code === '23514') return 'Revisá los datos del formulario';
-  return 'No se pudo registrar el cambio. No se guardó nada: intentá de nuevo';
+  if (code === '22023' || code === '22004' || code === '23514') return 'Datos del formulario inválidos';
+  return 'No se pudo registrar el cambio. No se guardó nada. Reintentar';
 }
 
 // Rotación desde un botón de posición: valida y detecta el intercambio.
 export function validarRotacion(neumaticos, vehiculoId, posA, posB) {
   const a = Number(posA), b = Number(posB);
   if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 99 || b < 1 || b > 99) {
-    return { ok: false, error: 'Indicá posiciones entre 1 y 99' };
+    return { ok: false, error: 'Posiciones válidas: 1 a 99' };
   }
   if (a === b) return { ok: false, error: 'La posición de destino es la misma' };
   const montados = (neumaticos || []).filter(n => n.vehiculo_id === vehiculoId);

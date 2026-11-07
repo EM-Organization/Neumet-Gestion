@@ -47,7 +47,7 @@ function actualizar() {
   $('cambio-nuevo-wrap').style.display = f.origen === 'nuevo' ? '' : 'none';
   $('cambio-motivo-opt').textContent = f.destino === 'baja' ? '(obligatorio)' : '(opcional)';
   const r = validarCambio(f);
-  $('cambio-resumen').textContent = r.ok ? r.resumen : 'Completá los datos para ver el resumen';
+  $('cambio-resumen').textContent = r.ok ? r.resumen : 'Completar los datos para ver el resumen';
   $('cambio-error').textContent = '';
   return r;
 }
@@ -55,7 +55,7 @@ function actualizar() {
 function pintar() {
   const { veh, neum, stock } = ctx;
   const hayStock = stock.length > 0;
-  $('cambio-sub').textContent = veh ? `Vehículo ${veh.nombre || ''}`.trim() : 'Registrá el cambio que hizo el taller';
+  $('cambio-sub').textContent = veh ? `Vehículo ${veh.nombre || ''}`.trim() : 'Registro del cambio hecho en el taller';
   setHtml($('cambio-actual'), html`<div>Neumático actual en <strong>P${neum.posicion}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>
     · ${neum.estado || 'montado'} · vida ${neum.vida || 0}${veh && veh.odometro_km != null ? html` · vehículo con ${veh.odometro_km} km` : ''}</div>`);
@@ -72,12 +72,12 @@ function pintar() {
 }
 
 async function abrir(vehiculoId, posicion) {
-  if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegí un neumático para cambiar', true); return; }
+  if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a cambiar', true); return; }
   const [rv, rn] = await Promise.all([
     db.from('vehiculos').select('id,nombre,cliente_id,odometro_km').eq('id', vehiculoId).maybeSingle(),
     db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vehiculoId).eq('posicion', posicion).maybeSingle()
   ]);
-  if (rv.error || rn.error) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático: intentá de nuevo', true); return; }
+  if (rv.error || rn.error) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático. Reintentar', true); return; }
   const neum = rn.data;
   if (!neum) { showToast(`No hay un neumático montado en P${posicion}`, true); return; }
   if (neum.estado === 'baja') { showToast(`El neumático de P${posicion} ya está dado de baja`, true); return; }
@@ -120,7 +120,7 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
 ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
   const vid = Number(vehiculoId);
   const { data, error } = await db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vid);
-  if (error) { console.error(error); showToast('No se pudo cargar los neumáticos: intentá de nuevo', true); return; }
+  if (error) { console.error(error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }
   const r = validarRotacion(data || [], vid, posA, posB);
   if (!r.ok) { showToast(r.error, true); return; }
   if (r.intercambio && !(await confirmDialog('Intercambiar neumáticos',
@@ -128,7 +128,7 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
   const { error: e2 } = await db.rpc('neumatico_rotar', { ...r.params, p_odometro_km: null });
   if (e2) {
     console.error(e2);
-    showToast(e2.code === '42501' ? 'No tenés permiso para rotar neumáticos de este vehículo' : 'No se pudo registrar la rotación. No se guardó nada', true);
+    showToast(e2.code === '42501' ? 'Sin permiso para rotar neumáticos de este vehículo' : 'No se pudo registrar la rotación. No se guardó nada', true);
     return;
   }
   showToast(`Rotación registrada: P${r.params.p_pos_a} y P${r.params.p_pos_b}`);

@@ -7,9 +7,10 @@
     {id:2,nombre:'Minera <Beta> & Cía',precio_mensual:75000,created_at:D(20),auth_user_id:null}
   ];
   var veh = [
-    {id:10,nombre:'Camión 01',patente:'AB123CD',tipo_ruedas:10,cliente_id:1,activo:true,created_at:D(30),clientes:{nombre:cl[0].nombre}},
-    {id:11,nombre:'Camión 02',patente:'XY987ZZ',tipo_ruedas:16,cliente_id:2,activo:true,created_at:D(25),clientes:{nombre:cl[1].nombre}}
+    {id:10,nombre:'Camión 01',patente:'AB123CD',numero:'201',tipo_ruedas:10,cliente_id:1,activo:true,created_at:D(30),clientes:{nombre:cl[0].nombre}},
+    {id:11,nombre:'Camión 02',patente:'XY987ZZ',numero:'202',tipo_ruedas:16,cliente_id:2,activo:true,created_at:D(25),clientes:{nombre:cl[1].nombre}}
   ];
+  veh.push({id:15,nombre:'Camión 05',patente:'SAB-1234',numero:'205',tipo_ruedas:10,cliente_id:1,activo:true,created_at:D(5),clientes:{nombre:cl[0].nombre}});
   var dev = [
     {id:100,mac_address:'AA:BB:CC:00:00:01',nombre:'Sensor 1',activo:true,cliente_id:1,created_at:D(30),clientes:{nombre:cl[0].nombre}},
     {id:101,mac_address:'AA:BB:CC:00:00:02',nombre:'Sensor 2',activo:true,cliente_id:2,created_at:D(10),clientes:{nombre:cl[1].nombre}}

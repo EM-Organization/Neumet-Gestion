@@ -64,7 +64,7 @@ function renderBalance(){
               value="${parseFloat(c.precio_mensual||0).toFixed(0)}"
               data-cid="${c.id}"
               data-change="updatePrecio" data-args="[${c.id}]"
-              title="Presioná Enter para guardar"/>
+              aria-label="Precio mensual de ${c.nombre}" title="Enter para guardar"/>
           </div>
         </td>
         <td>
@@ -126,7 +126,7 @@ ACTIONS.openGastoModal=function(mode,id){
   const save=document.getElementById('gasto-save');
   if(mode==='create'){
     document.getElementById('gasto-modal-title').textContent='Nuevo gasto';
-    document.getElementById('gasto-modal-sub').textContent='Agregá un gasto mensual de la empresa';
+    document.getElementById('gasto-modal-sub').textContent='Gasto mensual de la empresa';
     document.getElementById('gf-nombre').value='';
     document.getElementById('gf-categoria').value='Operativo';
     document.getElementById('gf-monto').value='';
@@ -158,9 +158,9 @@ ACTIONS.saveGasto=async function(){
   const notas=document.getElementById('gf-notas').value.trim()||null;
   const recurrente=document.getElementById('gf-recurrente').checked;
   const activo=document.getElementById('gf-activo').checked;
-  if(!nombre||monto<0){ showToast('Completá concepto y monto',true); return; }
+  if(!nombre||monto<0){ showToast('Falta el concepto o el monto',true); return; }
   const btn=document.getElementById('gasto-save');
-  btn.disabled=true; btn.textContent=gastoModalMode==='create'?'Creando...':'Guardando...';
+  btn.disabled=true; btn.textContent=gastoModalMode==='create'?'Creando…':'Guardando…';
   try{
     if(gastoModalMode==='create'){
       const {data,error}=await db.from('gastos').insert({nombre,categoria,monto,notas,recurrente,activo}).select().single();

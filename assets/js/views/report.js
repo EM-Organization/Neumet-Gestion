@@ -11,7 +11,7 @@ export async function exportMedicionesCSV(){
   if(!vid) return;
   const veh=med.vehs.find(v=>v.id===vid);
   const btn=document.getElementById('med-export-btn');
-  btn.disabled=true; btn.textContent='Exportando...';
+  btn.disabled=true; btn.textContent='Exportando…';
 
   const {data,error}=await db.from('mediciones')
     .select('posicion,mm1,mm2,mm3,promedio,created_at')
@@ -42,7 +42,7 @@ export async function exportMedicionesCSV(){
 // Abre el documento (SafeHtml) en una ventana nueva y lanza la impresión. Reutilizado por la vista Reportes.
 export function printDoc(doc){
   const w=window.open('','_blank');
-  if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes.',true); return false; }
+  if(!w){ showToast('El navegador bloqueó la ventana del reporte. Permitir las ventanas emergentes.',true); return false; }
   // Documento generado con el helper html`` (todo dato interpolado queda escapado); about:blank del reporte no tiene otro sumidero.
   // eslint-disable-next-line no-unsanitized/method -- recibe SafeHtml (doc), no un string plano
   w.document.write(doc.toString());
@@ -54,9 +54,9 @@ export function printDoc(doc){
 
 export async function generarReportePDF(){
   const vid=parseInt(document.getElementById('med-vehiculo-select').value);
-  if(!vid){ showToast('Seleccioná un vehículo primero',true); return; }
+  if(!vid){ showToast('Elegir primero un vehículo',true); return; }
   const btn=document.getElementById('med-report-btn');
-  btn.disabled=true; btn.textContent='Generando...';
+  btn.disabled=true; btn.textContent='Generando…';
 
   try{
     const veh=med.vehs.find(v=>v.id===vid);

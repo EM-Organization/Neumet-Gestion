@@ -54,7 +54,7 @@ window.clientesFlow = async function(w, d, sleep, fail, log){
   if(!r || r.args.p_id == null) fail('clientes: no se llamó cliente_eliminar_suave');
   if(rows() !== before-1) fail('clientes: la fila no desapareció tras la baja');
   // Cuenta de API en la ficha: email sugerido, credenciales una sola vez, lista
-  $('.nav-item[data-view="ficha"]').click(); await sleep(600);
+  $('.nav-item[data-view="clientes"]').click(); await sleep(500); $('#tbody-clientes [data-action="abrirFichaCliente"]').click(); await sleep(600);
   var em = $('#ficha-api-email');
   if(!em || !/^api-.+@/.test(em.value)) fail('cuenta-api: email sugerido ausente: '+(em&&em.value));
   if($('#ficha-api-cred').style.display !== 'none') fail('cuenta-api: credenciales visibles antes de crear');
@@ -68,7 +68,7 @@ window.clientesFlow = async function(w, d, sleep, fail, log){
   if($('#ficha-api-lista').textContent.indexOf('api-test@x.cl') === -1) fail('cuenta-api: la lista no muestra la cuenta');
   if($('#ficha-api-lista').textContent.indexOf('contrasena-de-prueba') !== -1) fail('cuenta-api: la lista expone la contraseña');
   $('.nav-item[data-view="clientes"]').click(); await sleep(300);
-  $('.nav-item[data-view="ficha"]').click(); await sleep(600);
+  $('.nav-item[data-view="clientes"]').click(); await sleep(500); $('#tbody-clientes [data-action="abrirFichaCliente"]').click(); await sleep(600);
   if($('#ficha-api-cred-pass').textContent !== '') fail('cuenta-api: la contraseña sigue tras recargar la ficha');
   log.push('clientes-flow: fetches='+fx.fetches.length+' rpcs='+fx.rpcs.length);
 };

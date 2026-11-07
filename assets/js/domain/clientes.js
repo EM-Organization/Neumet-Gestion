@@ -6,7 +6,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Alta: contraseña opcional (vacía => la función envía invitación por email). Devuelve {ok, error?, nombre, email, password}.
 export function validarAlta({ nombre, email, password } = {}) {
   const n = String(nombre ?? '').trim(), e = String(email ?? '').trim(), p = String(password ?? '');
-  if (!n || !e) return { ok: false, error: 'Completá nombre y email' };
+  if (!n || !e) return { ok: false, error: 'Falta el nombre o el email' };
   if (!EMAIL_RE.test(e)) return { ok: false, error: 'El email no es válido' };
   if (p !== '' && p.length < PASSWORD_MIN) return { ok: false, error: `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres (o dejala vacía para enviar una invitación por email)` };
   return { ok: true, nombre: n, email: e, password: p === '' ? null : p };
@@ -23,11 +23,11 @@ export function cuerpoCrearCliente(v) {
 export function mensajeErrorCrearCliente(status, error) {
   const t = String(error ?? '').toLowerCase();
   if (status === 409 || /already|existe|registrad|duplicate/.test(t)) return 'Ya existe un usuario con ese email';
-  if (status === 403 || status === 401) return 'No tenés permiso para crear clientes';
+  if (status === 403 || status === 401) return 'Sin permiso para crear clientes';
   if (status === 400) {
     if (/password|contrase/.test(t)) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`;
     if (/email/.test(t)) return 'El email no es válido';
-    return 'Datos inválidos: revisá nombre, email y contraseña';
+    return 'Nombre, email o contraseña inválidos';
   }
   return 'No se pudo crear el cliente';
 }
@@ -59,7 +59,7 @@ export function emailSugeridoApi(nombre, emailAdmin) {
 
 export function validarCuentaApi({ email } = {}) {
   const e = String(email ?? '').trim();
-  if (!e) return { ok: false, error: 'Completá el email' };
+  if (!e) return { ok: false, error: 'Falta el email' };
   if (!EMAIL_RE.test(e)) return { ok: false, error: 'El email no es válido' };
   return { ok: true, email: e };
 }
@@ -68,8 +68,8 @@ export function mensajeErrorCuentaApi(status, error) {
   const t = String(error ?? '').toLowerCase();
   if (status === 409 && /m[aá]ximo/.test(t)) return 'Este cliente ya tiene el máximo de 5 cuentas de API';
   if (status === 409) return 'Ya existe un usuario con ese email';
-  if (status === 403 || status === 401) return 'No tenés permiso para crear cuentas de API';
+  if (status === 403 || status === 401) return 'Sin permiso para crear cuentas de API';
   if (status === 404) return 'El cliente no existe o fue eliminado';
-  if (status === 400) return 'Datos inválidos: revisá el email';
+  if (status === 400) return 'Email inválido';
   return 'No se pudo crear la cuenta de API';
 }

@@ -17,13 +17,10 @@ export function onLogin(fn){ loginHooks.push(fn); }
 export function onLogout(fn){ logoutHooks.push(fn); }
 
 function applyClienteMode(){
-  // Ocultar elementos admin-only
   document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display='none'; });
-  // Mostrar elementos cliente-only
   document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display=''; });
   // Badge dispositivos no aplica a clientes
   document.getElementById('nav-unreg-badge').style.display='none';
-  // Mostrar nombre del cliente en el sidebar
   document.getElementById('user-email').textContent=currentClienteNombre||'Cliente';
   document.getElementById('user-role').textContent=currentSucursalId!==null?'Seccional':'Cliente';
 }
@@ -69,7 +66,7 @@ export function initAuth(){
     const pass=document.getElementById('login-password').value;
     const btn=document.getElementById('login-btn');
     const err=document.getElementById('login-error');
-    btn.disabled=true; btn.textContent='Iniciando...'; err.classList.remove('show');
+    btn.disabled=true; btn.textContent='Iniciando…'; err.classList.remove('show');
     const {data,error}=await db.auth.signInWithPassword({email,password:pass});
     btn.disabled=false; btn.textContent='Iniciar sesión';
     if(error){
@@ -83,7 +80,6 @@ export function initAuth(){
   document.getElementById('logout-btn').addEventListener('click',async()=>{
     await db.auth.signOut();
     logoutHooks.forEach(fn=>fn()); currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
-    // Restaurar visibilidad original
     document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
     document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display='none'; });
     document.getElementById('user-role').textContent='Administrador';

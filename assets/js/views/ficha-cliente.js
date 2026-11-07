@@ -4,7 +4,7 @@ import { emailSugeridoApi, validarCuentaApi, mensajeErrorCuentaApi } from '../do
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, relDate } from '../core/ui.js';
 import { isClienteMode, currentClienteId, onLogin, onLogout } from '../core/auth.js';
-import { registerView, switchView } from '../core/nav.js';
+import { registerView, switchView, setTitulo } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { CAMPOS_UMBRAL, validarUmbrales, mensajeErrorUmbrales, resumenFlota } from '../domain/umbrales.js';
 import { cargarSeccionalesAdmin } from './seccionales-admin.js';
@@ -14,23 +14,15 @@ import { contarPorEstado, infoEstado, ESTADOS } from '../domain/salud.js';
 // (columnas de clientes; edición solo admin, el cliente los ve de solo lectura).
 const COLS=CAMPOS_UMBRAL.map(c=>c.key).join(',');
 const MAX_CUENTAS_API=5;
-let activoId=null, lista=[];
+let activoId=null;
 
 const err=(msg)=>{ const el=document.getElementById('ficha-umbral-error'); el.textContent=msg||''; el.classList.toggle('show',!!msg); };
 
+// La ficha se abre desde Clientes (abrirFichaCliente): sin cliente elegido se vuelve a la lista.
 export async function loadFicha(){
-  const sel=document.getElementById('ficha-cliente');
-  if(isClienteMode()){ activoId=currentClienteId; }
-  else {
-    
-    const {data,error}=await db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre');
-    if(error){ setStatus(false); showToast(userError(error),true); return; }
-    lista=data||[];
-    setHtml(sel, joinHtml(lista.map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
-    if(!lista.some(c=>c.id===activoId)) activoId=lista.length?lista[0].id:null;
-    sel.value=activoId===null?'':String(activoId);
-  }
-  document.getElementById('ficha-selector').style.display=isClienteMode()?'none':'';
+  if(isClienteMode()) activoId=currentClienteId;
+  if(activoId===null){ switchView('clientes'); return; }
+  document.getElementById('ficha-volver').style.display=isClienteMode()?'none':'';
   await cargarCliente();
 }
 
@@ -54,6 +46,7 @@ async function cargarCliente(){
   setStatus(true);
   const c=(cli.data||[])[0]||{};
   document.getElementById('ficha-nombre').textContent=c.nombre||'Cliente';
+  setTitulo(c.nombre||'Cliente', isClienteMode()?null:'clientes');
   renderResumen((res.data||[])[0]||null);
   renderSalud(salud.data||[]);
   renderUmbrales(c);
@@ -65,7 +58,7 @@ const kpi=(cls,n,lbl,sub)=>html`<div class="ficha-kpi ${cls}"><div class="ficha-
 
 function renderResumen(r){
   const el=document.getElementById('ficha-kpis');
-  if(!r){ setHtml(el, html`<div class="empty-state"><div class="empty-title">Sin datos de flota</div><div class="empty-sub">Todavía no hay vehículos ni mediciones para este cliente</div></div>`); return; }
+  if(!r){ setHtml(el, html`<div class="empty-state"><div class="empty-title">Sin datos de flota</div><div class="empty-sub">Sin vehículos ni mediciones registrados</div></div>`); return; }
   const s=resumenFlota(r);
   setHtml(el, joinHtml([
     kpi('',r.n_vehiculos_activos??0,'Vehículos activos'),
@@ -96,7 +89,6 @@ function renderUmbrales(c){
   document.getElementById('ficha-guardar').style.display=ro?'none':'';
 }
 
-ACTIONS.fichaClienteChange=v=>{ activoId=v?parseInt(v):null; cargarCliente(); };
 ACTIONS.abrirFichaCliente=id=>{ activoId=id; switchView('ficha'); };
 ACTIONS.guardarUmbrales=async function(){
   if(isClienteMode()||activoId===null) return;
@@ -106,7 +98,7 @@ ACTIONS.guardarUmbrales=async function(){
   if(!v.ok){ err(v.error); return; }
   err('');
   const btn=document.getElementById('ficha-guardar');
-  btn.disabled=true; btn.textContent='Guardando...';
+  btn.disabled=true; btn.textContent='Guardando…';
   try{
     const {data,error}=await db.from('clientes').update(v.valores).eq('id',activoId).select('id,nombre,'+COLS);
     if(error){ err(mensajeErrorUmbrales(error)); return; } // se muestra el error de la BD (p. ej. check retiro < crítico < bajo)
@@ -134,7 +126,7 @@ async function cargarCuentasApi(){
   ocultarCredenciales(); apiErr('');
   const sesion=await db.auth.getSession();
   const adminEmail=sesion&&sesion.data&&sesion.data.session&&sesion.data.session.user?sesion.data.session.user.email:'';
-  const nombre=(lista.find(c=>c.id===id)||{}).nombre||document.getElementById('ficha-nombre').textContent;
+  const nombre=document.getElementById('ficha-nombre').textContent;
   document.getElementById('ficha-api-email').value=emailSugeridoApi(nombre,adminEmail);
   const {data,error}=await db.rpc('cuentas_api_listar',{p_cliente_id:id});
   if(id!==activoId) return;
@@ -152,7 +144,7 @@ ACTIONS.crearCuentaApi=async function(){
   if(!v.ok){ apiErr(v.error); return; }
   apiErr(''); ocultarCredenciales();
   const btn=document.getElementById('ficha-api-crear'), id=activoId;
-  btn.disabled=true; btn.textContent='Creando...';
+  btn.disabled=true; btn.textContent='Creando…';
   let res=null, out=null;
   try{
     const {data:{session}}=await db.auth.getSession();
@@ -170,7 +162,7 @@ ACTIONS.crearCuentaApi=async function(){
   document.getElementById('ficha-api-cred-email').textContent=credenciales.email;
   document.getElementById('ficha-api-cred-pass').textContent=credenciales.password||'(la que indicaste)';
   document.getElementById('ficha-api-cred').style.display='';
-  showToast('Cuenta de API creada. Copiá las credenciales: no se volverán a mostrar');
+  showToast('Cuenta de API creada. Copiar las credenciales: no se vuelven a mostrar');
   const {data}=await db.rpc('cuentas_api_listar',{p_cliente_id:id});
   if(id===activoId&&Array.isArray(data)){
     setHtml(document.getElementById('ficha-api-lista'), joinHtml(data.map(r=>html`<div class="ficha-ayuda" data-api-cuenta="${r.user_id}">${r.email} · creada ${relDate(r.created_at)}</div>`)));
@@ -183,13 +175,14 @@ ACTIONS.copiarCredencialesApi=async function(){
   try{
     await navigator.clipboard.writeText(`Email: ${credenciales.email}\nContraseña: ${credenciales.password}`);
     showToast('Credenciales copiadas');
-  }catch(_e){ showToast('No se pudo copiar: seleccioná y copiá el texto manualmente',true); }
+  }catch(_e){ showToast('No se pudo copiar. Seleccionar y copiar el texto a mano',true); }
 };
 
 ACTIONS.loadFicha=loadFicha;
 export const load=loadFicha;
-registerView('ficha','Ficha de cliente',loadFicha);
+registerView('ficha','Ficha de cliente',loadFicha,{menu:'clientes'});
+ACTIONS.volverAClientes=()=>switchView('clientes');
 onLogin(()=>{ if(isClienteMode()) activoId=currentClienteId; });
-onLogout(()=>{ activoId=null; lista=[]; credenciales=null; });
+onLogout(()=>{ activoId=null; credenciales=null; });
 
 export function init(){}

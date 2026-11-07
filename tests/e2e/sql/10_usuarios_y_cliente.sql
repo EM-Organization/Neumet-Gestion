@@ -27,9 +27,9 @@ insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, e
     from public.vehiculos v, generate_series(1, 4) p where v.patente = 'OTRA001';
 
 -- Casos límite de búsqueda (no existen en el demo): matrícula guardada en minúsculas y con espacios, nombre con Ñ y tilde,
--- vehículo sin matrícula y vehículo sin número de coche.
+-- vehículo sin matrícula, vehículo sin número de coche y matrícula con guion (SAB-1234, se busca también como SAB1234).
 insert into public.vehiculos (cliente_id, nombre, patente, numero, tipo_ruedas, activo)
   select id, v.nombre, v.patente, v.numero, 10, true
     from public.clientes c,
-         (values ('Tractor Ñandú', 'ab 123 cd', null), ('Sin matrícula', null, '7')) v(nombre, patente, numero)
+         (values ('Tractor Ñandú', 'ab 123 cd', null), ('Sin matrícula', null, '7'), ('Camión con guion', 'SAB-1234', '301')) v(nombre, patente, numero)
    where c.nombre = 'Otra Empresa SA';

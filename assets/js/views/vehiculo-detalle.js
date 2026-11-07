@@ -9,7 +9,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { svgEl } from '../core/svg.js';
 import { showToast, userError } from '../core/ui.js';
 import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
-import { registerView, switchView } from '../core/nav.js';
+import { registerView, switchView, vistaActiva, etiquetaVista, setTitulo } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
@@ -38,14 +38,18 @@ const cacheMediciones = new Map();
 // Rol que puede operar sobre neumáticos (cambiar/rotar): por ahora admin y cliente.
 const puedeOperar = () => true;
 
+// Vista desde la que se abrió el detalle: "Volver" regresa a ella (Inicio, Alertas, Flota, Vehículos...).
+let origen = 'vehiculos';
+
 export function abrirDetalle(id) {
+  const o = vistaActiva();
+  if (o && o !== 'vehiculo-detalle') origen = o;
   vehiculoId = id;
   seleccion = null;
   cacheMediciones.clear();
-  switchView('vehiculo-detalle');
-  // El detalle cuelga de "Vehículos": se mantiene resaltado en el menú.
-  const nav = document.querySelector('.nav-item[data-view="vehiculos"]');
-  if (nav) { nav.classList.add('active'); nav.setAttribute('aria-current', 'page'); }
+  const volver = $('vd-volver');
+  if (volver) volver.textContent = `← Volver a ${etiquetaVista(origen)}`;
+  switchView('vehiculo-detalle'); // el menú resalta Vehículos (registerView con menu)
 }
 
 function datosDeFila(f, u) {
@@ -68,8 +72,7 @@ function cabecera() {
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
-  document.getElementById('breadcrumb-current').textContent = veh.nombre;
-  document.title = `${veh.nombre} · NEUMET`;
+  setTitulo(veh.nombre, 'vehiculos');
 }
 
 function resumen() {
@@ -178,7 +181,7 @@ function seccionMedicion(fila) {
 function seccionTasa(fila, u, razonMostrada) {
   if (!fila || nulo(fila.promedio)) return '';
   const tasa = fila.tasa_mm_semana;
-  if (nulo(tasa)) return html`<p class="vd-p-nota">Todavía no hay mediciones suficientes para calcular la velocidad de desgaste (hacen falta al menos dos fechas distintas en los últimos 90 días).</p>`;
+  if (nulo(tasa)) return html`<p class="vd-p-nota">Mediciones insuficientes para calcular la velocidad de desgaste (se necesitan dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
   const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) <= u.retiro;
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
@@ -215,7 +218,7 @@ function acciones(pos) {
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
-    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegí la posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
+    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
   return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}</div>${rotar}</div>`;
 }
@@ -223,7 +226,7 @@ function acciones(pos) {
 function renderPanel() {
   const body = $('vd-panel-body');
   if (nulo(seleccion)) {
-    setHtml(body, html`<p class="vd-panel-vacio">Tocá una rueda del diagrama para ver su estado, sus mediciones y sus alertas.</p>`);
+    setHtml(body, html`<p class="vd-panel-vacio">Elegir una rueda del diagrama para ver su estado, mediciones y alertas.</p>`);
     return;
   }
   const pos = seleccion;
@@ -276,7 +279,7 @@ async function cargarGrafico(pos, fila) {
   if (mi !== tokenGrafico || !wrap) return;
   const ancho = Math.max(280, Math.min(720, Math.round(wrap.clientWidth || 480)));
   const d = datosGrafico(serieDesgaste(med), datos.u, fila ? fila.tasa_mm_semana : null, { ancho, alto: 170 });
-  if (!d) { setHtml(wrap, html`<p class="vd-p-nota">Todavía no hay mediciones para graficar.</p>`); return; }
+  if (!d) { setHtml(wrap, html`<p class="vd-p-nota">Sin mediciones para graficar.</p>`); return; }
   wrap.replaceChildren(construirGrafico(d));
 }
 
@@ -358,7 +361,7 @@ export async function load() {
       .eq('vehiculo_id', vehiculoId).order('created_at', { ascending: false }).limit(100),
   ]);
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
-  if (!v.data) { setHtml($('vd-cab'), estadoVacio('No encontramos ese vehículo', 'Puede que ya no exista o que no tengas acceso.', { label: 'Volver a vehículos', action: 'detalleVolver', primaria: true })); return; }
+  if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
@@ -374,7 +377,8 @@ export async function load() {
 
 registerActions({
   verVehiculoDetalle: id => abrirDetalle(Number(id)),
-  detalleVolver: () => switchView('vehiculos'),
+  detalleVolver: () => switchView(origen),
+  verVehiculo: id => abrirDetalle(Number(id)),
   detalleRueda: pos => seleccionarRueda(pos),
   detalleCerrarPanel: () => cerrarPanel(),
   recargarVehiculoDetalle: () => { cacheMediciones.clear(); return load(); },
@@ -394,7 +398,7 @@ export function init() {
     const b = e.target.closest('[data-action^="neumatico-"]');
     if (!b) return;
     if (!Object.prototype.hasOwnProperty.call(ACTIONS, b.dataset.action)) { e.stopPropagation(); showToast('No disponible'); return; }
-    if (b.dataset.action === 'neumatico-rotar-pos' && !b.dataset.destino) { e.stopPropagation(); showToast('Elegí la posición con la que querés rotar', true); }
+    if (b.dataset.action === 'neumatico-rotar-pos' && !b.dataset.destino) { e.stopPropagation(); showToast('Elegir la posición de destino de la rotación', true); }
   }, true);
   $('vd-panel').addEventListener('change', e => {
     if (e.target.id !== 'vd-rotar-destino') return;
@@ -407,4 +411,4 @@ export function init() {
   });
 }
 
-registerView('vehiculo-detalle', 'Vehículo', load);
+registerView('vehiculo-detalle', 'Vehículo', load, { menu: 'vehiculos' });

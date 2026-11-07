@@ -1,6 +1,6 @@
-// Inicio: neumáticos críticos, alertas, dispositivos sin actividad y vehículos sin medir, cada uno con enlace a la vista
-// donde se resuelve. Usa las mismas vistas SQL y reglas de dominio que Flota, Alertas y Dispositivos (security_invoker:
-// RLS decide qué ve cada rol; la seccional elegida se aplica además en el cliente).
+// Inicio: panel de decisión. Buscador de vehículos, proporciones de la flota, vehículos que requieren atención y
+// próximos cambios, con enlace directo al detalle de cada vehículo. Usa las vistas SQL v_estado_neumaticos,
+// v_alertas y v_salud_dispositivos (security_invoker: la RLS decide qué ve cada rol; la seccional elegida se aplica además aquí).
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -8,105 +8,110 @@ import { isClienteMode, currentClienteNombre, onLogin } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
 import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
-import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
+import { estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { agruparVehiculos, kpisFlota, contarPorSeveridad } from '../domain/flota.js';
-import { contarPorEstado } from '../domain/salud.js';
-import { estadoInicio } from '../domain/inicio.js';
-import { fmtNum, fmtFechaLarga, fmtMm, plural } from '../domain/formato.js';
+import {
+  estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
+  clientesConUrgencias, textoSemanas,
+} from '../domain/inicio.js';
+import { fmtNum, fmtFechaLarga, plural } from '../domain/formato.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
-const MAX_VEHICULOS_LISTA = 5;
 
-// Una tarjeta de atención: número grande + qué significa + a dónde ir. Si n=0, "Todo en orden" (texto + símbolo, no solo color).
-function tarjeta({ n, titulo, ayuda, vista, urgente, cta, neutro }) {
-  const estado = n > 0 ? (neutro ? chip('gray', 'Revisar', '●') : urgente ? chip('red', 'Requiere atención', '✕') : chip('orange', 'Revisar', '▲')) : chip('green', 'Todo en orden', '✓');
-  return html`<button type="button" class="atencion-card ${n > 0 ? (neutro ? 'sev-neutro' : urgente ? 'sev-critico' : 'sev-bajo') : 'sev-ok'}" data-action="irA" data-args="${JSON.stringify([vista])}" data-tarjeta="${vista}">
-    <span class="atencion-n">${fmtNum(n)}</span>
-    <span class="atencion-titulo">${titulo}</span>
-    <span class="atencion-ayuda">${ayuda}</span>
-    <span class="atencion-estado">${estado}</span>
-    <span class="atencion-ir">${cta} →</span>
-  </button>`;
+const verVehiculo = id => JSON.stringify([id]);
+const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '');
+
+function filaAtencion(v) {
+  return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
+    <span class="inicio-punto ${v.nivel === 'critico' ? 'critico' : ''}" aria-hidden="true"></span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${v.nombre} ${matricula(v.patente)}</span>
+      <span class="inicio-fila-causa">${v.nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${v.causa}</span></span>
+    <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
 }
 
-function filaVehiculo(v) {
-  const arg = JSON.stringify([v.patente || v.nombre]);
-  const partes = [];
-  if (v.n_critico) partes.push(plural(v.n_critico, 'neumático crítico', 'neumáticos críticos'));
-  if (v.n_bajo) partes.push(`${fmtNum(v.n_bajo)} con desgaste bajo`);
-  if (v.n_sin_medir) partes.push(`${fmtNum(v.n_sin_medir)} sin medir`);
-  if (v.min_mm !== null) partes.push(`el más gastado: ${fmtMm(v.min_mm)}`);
-  return html`<li class="atencion-veh">
-    <div class="atencion-veh-info">
-      <div class="dash-fleet-name">${v.nombre}${v.patente ? html`<span class="dash-fleet-pat">${v.patente}</span>` : ''} ${chipEstado(v.semaforo)}</div>
-      <div class="flota-meta">${partes.join(' · ') || 'Sin mediciones todavía'}${v.ultima_medicion_at ? ` · última medición ${relDate(v.ultima_medicion_at)}` : ''}</div>
-    </div>
-    <button type="button" class="btn ghost" data-action="verVehiculoEnLista" data-args="${arg}">Ver vehículo</button>
-  </li>`;
+function filaProximo(p) {
+  return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(p.vehiculo_id)}">
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${p.nombre} ${matricula(p.patente)}</span>
+      <span class="inicio-fila-causa">Posición ${p.posicion}${p.mm !== null ? ` · ${fmtNum(p.mm, 1)} mm` : ''}</span></span>
+    <span class="inicio-semanas">${textoSemanas(p.semanas)}</span></button></li>`;
 }
 
 function filaCliente(r) {
-  const problemas = (Number(r.n_critico) || 0) + (Number(r.n_alertas_sev3) || 0);
-  return html`<li class="atencion-veh">
-    <div class="atencion-veh-info">
-      <div class="dash-fleet-name">${r.nombre}</div>
-      <div class="flota-meta">${plural(r.n_vehiculos_activos, 'vehículo activo', 'vehículos activos')} · ${plural(r.n_critico, 'neumático crítico', 'neumáticos críticos')} · ${plural(r.n_alertas_sev3, 'alerta crítica', 'alertas críticas')}${problemas ? '' : ' · sin urgencias'}</div>
-    </div>
-    <button type="button" class="btn ghost" data-action="abrirFichaCliente" data-args="${JSON.stringify([r.cliente_id])}">Ver ficha</button>
-  </li>`;
+  return html`<li><button type="button" class="inicio-fila" data-action="abrirFichaCliente" data-args="${JSON.stringify([r.cliente_id])}">
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${r.nombre}</span>
+      <span class="inicio-fila-causa">${plural(r.n_critico, 'neumático crítico', 'neumáticos críticos')} · ${plural(r.n_alertas_sev3, 'alerta crítica', 'alertas críticas')}</span></span>
+    <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
+}
+
+const segmento = (cls, pct, etiqueta) => (pct > 0 ? html`<span class="inicio-seg ${cls}" style="width:${pct}%" title="${etiqueta}"></span>` : '');
+const cifra = (cls, n, etiqueta) => html`<li class="inicio-cifra"><span class="inicio-punto ${cls}" aria-hidden="true"></span><strong>${fmtNum(n)}</strong> ${etiqueta}</li>`;
+
+function bloqueResumen(rs, ult) {
+  const frase = rs.ok === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado` : `${fmtNum(rs.ok)} de ${fmtNum(rs.total)} neumáticos en buen estado`;
+  return html`<section class="inicio-card" aria-labelledby="inicio-h-resumen">
+    <div class="inicio-resumen-cab"><h3 id="inicio-h-resumen" class="inicio-h">${frase}</h3>
+      ${ult ? html`<span class="inicio-meta">Última medición ${relDate(ult)}</span>` : ''}</div>
+    <div class="inicio-barra" role="img" aria-label="${`OK ${rs.ok}, desgaste bajo ${rs.bajo}, críticos ${rs.critico}, sin datos ${rs.sin_datos}`}">
+      ${segmento('ok', rs.pct.ok, 'OK')}${segmento('bajo', rs.pct.bajo, 'Desgaste bajo')}${segmento('critico', rs.pct.critico, 'Crítico')}${segmento('sin', rs.pct.sin_datos, 'Sin datos')}</div>
+    <ul class="inicio-cifras">${cifra('ok', rs.ok, 'OK')}${cifra('bajo', rs.bajo, 'desgaste bajo')}${cifra(rs.critico ? 'critico' : 'cero', rs.critico, rs.critico === 1 ? 'crítico' : 'críticos')}${cifra('sin', rs.sin_datos, 'sin datos')}</ul>
+  </section>`;
+}
+
+function bloqueAtencion(at, nAlertas) {
+  return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
+    <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
+    ${at.items.length
+      ? html`<ul class="inicio-lista">${joinHtml(at.items.map(filaAtencion))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
+      : estadoVacio('Ningún vehículo requiere atención.')}
+    <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
+  </section>`;
+}
+
+function bloqueProximos(px) {
+  return html`<section class="inicio-card" aria-labelledby="inicio-h-proximos">
+    <h3 id="inicio-h-proximos" class="inicio-h">Próximos cambios</h3>
+    ${px.items.length
+      ? html`<ul class="inicio-lista">${joinHtml(px.items.map(filaProximo))}</ul>${px.total > px.items.length ? html`<p class="inicio-meta">${px.total - px.items.length} más.</p>` : ''}`
+      : estadoVacio('Ningún neumático cerca del nivel crítico.')}
+  </section>`;
+}
+
+function lineaDispositivos(d) {
+  if (!d.total) return html`<p class="inicio-linea">Sin dispositivos registrados. <button type="button" class="inicio-enlace" data-action="irA" data-args='["dispositivos"]'>Ver dispositivos ›</button></p>`;
+  return html`<p class="inicio-linea">Dispositivos: ${fmtNum(d.activos)} de ${fmtNum(d.total)} activos${d.inactivos
+    ? html` · <button type="button" class="inicio-enlace" data-action="irA" data-args='["dispositivos"]'>${plural(d.inactivos, 'sin actividad', 'sin actividad')} ›</button>` : ''}</p>`;
 }
 
 export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0 }) {
   const cliente = isClienteMode();
   const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
   if (estado === 'vacio') {
-    return estadoVacio('Todavía no hay vehículos',
-      cliente ? 'Cuando se registren tus vehículos y se midan sus neumáticos, vas a ver su estado acá.'
-        : 'Registrá un cliente, cargá sus vehículos y asigná un dispositivo medidor.',
+    return estadoVacio('Sin vehículos registrados',
+      cliente ? 'Los vehículos aparecerán aquí cuando se registren y se midan.' : 'Registrar un cliente, cargar sus vehículos y asignar un dispositivo.',
       cliente ? null : { label: 'Ir a Clientes', action: 'irA', args: ['clientes'], primaria: true });
   }
   if (estado === 'sin_mediciones') {
-    return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones todavía` : 'Todavía no hay mediciones',
-      'Apenas un dispositivo mida sus neumáticos, vas a ver acá cuáles requieren atención.',
+    return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones` : 'Sin mediciones registradas',
+      'El estado de los neumáticos se muestra desde la primera medición.',
       { label: 'Ver dispositivos', action: 'irA', args: ['dispositivos'], primaria: true });
   }
-  const k = kpisFlota(estadoRows, cliente ? null : resumen, '');
-  const sev = contarPorSeveridad(alertas);
-  const sh = contarPorEstado(salud);
-  const vehiculos = agruparVehiculos(estadoRows);
-  const sinMedir = vehiculos.filter(v => v.n_sin_medir > 0 || v.semaforo === 'sin_datos').length;
-  const sinActividad = sh.caido + sh.sin_actividad;
-  const urgentes = vehiculos.filter(v => v.semaforo === 'critico' || v.semaforo === 'bajo').slice(0, MAX_VEHICULOS_LISTA);
-  const vistaFlota = cliente ? 'vehiculos' : 'flota';
-
-  const tarjetas = joinHtml([
-    tarjeta({ n: k.criticos, titulo: 'Neumáticos críticos', ayuda: 'Por debajo del límite: conviene cambiarlos.', vista: vistaFlota, urgente: true, cta: 'Ver' }),
-    tarjeta({ n: alertas.length, titulo: 'Alertas activas', ayuda: `${fmtNum(sev[3])} críticas, ${fmtNum(sev[2])} medias, ${fmtNum(sev[1])} informativas.`, vista: 'alertas', urgente: sev[3] > 0, cta: 'Ver' }),
-    tarjeta({ n: sinActividad, titulo: 'Dispositivos sin actividad', ayuda: `Más de 7 días sin medir${sh.nunca ? `; ${fmtNum(sh.nunca)} nunca midió` : ''}.`, vista: 'dispositivos', neutro: true, cta: 'Ver' }),
-    tarjeta({ n: sinMedir, titulo: 'Vehículos sin medir', ayuda: 'Con neumáticos sin ninguna medición.', vista: vistaFlota, urgente: false, cta: 'Ver' }),
-  ]);
-
-  const listaVeh = urgentes.length
-    ? html`<h3 class="seccion-titulo">Vehículos que más urgen</h3><ul class="atencion-lista">${joinHtml(urgentes.map(filaVehiculo))}</ul>`
-    : html`<h3 class="seccion-titulo">Vehículos que más urgen</h3>${estadoVacio('Ningún vehículo con neumáticos críticos o bajos')}`;
-
-  const clientesTop = !cliente
-    ? [...resumen].sort((a, b) => (b.n_alertas_sev3 - a.n_alertas_sev3) || (b.n_critico - a.n_critico)).slice(0, MAX_VEHICULOS_LISTA)
-    : [];
-  const listaCli = clientesTop.length
-    ? html`<h3 class="seccion-titulo">Clientes con más urgencias</h3><ul class="atencion-lista">${joinHtml(clientesTop.map(filaCliente))}</ul>` : '';
-
-  return html`<div class="atencion-grid">${tarjetas}</div>${listaVeh}${listaCli}`;
+  const rs = resumenNeumaticos(estadoRows);
+  const at = requierenAtencion(estadoRows);
+  const px = proximosCambios(estadoRows);
+  const clientes = !cliente ? clientesConUrgencias(resumen) : [];
+  return html`${bloqueResumen(rs, ultimaMedicion(estadoRows))}
+    <div class="inicio-cols">${bloqueAtencion(at, alertas.length)}${bloqueProximos(px)}</div>
+    ${clientes.length ? html`<section class="inicio-card" aria-labelledby="inicio-h-clientes"><h3 id="inicio-h-clientes" class="inicio-h">Clientes con más urgencias</h3><ul class="inicio-lista">${joinHtml(clientes.map(filaCliente))}</ul></section>` : ''}
+    ${lineaDispositivos(resumenDispositivos(salud))}`;
 }
 
 export async function load() {
   const cont = $('inicio-contenido');
   await contextoListo();
   const sel = hayFiltroSeccional() ? sucursalSeleccionada() : '';
-  $('inicio-title').textContent = isClienteMode() ? `Hola, ${currentClienteNombre}` : 'Inicio';
-  $('inicio-subtitle').textContent = fmtFechaLarga(new Date()) + (sel ? ` · ${nombreSucursal(sel)}` : '');
+  $('inicio-title').textContent = 'Inicio';
+  $('inicio-subtitle').textContent = [isClienteMode() ? currentClienteNombre : '', fmtFechaLarga(new Date()), sel ? nombreSucursal(sel) : ''].filter(Boolean).join(' · ');
   cont.setAttribute('aria-busy', 'true');
   setHtml(cont, estadoCarga('Cargando…'));
   const [est, al, sa, res, veh, dis] = await Promise.all([
@@ -132,7 +137,7 @@ export async function load() {
 
 registerActions({
   loadInicio: () => load(),
-  // Salta a otra vista desde un botón con data-action (tarjetas de Inicio, estados vacíos).
+  // Salta a otra vista desde un botón con data-action.
   irA: vista => switchView(vista),
 });
 

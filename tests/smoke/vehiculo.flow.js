@@ -22,6 +22,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(filas().length !== 1 || filas()[0].textContent.indexOf('Camión 01') === -1) fail('detalle: busqueda parcial por patente');
   escribir('cr0001'); await sleep(100);
   if(filas().length !== 1 || filas()[0].textContent.indexOf('Crítica') === -1) fail('detalle: busqueda "cr0001" no halla "CR 0001"');
+  escribir('cr-00 01'); await sleep(100);
+  if(filas().length !== 1 || filas()[0].textContent.indexOf('Crítica') === -1) fail('detalle: busqueda con guion y espacio "cr-00 01" no halla "CR 0001"');
   // Por numero de coche: "7" coincide con 07 y 7; la exacta (Tractor) va primero
   escribir('7'); await sleep(100);
   if(filas().length !== 2 || filas()[0].textContent.indexOf('Tractor') === -1) fail('detalle: busqueda por numero, orden exacta primero');
@@ -91,7 +93,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     // Sin destino elegido: no llama a la RPC y avisa
     br.click(); await sleep(200);
     if(rpcs('neumatico_rotar').length) fail('detalle: rotar sin destino llego a la RPC');
-    if($('#toast-msg').textContent.indexOf('Elegí la posición') === -1) fail('detalle: rotar sin destino deberia avisar');
+    if($('#toast-msg').textContent.indexOf('Elegir la posición') === -1) fail('detalle: rotar sin destino deberia avisar');
     // Rotar 3 con 1 (ambas ocupadas: intercambio con confirmacion)
     sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
     if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);

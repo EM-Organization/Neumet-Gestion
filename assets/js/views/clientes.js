@@ -49,7 +49,6 @@ function renderClientes(){
   const tbody=document.getElementById('tbody-clientes');
   const filtered=clientesVisibles(clients,{showDeleted,query:q});
 
-  // Stats
   const live=clients.filter(c=>!estaEliminado(c));
   document.getElementById('stat-clients').textContent=live.length;
   const totalVehs=live.reduce((s,c)=>s+(c.vehiculos||[]).length,0);
@@ -60,11 +59,11 @@ function renderClientes(){
   document.getElementById('stat-nodev').textContent=noDevs;
 
   if(!clients.length||(!filtered.length&&!q)){
-    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div class="empty-title">Sin clientes todavía</div><div class="empty-sub">Creá tu primer cliente con el botón de arriba</div></div></td></tr>`);
+    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div class="empty-title">Sin clientes registrados</div><div class="empty-sub">Usar «Nuevo cliente» para crear el primero</div></div></td></tr>`);
     return;
   }
   if(!filtered.length){
-    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Probá con otro término</div></div></td></tr>`);
+    setHtml(tbody, html`<tr><td colspan="5"><div class="empty-state"><div class="empty-title">Sin resultados</div><div class="empty-sub">Cambiar la búsqueda</div></div></td></tr>`);
     return;
   }
 
@@ -81,11 +80,11 @@ function renderClientes(){
         </div>`;
     return html`<tr style="${del?'opacity:.55':''}" data-deleted="${del?'1':'0'}">
       <td class="id-cell">#${c.id}</td>
-      <td><div class="name-cell"><div class="name-av ${av}">${c.nombre[0].toUpperCase()}</div>${c.nombre}</div></td>
+      <td><div class="name-cell"><div class="name-av ${av}">${c.nombre[0].toUpperCase()}</div>${del?c.nombre:html`<button type="button" class="link-fila" data-action="abrirFichaCliente" data-args="[${c.id}]">${c.nombre}</button>`}</div></td>
       <td>${dispHtml}</td>
       <td><span class="badge ${st.cls}">● ${st.lbl}</span></td>
       <td><div class="actions">
-        ${del?html`<span style="font-size:12px;color:var(--text-tertiary)">Eliminado</span>`:html`<button class="icon-btn" data-action="abrirFichaCliente" data-args="[${c.id}]" title="Ficha y umbrales">
+        ${del?html`<span style="font-size:12px;color:var(--text-tertiary)">Eliminado</span>`:html`<button class="icon-btn" data-action="abrirFichaCliente" data-args="[${c.id}]" title="Abrir ficha" aria-label="Abrir ficha de ${c.nombre}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </button>
         <button class="icon-btn" data-a="edit" data-id="${c.id}" title="Editar">
@@ -117,7 +116,7 @@ ACTIONS.openClienteModal=function(mode,id){
   document.getElementById('f-password').value='';
   if(mode==='create'){
     document.getElementById('cli-modal-title').textContent='Nuevo cliente';
-    document.getElementById('cli-modal-sub').textContent='Creá el cliente; si no definís contraseña, recibirá una invitación por email';
+    document.getElementById('cli-modal-sub').textContent='Sin contraseña, el cliente recibe una invitación por email';
     save.textContent='Crear cliente';
     fn.style.display='block'; fe.style.display='block'; fp.style.display='block';
   } else {
@@ -139,7 +138,7 @@ ACTIONS.saveCliente=async function(){
   const email=document.getElementById('f-email').value.trim();
   const password=document.getElementById('f-password').value;
   const btn=document.getElementById('cli-save');
-  btn.disabled=true; btn.textContent=modalMode==='create'?'Creando...':'Guardando...';
+  btn.disabled=true; btn.textContent=modalMode==='create'?'Creando…':'Guardando…';
   try{
     if(modalMode==='create'){
       const v=validarAlta({nombre:name,email,password});
@@ -148,7 +147,7 @@ ACTIONS.saveCliente=async function(){
       clients.unshift(created);
       showToast(v.password?`${name} creado correctamente`:`${name} creado: se envió una invitación a ${email}`);
     } else {
-      if(!name){ showToast('Ingresá un nombre',true); return; }
+      if(!name){ showToast('Falta el nombre',true); return; }
       const {data,error}=await db.from('clientes').update({nombre:name}).eq('id',activeId).select(SEL).single();
       if(error) throw error;
       const idx=clients.findIndex(c=>c.id===activeId);

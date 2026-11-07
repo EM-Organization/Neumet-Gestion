@@ -4,12 +4,12 @@
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   function e(cid, vid, nom, pat, pos, estado, prom, extra){
     return Object.assign({cliente_id:cid,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,estado:estado,promedio:prom,
-      sin_medir:false,desgaste_irregular:false,ultima_medicion_at:prom===null?null:D(2)}, extra||{});
+      sin_medir:false,desgaste_irregular:false,ultima_medicion_at:prom===null?null:D(2),dias_desde_medicion:prom===null?null:2,semanas_hasta_critico:null,tasa_mm_semana:null}, extra||{});
   }
   var estado = [
     e(1,10,'Camión 01','AB123CD',1,'ok',13), e(1,10,'Camión 01','AB123CD',2,'ok',12),
     e(1,12,'Unidad <Crítica>','CR0001',1,'critico',3,{sin_medir:true}), e(1,12,'Unidad <Crítica>','CR0001',2,'bajo',6),
-    e(2,11,'Camión 02','XY987ZZ',1,'bajo',6), e(2,11,'Camión 02','XY987ZZ',2,'ok',9),
+    e(2,11,'Camión 02','XY987ZZ',1,'bajo',6), e(2,11,'Camión 02','XY987ZZ',2,'ok',9,{semanas_hasta_critico:6.4}),
     e(2,13,'Camión 03','NN0003',1,'sin_datos',null,{sin_medir:true})
   ];
   var alertas = [

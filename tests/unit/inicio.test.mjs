@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { estadoInicio } from '../../assets/js/domain/inicio.js';
+import {
+  estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
+  clientesConUrgencias, textoSemanas,
+} from '../../assets/js/domain/inicio.js';
+
+// Fila de v_estado_neumaticos con los campos que usa Inicio.
+const fila = (vid, pos, estado, extra = {}) => ({
+  cliente_id: 1, vehiculo_id: vid, vehiculo_nombre: `Camión ${vid}`, patente: `P${vid}`, posicion: pos, estado,
+  promedio: estado === 'sin_datos' ? null : 10, sin_medir: false, desgaste_irregular: false, dias_desde_medicion: 2,
+  semanas_hasta_critico: null, tasa_mm_semana: null, ultima_medicion_at: '2026-06-10T10:00:00Z', ...extra,
+});
 
 test('sin vehiculos ni filas: vacio', () => {
   assert.equal(estadoInicio({}), 'vacio');
@@ -19,4 +29,107 @@ test('dispositivos o alertas sin vehiculos contados tampoco es vacio', () => {
 
 test('con filas de estado: con_datos', () => {
   assert.equal(estadoInicio({ vehiculosTotal: 2, estadoRows: [{ estado: 'ok' }] }), 'con_datos');
+});
+
+test('resumenNeumaticos: proporciones que suman 100 y casos límite', () => {
+  const r = resumenNeumaticos([fila(1, 1, 'ok'), fila(1, 2, 'ok'), fila(1, 3, 'bajo'), fila(2, 1, 'critico'), fila(2, 2, 'sin_datos'), fila(3, 1, 'ok'), fila(3, 2, 'ok')]);
+  assert.deepEqual([r.total, r.ok, r.bajo, r.critico, r.sin_datos], [7, 4, 1, 1, 1]);
+  assert.equal(r.pct.ok + r.pct.bajo + r.pct.critico + r.pct.sin_datos, 100);
+  const vacio = resumenNeumaticos([]);
+  assert.equal(vacio.total, 0);
+  assert.deepEqual(vacio.pct, { ok: 0, bajo: 0, critico: 0, sin_datos: 0 });
+  assert.deepEqual(resumenNeumaticos(null).pct, { ok: 0, bajo: 0, critico: 0, sin_datos: 0 });
+  const todoOk = resumenNeumaticos([fila(1, 1, 'ok'), fila(1, 2, 'ok'), fila(1, 3, 'ok')]);
+  assert.equal(todoOk.pct.ok, 100);
+  const tercios = resumenNeumaticos([fila(1, 1, 'ok'), fila(1, 2, 'bajo'), fila(1, 3, 'critico')]);
+  assert.equal(tercios.pct.ok + tercios.pct.bajo + tercios.pct.critico, 100);
+  assert.equal(resumenNeumaticos([fila(1, 1, 'raro')]).sin_datos, 1);
+});
+
+test('textoSemanas', () => {
+  assert.equal(textoSemanas(0.4), 'menos de 1 semana');
+  assert.equal(textoSemanas(1), '~1 semana');
+  assert.equal(textoSemanas(5.6), '~6 semanas');
+  assert.equal(textoSemanas(null), '');
+});
+
+test('requierenAtencion: flota vacía o todo en orden no devuelve nada', () => {
+  assert.deepEqual(requierenAtencion([]), { items: [], total: 0 });
+  assert.deepEqual(requierenAtencion(null), { items: [], total: 0 });
+  assert.equal(requierenAtencion([fila(1, 1, 'ok'), fila(1, 2, 'ok'), fila(2, 1, 'ok')]).total, 0);
+});
+
+test('requierenAtencion: sin mediciones en toda la flota es "sin medir", no crítico', () => {
+  const r = requierenAtencion([fila(1, 1, 'sin_datos', { sin_medir: true, dias_desde_medicion: null, ultima_medicion_at: null })]);
+  assert.equal(r.items[0].nivel, 'sin_medir');
+  assert.equal(r.items[0].causa, 'Sin mediciones registradas');
+});
+
+test('requierenAtencion: orden por urgencia y una frase de causa por vehículo', () => {
+  const rows = [
+    fila(1, 1, 'ok', { sin_medir: true, dias_desde_medicion: 19 }),                       // sin medir
+    fila(2, 1, 'ok', { semanas_hasta_critico: 2.4 }),                                      // cruza pronto
+    fila(3, 1, 'critico', { promedio: 3 }), fila(3, 2, 'critico', { promedio: 4 }),        // 2 críticos
+    fila(4, 1, 'critico', { promedio: 2 }),                                                // 1 crítico
+    fila(5, 1, 'bajo'),                                                                    // bajo
+    fila(6, 1, 'ok', { desgaste_irregular: true }),                                        // mayor al normal
+    fila(7, 1, 'ok'),
+  ];
+  const r = requierenAtencion(rows, { max: 10 });
+  assert.deepEqual(r.items.map(v => v.vehiculo_id), [3, 4, 2, 5, 6, 1]);
+  assert.equal(r.total, 6);
+  assert.equal(r.items[0].causa, '2 neumáticos críticos (P1, P2)');
+  assert.equal(r.items[1].causa, '1 neumático crítico (P1)');
+  assert.equal(r.items[2].causa, 'Cruza el límite crítico en ~2 semanas (P1)');
+  assert.equal(r.items[3].causa, '1 neumático con desgaste bajo (P1)');
+  assert.equal(r.items[4].causa, 'Desgaste mayor al normal (P1)');
+  assert.equal(r.items[5].causa, 'Sin medir hace 19 días');
+});
+
+test('requierenAtencion: respeta el máximo y devuelve el total real; un solo vehículo funciona', () => {
+  const muchos = Array.from({ length: 20 }, (_, i) => fila(i + 1, 1, 'critico'));
+  const r = requierenAtencion(muchos, { max: 6 });
+  assert.equal(r.items.length, 6);
+  assert.equal(r.total, 20);
+  const uno = requierenAtencion([fila(9, 1, 'critico')]);
+  assert.equal(uno.items.length, 1);
+});
+
+test('requierenAtencion: cruza más allá de 4 semanas no cuenta; el crítico no se mezcla con cruza', () => {
+  assert.equal(requierenAtencion([fila(1, 1, 'ok', { semanas_hasta_critico: 9 })]).total, 0);
+  const r = requierenAtencion([fila(1, 1, 'critico', { semanas_hasta_critico: 0 }), fila(1, 2, 'ok', { semanas_hasta_critico: 1 })]);
+  assert.equal(r.items[0].nivel, 'critico');
+});
+
+test('proximosCambios: solo neumáticos aún no críticos dentro del horizonte, el más cercano primero', () => {
+  const rows = [
+    fila(1, 1, 'ok', { semanas_hasta_critico: 9 }), fila(1, 2, 'bajo', { semanas_hasta_critico: 3.2 }),
+    fila(2, 1, 'critico', { semanas_hasta_critico: 0 }), fila(3, 1, 'ok', { semanas_hasta_critico: 30 }),
+    fila(4, 1, 'ok'), fila(5, 1, 'ok', { semanas_hasta_critico: 0.5 }),
+  ];
+  const r = proximosCambios(rows);
+  assert.deepEqual(r.items.map(x => [x.vehiculo_id, x.posicion]), [[5, 1], [1, 2], [1, 1]]);
+  assert.equal(r.total, 3);
+  assert.deepEqual(proximosCambios([]), { items: [], total: 0 });
+  assert.equal(proximosCambios(rows, { max: 1 }).items.length, 1);
+  assert.equal(proximosCambios(rows, { max: 1 }).total, 3);
+});
+
+test('resumenDispositivos y ultimaMedicion', () => {
+  assert.deepEqual(resumenDispositivos([]), { total: 0, activos: 0, inactivos: 0 });
+  assert.deepEqual(resumenDispositivos([{ estado: 'activo' }, { estado: 'caido' }, { estado: 'nunca' }]), { total: 3, activos: 1, inactivos: 2 });
+  assert.equal(ultimaMedicion([]), null);
+  assert.equal(ultimaMedicion([fila(1, 1, 'ok', { ultima_medicion_at: null }), fila(1, 2, 'ok', { ultima_medicion_at: '2026-06-12T00:00:00Z' }), fila(1, 3, 'ok')]), '2026-06-12T00:00:00Z');
+});
+
+test('clientesConUrgencias: solo con urgencias, más urgencias primero, acotado', () => {
+  const res = [
+    { cliente_id: 1, nombre: 'A', n_critico: 0, n_alertas_sev3: 0 },
+    { cliente_id: 2, nombre: 'B', n_critico: 1, n_alertas_sev3: 1 },
+    { cliente_id: 3, nombre: 'C', n_critico: 5, n_alertas_sev3: 4 },
+  ];
+  assert.deepEqual(clientesConUrgencias(res).map(c => c.cliente_id), [3, 2]);
+  assert.equal(clientesConUrgencias(res, 1).length, 1);
+  assert.deepEqual(clientesConUrgencias([]), []);
+  assert.deepEqual(clientesConUrgencias(null), []);
 });
