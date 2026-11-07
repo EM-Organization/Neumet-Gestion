@@ -5,7 +5,7 @@ import { flujo, filasVehiculos, irA, dormir, texto } from '../lib/flujo.mjs';
 import { vehiculosVisibles } from '../lib/verdad.mjs';
 
 // Consultas y matrículas que deben aparecer (las DEMO0xx son las del seed; se recorta al alcance de cada rol).
-// 'DEMO010' es el "Camión 201" (coche 110): "201" coincide con el nombre y "110" con el número de coche.
+// 'DEMO010' es el "Coche 201" (vehiculos.nombre = numero = '201') y sus neumáticos tienen quema Q10-01, Q10-02....
 const CASOS = [
   ['DEMO010', ['DEMO010']],
   ['demo010', ['DEMO010']],
@@ -14,9 +14,10 @@ const CASOS = [
   ['demo01', ['DEMO010', 'DEMO011', 'DEMO012', 'DEMO013', 'DEMO014']],
   ['DEMO00', ['DEMO001', 'DEMO002', 'DEMO003', 'DEMO004', 'DEMO005', 'DEMO006', 'DEMO007', 'DEMO008', 'DEMO009']],
   ['201', ['DEMO010']],
-  ['110', ['DEMO010']],
-  ['camion 205', ['DEMO014']],
-  ['Camión 101', ['DEMO001']],
+  ['110', []],                         // ya no es el número de DEMO010 (era el de la semilla anterior)
+  ['coche 201', ['DEMO010']],         // lo que muestra la interfaz
+  ['coche 205', ['DEMO014']],
+  ['Coche 101', ['DEMO001']],
   ['101', ['DEMO001']],
   ['OTRA001', []], // vehículo de otro cliente: no existe para ninguna sesión de Demo
   ['zzz', []]
@@ -47,12 +48,12 @@ export function registrar(env) {
       await flujo(env, 'buscador-enter', rol, async p => {
         await irA(p, 'vehiculos');
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length > 0`);
-        for (const q of ['DEMO010', 'demo 010', '110']) {
+        for (const q of ['DEMO010', 'demo 010', '201', 'Coche 201']) {
           await p.escribir('#search-vehiculos', q);
           await p.enter();
           await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelector('#vd-cab')`, { que: `detalle tras buscar ${q}` });
           await p.esperar(`/DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: 'cabecera del Camión 201' });
-          assert.match(await texto(p, '#vd-cab'), /Camión 201/);
+          assert.match(await texto(p, '#vd-cab'), /Coche 201/);
           await p.click('[data-action="detalleVolver"]');
           await p.esperar(`document.querySelector('#view-vehiculos').classList.contains('active')`);
         }
@@ -71,14 +72,14 @@ export function registrar(env) {
       await p.esperar(`document.querySelectorAll('#tbody-vehiculos tr').length >= 15`, { que: 'todos los vehículos en la tabla' });
       const nombres = () => p.eval(`[...document.querySelectorAll('#tbody-vehiculos tr .name-cell')].map(e => e.textContent.trim().slice(1))`);
       const patentes = () => p.eval(`[...document.querySelectorAll('#tbody-vehiculos tr .mono-cell')].map(e => e.textContent.trim())`);
-      for (const [q, esperado] of [['DEMO010', ['DEMO010']], ['demo 010', ['DEMO010']], ['110', ['DEMO010']], ['OTRA001', ['OTRA001']], ['demo01', ['DEMO010', 'DEMO011', 'DEMO012', 'DEMO013', 'DEMO014']]]) {
+      for (const [q, esperado] of [['DEMO010', ['DEMO010']], ['demo 010', ['DEMO010']], ['201', ['DEMO010']], ['OTRA001', ['OTRA001']], ['demo01', ['DEMO010', 'DEMO011', 'DEMO012', 'DEMO013', 'DEMO014']]]) {
         await p.escribir('#search-vehiculos', q);
         await dormir(120);
         assert.deepEqual((await patentes()).sort(), esperado, `[admin] ${q}`);
       }
       await p.escribir('#search-vehiculos', '201');
       await dormir(120);
-      assert.deepEqual(await nombres(), ['Camión 201'].map(n => n.slice(0)));
+      assert.deepEqual(await nombres(), ['Coche 201']);
     });
   });
 
@@ -110,7 +111,8 @@ export function registrar(env) {
   });
 
   // Buscador global de la barra superior (se prueba desde Alertas) y el de Inicio: matrícula, número de coche y espacios.
-  const ABRIR_GLOBAL = [['DEMO010', 'Camión 201'], ['demo 010', 'Camión 201'], ['110', 'Camión 201'], ['201', 'Camión 201']];
+  // Incluye el número de quema (Q10-01 está montado en DEMO010).
+  const ABRIR_GLOBAL = [['DEMO010', 'Coche 201'], ['demo 010', 'Coche 201'], ['201', 'Coche 201'], ['q10-01', 'Coche 201'], ['Q1001', 'Coche 201']];
   for (const rol of ['global', 'salto']) {
     test(`Buscador global (${rol}): desde Alertas, Enter abre el detalle y Volver regresa a Alertas`, async () => {
       await flujo(env, 'buscador-global', rol, async p => {
@@ -150,7 +152,7 @@ export function registrar(env) {
   test('Buscador global (salto): una matrícula de Montevideo o de otro cliente no se encuentra ni se abre', async () => {
     await flujo(env, 'buscador-global-ajeno', 'salto', async p => {
       await irA(p, 'alertas');
-      for (const q of ['DEMO001', 'demo 005', '101', 'OTRA001', 'SAB-1234']) {
+      for (const q of ['DEMO001', 'demo 005', '101', 'Q01-01', 'q0101', 'OTRA001', 'SAB-1234']) {
         await p.escribir('#busq-global-input', q);
         await p.enter();
         await p.esperar(`/Ningún vehículo coincide/.test(document.querySelector('#busq-global-res').innerText)`, { que: `sin resultados para ${q}` });

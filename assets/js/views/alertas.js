@@ -13,6 +13,7 @@ import {
   ordenarAlertas, filtrarAlertas, contarPorSeveridad, tiposPresentes,
   severidadLabel, tipoLabel, SEVERIDAD_BADGE,
 } from '../domain/flota.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 10000;
@@ -36,7 +37,7 @@ function fila(a, mostrarCliente) {
     <td>${chipSeveridad(a.severidad)}</td>
     <td>${tipoLabel(a.tipo)}</td>
     <td>${a.mensaje}</td>
-    <td>${a.vehiculo_nombre}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
+    <td>${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
     <td>${a.posicion ?? '—'}</td>
     <td>${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
     <td><button class="btn ghost" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button></td>

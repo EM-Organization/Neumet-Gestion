@@ -14,11 +14,11 @@ describe('idsVehiculosDeSucursal', () => {
     assert.equal(idsVehiculosDeSucursal(vehs, ''), null);
     assert.equal(idsVehiculosDeSucursal(vehs, null), null);
   });
-  test('devuelve solo los vehículos de la seccional (ids como string)', () => {
+  test('devuelve solo los vehículos de la sucursal (ids como string)', () => {
     assert.deepEqual([...idsVehiculosDeSucursal(vehs, '10')].sort(), ['1', '4']);
     assert.deepEqual([...idsVehiculosDeSucursal(vehs, 20)], ['2']);
   });
-  test('los vehículos sin seccional nunca coinciden', () => assert.equal(idsVehiculosDeSucursal(vehs, '0').size, 0));
+  test('los vehículos sin sucursal nunca coinciden', () => assert.equal(idsVehiculosDeSucursal(vehs, '0').size, 0));
 });
 
 describe('filtrarPorVehiculos', () => {
@@ -56,9 +56,9 @@ describe('resumenDesdeFilas', () => {
 });
 
 describe('mostrarSelector', () => {
-  test('perfil global con seccionales => sí', () => assert.equal(mostrarSelector({ esSeccional: false, sucursales: [{ id: 1 }] }), true));
-  test('perfil de seccional => no (la RLS ya limita)', () => assert.equal(mostrarSelector({ esSeccional: true, sucursales: [{ id: 1 }] }), false));
-  test('cliente sin seccionales => no', () => assert.equal(mostrarSelector({ esSeccional: false, sucursales: [] }), false));
+  test('perfil global con sucursales => sí', () => assert.equal(mostrarSelector({ esSeccional: false, sucursales: [{ id: 1 }] }), true));
+  test('perfil de sucursal => no (la RLS ya limita)', () => assert.equal(mostrarSelector({ esSeccional: true, sucursales: [{ id: 1 }] }), false));
+  test('cliente sin sucursales => no', () => assert.equal(mostrarSelector({ esSeccional: false, sucursales: [] }), false));
 });
 
 describe('mensajes y validación del ABM', () => {
@@ -77,7 +77,7 @@ describe('mensajes y validación del ABM', () => {
     assert.match(mensajeErrorCrearUsuario(409), /Ya existe/);
     assert.match(mensajeErrorCrearUsuario(403), /permiso/);
     assert.match(mensajeErrorCrearUsuario(404), /ya no existe/);
-    assert.equal(mensajeErrorCrearUsuario(400, 'La seccional no pertenece a ese cliente'), 'La seccional no pertenece a ese cliente');
+    assert.equal(mensajeErrorCrearUsuario(400, 'La sucursal no pertenece a ese cliente'), 'La sucursal no pertenece a ese cliente');
     assert.match(mensajeErrorCrearUsuario(500), /No se pudo/);
   });
   test('cuerpoCrearUsuario: sin password ni sucursal cuando están vacíos', () => {

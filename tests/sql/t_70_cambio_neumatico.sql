@@ -1,12 +1,12 @@
 -- neumatico_cambiar / vehiculo_registrar_odometro / neumatico_rotar abierta al alcance del cliente:
--- autorización (admin, cliente global, seccional, otro cliente, api, anon), stock, atomicidad.
+-- autorización (admin, cliente global, sucursal, otro cliente, api, anon), stock, atomicidad.
 -- Todo en una transacción que se revierte; cada escenario vuelve a un savepoint.
 begin;
 
 insert into auth.users (id, email) values
   ('a0000000-0000-0000-0000-0000000000e1', 'sa70@t'), ('a0000000-0000-0000-0000-0000000000e2', 'sb70@t');
 insert into public.sucursales (id, cliente_id, nombre) overriding system value values
-  (201, 1, 'Seccional A'), (202, 1, 'Seccional B');
+  (201, 1, 'Sucursal A'), (202, 1, 'Sucursal B');
 insert into public.perfiles (user_id, rol, cliente_id, sucursal_id) values
   ('a0000000-0000-0000-0000-0000000000e1', 'cliente', 1, 201),
   ('a0000000-0000-0000-0000-0000000000e2', 'cliente', 1, 202);
@@ -55,7 +55,7 @@ rollback to s0;
 -- Cliente GLOBAL del mismo cliente: reencauche suma vida, ingresa uno nuevo
 select test.become('authenticated', test.u_cli_a());
 select test.eq('cliente global: cambio con neumático ingresado',
-  (public.neumatico_cambiar(1::bigint, 2::smallint, 'reencauche', null, 500, null,
+  (public.neumatico_cambiar(1::bigint, 2::smallint, 'reencauche', null, 1000, null,
      '{"marca":"Pirelli","modelo":"FR85","codigo":"AB-1","precio":1200,"vida":1}'::jsonb)->>'posicion')::int, 2);
 select test.eq('viejo: reencauche suma vida y queda almacenado',
   (select vida||'|'||estado from public.neumaticos where idneumatico='T-1-2'), '1|almacenado');
@@ -63,7 +63,7 @@ select test.eq('nuevo: datos ingresados',
   (select marca||'|'||modelo||'|'||codigo||'|'||precio_unidad||'|'||vida from public.neumaticos where vehiculo_id=1 and posicion=2), 'Pirelli|FR85|AB-1|1200.00|1');
 select test.eq('eventos: desmontaje + reencauche + montaje',
   (select string_agg(tipo, ',' order by id) from public.eventos_neumatico where created_by = test.u_cli_a()), 'desmontaje,reencauche,montaje');
-select test.eq('odómetro repetido o menor en el cambio no baja el del vehículo', (select odometro_km from public.vehiculos where id=1), 1000);
+select test.eq('odómetro repetido en el cambio deja el del vehículo igual', (select odometro_km from public.vehiculos where id=1), 1000);
 select test.eq('registrar odómetro igual es válido',
   (public.vehiculo_registrar_odometro(1::bigint, 1000)->>'odometro_km')::int, 1000);
 select test.denied('cliente no baja el odómetro', $$select public.vehiculo_registrar_odometro(1::bigint, 10)$$, '23514');
@@ -86,21 +86,21 @@ select test.denied('cliente global no rota el vehículo de otro cliente', $$sele
 reset role;
 rollback to s0;
 
--- Seccional A: su vehículo sí; el de la seccional B no; stock no
+-- Sucursal A: su vehículo sí; el de la sucursal B no; stock no
 select test.become('authenticated', test.u_s70a());
-select test.eq('seccional A cambia en su vehículo',
-  (public.neumatico_cambiar(1::bigint, 5::smallint, 'baja', 'Desgaste', 100, null, '{"marca":"N"}')->>'posicion')::int, 5);
-select test.denied('seccional A no cambia en el vehículo de la seccional B', $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
-select test.denied('seccional A no registra odómetro de la seccional B', $$select public.vehiculo_registrar_odometro(2::bigint, 9)$$);
-select test.denied('seccional A no rota en la seccional B', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
-select test.denied('seccional A no usa el stock (solo perfil global)', $$select public.neumatico_cambiar(1::bigint,6::smallint,'baja','x',null,701)$$);
-select test.eq('seccional A rota en su vehículo',
+select test.eq('sucursal A cambia en su vehículo',
+  (public.neumatico_cambiar(1::bigint, 5::smallint, 'baja', 'Desgaste', 1100, null, '{"marca":"N"}')->>'posicion')::int, 5);
+select test.denied('sucursal A no cambia en el vehículo de la sucursal B', $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('sucursal A no registra odómetro de la sucursal B', $$select public.vehiculo_registrar_odometro(2::bigint, 9)$$);
+select test.denied('sucursal A no rota en la sucursal B', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
+select test.denied('sucursal A no usa el stock (solo perfil global)', $$select public.neumatico_cambiar(1::bigint,6::smallint,'baja','x',null,701)$$);
+select test.eq('sucursal A rota en su vehículo',
   (public.neumatico_rotar(1::bigint, 7::smallint, 8::smallint)->>'intercambio')::boolean, true);
-select test.eq('seccional A registra odómetro propio', (public.vehiculo_registrar_odometro(1::bigint, 3000)->>'odometro_km')::int, 3000);
+select test.eq('sucursal A registra odómetro propio', (public.vehiculo_registrar_odometro(1::bigint, 3000)->>'odometro_km')::int, 3000);
 reset role;
 select test.become('authenticated', test.u_s70b());
-select test.denied('seccional B no cambia en el vehículo de la seccional A', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
-select test.eq('seccional B cambia en el suyo',
+select test.denied('sucursal B no cambia en el vehículo de la sucursal A', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.eq('sucursal B cambia en el suyo',
   (public.neumatico_cambiar(2::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}')->>'posicion')::int, 1);
 reset role;
 rollback to s0;
@@ -155,7 +155,7 @@ begin raise exception 'fallo simulado' using errcode = 'P0001'; end $$;
 create trigger trg_falla_montaje before insert on public.eventos_neumatico
   for each row when (new.tipo = 'montaje') execute function pg_temp.falla_montaje();
 select test.become('authenticated', test.u_cli_a());
-select test.denied('fallo al registrar el montaje', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',777,701)$$, 'P0001');
+select test.denied('fallo al registrar el montaje', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',1777,701)$$, 'P0001');
 select test.eq('atomicidad: viejo intacto', (select estado||'|'||posicion from public.neumaticos where idneumatico='T-1-1'), 'montado|1');
 select test.eq('atomicidad: sin neumático nuevo', (select count(*) from public.neumaticos where vehiculo_id=1), 9::bigint);
 select test.eq('atomicidad: stock intacto', (select cantidad from public.stock_neumaticos where id=701), 2);

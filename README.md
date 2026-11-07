@@ -116,7 +116,7 @@ El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. L
 **Módulos del panel:**
 
 - **Clientes** — Alta, edición y eliminación de clientes con credenciales de acceso (Supabase Auth)
-- **Vehículos** — Gestión de vehículos por cliente. Se puede cargar patente y/o número de coche
+- **Vehículos** — Gestión de vehículos por cliente. Se identifican por número de coche («Coche 106») y, opcionalmente, matrícula. Cada neumático puede llevar número de quema y los km que ya traía
 - **Dispositivos** — Registro de medidores por MAC Address. Muestra dispositivos no registrados que ya enviaron mediciones
 - **Balance** — Ingresos por cliente (precio mensual editable), gastos recurrentes y resultado neto mensual con gráfico de evolución
 - **Mediciones** — Visualización del estado de neumáticos por vehículo o por dispositivo. Muestra el dibujo del camión con colores por estado (verde ≥ 8mm, naranja 5–7.9mm, rojo < 5mm)

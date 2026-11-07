@@ -11,6 +11,7 @@ import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { agruparVehiculos } from '../domain/flota.js';
 import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda.js';
 import { plural } from '../domain/formato.js';
+import { etiquetaCoche, validarNumeroCoche, numeroDesdeNombre } from '../domain/coche.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
 let vehiculos=[], resumenes=new Map(), vehModalMode='create', vehActiveId=null;
@@ -71,8 +72,8 @@ function renderLista(){
   setHtml(lista, joinHtml(res.map(v=>{
     const g=resumenes.get(v.id), txt=resumenTexto(g);
     return html`<li><button type="button" class="veh-fila" data-action="verVehiculoDetalle" data-args="${JSON.stringify([v.id])}">
-      <span class="veh-fila-main"><span class="veh-fila-nombre">${v.nombre}</span>
-        <span class="veh-fila-meta">${[v.patente,v.numero?`Coche ${v.numero}`:''].filter(Boolean).join(' · ')||'Sin matrícula'}</span></span>
+      <span class="veh-fila-main"><span class="veh-fila-nombre">${etiquetaCoche(v.nombre)}</span>
+        <span class="veh-fila-meta">${v.patente||'Sin matrícula'}</span></span>
       <span class="veh-fila-estado">${txt}${chipEstado(g?g.semaforo:'sin_datos')}</span></button></li>`;
   })));
 }
@@ -98,13 +99,13 @@ function renderVehiculos(){
       :html`<span class="badge" style="background:rgba(0,0,0,0.06);color:var(--text-tertiary)">● Inactivo</span>`;
     return html`<tr>
       <td class="id-cell">#${v.id}</td>
-      <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${v.nombre}</div></td>
+      <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${etiquetaCoche(v.nombre)}</div></td>
       <td class="mono-cell">${v.patente?v.patente:'—'}</td>
       <td>${clientNom}</td>
       <td><span class="badge blue">${v.tipo_ruedas} WHL</span></td>
       <td>${estadoBadge}</td>
       <td><div class="actions">
-        <button class="icon-btn" data-va="detalle" data-vid="${v.id}" title="Ver detalle del vehículo" aria-label="Ver detalle de ${v.nombre}">
+        <button class="icon-btn" data-va="detalle" data-vid="${v.id}" title="Ver detalle del vehículo" aria-label="Ver detalle de ${etiquetaCoche(v.nombre)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
         <button class="icon-btn" data-va="neum" data-vid="${v.id}" title="Neumáticos">
@@ -143,7 +144,6 @@ ACTIONS.openVehiculoModal=async function(mode,id){
     document.getElementById('veh-modal-sub').textContent='Datos del vehículo';
     document.getElementById('vf-nombre').value='';
     document.getElementById('vf-patente').value='';
-    document.getElementById('vf-numero').value='';
     document.getElementById('vf-ruedas').value='10';
     document.getElementById('vf-fecha-compra').value='';
     document.getElementById('vf-ultimo-servicio').value='';
@@ -152,12 +152,11 @@ ACTIONS.openVehiculoModal=async function(mode,id){
     save.textContent='Crear vehículo';
   } else {
     const v=vehiculos.find(v=>v.id===id);
-    document.getElementById('veh-modal-title').textContent=`Editar · ${v.nombre}`;
+    document.getElementById('veh-modal-title').textContent=`Editar · ${etiquetaCoche(v.nombre)}`;
     document.getElementById('veh-modal-sub').textContent='Datos del vehículo';
     document.getElementById('vf-cliente').value=v.cliente_id;
     document.getElementById('vf-nombre').value=v.nombre;
     document.getElementById('vf-patente').value=v.patente||'';
-    document.getElementById('vf-numero').value=v.numero||'';
     document.getElementById('vf-ruedas').value=String(v.tipo_ruedas);
     document.getElementById('vf-fecha-compra').value=v.fecha_compra||'';
     document.getElementById('vf-ultimo-servicio').value=v.ultimo_servicio||'';
@@ -171,16 +170,19 @@ ACTIONS.openVehiculoModal=async function(mode,id){
 ACTIONS.closeVehiculoModal=()=>document.getElementById('modal-vehiculo').classList.remove('show');
 
 ACTIONS.saveVehiculo=async function(){
-  const nombre=document.getElementById('vf-nombre').value.trim();
+  const vn=validarNumeroCoche(document.getElementById('vf-nombre').value);
+  const nombre=vn.ok?vn.valor:'';
   const patente=document.getElementById('vf-patente').value.trim().toUpperCase()||null;
-  const numero=document.getElementById('vf-numero').value.trim()||null;
+  const previo=vehModalMode==='edit'?vehiculos.find(v=>v.id===vehActiveId):null;
+  const numero=numeroDesdeNombre(nombre,{nombreAnterior:previo?previo.nombre:null,numeroAnterior:previo?previo.numero:null});
   const cliente_id=parseInt(document.getElementById('vf-cliente').value);
   const tipo_ruedas=parseInt(document.getElementById('vf-ruedas').value);
   const activo=document.getElementById('vf-activo').checked;
   const fecha_compra=document.getElementById('vf-fecha-compra').value||null;
   const ultimo_servicio=document.getElementById('vf-ultimo-servicio').value||null;
   const notas=document.getElementById('vf-notas').value.trim()||null;
-  if(!nombre||!cliente_id){ showToast('Falta el nombre o el cliente',true); return; }
+  if(!vn.ok){ showToast(vn.error,true); return; }
+  if(!cliente_id){ showToast('Falta el cliente',true); return; }
   const btn=document.getElementById('veh-save');
   btn.disabled=true; btn.textContent=vehModalMode==='create'?'Creando…':'Guardando…';
   const fields={nombre,patente,numero,cliente_id,tipo_ruedas,activo,fecha_compra,ultimo_servicio,notas};
@@ -190,7 +192,7 @@ ACTIONS.saveVehiculo=async function(){
       const {data,error}=await db.from('vehiculos').insert(fields).select(sel).single();
       if(error) throw error;
       vehiculos.unshift(data);
-      showToast(`${nombre} creado`);
+      showToast(`${etiquetaCoche(nombre)} creado`);
     } else {
       const {data,error}=await db.from('vehiculos').update(fields).eq('id',vehActiveId).select(sel).single();
       if(error) throw error;
@@ -205,13 +207,13 @@ ACTIONS.saveVehiculo=async function(){
 
 async function removeVehiculo(id){
   const v=vehiculos.find(v=>v.id===id);
-  const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${v.nombre}"? Se perderán sus mediciones asociadas.`);
+  const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${etiquetaCoche(v.nombre)}"? Se perderán sus mediciones asociadas.`);
   if(!ok) return;
   const {error}=await db.from('vehiculos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }
   vehiculos=vehiculos.filter(v=>v.id!==id);
   invalidarCatalogo();
-  showToast(`${v.nombre} eliminado`);
+  showToast(`${etiquetaCoche(v.nombre)} eliminado`);
   renderVehiculos();
 }
 

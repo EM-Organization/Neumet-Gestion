@@ -2,8 +2,8 @@
 
 Edge Function (Deno) que crea un usuario Auth + su perfil `cliente` para un cliente existente. Solo admins.
 
-- Con `sucursal_id`: perfil de **seccional** (la RLS le muestra solo los vehículos/dispositivos de esa seccional).
-- Sin `sucursal_id`: perfil **global** adicional del cliente (ve todas las seccionales).
+- Con `sucursal_id`: perfil de **sucursal** (la RLS le muestra solo los vehículos/dispositivos de esa sucursal).
+- Sin `sucursal_id`: perfil **global** adicional del cliente (ve todas las sucursales).
 
 ## Contrato
 
@@ -12,14 +12,14 @@ Edge Function (Deno) que crea un usuario Auth + su perfil `cliente` para un clie
 
 - Éxito (201): `{ ok: true, usuario: { user_id, cliente_id, sucursal_id, email, modo } }` (`modo`: `password` |
   `invite`).
-- Error: `{ ok: false, error }` con 400 (validación; seccional de otro cliente), 401, 403 (no admin / origen), 404
-  (cliente o seccional inexistente), 405, 409 (email ya existe), 413, 500.
+- Error: `{ ok: false, error }` con 400 (validación; sucursal de otro cliente), 401, 403 (no admin / origen), 404
+  (cliente o sucursal inexistente), 405, 409 (email ya existe), 413, 500.
 - `password` opcional (12..128 caracteres); sin ella se envía una invitación por email.
 
 ## Garantías
 
 - JWT verificado con `auth.getUser` y rol con `perfiles.rol = 'admin'` (service role).
-- La seccional debe pertenecer al `cliente_id` (comprobado aquí y por la FK compuesta
+- La sucursal debe pertenecer al `cliente_id` (comprobado aquí y por la FK compuesta
   `perfiles(sucursal_id, cliente_id)`).
 - Si falla la inserción del perfil se elimina el usuario Auth recién creado (compensación).
 - Logs JSON con `request_id`; nunca emails, contraseñas ni tokens.

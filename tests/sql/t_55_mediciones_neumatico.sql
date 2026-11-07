@@ -6,7 +6,7 @@
 begin;
 
 insert into auth.users (id, email) values ('a0000000-0000-0000-0000-0000000000f8', 'sd80@t');
-insert into public.sucursales (id, cliente_id, nombre) overriding system value values (301, 1, 'Seccional 80'), (302, 1, 'Otra 80');
+insert into public.sucursales (id, cliente_id, nombre) overriding system value values (301, 1, 'Sucursal 80'), (302, 1, 'Otra 80');
 insert into public.perfiles (user_id, rol, cliente_id, sucursal_id) values
   ('a0000000-0000-0000-0000-0000000000f8', 'cliente', 1, 301);
 create or replace function test.u_s80() returns uuid language sql immutable as $$ select 'a0000000-0000-0000-0000-0000000000f8'::uuid $$;
@@ -276,17 +276,17 @@ rollback to s0;
 -- -----------------------------------------------------------------------------
 -- 6. Aislamiento (RLS intacta en las vistas, incluida la nueva)
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_s80());   -- seccional 301 = solo V11
-select test.eq('seccional: v_mediciones_neumatico solo de su vehículo',
+select test.become('authenticated', test.u_s80());   -- sucursal 301 = solo V11
+select test.eq('sucursal: v_mediciones_neumatico solo de su vehículo',
   (select count(*) from public.v_mediciones_neumatico where vehiculo_id is distinct from 11), 0::bigint);
-select test.eq('seccional ve las mediciones de su vehículo', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 11) > 0, true);
-select test.eq('seccional: v_estado solo su vehículo', (select count(*) from public.v_estado_neumaticos where vehiculo_id is distinct from 11), 0::bigint);
-select test.eq('seccional: v_alertas solo su vehículo', (select count(*) from public.v_alertas where vehiculo_id is distinct from 11), 0::bigint);
-select test.eq('seccional: v_ultima_medicion solo su vehículo', (select count(*) from public.v_ultima_medicion where vehiculo_id is distinct from 11), 0::bigint);
-select test.eq('seccional no ve V12 (otra seccional)', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 12), 0::bigint);
--- El seccional cambia SU neumático: ve el resultado, y no se filtra nada de otros
+select test.eq('sucursal ve las mediciones de su vehículo', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 11) > 0, true);
+select test.eq('sucursal: v_estado solo su vehículo', (select count(*) from public.v_estado_neumaticos where vehiculo_id is distinct from 11), 0::bigint);
+select test.eq('sucursal: v_alertas solo su vehículo', (select count(*) from public.v_alertas where vehiculo_id is distinct from 11), 0::bigint);
+select test.eq('sucursal: v_ultima_medicion solo su vehículo', (select count(*) from public.v_ultima_medicion where vehiculo_id is distinct from 11), 0::bigint);
+select test.eq('sucursal no ve V12 (otra sucursal)', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 12), 0::bigint);
+-- El sucursal cambia SU neumático: ve el resultado, y no se filtra nada de otros
 select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Corte', null, null, '{"marca":"S"}'::jsonb);
-select test.eq('seccional tras cambiar: P1 sin_datos', test.est(11, 1::smallint), 'sin_datos');
+select test.eq('sucursal tras cambiar: P1 sin_datos', test.est(11, 1::smallint), 'sin_datos');
 reset role;
 rollback to s0;
 

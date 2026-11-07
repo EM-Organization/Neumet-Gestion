@@ -1,6 +1,6 @@
 // Lógica de `crear-usuario-seccional` sin dependencias de red: todo el I/O entra por `Deps`.
 // Crea un usuario Auth + su perfil 'cliente' de un cliente existente:
-//   * con sucursal_id => perfil de SECCIONAL (solo ve los vehículos de esa seccional);
+//   * con sucursal_id => perfil de SUCURSAL (solo ve los vehículos de esa sucursal);
 //   * sin sucursal_id => perfil GLOBAL adicional (ve todo el cliente).
 // Solo admins. La coherencia sucursal/cliente la garantiza además una FK compuesta en la base.
 
@@ -20,7 +20,7 @@ export interface Deps {
   isAdmin(userId: string): Promise<boolean>;
   /** ¿existe el cliente (no eliminado)? */
   clienteExiste(clienteId: number): Promise<boolean>;
-  /** Seccional por id, o null si no existe. */
+  /** Sucursal por id, o null si no existe. */
   getSucursal(sucursalId: number): Promise<SucursalRow | null>;
   createUser(email: string, password: string): Promise<AuthResult>;
   inviteUser(email: string): Promise<AuthResult>;
@@ -115,15 +115,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     pwd = password;
   }
 
-  // 3. El cliente y la seccional existen y son coherentes
+  // 3. El cliente y la sucursal existen y son coherentes
   try {
     if (!(await deps.clienteExiste(clienteId))) return fail('Cliente inexistente', 404, cors);
     if (sucursalId !== null) {
       const s = await deps.getSucursal(sucursalId);
-      if (!s) return fail('Seccional inexistente', 404, cors);
+      if (!s) return fail('Sucursal inexistente', 404, cors);
       if (s.cliente_id !== clienteId) {
         log('warn', 'sucursal_de_otro_cliente', { actor: user.id, cliente_id: clienteId, sucursal_id: sucursalId });
-        return fail('La seccional no pertenece a ese cliente', 400, cors);
+        return fail('La sucursal no pertenece a ese cliente', 400, cors);
       }
     }
   } catch {

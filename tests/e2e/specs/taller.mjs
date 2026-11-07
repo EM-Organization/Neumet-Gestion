@@ -1,9 +1,9 @@
 // Operaciones de taller con RPC reales: rotar y cambiar neumático (con cada rol permitido), rechazo del rol o
-// seccional no autorizado (comprobando el estado de la base después) y odómetro que no baja.
+// sucursal no autorizado (comprobando el estado de la base después) y odómetro que no baja.
 // Estas pruebas MODIFICAN la base de prueba: cada una usa un camión distinto y corren después de las de solo lectura.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, abrirDetallePorMatricula, dormir, texto } from '../lib/flujo.mjs';
+import { flujo, abrirDetallePorMatricula, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
@@ -160,7 +160,7 @@ export function registrar(env) {
       await seleccionarRueda(p, 2);
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
       await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'modal de cambio' });
-      assert.equal(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]')`), false, 'la seccional no ve el stock');
+      assert.equal(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]')`), false, 'la sucursal no ve el stock');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Pinchazo'); set('#cambio-marca', 'MarcaE2E'); set('#cambio-modelo', 'Modelo X'); })()`);
       await p.click('#cambio-confirmar');
@@ -173,7 +173,7 @@ export function registrar(env) {
     assert.equal(env.sql(`select json_agg(s order by id) from public.stock_neumaticos s`), stockAntes, 'el stock no se toca');
   });
 
-  test('Taller (salto): la RPC rechaza cambiar un camión de Montevideo y que una seccional use el stock', async () => {
+  test('Taller (salto): la RPC rechaza cambiar un camión de Montevideo y que una sucursal use el stock', async () => {
     const ajeno = vehId(env, 'DEMO006'), propio = vehId(env, 'DEMO012');
     const stockId = Number(env.sql(`select id from public.stock_neumaticos where cantidad > 0 order by id limit 1`));
     const antesA = foto(env, ajeno), antesP = foto(env, propio);
@@ -189,7 +189,7 @@ export function registrar(env) {
     assert.equal(foto(env, propio), antesP);
   });
 
-  test('Taller (montevideo): el modal rechaza un kilometraje menor al actual sin llamar a la RPC', async () => {
+  test('Taller (montevideo): el modal rechaza un odómetro del vehículo menor al actual sin llamar a la RPC', async () => {
     const id = vehId(env, 'DEMO005');
     const odo = Number(env.sql(`select odometro_km from public.vehiculos where id = ${id}`));
     assert.ok(odo > 1000);
@@ -202,10 +202,73 @@ export function registrar(env) {
       await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show')`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-marca', 'MarcaE2E'); set('#cambio-odo', '${odo - 1}'); })()`);
       await p.click('#cambio-confirmar');
-      await p.esperar(`/no puede ser menor al actual/.test(document.querySelector('#cambio-error').textContent)`, { que: 'error de kilometraje menor' });
+      await p.esperar(`/El odómetro del vehículo no puede ser menor al actual/.test(document.querySelector('#cambio-error').textContent)`, { que: 'error de odómetro menor' });
     });
     assert.equal(rpcsDesde(env, desde, 'neumatico_cambiar').length, 0);
     assert.equal(foto(env, id), antes);
+  });
+
+  // ---- Número de quema y km que ya traía el neumático ------------------------------------------------------------
+  test('Taller (global): cambio con 0 km previos, quema y sin odómetro; la quema se busca y abre el vehículo', async () => {
+    const id = vehId(env, 'DEMO013');
+    const odoAntes = env.sql(`select odometro_km from public.vehiculos where id = ${id}`);
+    await flujo(env, 'cambiar-con-quema', 'global', async p => {
+      await abrirDetallePorMatricula(p, 'DEMO013');
+      await seleccionarRueda(p, 4);
+      assert.match(await texto(p, '#vd-panel'), /Número de quema Q13-04/, 'el panel muestra la quema del neumático montado');
+      await p.click('#vd-panel [data-action="neumatico-cambiar"]');
+      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && /P4/.test(document.querySelector('#cambio-actual').textContent)`, { que: 'modal de cambio de P4' });
+      assert.equal(await p.eval(`document.querySelector('#cambio-km-previos').value`), '0', 'los km previos empiezan en 0');
+      await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
+      await p.eval(`document.querySelector('input[name="cambio-origen"][value="nuevo"]').click()`);
+      await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Desgaste'); set('#cambio-marca', 'MarcaQuema'); set('#cambio-quema', '  E2E-001 '); set('#cambio-km-previos', '0'); })()`);
+      await p.esperar(`/quema E2E-001/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen con la quema' });
+      await p.click('#cambio-confirmar');
+      await p.esperar(`/Cambio registrado en P4/.test(document.querySelector('#toast-msg').textContent) && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
+      // El panel de la rueda muestra la quema nueva y 0 km previos
+      await seleccionarRueda(p, 4);
+      await p.esperar(`/Número de quema\\s+E2E-001/.test(document.querySelector('#vd-panel').innerText)`, { que: 'quema nueva en el panel' });
+      assert.match(await texto(p, '#vd-panel'), /Km que ya traía 0 km/);
+      // Buscador global: la quema abre el vehículo donde está montado (sin distinguir mayúsculas ni guion)
+      await irA(p, 'alertas');
+      await p.escribir('#busq-global-input', 'e2e001');
+      await p.enter();
+      await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO013/.test(document.querySelector('#vd-cab').innerText)`, { que: 'detalle abierto por quema' });
+    });
+    assert.deepEqual(json(env, `select numero_quema, km_previos, estado from public.neumaticos where vehiculo_id = ${id} and posicion = 4`), [{ numero_quema: 'E2E-001', km_previos: 0, estado: 'montado' }]);
+    assert.equal(env.sql(`select odometro_km from public.vehiculos where id = ${id}`), odoAntes, 'sin odómetro informado, el del vehículo no cambia');
+  });
+
+  test('Taller (montevideo): quema repetida y odómetro menor se rechazan en la base sin cambiar nada; 0 km previos es válido', async () => {
+    const id = vehId(env, 'DEMO004');
+    const odo = Number(env.sql(`select odometro_km from public.vehiculos where id = ${id}`));
+    const antes = foto(env, id);
+    await flujo(env, 'quema-rechazos', 'montevideo', async p => {
+      const base = { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: 'x', p_stock_id: null, p_nuevo: { marca: 'X' } };
+      const dup = await rpc(p, 'neumatico_cambiar', { ...base, p_odometro_km: null, p_numero_quema: 'q04-01', p_km_previos: 0 });
+      assert.equal(dup.error && dup.error.code, '23505', 'la quema de otro neumático del cliente (otra caja) se rechaza');
+      assert.match(dup.error.message, /número de quema ya está registrado/);
+      const menor = await rpc(p, 'neumatico_cambiar', { ...base, p_odometro_km: odo - 1, p_numero_quema: null, p_km_previos: 0 });
+      assert.equal(menor.error && menor.error.code, '23514');
+      assert.match(menor.error.message, /odómetro del vehículo no puede ser menor al actual/);
+      const neg = await rpc(p, 'neumatico_cambiar', { ...base, p_odometro_km: null, p_numero_quema: null, p_km_previos: -1 });
+      assert.equal(neg.error && neg.error.code, '23514');
+    }, { http: [{ ruta: /rpc\/neumatico_cambiar/, status: [400, 409] }] });
+    assert.equal(foto(env, id), antes, 'los rechazos no cambiaron nada');
+    await flujo(env, 'quema-ok', 'montevideo', async p => {
+      const ok = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: 'x', p_stock_id: null, p_nuevo: { marca: 'X' }, p_odometro_km: odo, p_numero_quema: 'E2E-002', p_km_previos: 0 });
+      assert.equal(ok.error, null);
+      assert.equal(ok.data.numero_quema, 'E2E-002');
+      assert.equal(ok.data.km_previos, 0);
+    });
+    assert.deepEqual(json(env, `select numero_quema, km_previos from public.neumaticos where vehiculo_id = ${id} and posicion = 2`), [{ numero_quema: 'E2E-002', km_previos: 0 }]);
+  });
+
+  test('Taller (salto): la quema de un neumático de Montevideo no es visible ni buscable', async () => {
+    await flujo(env, 'quema-ajena', 'salto', async p => {
+      const n = await p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.from('neumaticos').select('numero_quema').like('numero_quema', 'Q04-%')).then(r => r.data.length)`);
+      assert.equal(n, 0, 'la RLS oculta los neumáticos de otra sucursal');
+    });
   });
 
   // ---- Odómetro --------------------------------------------------------------------------------------------------
@@ -234,7 +297,7 @@ export function registrar(env) {
     });
     await flujo(env, 'odometro-ajeno', 'salto', async p => {
       const r = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: inicial + 5000 });
-      assert.equal(r.error && r.error.code, '42501', 'una seccional no toca el odómetro de otra');
+      assert.equal(r.error && r.error.code, '42501', 'una sucursal no toca el odómetro de otra');
       assert.equal(odo(), inicial - 100);
     }, { http: [{ ruta: /rpc\/vehiculo_registrar_odometro/, status: 403 }] });
   });
