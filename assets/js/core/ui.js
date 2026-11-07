@@ -33,17 +33,19 @@ export function showToast(msg,err=false){
 }
 
 // ── CONFIRM MODAL ──
-export function confirmDialog(title, msg){
+export function confirmDialog(title, msg, okLabel='Eliminar', danger=true){
   return new Promise(resolve=>{
     document.getElementById('confirm-title').textContent=title;
     document.getElementById('confirm-msg').textContent=msg;
     const backdrop=document.getElementById('modal-confirm');
     backdrop.classList.add('show');
     const ok=document.getElementById('confirm-ok');
+    ok.textContent=okLabel; ok.classList.toggle('danger',danger); ok.classList.toggle('primary',!danger);
     const cancel=document.getElementById('confirm-cancel');
     const cleanup=(val)=>{
       backdrop.classList.remove('show');
       ok.replaceWith(ok.cloneNode(true));
+      const ok2=document.getElementById('confirm-ok'); ok2.textContent='Eliminar'; ok2.classList.add('danger'); ok2.classList.remove('primary');
       cancel.replaceWith(cancel.cloneNode(true));
       resolve(val);
     };
