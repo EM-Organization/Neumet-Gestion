@@ -24,9 +24,9 @@ select test.eq('10 neumáticos + auxilio en DEMO001', (select count(*) from publ
 select test.eq('hay neumáticos de auxilio', (select count(*) > 0 from public.neumaticos where cliente_id = 50 and auxilio), true);
 select test.eq('un solo set de neumáticos (sin duplicar)', (select count(*) from public.neumaticos where cliente_id = 50),
   (select count(distinct idneumatico) from public.neumaticos where cliente_id = 50));
-select test.eq('mediciones: 10 sesiones por neumático medido',
+select test.eq('mediciones: 10 sesiones por neumático medido (5 recién montados con una sola)',
   (select count(*) from public.mediciones where cliente_id = 50),
-  (select 10 * (count(*) - 1) from public.neumaticos where cliente_id = 50));  -- -1: el que nunca se midió
+  (select 10 * (count(*) - 1 - 5) + 5 from public.neumaticos where cliente_id = 50));  -- -1: el que nunca se midió
 select test.eq('las mediciones tienen promedio calculado', (select count(*) from public.mediciones where cliente_id = 50 and promedio <= 0), 0::bigint);
 select test.eq('odómetro creciente en el tiempo (DEMO002 pos 1)',
   (select bool_and(odometro_km >= prev) from (
@@ -51,6 +51,16 @@ select test.eq('salud: hay activos', (select count(*) > 0 from public.v_salud_di
 select test.eq('salud: un dispositivo sin actividad', (select count(*) from public.v_salud_dispositivos where cliente_id = 50 and estado = 'sin_actividad'), 1::bigint);
 select test.eq('salud: un dispositivo caído', (select count(*) from public.v_salud_dispositivos where cliente_id = 50 and estado = 'caido'), 1::bigint);
 select test.eq('resumen de flota del demo', (select n_vehiculos_activos from public.v_resumen_flota_cliente where cliente_id = 50), 14::bigint);
+
+-- «Últimas mediciones» de Inicio: 10 vehículos medidos en los últimos 5 días, con comparativa y con neumáticos nuevos
+select test.eq('últimas mediciones: los 14 vehículos del demo aparecen',
+  (select count(distinct vehiculo_id) from public.ultimas_mediciones(50) where vehiculo_id in (select id from public.vehiculos where cliente_id = 50)), 14::bigint);
+select test.eq('10 vehículos medidos en los últimos 5 días',
+  (select count(*) from (select vehiculo_id from public.mediciones where cliente_id = 50 group by 1 having max(created_at) > now() - interval '5 days') q), 10::bigint);
+select test.eq('últimas mediciones: hay neumáticos con comparativa',
+  (select count(*) > 30 from public.ultimas_mediciones(50) where mm_antes is not null and vehiculo_id in (select id from public.vehiculos where cliente_id = 50)), true);
+select test.eq('últimas mediciones: hay neumáticos nuevos sin comparativa',
+  (select count(*) >= 5 from public.ultimas_mediciones(50) where mm_antes is null and vehiculo_id in (select id from public.vehiculos where cliente_id = 50)), true);
 
 -- Perfil global del demo ve los 14; un perfil de seccional ve solo los suyos
 insert into auth.users (id, email) values ('a0000000-0000-0000-0000-0000000000d2', 'demo-slt@t');

@@ -1,10 +1,15 @@
 // Navegación entre vistas: cada vista se registra con registerView(nombre, etiqueta, load, { menu }).
 // `menu` = ítem del menú lateral que queda resaltado cuando la vista está abierta (por defecto, ella misma):
 // el detalle de vehículo cuelga de Vehículos y la ficha de cliente cuelga de Clientes.
+import { isClienteMode } from './auth.js';
 const NAV_LABELS={};
 const LOADERS={};
 const MENU={};
-export function registerView(name,label,load,{menu}={}){ NAV_LABELS[name]=label; LOADERS[name]=load; if(menu) MENU[name]=menu; }
+const SOLO_ADMIN=new Set();
+// `soloAdmin`: vista de administración; el rol cliente que la pida (menú, buscador o código) vuelve a Inicio.
+export function registerView(name,label,load,{menu,soloAdmin}={}){
+  NAV_LABELS[name]=label; LOADERS[name]=load; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name);
+}
 
 let activa=null;
 export const vistaActiva=()=>activa;
@@ -22,6 +27,7 @@ export function setTitulo(actual,padre=null){
 }
 
 export function switchView(v){
+  if(SOLO_ADMIN.has(v)&&isClienteMode()) v='inicio';
   activa=v;
   const item=MENU[v]||v;
   document.querySelectorAll('.nav-item[data-view]').forEach(n=>{

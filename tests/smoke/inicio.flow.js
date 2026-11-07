@@ -22,7 +22,31 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!/~6 semanas/.test(txt)) fail('inicio('+rol+'): faltan los próximos cambios con semanas');
   if(!/Dispositivos: \d+ de \d+ activos/.test(txt)) fail('inicio('+rol+'): falta la línea de dispositivos');
   if(!$('#inicio-contenido [data-action="irA"][data-args=\'["alertas"]\']')) fail('inicio('+rol+'): falta "Ver todas las alertas"');
-  if(!$('#inicio-contenido [data-action="irA"][data-args=\'["dispositivos"]\']')) fail('inicio('+rol+'): los dispositivos sin actividad no enlazan a Dispositivos');
+  // Dispositivos: el cliente ve el dato sin enlace (no gestiona hardware); administración abre la vista.
+  var enlDisp = $('#inicio-contenido [data-action="irA"][data-args=\'["dispositivos"]\']');
+  if(cliMode && enlDisp) fail('inicio(cliente): enlaza a Dispositivos');
+  if(!cliMode && !enlDisp) fail('inicio(admin): los dispositivos sin actividad no enlazan a Dispositivos');
+  // Últimas mediciones (fixture de flota.fixture.js): 3 vehículos, comparativa solo con medición previa
+  var um = all('#inicio-contenido #inicio-h-ultimas ~ ul > li');
+  if(um.length !== 3) fail('inicio('+rol+'): últimas mediciones: se esperaban 3 vehículos, hay '+um.length);
+  else {
+    var t0 = um[0].textContent.replace(/\s+/g, ' ');
+    if(!/Camión 01/.test(t0) || !/AB123CD/.test(t0) || !/Coche 101/.test(t0) || !/14\/6\/2026/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta nombre, matrícula, coche o fecha: '+t0);
+    if(!/13,0 → 12,6 mm/.test(t0) || !/\u22120,4/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta la comparativa: '+t0);
+    var sin = um[0].querySelectorAll('.um-sin');
+    if(sin.length !== 1 || !/15,5 mm/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): el neumático sin medición previa debe mostrar solo los mm y "Sin previa"');
+    if(/→/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): comparativa sin medición previa');
+    var t2 = um[2].textContent.replace(/\s+/g, ' ');
+    if(!/7,3 → 5,9 mm/.test(t2) || !/\u22121,4/.test(t2) || !um[2].querySelector('.um-dif.alto')) fail('inicio('+rol+'): desgaste alto no destacado: '+t2);
+    if(!/9,0 → 9,2 mm/.test(t2) || !/\+0,2/.test(t2)) fail('inicio('+rol+'): diferencia positiva: '+t2);
+    if(um[1].textContent.indexOf('<Crítica>') === -1 || um[1].innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre en últimas mediciones sin escapar');
+    if(um[2].querySelectorAll('.um-dif.sube').length !== 0) fail('inicio: +0,2 no debería marcarse como lectura mayor');
+    um[1].querySelector('[data-action="verVehiculo"]').click(); await sleep(700);
+    if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio('+rol+'): la fila de últimas mediciones no abre el detalle');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(500);
+  }
+  var rpcs = (w.__flotaFx && w.__flotaFx.rpcs) || [];
+  if(!rpcs.length || rpcs[0][1].p_limite !== 8) fail('inicio('+rol+'): no pidió ultimas_mediciones con p_limite 8');
   // El rojo solo como punto de neumáticos críticos: ni tarjetas ni chips rojos en Inicio
   if(cont.querySelector('.badge.red')) fail('inicio('+rol+'): chip rojo en Inicio');
   all('#inicio-contenido .inicio-card').forEach(function(c){
@@ -84,13 +108,20 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
 
   // --- Menú por rol ---
   var navVisible = function(v){ return visible($('.nav-item[data-view="'+v+'"]')); };
-  ['inicio','vehiculos','alertas','stock','reportes','dispositivos'].forEach(function(v){
+  ['inicio','vehiculos','alertas','stock','reportes'].concat(cliMode ? [] : ['dispositivos']).forEach(function(v){
     if(!navVisible(v)) fail('menu('+rol+'): falta '+v);
   });
   ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    if(visibles.join(',') !== 'inicio,vehiculos,alertas,stock,reportes,dispositivos') fail('menu(cliente): menú inesperado: '+visibles.join(','));
+    if(visibles.join(',') !== 'inicio,vehiculos,alertas,stock,reportes') fail('menu(cliente): menú inesperado: '+visibles.join(','));
+    // Defensa en el router: aunque se fuerce la vista Dispositivos (botón de menú oculto o acción), el cliente sigue en Inicio
+    $('.nav-item[data-view="dispositivos"]').click(); await sleep(400);
+    if($('#view-dispositivos').classList.contains('active') || !$('#view-inicio').classList.contains('active')) fail('dispositivos(cliente): el router abrió la vista');
+    var forzar = d.createElement('button'); forzar.setAttribute('data-action','irA'); forzar.setAttribute('data-args','["dispositivos"]'); d.body.appendChild(forzar);
+    forzar.click(); await sleep(400); forzar.remove();
+    if($('#view-dispositivos').classList.contains('active') || !$('#view-inicio').classList.contains('active')) fail('dispositivos(cliente): irA("dispositivos") abrió la vista');
+    if($('.nav-item.active').dataset.view !== 'inicio') fail('dispositivos(cliente): el menú no resalta Inicio tras el rechazo');
     all('[data-admin-only]').forEach(function(el){ if(visible(el)) fail('menu(cliente): elemento admin visible: '+(el.id||el.className||el.textContent.trim().slice(0,30))); });
     if(/administración|mi panel|mi resumen|mediciones|balance|clientes/i.test($('.sidebar-nav').innerText)) fail('menu(cliente): se lee texto de administración');
     if(visible($('[data-action="openStockModal"]'))) fail('stock(cliente): ve el alta de compras');
@@ -166,12 +197,20 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   // --- Cliente CON vehículos pero sin neumáticos medidos (vistas derivadas vacías): NO es "sin datos" ---
   var fxv = w.__flotaFx;
   if(fxv){
+    // Si ultimas_mediciones falla (p. ej. migración sin aplicar), solo ese bloque muestra el error
+    fxv.rpcError = true;
+    $('.nav-item[data-view="inicio"]').click(); await sleep(500);
+    var tErr = $('#inicio-contenido').textContent;
+    if(!/Requieren atención/.test(tErr) || !/Últimas mediciones/.test(tErr)) fail('inicio('+rol+'): un fallo de ultimas_mediciones rompe el resto de Inicio');
+    if(!$('#inicio-contenido #inicio-h-ultimas ~ .error-state')) fail('inicio('+rol+'): sin error en el bloque de últimas mediciones');
+    fxv.rpcError = false;
     fxv.vacio = true;
     $('.nav-item[data-view="inicio"]').click(); await sleep(500);
     var txt = $('#inicio-contenido').textContent;
     if(/Sin vehículos registrados/.test(txt)) fail('inicio('+rol+'): "sin datos" con vehículos registrados: '+txt.slice(0,80));
     if(!/vehículos registrados, sin mediciones/.test(txt)) fail('inicio('+rol+'): falta el estado "vehículos sin mediciones": '+txt.slice(0,80));
-    if(!$('#inicio-contenido [data-action="irA"]')) fail('inicio('+rol+'): el estado sin mediciones no ofrece acción');
+    if(cliMode && $('#inicio-contenido [data-action="irA"]')) fail('inicio(cliente): el estado sin mediciones ofrece ir a Dispositivos');
+    if(!cliMode && !$('#inicio-contenido [data-action="irA"]')) fail('inicio(admin): el estado sin mediciones no ofrece acción');
     fxv.vacio = false;
   }
   log.push('inicio('+rol+'): menu+a11y ok');

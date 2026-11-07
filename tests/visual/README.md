@@ -13,8 +13,8 @@ Salida: `tests/visual/out/<rol>-<tamaño>-<escena>.png` (ignorado por git; no se
 imágenes (por ejemplo con la herramienta Read de Claude Code) y anotar defectos.
 
 Tamaños: desktop (1440x900), mobile (390x844) y laptop (1280x720, opcional con SIZES).
-Escenas: `login`, `inicio`, `vehiculos`, `vehiculos-busqueda`, `detalle`, `detalle-rueda`, `cambio-neumatico`, `flota`,
-`alertas`, `stock`, `busqueda`, `dispositivos`, `reportes`, `mediciones`, `clientes` y `ficha` (solo admin), `selector-seccional` (cliente global).
+Escenas: `login`, `inicio`, `ultimas-mediciones`, `vehiculos`, `vehiculos-busqueda`, `detalle`, `detalle-rueda`, `cambio-neumatico`, `flota`,
+`alertas`, `stock`, `busqueda`, `dispositivos`, `reportes`, `mediciones`, `clientes`, `ficha` y `dispositivos` (solo admin), `selector-seccional` (cliente global).
 Las de detalle/búsqueda/cambio solo existen como cliente (las fixtures de `vehiculo.fixture.js` son de cliente).
 
 Cómo funciona: `tests/smoke/harness.html?shot=<escena>&vw=<ancho>&vh=<alto>[&cliente=1][&detalle=1][&nosession=1]` deja la

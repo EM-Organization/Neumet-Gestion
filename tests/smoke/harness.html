@@ -100,7 +100,7 @@
       throw new Error('__done');
     }
     await window.inicioFlow(w,d,sleep,fail,log,cliMode);
-    var views=cliMode?['vehiculos','dispositivos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
+    var views=cliMode?['vehiculos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);
       // El gráfico de balance se dibuja en requestAnimationFrame: esperar a que exista para que la firma sea estable.

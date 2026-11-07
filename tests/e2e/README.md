@@ -28,12 +28,12 @@ sin probar aquí; con `--network host`, solo Linux). En macOS el binario necesit
 Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: `node --test --test-name-pattern="Buscador" tests/e2e/e2e.test.mjs`.
 
 ## Qué cubre (`specs/`)
-- **inicio**: tarjetas con las cifras de las vistas SQL, por rol.
+- **inicio**: tarjetas con las cifras de las vistas SQL, por rol; «Últimas mediciones» contra una consulta independiente (vehículos, orden, comparativa por neumático).
 - **buscador**: matrícula completa, parcial, minúsculas/espacios, número de coche y nombre; Enter abre el detalle.
 - **detalle**: las 14 fichas de camión: ruedas (10 + auxilio), mm, estado y color según la base.
 - **aislamiento**: Salto no ve Montevideo ni otro cliente (lista, búsqueda, abrir por estado, API directa por tabla/vista);
   el selector del perfil global.
-- **alertas-dispositivos**: conteos, filtros y estados contra `v_alertas` y `v_salud_dispositivos`.
+- **alertas-dispositivos**: conteos, filtros y estados contra `v_alertas` y `v_salud_dispositivos` (Dispositivos solo para admin); el cliente no abre la vista ni por menú, ni por acción, ni cargando sus datos.
 - **recorrido**: todas las vistas por rol, CSV de Reportes paginado, Mediciones, Flota, Clientes, Ficha, Stock.
 - **taller**: rotar y cambiar neumático con RPC reales (admin, global, seccional), rechazos 42501 con la base intacta,
   stock solo para el perfil global, odómetro que no baja.

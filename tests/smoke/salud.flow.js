@@ -6,7 +6,11 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   var rows = function(){ return d.querySelectorAll('#tbody-dispositivos tr[data-estado]').length; };
   var change = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change',{bubbles:true})); };
 
-  // ── Dispositivos (vista única con estado de actividad) ──
+  // ── Dispositivos: solo administración (el cliente no gestiona hardware; la defensa del router se prueba en inicio.flow.js) ──
+  if(cliMode){
+    if($('.nav-item[data-view="dispositivos"]') && $('.nav-item[data-view="dispositivos"]').getClientRects().length) fail('dispositivos(cliente): el menú muestra la entrada');
+    return;
+  }
   nav('dispositivos'); await sleep(500);
   if(!$('#view-dispositivos').classList.contains('active')) fail('dispositivos: vista no activa');
   if($('.nav-item[data-view="salud"]')) fail('dispositivos: queda la entrada de menú "Salud de dispositivos"');

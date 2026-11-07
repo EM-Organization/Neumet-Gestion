@@ -16,6 +16,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   var escenas = {
     'login': async function(){ /* la sesión se anula con ?nosession=1 */ },
     'inicio': async function(){ nav('inicio'); await sleep(800); },
+    'ultimas-mediciones': async function(){ nav('inicio'); await sleep(800); var h = $('#inicio-h-ultimas'); if(h) h.scrollIntoView(); else fail('escena '+name+': sin el bloque Últimas mediciones'); await sleep(300); },
     'vehiculos': async function(){ nav('vehiculos'); await sleep(700); },
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },

@@ -10,13 +10,14 @@ import { ACTIONS } from '../core/actions.js';
 import { ESTADOS, infoEstado, filtrarSalud, contarPorEstado, textoDias } from '../domain/salud.js';
 
 // Dispositivos: una sola vista con el estado de cada medidor (activo / sin actividad / caído / nunca midió), su última
-// actividad y filtros. Lee v_salud_dispositivos (la BD calcula estado y días). El rol cliente la ve en SOLO LECTURA:
-// sin alta, edición ni baja (la RLS ya lo impide; aquí además se oculta la UI y se protegen las acciones).
+// actividad y filtros. Lee v_salud_dispositivos (la BD calcula estado y días). Solo administración: el cliente no gestiona
+// hardware, así que el router (registerView soloAdmin), el menú y esta carga le cierran el paso; la RLS sigue limitando los datos.
 let filas=[], clientes=new Map(), fEstado='', fCliente='', dispModalMode='create', dispActiveId=null;
 const SIMBOLO={activo:'✓',sin_actividad:'▲',caido:'✕',nunca:'–'};
 const $=id=>document.getElementById(id);
 
 export async function loadDispositivos(){
+  if(isClienteMode()) return;
   await contextoListo();
   setHtml($('tbody-dispositivos'), filaEstado(8, estadoCarga('Cargando…')));
 
@@ -224,7 +225,7 @@ async function removeDispositivo(id){
 
 ACTIONS.loadDispositivos=loadDispositivos;
 export const load=loadDispositivos;
-registerView('dispositivos','Dispositivos',loadDispositivos);
+registerView('dispositivos','Dispositivos',loadDispositivos,{soloAdmin:true});
 onLogout(()=>{ filas=[]; clientes=new Map(); fEstado=''; fCliente=''; });
 onLogin(({cliente})=>{
   if(cliente) return;

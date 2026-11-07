@@ -32,7 +32,7 @@ domain/
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
-  inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo lectura para el cliente)  balance.js (+ balance-chart.js)
+  inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo administración)  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
   neumaticos.js  stock.js  reportes.js
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
@@ -122,8 +122,8 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
   de carga o al perder la red (`setStatus(false)` / evento `offline`). Nunca «Conectando…».
 - **Copy**: si un texto no ayuda a decidir o actuar, se elimina. Títulos cortos, sin subtítulos de relleno; los vacíos dicen
   qué pasa y, si existe, ofrecen la acción concreta.
-- **Menú del cliente**: Inicio, Vehículos, Alertas, Stock (solo lectura), Reportes, Dispositivos (solo lectura). Se quitan «Mi panel» (duplicaba Inicio),
+- **Menú del cliente**: Inicio, Vehículos, Alertas, Stock (solo lectura), Reportes. Dispositivos es solo de administración (sin ítem para el cliente y rechazada por el router). Se quitan «Mi panel» (duplicaba Inicio),
   «Mi resumen» (la ficha es de administración), «Mediciones» (el detalle por vehículo y el export viven en Vehículos y Reportes)
   y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
   Clientes (la ficha se abre desde la lista) y Balance bajo «Administración». Mapa completo: `docs/12-mapa-navegacion.md`.
-- **Solo lectura para el cliente**: Dispositivos y Stock sin alta/edición/baja (UI oculta + guardas en las acciones; la RLS lo impide igual).
+- **Solo lectura para el cliente**: Stock sin alta/edición/baja (UI oculta + guardas en las acciones; la RLS lo impide igual).

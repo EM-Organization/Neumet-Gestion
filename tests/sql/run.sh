@@ -101,6 +101,10 @@ echo "== migración de mediciones por neumático (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261109000000_mediciones_por_neumatico.sql"
 echo "== migración de mediciones por neumático (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261109000000_mediciones_por_neumatico.sql"
+echo "== migración de últimas mediciones (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261110020000_ultimas_mediciones.sql"
+echo "== migración de últimas mediciones (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261110020000_ultimas_mediciones.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

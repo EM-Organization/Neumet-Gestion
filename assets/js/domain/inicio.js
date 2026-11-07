@@ -135,3 +135,39 @@ export function clientesConUrgencias(resumen, max = MAX_ATENCION) {
     .sort((a, b) => b.urgencias - a.urgencias || (num(b.n_critico) || 0) - (num(a.n_critico) || 0) || String(a.nombre).localeCompare(String(b.nombre), 'es'))
     .slice(0, max);
 }
+
+// ---- Últimas mediciones -------------------------------------------------------------------------------------
+// Entrada: filas de la función ultimas_mediciones (una por posición de la última visita de cada vehículo, ya ordenadas
+// del vehículo medido más recientemente al más antiguo). Salida: un elemento por vehículo con sus neumáticos.
+export const MAX_ULTIMAS = 8;
+export const DESGASTE_ALTO_MM = 1;   // más de 1 mm perdido entre dos visitas se destaca
+export const LECTURA_MAYOR_MM = 0.3; // una lectura mayor que la anterior por más de esto no es desgaste (ruido, cambio de neumático)
+
+// Diferencia en mm entre la medición anterior y la última y su nivel: 'normal' | 'alto' (desgaste mayor al habitual)
+// | 'sube' (lectura mayor que la anterior). Sin medición previa del mismo neumático: null.
+export function comparativaDesgaste(ahora, antes) {
+  const a = num(ahora), b = num(antes);
+  if (a === null || b === null) return null;
+  const dif = Math.round((a - b) * 100) / 100;
+  const nivel = dif > LECTURA_MAYOR_MM ? 'sube' : (-dif > DESGASTE_ALTO_MM ? 'alto' : 'normal');
+  return { antes: b, ahora: a, dif, nivel };
+}
+
+export function ultimasMediciones(rows, { max = MAX_ULTIMAS } = {}) {
+  const porVeh = new Map();
+  for (const r of rows || []) {
+    if (!porVeh.has(r.vehiculo_id)) {
+      if (porVeh.size >= max) continue;
+      porVeh.set(r.vehiculo_id, {
+        vehiculo_id: r.vehiculo_id, nombre: r.nombre || '', patente: r.patente || '', numero: r.numero || '',
+        medido_at: r.medido_at, neumaticos: [],
+      });
+    }
+    porVeh.get(r.vehiculo_id).neumaticos.push({
+      posicion: r.posicion, mm: num(r.mm_ahora), antes_at: r.antes_at || null, comparativa: comparativaDesgaste(r.mm_ahora, r.mm_antes),
+    });
+  }
+  const lista = [...porVeh.values()];
+  for (const v of lista) v.neumaticos.sort((a, b) => a.posicion - b.posicion);
+  return lista;
+}
