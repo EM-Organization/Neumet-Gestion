@@ -37,6 +37,9 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
 - **recorrido**: todas las vistas por rol, CSV de Reportes paginado, Mediciones, Flota, Clientes, Ficha, Stock.
 - **taller**: rotar y cambiar neumático con RPC reales (admin, global, seccional), rechazos 42501 con la base intacta,
   stock solo para el perfil global, odómetro que no baja.
+- **mediciones-neumatico**: cambiar un neumático crítico (ingresando uno nuevo) deja la rueda en "sin datos", quita su alerta
+  crítica y baja el contador de Inicio; al medir el nuevo toma su valor sin arrastrar el gráfico del viejo; rotar dos ruedas
+  lleva mm, color, historial y alertas con el neumático.
 - **contrato**: ninguna petición real falló por columna/relación/función inexistente; cada `select()`/`rpc()` escrito
   en `assets/js` existe en la base.
 

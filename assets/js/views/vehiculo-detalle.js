@@ -1,5 +1,5 @@
 // Detalle de un vehículo: cabecera, diagrama SVG de ruedas coloreado por desgaste y panel del neumático seleccionado.
-// Datos: vehiculos, v_estado_neumaticos, v_alertas, mediciones y eventos_neumatico (la RLS filtra por cliente/seccional).
+// Datos: vehiculos, v_estado_neumaticos, v_alertas, v_mediciones_neumatico (mediciones del neumático montado) y eventos_neumatico (la RLS filtra por cliente/seccional).
 // Contrato con el flujo de taller: los botones del panel llevan data-action="neumatico-cambiar" / "neumatico-rotar-pos"
 // con data-vehiculo-id y data-posicion (y data-args='[vehiculoId, posicion]'). Esta vista NO implementa esas acciones:
 // si no están registradas en ACTIONS muestra el aviso "No disponible". Tras operar, la acción puede llamar a
@@ -195,11 +195,13 @@ function seccionAlertas(pos) {
   return html`<ul class="vd-alertas">${al.map(a => html`<li>${chip(cls[a.severidad] || 'gray', lbl[a.severidad] || 'Aviso', sim[a.severidad] || 'i')} ${a.mensaje}</li>`)}</ul>`;
 }
 
+// Eventos del neumático montado ahí (por id o idneumatico), no de quien ocupó antes la posición.
+// Sin fila de neumático (posición solo medida) se cae a la posición.
 function eventosDe(pos, fila) {
-  return datos.eventos.filter(e =>
-    (fila && !nulo(fila.neumatico_id) && e.neumatico_id === fila.neumatico_id)
-    || (fila && fila.idneumatico && e.idneumatico === fila.idneumatico)
-    || e.posicion_origen === pos || e.posicion_destino === pos).slice(0, 5);
+  const porNeumatico = fila && (!nulo(fila.neumatico_id) || fila.idneumatico);
+  return datos.eventos.filter(e => porNeumatico
+    ? (!nulo(fila.neumatico_id) && e.neumatico_id === fila.neumatico_id) || (fila.idneumatico && e.idneumatico === fila.idneumatico)
+    : e.posicion_origen === pos || e.posicion_destino === pos).slice(0, 5);
 }
 
 function seccionEventos(pos, fila) {
@@ -256,8 +258,11 @@ function renderPanel() {
 
 async function medicionesDe(pos) {
   if (cacheMediciones.has(pos)) return cacheMediciones.get(pos);
-  const { data, error } = await db.from('mediciones').select('mm1,mm2,mm3,promedio,created_at')
-    .eq('vehiculo_id', vehiculoId).eq('posicion', pos).order('created_at', { ascending: false }).limit(200);
+  // Las mediciones son del neumático montado en esa posición (no de la posición): tras un cambio no se heredan
+  // las del viejo y tras una rotación acompañan al neumático. La vista resuelve la atribución (docs/08).
+  const { data, error } = await db.from('v_mediciones_neumatico').select('mm1,mm2,mm3,promedio,created_at')
+    .eq('vehiculo_id', vehiculoId).eq('posicion_actual', pos).eq('estado_montaje', 'montado')
+    .order('created_at', { ascending: false }).order('medicion_id', { ascending: false }).limit(200);
   if (error) throw error;
   cacheMediciones.set(pos, data || []);
   return data || [];
@@ -347,6 +352,7 @@ export async function load() {
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren();
   await contextoListo();
+  cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
   const [v, est, al, ev] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),

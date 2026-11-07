@@ -153,6 +153,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
 
   var q = w.__vehFx.queries.join(',');
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
+  // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.
+  if(q.indexOf('v_mediciones_neumatico') === -1 || /(^|,)mediciones(,|$)/.test(q)) fail('detalle: las mediciones deben leerse de v_mediciones_neumatico, no de mediciones por posicion');
   $('[data-action="detalleVolver"]').click(); await sleep(400);
   escribir('');
   // Capturas: ?end=detalle termina en el detalle del camión 01 con el panel de la rueda 3 abierto.

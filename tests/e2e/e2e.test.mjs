@@ -10,6 +10,7 @@ import { registrar as alertasDispositivos } from './specs/alertas-dispositivos.m
 import { registrar as recorrido } from './specs/recorrido.mjs';
 import { registrar as contrato } from './specs/contrato.mjs';
 import { registrar as taller } from './specs/taller.mjs';
+import { registrar as medicionesNeumatico } from './specs/mediciones-neumatico.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -21,4 +22,5 @@ aislamiento(env);
 alertasDispositivos(env);
 recorrido(env);
 taller(env);
+medicionesNeumatico(env);
 contrato(env);

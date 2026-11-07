@@ -138,11 +138,14 @@ export function init(){
     document.getElementById('med-empty').style.display='none';
     document.getElementById('med-tire-detail').style.display='none';
     med.tireData={}; med.selPos=null;
-    const {data,error}=await db.from('mediciones').select('posicion,mm1,mm2,mm3,promedio,created_at,idneumatico').eq('vehiculo_id',vid).order('created_at',{ascending:true});
+    // Historial del neumático MONTADO en cada posición (v_mediciones_neumatico): tras un cambio no hereda
+    // las del viejo y tras una rotación acompaña al neumático.
+    const {data,error}=await db.from('v_mediciones_neumatico').select('posicion_actual,mm1,mm2,mm3,promedio,created_at,idneumatico')
+      .eq('vehiculo_id',vid).eq('estado_montaje','montado').order('created_at',{ascending:true}).order('medicion_id',{ascending:true});
     if(error){ showToast(userError(error),true); document.getElementById('med-loading').style.display='none'; return; }
-    // Agrupar historial por posición (últimas 10 lecturas por rueda)
+    // Agrupar historial por posición actual (últimas 10 lecturas por rueda)
     const grp={};
-    (data||[]).forEach(r=>{ const p=parseInt(r.posicion); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
+    (data||[]).forEach(r=>{ const p=parseInt(r.posicion_actual); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
     Object.keys(grp).forEach(p=>{ med.tireData[parseInt(p)]=grp[p].slice(-10); });
     document.getElementById('med-loading').style.display='none';
     document.getElementById('med-truck-card').style.display='block';
