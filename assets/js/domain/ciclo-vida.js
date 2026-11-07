@@ -25,11 +25,11 @@ export function parseMontoNoNeg(v){
 // requiere confirmación explícita (`confirmarBaja`), p. ej. por cambio de tablero.
 export function validarOdometro(actual, nuevoTexto, confirmarBaja=false){
   const raw=nuevoTexto==null?'':String(nuevoTexto).trim();
-  if(raw==='') return {ok:false, error:'Ingresá el kilometraje'};
+  if(raw==='') return {ok:false, error:'Falta el kilometraje'};
   const valor=parseEnteroNoNeg(raw);
   if(valor===null) return {ok:false, error:'El kilometraje debe ser un entero mayor o igual a 0'};
   const baja=actual!=null && valor<actual;
-  if(baja && !confirmarBaja) return {ok:false, requiereConfirmacion:true, valor, error:`El valor (${valor}) es menor al actual (${actual}). Confirmá para registrarlo igual`};
+  if(baja && !confirmarBaja) return {ok:false, requiereConfirmacion:true, valor, error:`El valor (${valor}) es menor al actual (${actual}). Confirmar para registrarlo igual`};
   return {ok:true, valor, baja};
 }
 
@@ -38,7 +38,7 @@ export function validarOdometro(actual, nuevoTexto, confirmarBaja=false){
 // d: {odometro, costo, notas, destinoEstado, motivo, fecha, posicionDestino}; hoy: 'YYYY-MM-DD'
 export function planEvento(tipo, n, d={}, hoy=''){
   if(!TIPOS_EVENTO.includes(tipo)) return {ok:false, error:'Tipo de evento inválido'};
-  if(!n) return {ok:false, error:'Seleccioná un neumático'};
+  if(!n) return {ok:false, error:'Elegir un neumático'};
   const estado=n.estado||'montado', vida=n.vida||0;
   const odoTxt=d.odometro==null?'':String(d.odometro).trim();
   const odo=odoTxt===''?null:parseEnteroNoNeg(odoTxt);
@@ -62,7 +62,7 @@ export function planEvento(tipo, n, d={}, hoy=''){
     case 'rotacion': {
       if(estado!=='montado') return {ok:false, error:'Solo se puede rotar un neumático montado'};
       const p=parseEnteroNoNeg(d.posicionDestino);
-      if(p===null||p<1||p>99) return {ok:false, error:'Indicá la posición de destino (1 a 99)'};
+      if(p===null||p<1||p>99) return {ok:false, error:'Falta la posición de destino (1 a 99)'};
       if(p===n.posicion) return {ok:false, error:'La posición de destino es la misma'};
       posDestino=p; break;
     }
@@ -76,7 +76,7 @@ export function planEvento(tipo, n, d={}, hoy=''){
       break;
     case 'baja': {
       const motivo=(d.motivo||'').trim();
-      if(!motivo) return {ok:false, error:'Indicá el motivo de la baja'};
+      if(!motivo) return {ok:false, error:'Falta el motivo de la baja'};
       const fecha=(d.fecha||hoy||'').trim();
       if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return {ok:false, error:'Fecha de baja inválida'};
       patch={estado:'baja', fecha_baja:fecha, motivo_baja:motivo};

@@ -98,7 +98,7 @@ async function submitForm(){
   }
 
   if(captcha !== captchaCode){
-    errEl.textContent = 'El código de verificación no es correcto. Intentá de nuevo.';
+    errEl.textContent = 'El código de verificación no es correcto.';
     errEl.style.display = 'block';
     refreshCaptcha(); return;
   }
@@ -116,7 +116,7 @@ async function submitForm(){
     document.getElementById('form-fields').style.display = 'none';
     document.getElementById('form-success').style.display = 'block';
   } catch {
-    errEl.textContent = 'No se pudo enviar el mensaje. Intentá de nuevo más tarde.';
+    errEl.textContent = 'No se pudo enviar el mensaje. Reintentar más tarde.';
     errEl.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Enviar consulta';
     refreshCaptcha();

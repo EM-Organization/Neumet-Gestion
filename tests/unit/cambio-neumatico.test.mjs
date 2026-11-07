@@ -46,12 +46,12 @@ test('validarCambio: rechazos', () => {
 });
 
 test('traducirErrorCambio: mensajes comprensibles', () => {
-  assert.match(traducirErrorCambio({ code: '42501', message: 'permiso denegado' }), /No tenés permiso/);
+  assert.match(traducirErrorCambio({ code: '42501', message: 'permiso denegado' }), /Sin permiso/);
   assert.match(traducirErrorCambio({ code: '55000', message: 'sin unidades en el stock seleccionado' }), /No quedan unidades/);
   assert.match(traducirErrorCambio({ code: 'P0002', message: 'stock inexistente' }), /stock/);
   assert.match(traducirErrorCambio({ code: 'P0002', message: 'no hay neumático en la posición 3' }), /posición/);
   assert.match(traducirErrorCambio({ code: '23514', message: 'el neumático ya alcanzó la vida máxima (3 reencauches)' }), /vida máxima/);
-  assert.match(traducirErrorCambio({ code: '23514', message: 'el kilometraje no puede ser menor al actual (5)' }), /kilometraje/);
+  assert.match(traducirErrorCambio({ code: '23514', message: 'el kilometraje no puede ser menor al actual (5)' }), /ilometraje/);
   assert.match(traducirErrorCambio({ message: 'boom' }), /No se guardó nada/);
   assert.match(traducirErrorCambio(null), /No se pudo registrar/);
 });

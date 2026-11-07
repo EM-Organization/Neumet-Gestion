@@ -24,7 +24,7 @@ export function validarUmbrales(raw = {}) {
   const v = {};
   for (const c of CAMPOS_UMBRAL) {
     const n = aNumero(raw[c.key]);
-    if (!Number.isFinite(n)) return { ok: false, campo: c.key, error: `${c.lbl}: ingresá un número` };
+    if (!Number.isFinite(n)) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser un número` };
     v[c.key] = n;
   }
   for (const c of CAMPOS_UMBRAL.filter(c => c.mm)) {
@@ -47,7 +47,7 @@ export function mensajeErrorUmbrales(err) {
   if (err?.code === '23514' || /check constraint|violates check/i.test(msg)) {
     return `La base de datos rechazó los umbrales (retiro < crítico < bajo): ${msg}`;
   }
-  if (err?.code === '42501' || /permission denied|row-level security/i.test(msg)) return 'No tenés permiso para editar los umbrales';
+  if (err?.code === '42501' || /permission denied|row-level security/i.test(msg)) return 'Sin permiso para editar los umbrales';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';
 }
 

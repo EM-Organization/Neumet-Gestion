@@ -94,10 +94,10 @@ function renderDispositivos(){
   $('disp-count').textContent=filas.length?`${lista.length} de ${filas.length}`:'';
   if(!lista.length){
     setHtml(tbody, filaEstado(8, filas.length
-      ? estadoVacio('Ningún dispositivo coincide', 'Probá con otro filtro.')
+      ? estadoVacio('Ningún dispositivo coincide', 'Cambiar el filtro.')
       : (cliente
-        ? estadoVacio('Todavía no hay dispositivos')
-        : estadoVacio('Todavía no hay dispositivos', '', { label: 'Nuevo dispositivo', action: 'openDispositivoModal', args: ['create'], primaria: true }))));
+        ? estadoVacio('Sin dispositivos registrados')
+        : estadoVacio('Sin dispositivos registrados', '', { label: 'Nuevo dispositivo', action: 'openDispositivoModal', args: ['create'], primaria: true }))));
     return;
   }
   setHtml(tbody, joinHtml(lista.map(r=>{
@@ -174,13 +174,13 @@ ACTIONS.saveDispositivo=async function(){
   const nombre=$('df-nombre').value.trim()||null;
   const cliente_id=parseInt($('df-cliente').value);
   const activo=$('df-activo').checked;
-  if(!mac||!cliente_id){ showToast('Completá MAC y cliente',true); return; }
+  if(!mac||!cliente_id){ showToast('Falta la MAC o el cliente',true); return; }
   // Validar formato MAC básico
   if(!/^([0-9A-F]{2}[:\-]){5}[0-9A-F]{2}$/.test(mac)){
-    showToast('Formato de MAC inválido (Ej: AA:BB:CC:DD:EE:FF)',true); return;
+    showToast('Formato de MAC inválido (AA:BB:CC:DD:EE:FF)',true); return;
   }
   const btn=$('disp-save');
-  btn.disabled=true; btn.textContent=dispModalMode==='create'?'Creando...':'Guardando...';
+  btn.disabled=true; btn.textContent=dispModalMode==='create'?'Creando…':'Guardando…';
   try{
     if(dispModalMode==='create'){
       // Llama al RPC que: registra el dispositivo, re-vincula mediciones existentes
