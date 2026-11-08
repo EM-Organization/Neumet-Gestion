@@ -2,12 +2,13 @@
 // parámetros de la RPC neumatico_cambiar y traducción de sus errores. docs/08 apéndice (autorización de escritura).
 import { VIDA_MAX } from './ciclo-vida.js';
 import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo } from './quema.js';
+import { cubiertasMontables, nombreUbicacion } from './stock-cubiertas.js';
 
 export const DESTINOS = [
   { id: 'baja', label: 'Baja por desgaste', ayuda: 'El neumático se retira definitivamente.' },
-  { id: 'reencauche', label: 'Reencauche', ayuda: 'Se manda a reencauchar (suma una vida).' },
+  { id: 'reencauche', label: 'Recauchutado', ayuda: 'Se manda a recauchutar (suma una vida).' },
   { id: 'reparacion', label: 'Reparación', ayuda: 'Queda en reparación.' },
-  { id: 'almacenado', label: 'Almacenar', ayuda: 'Se guarda para reutilizarlo.' }
+  { id: 'almacenado', label: 'Almacenar', ayuda: 'Vuelve al stock para reutilizarlo.' }
 ];
 const DESTINO_IDS = DESTINOS.map(d => d.id);
 export const MOTIVO_POR_DEFECTO = 'Desgaste';
@@ -21,8 +22,12 @@ export function stockDisponible(stock) {
 }
 export const etiquetaStock = s => `${[s.marca, s.modelo].filter(Boolean).join(' ') || 'Sin marca'} · ${s.cantidad} u.`;
 
-// f: {neum, destino, motivo, origen:'stock'|'nuevo', stockId, stock:[...], marca, modelo, codigo,
-//     kmPrevios, numeroQuema, odometro, odometroActual}
+// f: {neum, destino, motivo, origen:'cubierta'|'stock'|'nuevo', cubiertaId, cubiertas:[...], stockId, stock:[...], marca,
+//     modelo, codigo, kmPrevios, numeroQuema, odometro, odometroActual, sucursales:[...],
+//     devolverStock, sucursalStock, quemaViejo}
+// origen 'cubierta' = cubierta individual del stock (conserva su quema y km); 'stock' = lote antiguo con cantidad.
+// devolverStock (solo con destino 'almacenado'): el neumático retirado vuelve al stock en la sucursal sucursalStock
+// (vacío = sin sucursal); si no tiene número de quema hay que indicarlo en quemaViejo.
 // Conceptos separados: kmPrevios = km que ya traía el NEUMÁTICO (0 si es nuevo); odometro = lectura opcional del
 // VEHÍCULO, que no puede ser menor al odómetro actual.
 // Devuelve {ok:true, params, resumen} (params = argumentos de la RPC) o {ok:false, error}.
@@ -32,22 +37,42 @@ export function validarCambio(f) {
   if (n.estado === 'baja') return { ok: false, error: 'El neumático de esa posición ya está dado de baja' };
   if (!DESTINO_IDS.includes(f.destino)) return { ok: false, error: 'Elegir el destino del neumático retirado' };
   if (f.destino === 'reencauche' && (n.vida || 0) >= VIDA_MAX) {
-    return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dar de baja` };
+    return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja` };
   }
   const motivo = String(f.motivo == null ? '' : f.motivo).trim();
   if (f.destino === 'baja' && !motivo) return { ok: false, error: 'Falta el motivo de la baja' };
   if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo es demasiado largo (máx. ${MAX_MOTIVO})` };
 
-  const kp = parseKmPrevios(f.kmPrevios);
+  // La cubierta individual ya trae su quema y sus km: los campos del formulario (ocultos) no se validan.
+  const esCubierta = f.origen === 'cubierta';
+  const kp = esCubierta ? { ok: true, valor: 0 } : parseKmPrevios(f.kmPrevios);
   if (!kp.ok) return { ok: false, error: kp.error };
-  const q = normalizarQuema(f.numeroQuema);
+  const q = esCubierta ? { ok: true, valor: null } : normalizarQuema(f.numeroQuema);
   if (!q.ok) return { ok: false, error: q.error };
   const od = validarOdometroVehiculo(f.odometro, f.odometroActual);
   if (!od.ok) return { ok: false, error: od.error };
   const odo = od.valor;
 
-  let stockId = null, nuevo = null, nuevoTxt;
-  if (f.origen === 'stock') {
+  // Devolver al stock el neumático retirado: necesita número de quema (el propio o uno nuevo).
+  const devolver = f.destino === 'almacenado' && !!f.devolverStock;
+  let quemaViejo = null, sucursalStock = null;
+  if (devolver) {
+    sucursalStock = f.sucursalStock === null || f.sucursalStock === undefined || f.sucursalStock === '' ? null : Number(f.sucursalStock);
+    if (!n.numero_quema) {
+      const qv = normalizarQuema(f.quemaViejo);
+      if (!qv.ok) return qv;
+      if (qv.valor === null) return { ok: false, error: 'Falta el número de quema del neumático retirado para guardarlo en el stock' };
+      quemaViejo = qv.valor;
+    }
+  }
+
+  let stockId = null, cubiertaId = null, nuevo = null, nuevoTxt;
+  if (f.origen === 'cubierta') {
+    const c = cubiertasMontables(f.cubiertas).find(x => String(x.id) === String(f.cubiertaId));
+    if (!c) return { ok: false, error: 'Elegir una cubierta del stock disponible' };
+    cubiertaId = Number(c.id);
+    nuevoTxt = `${[c.marca, c.modelo].filter(Boolean).join(' ') || 'cubierta'} (cubierta ${c.numero_quema} del stock)`;
+  } else if (f.origen === 'stock') {
     const s = stockDisponible(f.stock).find(x => String(x.id) === String(f.stockId));
     if (!s) return { ok: false, error: 'Elegir un neumático del stock con unidades disponibles' };
     stockId = Number(s.id);
@@ -68,26 +93,37 @@ export function validarCambio(f) {
     return { ok: false, error: 'Elegir el origen del neumático nuevo' };
   }
 
+  const quemaNueva = q.valor, kmNuevo = kp.valor;
+  const params = {
+    p_vehiculo_id: n.vehiculo_id,
+    p_posicion: n.posicion,
+    p_destino_viejo: f.destino,
+    p_motivo: motivo || null,
+    p_odometro_km: odo,
+    p_stock_id: stockId,
+    p_nuevo: nuevo,
+    p_numero_quema: quemaNueva,
+    p_km_previos: kmNuevo
+  };
+  if (cubiertaId) params.p_cubierta_id = cubiertaId;
+  if (devolver) {
+    params.p_devolver_stock = true;
+    params.p_sucursal_stock = sucursalStock;
+    if (quemaViejo) params.p_quema_viejo = quemaViejo;
+  }
   return {
     ok: true,
-    params: {
-      p_vehiculo_id: n.vehiculo_id,
-      p_posicion: n.posicion,
-      p_destino_viejo: f.destino,
-      p_motivo: motivo || null,
-      p_odometro_km: odo,
-      p_stock_id: stockId,
-      p_nuevo: nuevo,
-      p_numero_quema: q.valor,
-      p_km_previos: kp.valor
-    },
-    resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo, { quema: q.valor, kmPrevios: kp.valor })
+    params,
+    resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo, {
+      quema: q.valor, kmPrevios: kmNuevo,
+      stockDestino: devolver ? nombreUbicacion(sucursalStock, f.sucursales) : null,
+    })
   };
 }
 
 export function resumenCambio(n, destino, motivo, nuevoTxt, odo, extra = {}) {
   const viejo = [n.marca, n.modelo].filter(Boolean).join(' ') || 'Sin marca';
-  return `P${n.posicion}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}) y entra ${nuevoTxt}`
+  return `P${n.posicion}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}${extra.stockDestino ? ' · vuelve al stock, ' + extra.stockDestino : ''}) y entra ${nuevoTxt}`
     + (extra.quema ? ` · quema ${extra.quema}` : '')
     + (extra.kmPrevios > 0 ? ` · ${extra.kmPrevios} km previos` : '')
     + (odo != null ? ` · odómetro ${odo} km` : '');
@@ -100,14 +136,16 @@ export function traducirErrorCambio(err) {
   if (code === '42501' || msg.includes('permiso denegado') || msg.includes('permission denied')) {
     return 'Sin permiso para cambiar neumáticos de este vehículo';
   }
+  if (msg.includes('necesita número de quema')) return 'El neumático retirado necesita número de quema para volver al stock';
   if (msg.includes('stock lo gestiona')) return 'Este usuario no puede usar el stock. Cargar el neumático nuevo a mano';
   if (code === '55000' || msg.includes('sin unidades')) return 'No quedan unidades de ese neumático en el stock';
   if (code === 'P0002') {
+    if (msg.includes('cubierta')) return 'Esa cubierta ya no está disponible en el stock. Actualizar la lista y elegir otra';
     if (msg.includes('stock')) return 'Ese neumático ya no está en el stock. Actualizar la lista y elegir otro';
     if (msg.includes('neumático')) return 'Ya no hay un neumático montado en esa posición. Actualizar la pantalla';
     return 'No se encontró el vehículo o el neumático. Actualizar la pantalla';
   }
-  if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dar de baja`;
+  if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja';
   if (msg.includes('motivo')) return 'Motivo obligatorio para la baja (máx. 200 caracteres)';
   if (code === '23505' || msg.includes('número de quema ya')) return 'Ese número de quema ya está registrado en otro neumático';

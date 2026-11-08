@@ -25,6 +25,14 @@
     }
   });
   var neu = [1,2,3].map(function(p){ return {id:p,vehiculo_id:10,cliente_id:1,posicion:p,marca:'Michelin',modelo:'X <MultiWay>',fecha_compra:'2025-01-10',precio_unidad:450000,notas:'ok',stock_id:p===1?1:null,numero_quema:p===3?null:'Q-778'+(p+7),km_previos:p===1?15000:0,vehiculos:{nombre:veh[0].nombre}}; });
+  // Cubiertas de stock: neumáticos sin vehículo (vehiculo_id nulo), con condición y sucursal.
+  var cub = [
+    {id:31,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X <Multi> Z',condicion:'nuevo',sucursal_id:1,sucursales:{nombre:'Montevideo'},fecha_compra:'2026-01-10',precio_unidad:455,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
+    {id:32,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:0,km_previos:42000,clientes:{nombre:cl[0].nombre}},
+    {id:33,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,sucursales:{nombre:'Salto'},fecha_compra:'2025-11-02',precio_unidad:410.5,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
+    {id:34,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-011',marca:'Bridgestone',modelo:'R249',condicion:'recauchutado',sucursal_id:2,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:1,km_previos:0,clientes:{nombre:cl[0].nombre}},
+    {id:35,vehiculo_id:null,cliente_id:2,posicion:null,numero_quema:'Z-900',marca:'Ajena',modelo:null,condicion:'nuevo',sucursal_id:null,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[1].nombre}}
+  ];
   var stock = [
     {id:1,marca:'Michelin',modelo:'X MultiWay',cliente_id:1,precio_unidad:450000,fecha_compra:'2025-01-10',cantidad:8,notas:'lote A',created_at:D(5),clientes:{nombre:cl[0].nombre}},
     {id:2,marca:'Bridgestone',modelo:null,cliente_id:2,precio_unidad:380000,fecha_compra:null,cantidad:4,notas:null,created_at:D(3),clientes:{nombre:cl[1].nombre}}
@@ -44,7 +52,7 @@
   }
   // v_mediciones_neumatico: las mismas mediciones atribuidas al neumático montado en esa posición.
   var medNeu = med.map(function(m){ return Object.assign({}, m, {posicion_actual:m.posicion, estado_montaje:'montado', medicion_id:m.id}); });
-  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu,stock_neumaticos:stock,gastos:gas};
+  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;
@@ -54,6 +62,8 @@
       update:function(r){ rows=[Object.assign({},rows[0]||{id:1},r)]; return q; },
       upsert:function(){ return q; }, delete:function(){ return q; },
       eq:function(c,v){ rows=rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
+      // is(col, null): filas sin valor en la columna (una columna ausente cuenta como nula)
+      is:function(c,v){ rows=rows.filter(function(r){ return v===null ? (r[c]===null||r[c]===undefined) : r[c]===v; }); return q; },
       not:function(){ return q; }, in:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; },
       ilike:function(){ return q; }, neq:function(){ return q; }, gte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]>=v; }); return q; },
       lte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]<=v; }); return q; },

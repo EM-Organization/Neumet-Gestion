@@ -413,40 +413,55 @@
           <div>
             <div class="page-title">Stock de neumáticos</div>
           </div>
-          <button class="btn primary" data-admin-only data-action="openStockModal" data-args='["create"]'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Agregar compra
+          <button class="btn primary" id="btn-cubierta-nueva" style="display:none" data-action="cubiertaNueva">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Agregar cubierta
           </button>
         </div>
         <div class="toolbar">
           <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-stock" type="text" placeholder="Buscar marca o modelo…" aria-label="Buscar marca o modelo"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="search-stock" type="text" placeholder="Quema, marca o modelo" aria-label="Buscar por quema, marca o modelo" autocomplete="off"/>
           </div>
-          <select id="filter-cliente-stock" aria-label="Filtrar por cliente" style="background:var(--surface);border:1px solid var(--border-strong);border-radius:9px;padding:7px 12px;font-size:14px;font-family:var(--font);color:var(--text-primary);outline:none;cursor:pointer;">
+          <select id="filter-cliente-stock" class="select-filter" aria-label="Filtrar por cliente">
             <option value="">Todos los clientes</option>
           </select>
+          <select id="filter-sucursal-stock" class="select-filter" aria-label="Filtrar por sucursal">
+            <option value="">Todas las sucursales</option>
+          </select>
+          <select id="filter-condicion-stock" class="select-filter" aria-label="Filtrar por condición">
+            <option value="">Todas las condiciones</option>
+          </select>
           <button class="btn ghost" data-action="loadStock">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Actualizar
           </button>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th scope="col">Marca</th>
-              <th scope="col">Modelo</th>
-              <th scope="col">Cliente</th>
-              <th scope="col">Precio/ud</th>
-              <th scope="col">Fecha compra</th>
-              <th scope="col">Asignados</th>
-              <th scope="col">Notas</th>
-              <th scope="col" style="width:80px" data-admin-only><span class="sr-only">Acciones</span></th>
-            </tr></thead>
-            <tbody id="tbody-stock">
-              <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
-            </tbody>
-          </table>
+        <p class="stk-resumen" id="stk-resumen" aria-live="polite"></p>
+        <div id="stk-lista"></div>
+
+        <div id="stock-lotes" style="display:none">
+          <div class="stk-subtitulo">
+            <h3>Lotes anteriores</h3>
+            <button class="btn ghost" data-admin-only data-action="openStockModal" data-args='["create"]'>Agregar compra</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th scope="col">Marca</th>
+                <th scope="col">Modelo</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Precio/ud</th>
+                <th scope="col">Fecha compra</th>
+                <th scope="col">Asignados</th>
+                <th scope="col">Notas</th>
+                <th scope="col" style="width:80px" data-admin-only><span class="sr-only">Acciones</span></th>
+              </tr></thead>
+              <tbody id="tbody-stock">
+                <tr><td colspan="9"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -978,9 +993,18 @@
         <div id="cambio-destinos" class="cambio-opciones"></div></fieldset>
       <div class="field"><label for="cambio-motivo">Motivo <span class="label-opt" id="cambio-motivo-opt">(opcional)</span></label>
         <input id="cambio-motivo" type="text" maxlength="200" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+      <div id="cambio-retorno-wrap" class="cambio-retorno">
+        <div class="field"><label for="cambio-retorno-suc">Sucursal donde queda en stock</label>
+          <select id="cambio-retorno-suc" data-change="neumatico-cambiar-resumen"></select></div>
+        <div class="field" id="cambio-quema-viejo-wrap"><label for="cambio-quema-viejo">Número de quema del neumático retirado</label>
+          <input id="cambio-quema-viejo" type="text" maxlength="40" data-change="neumatico-cambiar-resumen" autocomplete="off"/>
+          <div class="field-hint">Obligatorio para guardarlo en el stock.</div></div>
+      </div>
       <fieldset class="cambio-grupo"><legend>Neumático nuevo</legend>
         <div id="cambio-origenes" class="cambio-opciones"></div>
-        <div id="cambio-stock-wrap" class="field"><label for="cambio-stock">Del stock</label>
+        <div id="cambio-cubierta-wrap" class="field"><label for="cambio-cubierta">Cubierta del stock</label>
+          <select id="cambio-cubierta" data-change="neumatico-cambiar-resumen"></select></div>
+        <div id="cambio-stock-wrap" class="field"><label for="cambio-stock">Lote del stock</label>
           <select id="cambio-stock" data-change="neumatico-cambiar-resumen"></select></div>
         <div id="cambio-nuevo-wrap">
           <div class="field-row">
@@ -990,7 +1014,7 @@
               <input id="cambio-modelo" type="text" maxlength="60" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
           </div>
         </div>
-        <div class="field-row">
+        <div class="field-row" id="cambio-quema-km-wrap">
           <div class="field"><label for="cambio-quema">Número de quema <span class="label-opt">(opcional)</span></label>
             <input id="cambio-quema" type="text" maxlength="40" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
           <div class="field"><label for="cambio-km-previos">Km que ya traía el neumático</label>
@@ -1011,7 +1035,59 @@
   </div>
 </div>
 
-<!-- Modal Stock de Neumáticos (CRUD) -->
+<!-- Modal Cubierta de stock (alta y edición) -->
+<div class="modal-backdrop" id="modal-cubierta" data-backdrop-close="cubiertaCerrar">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="cubierta-title">Agregar cubierta</div>
+    </div>
+    <div class="modal-body">
+      <div class="field" id="cb-cliente-wrap"><label for="cb-cliente">Cliente</label>
+        <select id="cb-cliente" data-change="cubiertaCliente"></select></div>
+      <div class="field-row">
+        <div class="field"><label for="cb-quema">Número de quema</label>
+          <input type="text" id="cb-quema" maxlength="40" autocomplete="off"/>
+          <div class="field-hint" id="cb-quema-hint">Único por cliente.</div></div>
+        <div class="field"><label for="cb-marca">Marca</label><input type="text" id="cb-marca" maxlength="60" placeholder="Michelin" autocomplete="off"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cb-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="cb-modelo" maxlength="60" placeholder="X Multi Z" autocomplete="off"/></div>
+        <div class="field"><label for="cb-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="cb-fecha"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cb-precio">Precio <span class="label-opt">(opcional)</span></label><input type="number" id="cb-precio" min="0" step="0.01" inputmode="decimal" placeholder="0.00"/></div>
+        <div class="field" id="cb-sucursal-wrap"><label for="cb-sucursal">Sucursal</label><select id="cb-sucursal"></select></div>
+        <div class="field" id="cb-condicion-wrap"><label for="cb-condicion">Condición</label><select id="cb-condicion"></select>
+          <div class="field-hint">Nuevo pasa a Usado al montarse en un vehículo.</div></div>
+      </div>
+      <div id="cb-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="cubiertaCerrar">Cancelar</button>
+      <button class="btn primary" id="cb-guardar" data-action="cubiertaGuardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Mover cubierta de sucursal -->
+<div class="modal-backdrop" id="modal-cubierta-mover" data-backdrop-close="cubiertaMoverCerrar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="cubierta-mover-title">Mover cubierta</div>
+      <div class="modal-sub" id="cubierta-mover-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="cbm-sucursal">Sucursal de destino</label><select id="cbm-sucursal"></select></div>
+      <div id="cbm-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="cubiertaMoverCerrar">Cancelar</button>
+      <button class="btn primary" id="cbm-guardar" data-action="cubiertaMoverGuardar">Mover</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Stock de Neumáticos (CRUD de lotes anteriores) -->
 <div class="modal-backdrop" id="modal-stock" data-backdrop-close="closeStockModal">
   <div class="modal modal-wide">
     <div class="modal-header">

@@ -23,6 +23,8 @@ Todos los modos (admin y cliente) arrancan con `inicio.flow.js`: página de Inic
 neumáticos medidos NO muestra «sin datos»), aviso de conexión oculto salvo problema real, menú por rol
 (el cliente ve Inicio, Vehículos, Alertas, Stock y Reportes, y Sucursales si es global; sin elementos `data-admin-only` ni Dispositivos; Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
 
+El recorrido del stock de cubiertas (`stock.flow.js`, con `stock.fixture.js` y las cubiertas de `stub.js`) corre dentro de los modos `admin`, `cliente` y `secuser`: lista, filtros, alta con validación local y error de la base, edición, traslado, eliminación con confirmación, perfil de sucursal sin acciones y buscador global por quema. `cambio.flow.js` cubre además la cubierta del stock y la devolución del neumático retirado.
+
 Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:
 
 ```

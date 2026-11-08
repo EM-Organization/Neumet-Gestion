@@ -38,8 +38,11 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 
 | Usar | No usar |
 |---|---|
-| neumático | goma, cubierta, llanta |
-| posición, con nombre en las listas («Delantera izquierda», «Eje 2 derecha exterior») y mini vehículo; el número de posición solo en el diagrama del detalle y en el taller | lugar, ubicación; «P1, P2…» en listas |
+| neumático (el montado o en general) | goma, llanta |
+| cubierta (solo en Stock: la unidad individual disponible hasta que se monta; «Agregar cubierta», «Cubierta del stock») | cubierta fuera de Stock, goma, llanta |
+| posición, con nombre en las listas («Delantera izquierda», «Eje 2 derecha exterior») y mini vehículo; el número de posición solo en el diagrama del detalle y en el taller | lugar; «P1, P2…» en listas |
+| ubicación (solo en Stock: la sucursal donde está la cubierta, o «Sin sucursal») | ubicación para una rueda de un vehículo (ahí se dice posición) |
+| Nuevo, Usado, Reparado, Recauchutado (condición de la banda; Nuevo pasa solo a Usado al primer montaje) | reencauche, reencauchado, retread, «de segunda» |
 | interno / centro / externo (huellas de la banda) | izquierda / derecha, borde |
 | sucursal | seccional, filial (en la interfaz) |
 | matrícula | patente (en la interfaz; la columna de la base se llama `patente`) |
@@ -55,9 +58,13 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | Cambiar neumático (acción del taller) | Reemplazar, sustituir |
 | Rotar | Permutar, intercambiar |
 
-El buscador de la barra superior y el de Inicio usan el texto «Matrícula, número de coche o quema» (la quema abre el vehículo donde está montado el neumático). El filtro de la lista de Vehículos usa «Matrícula o número de coche».
+El buscador de la barra superior y el de Inicio usan el texto «Matrícula, número de coche o quema» (la quema abre el vehículo donde está montado el neumático o, si es una cubierta en stock, la pantalla Stock filtrada por esa quema). El filtro de la lista de Vehículos usa «Matrícula o número de coche».
 
 El campo `vehiculos.nombre` se presenta siempre como «Número de coche»: «Coche 106» cuando el nombre son solo dígitos; los nombres anteriores con texto se muestran tal cual.
+
+## 3 bis. Criterio de «recauchutado» frente a «reencauche»
+
+En la interfaz nueva se usa **recauchutado** (la condición «Recauchutado» y el destino «Recauchutado» al cambiar un neumático). Se alinearon solo los textos visibles donde el cambio es trivial y seguro: el destino del cambio de neumático, la etiqueta del tipo de evento, el mensaje de vida máxima («3 recauchutados») y la línea «recauchutado N» del panel de la rueda. **No** se cambian: los identificadores de código y de base de datos (`reencauche` como tipo de evento y destino de la RPC, `vida`), los comentarios históricos, ni los documentos de análisis (`docs/09`, `docs/15`, `docs/16`), que describen el dominio con ese término. Un texto nuevo usa siempre «recauchutado».
 
 ## 4. Revisión
 

@@ -5,11 +5,12 @@
 // Enter abre el detalle si hay una coincidencia; si hay varias, muestra la lista. Atajo "/" para enfocarlo.
 import { db } from './supabase.js';
 import { html, setHtml, joinHtml } from './html.js';
-import { isClienteMode, currentClienteId, onLogin, onLogout } from './auth.js';
+import { isClienteMode, currentClienteId, currentSucursalId, onLogin, onLogout } from './auth.js';
 import { runAction, registerActions } from './actions.js';
-import { filtrarFilas } from './seccional.js';
+import { filtrarFilas, listaSucursales } from './seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { resolverBusqueda, quemaCoincidente } from '../domain/vehiculo-busqueda.js';
+import { quemaCoincidente } from '../domain/vehiculo-busqueda.js';
+import { resolverBusquedaConStock, etiquetaCondicion, nombreUbicacion } from '../domain/stock-cubiertas.js';
 import { etiquetaCoche } from '../domain/coche.js';
 
 const COLS = 'id,nombre,patente,numero,activo,cliente_id,sucursal_id';
@@ -18,6 +19,7 @@ const MAX_RESULTADOS = 8;
 const MAX_VEHICULOS = 50000;
 
 let catalogo = [];
+let cubiertas = [];
 let promesa = null;
 let enCurso = false;
 let fallo = false;
@@ -52,6 +54,19 @@ async function traerQuemas() {
   return porVehiculo;
 }
 
+// Cubiertas en stock con quema (neumáticos sin vehículo): solo las ve el admin o el perfil global (la RLS devuelve 0 filas
+// al de sucursal, que ni siquiera hace la consulta). Si falla, la búsqueda de vehículos sigue funcionando.
+async function traerCubiertas() {
+  if (isClienteMode() && currentSucursalId !== null) return [];
+  const r = await fetchAll((from, to) => {
+    let q = db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,cliente_id,clientes(nombre),sucursales(nombre)')
+      .is('vehiculo_id', null).not('numero_quema', 'is', null).order('id').range(from, to);
+    if (isClienteMode()) q = q.eq('cliente_id', currentClienteId);
+    return q;
+  }, { pageSize: PAGE_SIZE, max: MAX_VEHICULOS });
+  return r.error ? [] : r.rows;
+}
+
 // Carga (o reutiliza) el catálogo. Devuelve true si hay catálogo utilizable.
 export function cargarCatalogo(forzar = false) {
   const vigente = promesa && (enCurso || (!fallo && Date.now() - cargadoEn < VIGENCIA_MS));
@@ -61,10 +76,11 @@ export function cargarCatalogo(forzar = false) {
     try {
       let r = await traer(true);
       if (r.error) r = await traer(false); // por si falla la relación con clientes: se busca igual, sin el nombre del cliente
-      if (r.error) { fallo = true; catalogo = []; } else {
+      if (r.error) { fallo = true; catalogo = []; cubiertas = []; } else {
         let quemas = new Map();
         try { quemas = await traerQuemas(); } catch (_e) { /* sin quemas: se busca igual por matrícula y coche */ }
         catalogo = r.rows.map(v => (quemas.has(v.id) ? { ...v, quemas: quemas.get(v.id) } : v));
+        try { cubiertas = await traerCubiertas(); } catch (_e) { cubiertas = []; }
       }
     } catch (_e) { fallo = true; catalogo = []; }
     cargadoEn = Date.now(); enCurso = false;
@@ -77,6 +93,8 @@ export function cargarCatalogo(forzar = false) {
 export function invalidarCatalogo() { cargadoEn = 0; }
 // Un cambio de neumático puede traer otro número de quema (evento de views/cambio-neumatico.js; sin importarlo: core no depende de views).
 document.addEventListener('neumet:neumatico-cambiado', invalidarCatalogo);
+// Alta, traslado o eliminación de una cubierta en stock (views/stock.js).
+document.addEventListener('neumet:stock-cambiado', invalidarCatalogo);
 
 // Vehículos buscables: el cliente solo busca activos; la sucursal elegida acota.
 const visibles = () => filtrarFilas(catalogo.filter(v => !isClienteMode() || v.activo !== false), 'id');
@@ -93,8 +111,15 @@ function metaDe(v, texto) {
   return partes.join(' · ');
 }
 
-const opcion = (v, texto) => html`<li><button type="button" class="busq-op" data-action="verVehiculo" data-args="${JSON.stringify([v.id])}">
+const opcionVehiculo = (v, texto) => html`<li><button type="button" class="busq-op" data-action="verVehiculo" data-args="${JSON.stringify([v.id])}">
   <span class="busq-nom">${etiquetaCoche(v.nombre)}</span><span class="busq-meta">${metaDe(v, texto)}</span></button></li>`;
+
+// Cubierta en stock: abre Stock filtrado por su quema.
+const metaCubierta = c => [`En stock`, [c.marca, c.modelo].filter(Boolean).join(' ') || 'Sin marca', etiquetaCondicion(c.condicion),
+  c.sucursales && c.sucursales.nombre ? c.sucursales.nombre : nombreUbicacion(c.sucursal_id, listaSucursales()), !isClienteMode() && c.clientes && c.clientes.nombre].filter(Boolean).join(' · ');
+const opcionCubierta = c => html`<li><button type="button" class="busq-op" data-action="verStockQuema" data-args="${JSON.stringify([c.numero_quema])}">
+  <span class="busq-nom">Quema ${c.numero_quema}</span><span class="busq-meta">${metaCubierta(c)}</span></button></li>`;
+const opcion = (it, texto) => (it.tipo === 'cubierta' ? opcionCubierta(it.cubierta) : opcionVehiculo(it.vehiculo, texto));
 
 function montar(form) {
   const input = form.querySelector('input');
@@ -118,7 +143,7 @@ function montar(form) {
     await cargarCatalogo();
     if (mi !== ticket) return null;
     if (fallo) { mensaje('No se pudo cargar la búsqueda.', 'Reintentar'); return null; }
-    return resolverBusqueda(visibles(), texto, MAX_RESULTADOS);
+    return resolverBusquedaConStock(visibles(), cubiertas, texto, MAX_RESULTADOS);
   }
 
   function pintar(r) {
@@ -140,6 +165,7 @@ function montar(form) {
     const r = await resolver(input.value);
     if (!r) return;
     if (r.accion === 'abrir') { runAction('verVehiculo', [r.vehiculo.id]); limpiarTodos(); input.blur(); return; }
+    if (r.accion === 'abrir-stock') { runAction('verStockQuema', [r.cubierta.numero_quema]); limpiarTodos(); input.blur(); return; }
     pintar(r);
     const primero = lista.querySelector('.busq-op');
     if (r.accion === 'lista' && primero) primero.focus();
@@ -183,4 +209,4 @@ export function initBuscador() {
 }
 
 onLogin(() => { cargarCatalogo(true); });
-onLogout(() => { catalogo = []; promesa = null; enCurso = false; fallo = false; cargadoEn = 0; limpiarTodos(); });
+onLogout(() => { catalogo = []; cubiertas = []; promesa = null; enCurso = false; fallo = false; cargadoEn = 0; limpiarTodos(); });

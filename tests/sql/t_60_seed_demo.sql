@@ -35,19 +35,37 @@ select test.eq('6 dispositivos', (select count(*) from public.dispositivos where
 select test.eq('6 neumáticos en camiones de 6', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO003')), 6::bigint);
 select test.eq('10 neumáticos + auxilio en DEMO001', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO001')), 11::bigint);
 select test.eq('hay neumáticos de auxilio', (select count(*) > 0 from public.neumaticos where cliente_id = 50 and auxilio), true);
-select test.eq('124 neumáticos tras cambio de neumático entre ejecuciones', (select count(*) from public.neumaticos where cliente_id = 50), 124::bigint);
+select test.eq('124 neumáticos con vehículo tras cambio de neumático entre ejecuciones', (select count(*) from public.neumaticos where cliente_id = 50 and vehiculo_id is not null), 124::bigint);
 select test.eq('el neumático manual CN-x se borró', (select count(*) from public.neumaticos where idneumatico = 'CN-x'), 0::bigint);
 select test.eq('un solo set de neumáticos (sin duplicar)', (select count(*) from public.neumaticos where cliente_id = 50),
   (select count(distinct idneumatico) from public.neumaticos where cliente_id = 50));
 select test.eq('mediciones: 10 sesiones por neumático medido (5 recién montados con una sola)',
   (select count(*) from public.mediciones where cliente_id = 50),
-  (select 10 * (count(*) - 1 - 5) + 5 from public.neumaticos where cliente_id = 50));  -- -1: el que nunca se midió
+  (select 10 * (count(*) - 1 - 5) + 5 from public.neumaticos where cliente_id = 50 and vehiculo_id is not null));  -- -1: el que nunca se midió
 select test.eq('las mediciones tienen promedio calculado', (select count(*) from public.mediciones where cliente_id = 50 and promedio <= 0), 0::bigint);
 select test.eq('odómetro creciente en el tiempo (DEMO002 pos 1)',
   (select bool_and(odometro_km >= prev) from (
      select odometro_km, coalesce(lag(odometro_km) over (order by created_at), 0) prev
      from public.mediciones where cliente_id = 50 and idneumatico = 'DEMO-02-01') q), true);
-select test.eq('stock de ejemplo', (select count(*) from public.stock_neumaticos where cliente_id = 50), 3::bigint);
+select test.eq('stock de ejemplo: 3 lotes antiguos', (select count(*) from public.stock_neumaticos where cliente_id = 50), 3::bigint);
+select test.eq('stock demo: 12 cubiertas individuales sin montar',
+  (select count(*) from public.neumaticos where cliente_id = 50 and vehiculo_id is null), 12::bigint);
+select test.eq('stock demo: quemas S-001..S-012 sin repetir',
+  (select count(distinct numero_quema) from public.neumaticos where cliente_id = 50 and numero_quema ~ '^S-0[01][0-9]$'), 12::bigint);
+select test.eq('stock demo: condiciones variadas',
+  (select string_agg(condicion || ':' || n, ',' order by condicion) from (
+     select condicion, count(*) n from public.neumaticos where cliente_id = 50 and vehiculo_id is null group by 1) q),
+  'nuevo:6,recauchutado:2,reparado:2,usado:2');
+select test.eq('stock demo: 5 en Montevideo, 5 en Salto y 2 sin sucursal',
+  (select string_agg(coalesce(s.nombre, 'sin') || ':' || n, ',' order by coalesce(s.nombre, 'sin')) from (
+     select sucursal_id, count(*) n from public.neumaticos where cliente_id = 50 and vehiculo_id is null group by 1) q
+   left join public.sucursales s on s.id = q.sucursal_id),
+  'Montevideo:5,Salto:5,sin:2');
+select test.eq('stock demo: las nuevas no tienen montajes y las usadas sí',
+  (select count(*) from public.neumaticos n where n.cliente_id = 50 and n.vehiculo_id is null
+     and (n.condicion = 'nuevo') = exists (select 1 from public.eventos_neumatico e where e.neumatico_id = n.id and e.tipo = 'montaje')), 0::bigint);
+select test.eq('stock demo: las cubiertas sin montar no entran en las vistas de estado',
+  (select count(*) from public.v_estado_neumaticos where cliente_id = 50 and idneumatico like 'DEMO-S-%'), 0::bigint);
 select test.eq('otros clientes intactos (cliente 1: sin sucursales ni stock demo)',
   (select count(*) from public.sucursales where cliente_id in (1,2)), 0::bigint);
 

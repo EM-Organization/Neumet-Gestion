@@ -54,7 +54,7 @@ El rol se guarda en `perfiles.rol` (`admin`, `cliente` o `api`); la autorizació
 | Rol | Alcance | Puede |
 |---|---|---|
 | Administrador (`admin`) | Todos los clientes | Todo el panel: clientes, ficha, dispositivos, balance, mediciones, vehículos, stock, sucursales y cuentas de API |
-| Cliente global (`cliente`, `sucursal_id` nulo) | Todo su cliente | Ver su flota completa, gestionar sucursales y mover vehículos, cambiar y rotar neumáticos, registrar odómetro, ver stock |
+| Cliente global (`cliente`, `sucursal_id` nulo) | Todo su cliente | Ver su flota completa, gestionar sucursales y mover vehículos, cambiar y rotar neumáticos, registrar odómetro, gestionar el stock de cubiertas |
 | Cliente de sucursal (`cliente`, `sucursal_id` = X) | Solo los vehículos, neumáticos, mediciones y dispositivos de la sucursal X | Ver su flota, cambiar y rotar neumáticos de sus vehículos, registrar odómetro. No ve stock, otras sucursales ni gestión de sucursales |
 | Cuenta de API (`api`) | Un cliente, solo a través de `api-proveedor` | Login, `obtener_montaje` y `guardar_montaje_mm`. Sin acceso a las tablas por PostgREST |
 
@@ -69,12 +69,12 @@ Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil gl
 | Inicio | Buscador de «Matrícula, número de coche o quema» (atajo `/`), proporciones de la flota, «Requieren atención», «Próximos cambios» y «Últimas mediciones» (los 8 vehículos medidos más recientemente, con la diferencia de mm por neumático respecto de la visita anterior). El administrador ve además «Clientes con más urgencias» |
 | Vehículos | Lista ordenada por urgencia, filtro por matrícula o número de coche; alta, edición y baja solo para el administrador |
 | Detalle de vehículo | Diagrama de ruedas con el estado de cada posición, panel de la rueda con mediciones y gráfico de desgaste, odómetro y ciclo de vida. Desde la rueda: cambio de neumático, rotación y número de quema |
-| Cambio de neumático | Destino del neumático retirado (baja, reencauche, reparación o almacén), neumático nuevo desde el stock o ingresado a mano, número de quema, km que ya traía el neumático y odómetro opcional del vehículo |
+| Cambio de neumático | Destino del neumático retirado (baja, recauchutado, reparación o almacén; «Almacenar» lo devuelve al stock en la sucursal indicada, conservando su quema), neumático nuevo desde una cubierta del stock, un lote anterior o ingresado a mano, número de quema, km que ya traía el neumático y odómetro opcional del vehículo |
 | Rotación | Intercambio de dos posiciones del mismo vehículo; el historial y las alertas siguen al neumático |
 | Número de quema | Identifica al neumático físico; único por cliente. El buscador lo resuelve y abre el vehículo donde está montado |
 | Km previos | Km que el neumático ya traía al montarlo; junto con los recorridos en el vehículo dan los km totales |
 | Sucursales (cliente global) | Crear, renombrar y eliminar sucursales vacías; agregar vehículos; mover un vehículo entre sucursales o a «Sin sucursal», con confirmación. Mover solo cambia `vehiculos.sucursal_id`: el historial queda intacto y el movimiento queda en la auditoría |
-| Stock | Inventario de neumáticos por cliente; solo lectura para el cliente global, alta y edición para el administrador. No visible para el perfil de sucursal |
+| Stock | Cubiertas individuales del cliente (quema, marca, modelo, fecha de compra, precio opcional, condición Nuevo/Usado/Reparado/Recauchutado y sucursal), con filtros, búsqueda por quema y las acciones agregar, editar, mover y eliminar para el perfil global (y el administrador); los lotes anteriores con cantidad se conservan en solo lectura para el cliente. El buscador global encuentra una cubierta por quema. No visible para el perfil de sucursal |
 | Alertas | Lista de problemas activos, filtrable por severidad y tipo (`critico`, `bajo`, `cruza_critico_pronto`, `desgaste_irregular`, `sin_medir`) |
 | Reportes | Informes exportables en CSV o versión imprimible |
 | Dispositivos (solo administrador) | Alta, edición y asignación de medidores a clientes; estado de actividad y dispositivos con mediciones aún sin cliente asignado |

@@ -2,7 +2,7 @@
 export const TIPOS_EVENTO = ['montaje','desmontaje','rotacion','reparacion','reencauche','baja','inspeccion'];
 export const TIPO_LABEL = {
   montaje:'Montaje', desmontaje:'Desmontaje', rotacion:'Rotación', reparacion:'Reparación',
-  reencauche:'Reencauche', baja:'Baja', inspeccion:'Inspección'
+  reencauche:'Recauchutado', baja:'Baja', inspeccion:'Inspección'
 };
 export const VIDA_MAX = 3;
 
@@ -70,7 +70,7 @@ export function planEvento(tipo, n, d={}, hoy=''){
       if(estado==='reparacion') patch={estado:'almacenado'};
       break;
     case 'reencauche':
-      if(vida>=VIDA_MAX) return {ok:false, error:`Ya alcanzó la vida máxima (${VIDA_MAX} reencauches)`};
+      if(vida>=VIDA_MAX) return {ok:false, error:`Ya alcanzó la vida máxima (${VIDA_MAX} recauchutados)`};
       patch={vida:vida+1};
       if(estado==='reparacion') patch.estado='almacenado';
       break;

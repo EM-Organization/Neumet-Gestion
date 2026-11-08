@@ -90,7 +90,7 @@ export function registrar(env) {
     });
   });
 
-  test('Stock (global): el stock del cliente se lista y es de solo lectura; la sucursal no lo ve', async () => {
+  test('Stock (global): los lotes anteriores se listan sin edición y las cubiertas con sus acciones; la sucursal no ve nada', async () => {
     const lotes = json(env, `select marca, cantidad from public.stock_neumaticos where cliente_id = (select id from public.clientes where nombre = 'Demo Transportes') order by marca`);
     assert.ok(lotes.length >= 3);
     const marcas = () => `[...document.querySelectorAll('#tbody-stock tr:not(.stock-asig-detail)')].map(r => r.cells[0] && r.cells[0].textContent.trim()).filter(Boolean).sort()`;
@@ -99,12 +99,15 @@ export function registrar(env) {
       await p.esperar(`${marcas()}.length === ${lotes.length}`, { que: `${lotes.length} lotes de stock` });
       assert.deepEqual(await p.eval(marcas()), lotes.map(l => l.marca));
       assert.match(await texto(p, '#tbody-stock'), new RegExp(`0 / ${lotes[0].cantidad} ud\\.`));
-      assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'el cliente no edita ni elimina stock');
+      assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'el cliente no edita ni elimina lotes');
+      assert.equal(await p.eval(`!!document.querySelector('#stock-lotes [data-action="openStockModal"]').offsetParent`), false, 'el cliente no agrega lotes');
+      await p.esperar(`document.querySelectorAll('#stk-lista .stk-fila').length > 0`, { que: 'cubiertas del cliente' });
     });
     await flujo(env, 'stock-seccional', 'salto', async p => {
       await irA(p, 'stock');
-      await dormir(700);
-      assert.deepEqual(await p.eval(marcas()), ['Sin neumáticos en stock'], 'la sucursal no ve lotes de stock');
+      await p.esperar(`/Sin cubiertas en stock/.test(document.querySelector('#stk-lista').innerText)`, { que: 'sin cubiertas para la sucursal' });
+      assert.equal(await p.eval(`!!document.querySelector('#stock-lotes').offsetParent`), false, 'la sucursal no ve lotes de stock');
+      assert.equal(await p.eval(`document.querySelectorAll('#stk-lista .stk-fila').length`), 0);
     });
   });
 }

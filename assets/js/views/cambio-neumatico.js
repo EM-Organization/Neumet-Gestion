@@ -7,18 +7,20 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, confirmDialog } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
+import { esAdmin, isClienteMode, currentSucursalId } from '../core/auth.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { reloadActiveView } from '../core/nav.js';
 import {
   DESTINOS, MOTIVO_POR_DEFECTO, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion
 } from '../domain/cambio-neumatico.js';
+import { cubiertasMontables, etiquetaCubierta, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
 
 export const EVENTO_CAMBIO = 'neumet:neumatico-cambiado';
 const $ = id => document.getElementById(id);
 const val = id => { const el = $(id); return el ? el.value : ''; };
 const NEUM_COLS = 'id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,numero_quema';
 
-let ctx = null; // {veh, neum, stock}
+let ctx = null; // {veh, neum, stock, cubiertas, sucursales, puedeStock}
 let ocupado = false;
 
 function notificarCambio(detalle) {
@@ -39,14 +41,23 @@ function estado() {
     origen: orig ? orig.value : '', stockId: val('cambio-stock'), stock: ctx ? ctx.stock : [],
     marca: val('cambio-marca'), modelo: val('cambio-modelo'), odometro: val('cambio-odo'),
     numeroQuema: val('cambio-quema'), kmPrevios: val('cambio-km-previos'),
-    odometroActual: ctx && ctx.veh ? ctx.veh.odometro_km : null
+    odometroActual: ctx && ctx.veh ? ctx.veh.odometro_km : null,
+    cubiertaId: val('cambio-cubierta'), cubiertas: ctx ? ctx.cubiertas : [], sucursales: ctx ? ctx.sucursales : [],
+    // Solo admin y perfil global gestionan el stock: ahí «Almacenar» devuelve el neumático al stock.
+    devolverStock: !!(ctx && ctx.puedeStock), sucursalStock: val('cambio-retorno-suc'), quemaViejo: val('cambio-quema-viejo')
   };
 }
 
 function actualizar() {
   const f = estado();
+  $('cambio-cubierta-wrap').style.display = f.origen === 'cubierta' ? '' : 'none';
   $('cambio-stock-wrap').style.display = f.origen === 'stock' ? '' : 'none';
   $('cambio-nuevo-wrap').style.display = f.origen === 'nuevo' ? '' : 'none';
+  // La cubierta del stock ya trae su quema y sus km.
+  $('cambio-quema-km-wrap').style.display = f.origen === 'cubierta' ? 'none' : '';
+  const vuelve = f.destino === 'almacenado' && f.devolverStock;
+  $('cambio-retorno-wrap').style.display = vuelve ? 'block' : 'none';
+  $('cambio-quema-viejo-wrap').style.display = vuelve && ctx && ctx.neum && !ctx.neum.numero_quema ? '' : 'none';
   $('cambio-motivo-opt').textContent = f.destino === 'baja' ? '(obligatorio)' : '(opcional)';
   const r = validarCambio(f);
   $('cambio-resumen').textContent = r.ok ? r.resumen : 'Completar los datos para ver el resumen';
@@ -55,17 +66,22 @@ function actualizar() {
 }
 
 function pintar() {
-  const { veh, neum, stock } = ctx;
-  const hayStock = stock.length > 0;
+  const { veh, neum, stock, cubiertas, sucursales } = ctx;
+  const hayStock = stock.length > 0, hayCubiertas = cubiertas.length > 0;
   $('cambio-sub').textContent = veh && veh.nombre ? etiquetaCoche(veh.nombre) : 'Registro del cambio hecho en el taller';
   setHtml($('cambio-actual'), html`<div>Neumático actual en <strong>P${neum.posicion}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>
     · ${neum.estado || 'montado'} · vida ${neum.vida || 0}${neum.numero_quema ? html` · quema ${neum.numero_quema}` : ''}${veh && veh.odometro_km != null ? html` · vehículo con ${veh.odometro_km} km` : ''}</div>`);
   setHtml($('cambio-destinos'), joinHtml(DESTINOS.map((d, i) => radio('cambio-destino', d.id, d.label, i === 0, 'neumatico-cambiar-resumen'))));
   setHtml($('cambio-origenes'), joinHtml([
-    hayStock ? radio('cambio-origen', 'stock', 'Elegir del stock', true, 'neumatico-cambiar-resumen') : '',
-    radio('cambio-origen', 'nuevo', 'Ingresar uno nuevo', !hayStock, 'neumatico-cambiar-resumen')
+    hayCubiertas ? radio('cambio-origen', 'cubierta', 'Cubierta del stock', true, 'neumatico-cambiar-resumen') : '',
+    hayStock ? radio('cambio-origen', 'stock', 'Lote del stock', !hayCubiertas, 'neumatico-cambiar-resumen') : '',
+    radio('cambio-origen', 'nuevo', 'Ingresar uno nuevo', !hayStock && !hayCubiertas, 'neumatico-cambiar-resumen')
   ]));
+  setHtml($('cambio-cubierta'), joinHtml(cubiertas.map(c => html`<option value="${c.id}">${etiquetaCubierta(c, sucursales)}</option>`)));
+  setHtml($('cambio-retorno-suc'), joinHtml([html`<option value="">${SIN_SUCURSAL}</option>`,
+    sucursales.map(x => html`<option value="${x.id}">${x.nombre}</option>`)]));
+  $('cambio-quema-viejo').value = '';
   setHtml($('cambio-stock'), joinHtml(stock.map(s => html`<option value="${s.id}">${etiquetaStock(s)}</option>`)));
   $('cambio-motivo').value = MOTIVO_POR_DEFECTO;
   $('cambio-marca').value = ''; $('cambio-modelo').value = ''; $('cambio-odo').value = '';
@@ -87,11 +103,20 @@ async function abrir(vehiculoId, posicion) {
   if (!neum) { showToast(`No hay un neumático montado en P${posicion}`, true); return; }
   if (neum.estado === 'baja') { showToast(`El neumático de P${posicion} ya está dado de baja`, true); return; }
   const veh = rv.data || { id: vehiculoId };
-  // El stock es del cliente del vehículo; la RLS ya limita qué lotes ve cada perfil (el de sucursal no ve ninguno).
-  const rs = await db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad')
-    .eq('cliente_id', neum.cliente_id).gte('cantidad', 1);
+  // El stock es del cliente del vehículo; la RLS ya limita qué ve cada perfil (el de sucursal no ve ninguno).
+  const puedeStock = esAdmin() || (isClienteMode() && currentSucursalId === null);
+  const [rs, rc, rsu] = await Promise.all([
+    db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad').eq('cliente_id', neum.cliente_id).gte('cantidad', 1),
+    puedeStock
+      ? db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,vehiculo_id,estado')
+        .is('vehiculo_id', null).eq('cliente_id', neum.cliente_id).order('numero_quema')
+      : Promise.resolve({ data: [] }),
+    puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', neum.cliente_id).order('nombre') : Promise.resolve({ data: [] })
+  ]);
   const stock = rs.error ? [] : stockDisponible(rs.data);
-  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock };
+  const cubiertas = rc.error ? [] : cubiertasMontables(rc.data);
+  const sucursales = rsu.error ? [] : (rsu.data || []);
+  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, sucursales, puedeStock };
   pintar();
   $('modal-cambio').classList.add('show');
 }
@@ -111,6 +136,7 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
     const posicion = ctx.neum.posicion, vehiculoId = ctx.neum.vehiculo_id;
     ACTIONS['neumatico-cambiar-cerrar']();
     showToast(`Cambio registrado en P${posicion}: el neumático nuevo ya figura montado`);
+    document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     notificarCambio({ vehiculoId, posicion, resultado: data });
   } catch (e) {
     console.error(e);
