@@ -13,10 +13,14 @@ insert into auth.users (id, email) values
   ('e2e00000-0000-0000-0000-000000000003', 'demo-salto@e2e.test'),
   ('e2e00000-0000-0000-0000-000000000004', 'demo-montevideo@e2e.test'),
   ('e2e00000-0000-0000-0000-000000000005', 'otra@e2e.test'),
-  ('e2e00000-0000-0000-0000-000000000006', 'sin-perfil@e2e.test'); -- autenticado, sin fila en perfiles
+  ('e2e00000-0000-0000-0000-000000000006', 'sin-perfil@e2e.test'), -- autenticado, sin fila en perfiles
+  ('e2e00000-0000-0000-0000-000000000007', 'api@e2e.test');
 
 insert into public.perfiles (user_id, rol) values ('e2e00000-0000-0000-0000-000000000001', 'admin');
 insert into public.clientes (nombre, auth_user_id) values ('Demo Transportes', 'e2e00000-0000-0000-0000-000000000002');
+-- Cuenta de integración (rol 'api'): ligada al cliente Demo; no debe entrar al panel.
+insert into public.perfiles (user_id, rol, cliente_id)
+  select 'e2e00000-0000-0000-0000-000000000007', 'api', id from public.clientes where nombre = 'Demo Transportes';
 
 -- Cliente ajeno: ninguna sesión de Demo debe verlo.
 insert into public.clientes (nombre, auth_user_id) values ('Otra Empresa SA', 'e2e00000-0000-0000-0000-000000000005');

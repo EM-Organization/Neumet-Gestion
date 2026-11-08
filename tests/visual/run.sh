@@ -14,7 +14,7 @@ fi
 [ -n "$CHROME" ] || { echo "No se encontró Chrome (definí CHROME=...)"; exit 2; }
 SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
 # escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
-ALL="login:admin inicio:both ultimas-mediciones:both vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente selector-seccional:cliente"
+ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente selector-seccional:cliente"
 mkdir -p "$OUT_DIR"
 python3 -m http.server "$PORT" >/dev/null 2>&1 &
 SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
@@ -31,6 +31,7 @@ for item in $ALL; do
       [ "$role" = cliente ] && [ "$scene" = vehiculos ] && Q="$Q&detalle=1"
       case "$scene" in vehiculos-busqueda|detalle*|cambio-neumatico) Q="$Q&detalle=1&cliente=1";; esac
       [ "$scene" = login ] && Q="$Q&nosession=1"
+      [ "$scene" = sin-acceso ] && Q="$Q&sinperfil=1"
       f="$OUT_DIR/$role-$size-$scene.png"; rm -f "$f"
       "$CHROME" --headless=new --disable-gpu --hide-scrollbars --window-size=$W,$H --virtual-time-budget=${BUDGET:-30000} \
         --screenshot="$PWD/$f" "http://localhost:$PORT/tests/smoke/harness.html?$Q" >/dev/null 2>&1
