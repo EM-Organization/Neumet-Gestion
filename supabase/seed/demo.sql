@@ -3,7 +3,7 @@
 -- =============================================================================
 -- NO es una migración: no está en supabase/migrations y no se aplica solo.
 -- Se ejecuta A MANO (SQL editor de Supabase o psql) DESPUÉS de aplicar todas las
--- migraciones (requiere hasta 20261110000000_numero_quema.sql) y de crear el cliente
+-- migraciones (requiere hasta 20261113000000_stock_cubiertas.sql) y de crear el cliente
 -- 'Demo Transportes' desde el panel admin (Clientes > Nuevo cliente), que crea su
 -- usuario global. Si el cliente no existe, el script falla con un mensaje claro.
 --
@@ -20,7 +20,9 @@
 --     medición y neumáticos sin medir hace más de 30 días.
 --   * 10 vehículos medidos en los últimos 5 días (visitas semanales con medición previa y última, que alimentan
 --     «Últimas mediciones» de Inicio) y 5 neumáticos recién montados con una sola medición (sin comparativa).
---   * Stock de ejemplo y algunos eventos (rotación, reparación, montaje).
+--   * Stock: 3 lotes antiguos (cantidad) y 12 cubiertas individuales (quemas S-001..S-012, condiciones nuevo/usado/
+--     reparado/recauchutado, 5 en Montevideo, 5 en Salto y 2 sin sucursal; las usadas traen su montaje y desmontaje previos).
+--   * Algunos eventos (rotación, reparación, montaje).
 -- Las fechas son relativas a now(): volver a ejecutar el script REFRESCA el demo
 -- (borra y regenera mediciones, eventos, neumáticos y stock del cliente Demo,
 -- incluso lo creado a mano en pruebas, con fechas actuales; vehículos, dispositivos y
@@ -54,6 +56,7 @@ declare
   v_irreg   boolean;
   v_nomed   boolean;
   h         integer;
+  v_cub     bigint;
   v_marcas  text[] := array['Michelin','Bridgestone','Pirelli','Goodyear','Continental'];
   v_modelos text[] := array['X Multi Z','R249 Ecopia','FH88 Fleet','G661 Regional','HSR2 Eco'];
   m         integer;
@@ -230,6 +233,53 @@ begin
     (v_cli, 'Michelin',    'X Multi Z',   8, 455.00, current_date - 60, 'Datos de ejemplo (demo)'),
     (v_cli, 'Bridgestone', 'R249 Ecopia', 4, 420.00, current_date - 35, 'Datos de ejemplo (demo)'),
     (v_cli, 'Pirelli',     'FH88 Fleet',  2, 390.00, current_date - 10, 'Datos de ejemplo (demo)');
+
+  -- ---- Cubiertas individuales en stock (neumáticos sin montar: sin vehículo ni posición) ------------------------
+  -- Las que figuran «usado» estuvieron montadas: llevan su montaje y desmontaje previos (por eso no se pueden eliminar).
+  for r in select * from (values
+      ('S-001', 'Michelin',    'X Multi Z',   'nuevo',        'mvd',  0, 455.00, 60),
+      ('S-002', 'Michelin',    'X Multi Z',   'nuevo',        'mvd',  0, 455.00, 60),
+      ('S-003', 'Michelin',    'X Multi Z',   'nuevo',        null,   0, 455.00, 58),
+      ('S-004', 'Bridgestone', 'R249 Ecopia', 'nuevo',        'mvd',  0, 420.00, 35),
+      ('S-005', 'Bridgestone', 'R249 Ecopia', 'nuevo',        'slt',  0, 420.00, 35),
+      ('S-006', 'Pirelli',     'FH88 Fleet',  'nuevo',        'slt',  0, 390.00, 10),
+      ('S-007', 'Goodyear',    'G661 Regional', 'usado',      'mvd', 42000, 410.00, 240),
+      ('S-008', 'Continental', 'HSR2 Eco',    'usado',        'slt', 38500, 398.00, 220),
+      ('S-009', 'Michelin',    'X Multi Z',   'reparado',     'slt', 61000, 455.00, 400),
+      ('S-010', 'Pirelli',     'FH88 Fleet',  'reparado',     'mvd', 55000, 390.00, 380),
+      ('S-011', 'Bridgestone', 'R249 Ecopia', 'recauchutado', 'slt', 90000, 420.00, 600),
+      ('S-012', 'Goodyear',    'G661 Regional', 'recauchutado', null, 85000, 410.00, 620)
+    ) x(quema, marca, modelo, cond, suc, km, precio, dias)
+  loop
+    insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, modelo, fecha_compra, precio_unidad,
+                                   idneumatico, estado, condicion, sucursal_id, numero_quema, vida, km_previos, notas)
+    values (null, v_cli, null, r.marca, r.modelo, current_date - r.dias, r.precio,
+            'DEMO-' || r.quema, 'almacenado', r.cond,
+            case r.suc when 'mvd' then v_mvd when 'slt' then v_slt end,
+            r.quema, case when r.cond = 'recauchutado' then 1 else 0 end, r.km, 'Datos de ejemplo (demo)')
+    returning id into v_cub;
+    insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo,
+                                          sucursal_destino_id, notas, created_at)
+    values (v_cli, null, v_cub, 'DEMO-' || r.quema, 'alta_stock',
+            case r.suc when 'mvd' then v_mvd when 'slt' then v_slt end,
+            'Alta en stock · quema ' || r.quema, now() - (r.dias * interval '1 day'));
+    if r.cond <> 'nuevo' then
+      select v.id into v_veh from public.vehiculos v where v.cliente_id = v_cli
+       order by v.patente offset (r.dias % 14) limit 1;
+      insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo,
+                                            odometro_km, notas, created_at)
+      values (v_cli, v_veh, v_cub, 'DEMO-' || r.quema, 'montaje', 100000 + r.dias, 'Montaje previo (demo)', now() - interval '200 days');
+      insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo,
+                                            odometro_km, sucursal_destino_id, notas, created_at)
+      values (v_cli, v_veh, v_cub, 'DEMO-' || r.quema, 'desmontaje', 100000 + r.dias + 30000,
+              case r.suc when 'mvd' then v_mvd when 'slt' then v_slt end, 'Vuelve al stock (demo)', now() - interval '60 days');
+    end if;
+  end loop;
+  -- Un traslado de ejemplo: S-005 estuvo en Montevideo y pasó a Salto.
+  insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo,
+                                        sucursal_origen_id, sucursal_destino_id, notas, created_at)
+  select v_cli, null, n.id, n.idneumatico, 'traslado', v_mvd, v_slt, 'Traslado: Montevideo → Salto', now() - interval '12 days'
+    from public.neumaticos n where n.cliente_id = v_cli and n.numero_quema = 'S-005';
 
   raise notice 'Demo listo para el cliente % (id %): sucursales Montevideo=% Salto=%', c_nombre, v_cli, v_mvd, v_slt;
 end
