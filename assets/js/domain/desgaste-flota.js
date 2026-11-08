@@ -7,7 +7,7 @@ import { fmtNum } from './formato.js';
 import { ejeDePosicion } from './vehiculo-diagrama.js';
 
 export const FACTOR_TASA = 1.5;
-export const MIN_MUESTRAS = 3;
+export const MIN_MUESTRAS = 5;
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
