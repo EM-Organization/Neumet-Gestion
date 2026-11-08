@@ -24,6 +24,7 @@ import * as flota from './views/flota.js';
 import * as alertas from './views/alertas.js';
 import * as cicloVida from './views/ciclo-vida.js';
 import * as cambioNeumatico from './views/cambio-neumatico.js';
+import * as montarNeumatico from './views/montar-neumatico.js';
 
 initActions();
 initAuth();
@@ -31,5 +32,5 @@ initNav();
 initModales();
 initConexion();
 initBuscador();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,flota,alertas,ficha,seccionalesAdmin,sucursalesView].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,flota,alertas,ficha,seccionalesAdmin,sucursalesView].forEach(v=>v.init());
 checkAuth();

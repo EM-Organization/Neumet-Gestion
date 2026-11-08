@@ -203,5 +203,15 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#suc-buscar').value = 'nada'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if ($('#suc-vehiculos').textContent.indexOf('Ningún vehículo coincide') === -1) fail('sucursales: falta estado vacío del buscador');
   if (!visible($('.nav-item[data-view="sucursales"]'))) fail('sucursales: la entrada del menú no es visible para el perfil global');
+  // «Cargar neumáticos ahora»: tras crear el vehículo abre su detalle, que ofrece cargar los neumáticos
+  $('#suc-buscar').value = ''; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true }));
+  if (!/Cargar neumáticos ahora/.test($('label.sec-check').textContent) || $('#suc-veh-cargar').checked) fail('sucursales: falta la opción «Cargar neumáticos ahora» (sin marcar por defecto)');
+  $('#suc-veh-numero').value = '322'; $('#suc-veh-cargar').checked = true;
+  $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(1200);
+  // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).
+  if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-volver').textContent.indexOf('Volver a Sucursales') === -1) fail('sucursales: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
+  if ($('#suc-veh-cargar').checked) fail('sucursales: la casilla debe desmarcarse tras abrir el detalle');
+  $('[data-action="detalleVolver"]').click(); await sleep(700);
+  if (!$('#view-sucursales').classList.contains('active')) fail('sucursales: Volver no regresó a Sucursales');
   log.push('sucursales-cliente: rpcs=' + fx.rpcs.length);
 };

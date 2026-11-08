@@ -16,7 +16,8 @@ function ruedasEsperadas(env, vehiculoId) {
   const pos = [...Array(10)].map((_, i) => i + 1).concat(aux ? [99] : []);
   return pos.map(p => {
     const f = porPos.get(p);
-    if (!f || f.promedio === null) return { pos: p, mm: null, nivel: 'sin_datos' };
+    if (!f) return { pos: p, mm: null, nivel: 'vacia' }; // posición sin neumático montado: rueda punteada «vacía»
+    if (f.promedio === null) return { pos: p, mm: null, nivel: 'sin_datos' };
     const nivel = f.estado === 'critico' && Number(f.promedio) <= Number(f.umbral_retiro_mm) ? 'retiro' : f.estado;
     return { pos: p, mm: f.mm.replace('.', ','), nivel };
   });
@@ -27,19 +28,28 @@ export function registrar(env) {
     test(`Detalle (${rol}): las ruedas de cada camión coinciden con la base (mm, estado y color)`, async () => {
       const vehiculos = await vehiculosVisibles(env, rol);
       assert.ok(vehiculos.length >= 5);
-      let conAuxilio = 0, sinDatos = 0, criticas = 0, verde = null; // verde: el color de "ok" (la paleta puede cambiar; debe ser uno solo)
+      let conAuxilio = 0, sinDatos = 0, vacias = 0, criticas = 0, verde = null; // verde: el color de "ok" (la paleta puede cambiar; debe ser uno solo)
       await flujo(env, 'detalle', rol, async p => {
         for (const v of vehiculos) {
           await abrirDetallePorMatricula(p, v.patente);
           assert.match(await texto(p, '#vd-cab'), new RegExp(v.patente), `cabecera de ${v.patente}`);
           const dibujadas = await p.eval(`[...document.querySelectorAll('#vd-diagrama .vd-rueda')].map(g => ({
-            pos: Number(g.dataset.pos), fill: g.querySelector('rect.vd-goma').getAttribute('fill'),
-            mm: g.querySelector('.vd-mm').textContent, aria: g.getAttribute('aria-label') }))`);
+            pos: Number(g.dataset.pos), fill: g.querySelector('rect.vd-goma').getAttribute('fill'), vacia: g.classList.contains('vd-vacia'),
+            mm: (g.querySelector('.vd-mm') || {}).textContent, aria: g.getAttribute('aria-label') }))`);
           const esperadas = ruedasEsperadas(env, v.id);
           assert.deepEqual(dibujadas.map(r => r.pos).sort((a, b) => a - b), esperadas.map(r => r.pos), `[${v.patente}] posiciones dibujadas`);
           for (const e of esperadas) {
             const d = dibujadas.find(r => r.pos === e.pos);
             const quien = `[${v.patente}] P${e.pos}`;
+            if (e.nivel === 'vacia') {
+              vacias++;
+              assert.equal(d.vacia, true, `${quien} vacía: rueda punteada`);
+              assert.equal(d.fill, null, `${quien} vacía: sin color de desgaste`);
+              assert.equal(d.mm, undefined, quien);
+              assert.match(d.aria, /vacía/, quien);
+              continue;
+            }
+            assert.equal(d.vacia, false, `${quien} tiene neumático: no es una rueda vacía`);
             if (e.nivel === 'sin_datos') {
               sinDatos++;
               assert.equal(d.fill, 'url(#vd-sin-datos)', `${quien} sin datos: patrón`);
@@ -63,7 +73,8 @@ export function registrar(env) {
       });
       // El demo tiene camiones con auxilio, ruedas sin datos y neumáticos críticos: la prueba debe haberlos visto.
       assert.ok(criticas >= 1, 'no se vio ninguna rueda crítica');
-      assert.ok(sinDatos >= 1, 'no se vio ninguna rueda sin datos');
+      assert.ok(sinDatos + vacias >= 1, 'no se vio ninguna rueda sin datos ni posición vacía');
+      if (rol === 'global') assert.ok(sinDatos >= 1 && vacias >= 1, 'el demo trae ruedas sin datos y posiciones sin neumático');
       if (rol === 'global') assert.equal(conAuxilio, 4, 'camiones con auxilio del demo (DEMO001, 004, 009 y 012)');
     });
   }

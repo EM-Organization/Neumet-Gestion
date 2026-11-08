@@ -44,6 +44,7 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
 - **sucursales**: el perfil global crea, renombra y elimina sucursales, agrega vehículos y los mueve con confirmación (historial
   de mediciones, neumáticos y eventos intacto, auditoría `MOVER_SUCURSAL`); el perfil de sucursal no puede gestionar; Otra Empresa SA
   no ve ni mueve nada de Demo Transportes (RPC directas rechazadas con 42501 y la base sin cambios).
+- **montar-neumaticos**: un coche sin neumáticos se carga desde el detalle (estado vacío, cubierta del stock y cubierta nueva seguidas, siguiente posición libre), se retira un neumático a stock y a baja, el alta con «Cargar neumáticos ahora», la API deja de responder `sin_neumaticos`, el perfil de sucursal monta sin stock y solo en su sucursal, Otra Empresa SA no puede tocar nada de Demo Transportes y los montajes simultáneos (misma posición, misma cubierta) se serializan.
 - **contrato**: ninguna petición real falló por columna/relación/función inexistente; cada `select()`/`rpc()` escrito
   en `assets/js` existe en la base.
 

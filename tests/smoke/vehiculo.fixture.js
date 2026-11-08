@@ -60,7 +60,7 @@
     {id:3102,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,estado:'almacenado'},
     {id:3103,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,estado:'almacenado'});
   var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
-  var fx = window.__vehFx = { queries: [] };
+  var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){
     var rows = T[table].slice(), rng = null, single = false;

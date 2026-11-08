@@ -1,5 +1,7 @@
 // Detalle de un vehículo: cabecera, diagrama SVG de ruedas coloreado por desgaste y panel del neumático seleccionado.
 // Datos: vehiculos, neumaticos (n.º de quema y km previos), v_estado_neumaticos, v_alertas, v_mediciones_neumatico (mediciones del neumático montado) y eventos_neumatico (la RLS filtra por cliente/seccional).
+// Posiciones sin neumático: ruedas punteadas «vacías» con la acción «Montar neumático» (views/montar-neumatico.js); un coche
+// sin neumáticos muestra un estado vacío con «Cargar neumáticos». «Retirar neumático» deja la posición libre.
 // Contrato con el flujo de taller: los botones del panel llevan data-action="neumatico-cambiar" / "neumatico-rotar-pos"
 // con data-vehiculo-id y data-posicion (y data-args='[vehiculoId, posicion]'). Esta vista NO implementa esas acciones:
 // si no están registradas en ACTIONS muestra el aviso "No disponible". Tras operar, la acción puede llamar a
@@ -79,8 +81,17 @@ function cabecera() {
   setTitulo(etiquetaCoche(veh.nombre), 'vehiculos');
 }
 
+// Posiciones del tipo de vehículo sin neumático montado (el auxilio vacío no cuenta: es opcional).
+const posicionesVacias = () => datos.layout.ruedas.filter(r => !datos.porPos.has(r.posicion));
+
 function resumen() {
   const { filas, ref } = datos;
+  if (!filas.length) {
+    setHtml($('vd-resumen'), html`<div class="vd-vacio"><div class="vd-vacio-titulo">Sin neumáticos montados</div>
+      <p class="vd-vacio-texto">Cargar los neumáticos de este vehículo para registrar mediciones y ver su estado.</p>
+      ${puedeOperar() ? html`<button type="button" class="btn primary" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Cargar neumáticos</button>` : ''}</div>`);
+    return;
+  }
   const con = filas.filter(f => f.estado !== 'sin_datos').length;
   const crit = filas.filter(f => f.estado === 'critico').length;
   const bajo = filas.filter(f => f.estado === 'bajo').length;
@@ -91,11 +102,15 @@ function resumen() {
     bajo ? chip('orange', plural(bajo, 'bajo', 'bajos'), '▲') : '',
     filas.length - con ? chip('gray', `${filas.length - con} sin datos`, '–') : '',
     mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
+    puedeOperar() && posicionesVacias().length ? html`<button type="button" class="btn ghost vd-montar-mas" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Montar neumático</button>` : '',
   ]));
 }
 
 function leyenda() {
-  const { u } = datos;
+  const { u, filas } = datos;
+  const hayVacias = posicionesVacias().length > 0;
+  const itemVacia = hayVacias ? html`<span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-vacia" aria-hidden="true"></span>Posición vacía</span>` : '';
+  if (!filas.length) { setHtml($('vd-leyenda'), html`<div class="vd-leyenda-extra">${itemVacia}</div>`); return; }
   const span = u.bajo - u.retiro;
   const paradas = [u.retiro, u.critico, (u.critico + u.bajo) / 2, u.bajo]
     .map(mm => `${colorDesgaste(mm, u).hex} ${Math.round(((mm - u.retiro) / span) * 100)}%`).join(',');
@@ -106,7 +121,7 @@ function leyenda() {
       <div class="vd-escala-marcas" aria-hidden="true">${marca(u.retiro, `≤ ${fmtNum(u.retiro, 0)}`)}${marca(u.critico, fmtNum(u.critico, 0))}${marca(u.bajo, `≥ ${fmtNum(u.bajo, 0)} mm`)}</div>
       <p class="vd-escala-nota">Desgaste del neumático en mm. Cada rueda muestra además un símbolo de su estado.</p>
     </div>
-    <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Sin datos</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span></div>`);
+    <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Sin datos</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span>${itemVacia}</div>`);
 }
 
 function etiquetaAria(r, info, mm, ind) {
@@ -115,9 +130,28 @@ function etiquetaAria(r, info, mm, ind) {
   return `${base}: ${medida}.${ind && ind.mayorAlNormal ? ' Desgaste mayor al normal.' : ''}`;
 }
 
+// Posición sin neumático: contorno punteado, sin color de desgaste. Selecciona la rueda y el panel ofrece montarlo.
+function dibujarRuedaVacia(svg, r) {
+  const sel = r.posicion === seleccion;
+  const donde = r.auxilio ? 'Auxilio' : `Posición ${r.posicion}, ${r.etiqueta}`;
+  const etq = `${donde}: vacía. Elegir para montar un neumático.`;
+  const g = svgEl('g', {
+    class: `vd-rueda vd-vacia${sel ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-pressed': String(sel), 'aria-label': etq,
+    'data-action': 'detalleRueda', 'data-args': JSON.stringify([r.posicion]), 'data-pos': String(r.posicion),
+  });
+  const t = svgEl('title'); t.textContent = etq; g.appendChild(t);
+  g.appendChild(svgEl('rect', { class: 'vd-goma vd-goma-vacia', x: r.x, y: r.y, width: r.ancho, height: r.alto, rx: 6 }));
+  const txt = (cls, y, s) => { const e = svgEl('text', { class: cls, x: r.x + r.ancho / 2, y }); e.textContent = s; g.appendChild(e); };
+  txt('vd-pos', r.y + 12, r.auxilio ? 'AUX' : `P${r.posicion}`);
+  txt('vd-mas', r.y + 33, '+');
+  txt('vd-sim', r.y + 46, 'Vacía');
+  svg.appendChild(g);
+}
+
 function dibujarRueda(svg, r) {
   const { u, porPos, ref } = datos;
   const fila = porPos.get(r.posicion);
+  if (!fila) { dibujarRuedaVacia(svg, r); return; }
   const { mm, hex, rgb, nivel } = datosDeFila(fila, u);
   const info = NIVEL_INFO[nivel];
   const ind = fila ? evaluarDesgaste(fila, ref) : null;
@@ -243,7 +277,8 @@ function acciones(pos) {
     <label for="vd-rotar-destino">Rotar con la posición</label>
     <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
-  return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}</div>${rotar}</div>`;
+  const retirar = html`<button type="button" class="btn" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
+  return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}${retirar}</div>${rotar}</div>`;
 }
 
 function renderPanel() {
@@ -260,6 +295,18 @@ function renderPanel() {
   const info = NIVEL_INFO[nivel];
   const ind = fila ? evaluarDesgaste(fila, ref) : null;
   const detalle = [fila && fila.marca, fila && fila.modelo].filter(Boolean).join(' ');
+  if (!fila) {
+    setHtml(body, html`
+      <div class="vd-p-head">
+        <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
+          <div class="vd-p-sub">${r ? r.etiqueta : ''}</div></div>
+        <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle de la posición">&times;</button>
+      </div>
+      <div class="vd-p-scroll"><div class="vd-p-estado">${chip('gray', 'Vacía', '–')}</div>
+        <p class="vd-p-texto">Sin neumático montado en esta posición.</p></div>
+      ${puedeOperar() ? html`<div class="vd-pie"><div class="vd-p-acciones"><button type="button" class="btn primary" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Montar neumático</button></div></div>` : ''}`);
+    return;
+  }
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
@@ -398,7 +445,11 @@ export async function load() {
     layout, geo: geometriaDiagrama(layout), u: umbralesDe(filas[0]), porPos: new Map(filas.map(f => [Number(f.posicion), f])),
   };
   cabecera(); resumen(); leyenda(); dibujarDiagrama();
-  if (!nulo(seleccion) && !datos.porPos.has(seleccion)) seleccion = null;
+  if (!nulo(seleccion) && !datos.porPos.has(seleccion)) {
+    // La posición quedó vacía (retiro) o ya no existe: se cierra el panel (en móvil también la hoja inferior).
+    seleccion = null;
+    $('vd-panel').classList.remove('abierto'); $('vd-backdrop').classList.remove('abierto');
+  }
   renderPanel();
   if (!nulo(preseleccion)) { const p = preseleccion; preseleccion = null; if (datos.porPos.has(p)) seleccionarRueda(p); }
 }

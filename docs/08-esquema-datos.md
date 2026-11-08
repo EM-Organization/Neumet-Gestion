@@ -481,3 +481,52 @@ No se migran ni se tocan: `stock_neumaticos` sigue con su cantidad y su RLS (sol
 ## F.8 Pruebas
 
 SQL: `tests/sql/t_85_stock_cubiertas.sql` (matriz admin, global, sucursal, otro cliente, api, sin perfil y anon sobre las cuatro RPC; quema duplicada; sucursal de otro cliente; CHECK y FK; lectura y escritura directa; Nuevo → Usado al montar; no eliminar con uso; historial conservado al mover, montar y devolver; vistas y API sin cubiertas sin montar; lotes y destinos anteriores) y `t_60_seed_demo.sql` (12 cubiertas del demo); `run.sh` aplica la migración dos veces. Unitarias: `stock-cubiertas.test.mjs` y `cambio-neumatico.test.mjs`. Smoke: `stock.flow.js` y `cambio.flow.js`. Visual: `stock`, `stock-alta`, `stock-mover`, `stock-busqueda`, `cambio-cubierta` y `cambio-almacenar`. E2E: `specs/stock-cubiertas.mjs` (lista contra la base, alta, edición, traslado y eliminación por la interfaz, montar y devolver, montajes simultáneos, aislamiento de la sucursal y de «Otra Empresa SA»).
+
+# Apéndice G · Montar y retirar neumáticos sin reemplazo (migración `20261114500000_montar_neumaticos.sql`)
+
+Un vehículo creado sin neumáticos (`vehiculo_crear`) no podía recibirlos: `neumatico_cambiar` solo sustituye uno existente. La migración añade dos RPC `SECURITY DEFINER` (`search_path = ''`) con la **misma autorización que `neumatico_cambiar`** (`neumatico_autorizar_vehiculo`, que bloquea la fila del vehículo): admin; perfil global, en los vehículos de su cliente; perfil de sucursal, solo en los de su sucursal y sin usar el stock. Rol `api`, sin perfil, `anon` y otro cliente reciben el mismo `42501` (para un no-admin un vehículo inexistente es indistinguible de uno ajeno). No toca tablas, vistas ni RLS y es independiente de la migración de km por cubierta.
+
+## G.1 `neumatico_montar(p_vehiculo_id, p_posicion, p_cubierta_id, p_nuevo, p_odometro_km, p_notas)`
+
+Monta un neumático en una posición **libre**. Origen: una cubierta del stock (`p_cubierta_id`) o un neumático ingresado a mano (`p_nuevo`); exactamente uno.
+
+| Regla | Detalle |
+|---|---|
+| Posición | Entero de 1 a 99. **Esperada** según el tipo del vehículo: 1-10 si `tipo_ruedas = 10`, 1-16 si es 16, y **99 = auxilio**. Igual que `layoutRuedas` del panel, un vehículo de 10 con algún neumático montado en 11..98 se trata como de 16. Las posiciones 17..98 no se crean aquí (las crea la ingesta de la API). Fuera de lo esperado: `23514` |
+| Libre | Si cualquier fila ocupa `(vehiculo_id, posicion)` (también un neumático aparcado): `55000` «la posición N ya tiene un neumático». Un segundo auxilio: `55000` |
+| Cubierta del stock | Solo admin o perfil global (sucursal: `42501`), del **mismo cliente** que el vehículo, sin vehículo y `almacenado`; si no (inexistente, de otro cliente o ya montada, mismo mensaje): `P0002`. Misma fila: conserva quema, `idneumatico`, `km_previos` y mediciones; `sucursal_id` pasa a `NULL` y el trigger convierte «Nuevo» en «Usado». El costo de compra se imputa solo en el primer montaje |
+| Ingresado a mano | `p_nuevo` (jsonb): `marca` (obligatoria, hasta 60), `modelo`, `codigo`, `numero_quema` (hasta 40, **única por cliente** sin distinguir mayúsculas: `23505`), `km_previos` (entero 0..999999999), `fecha_compra` (no futura), `precio` (≥ 0), `vida` (entero 0..3; con vida > 0 nace «Recauchutado», si no «Usado»). Una clave desconocida da `22023`. `idneumatico` = `CN-<vehículo>-<posición>-<8 hex>` (el mismo formato que genera `neumatico_cambiar`) |
+| Odómetro | Opcional: no puede ser menor al del vehículo (regla de `neumatico_cambiar`, `23514`); solo sube el del vehículo |
+| Evento | `montaje` con `posicion_destino`, `odometro_km`, `costo`, `sucursal_origen_id` (cubierta del stock) y `notas` |
+| Concurrencia | El vehículo queda bloqueado: dos montajes simultáneos en la misma posición se serializan (uno confirma, el otro `55000`). La cubierta se bloquea `FOR UPDATE`: la misma cubierta en dos vehículos, uno confirma y el otro `P0002` |
+
+## G.2 `neumatico_desmontar(p_vehiculo_id, p_posicion, p_destino, p_motivo, p_odometro_km, p_sucursal_stock, p_quema)`
+
+Retira el neumático **montado** de una posición **sin poner otro** (corrige un montaje equivocado). Sin neumático montado ahí: `P0002`.
+
+| Destino | Efecto |
+|---|---|
+| `almacenado` (stock) | Solo admin o perfil global. Misma fila sin vehículo ni posición, en la sucursal indicada (del mismo cliente o `null` = sin sucursal), conservando quema, condición y mediciones. Necesita quema (la propia o `p_quema`, `22023` si falta, `23505` si ya existe). Evento `desmontaje` con la sucursal de destino |
+| `reparacion` | Queda «aparcado» en el vehículo (posición libre de 98 hacia abajo, como en `neumatico_cambiar`) con estado `reparacion` y condición `reparado`. Evento `desmontaje` |
+| `baja` | Motivo obligatorio (hasta 200). Aparcado con estado `baja`, `fecha_baja` y `motivo_baja`. Evento `baja` |
+
+El odómetro opcional sigue la misma regla. La sucursal y la quema solo se aceptan con destino stock.
+
+## G.3 API de proveedor
+
+`api_guardar_montaje` resuelve por `neumaticos.idneumatico` de los neumáticos `montado`. Un coche al que se montan neumáticos (siempre con `idneumatico`) deja de dar el motivo `sin_neumaticos`: sus posiciones montadas guardan la medición, y una posición sin neumático sigue dando `posicion` (probado en SQL y e2e). Las mediciones quedan en el neumático: una cubierta del stock conserva su historial.
+
+## G.4 Panel
+
+`views/montar-neumatico.js` y `domain/montaje.js`. En el detalle del vehículo, las posiciones sin neumático se dibujan como **ruedas punteadas «Vacía»** (no «sin datos»: un neumático montado sin mediciones sigue siendo «sin datos»). Elegir una rueda vacía abre un panel con «Montar neumático»; un vehículo sin neumáticos muestra un estado vacío con «Cargar neumáticos». El modal tiene las pestañas «Del stock» (búsqueda por quema, marca o modelo; solo admin y perfil global) y «Cubierta nueva», y tras montar ofrece la **siguiente posición libre** sin cerrar el flujo («Terminar» lo cierra). El panel de una rueda montada suma «Retirar neumático» (destino stock + sucursal, reparación o baja + motivo). En Sucursales, «Cargar neumáticos ahora» lleva al detalle del vehículo recién creado. El auxilio no se dibuja vacío: se monta eligiendo «Auxilio» en la lista de posiciones.
+
+## G.5 Riesgos y límites
+
+- Retirar a reparación o baja deja el neumático aparcado en el vehículo (como `neumatico_cambiar`); llevarlo al stock con su ubicación al volver de reparación es parte de F1.
+- Una baja por montaje equivocado queda como baja (con su motivo); para corregir sin perder la cubierta, retirar a stock.
+- Se asume que `tipo_ruedas` es 10 o 16. Un vehículo con más ruedas necesita una migración propia.
+- Aplicación: la migración debe aplicarse **antes** de fusionar el front. Es aditiva e idempotente y no borra datos.
+
+## G.6 Pruebas
+
+SQL: `tests/sql/t_87_montar_neumaticos.sql` (matriz admin, global, sucursal propia y ajena, otro cliente, api, sin perfil y anon; posición ocupada, fuera de rango y por tipo de ruedas; auxilio 99; quema duplicada; cubierta de otro cliente; odómetro; evento; desmontar a stock, reparación y baja; historial conservado; API). Unitarias: `montaje.test.mjs`. Smoke: `montar.flow.js` (`tests/smoke/run.sh montar`). Visual: `detalle-vacio`, `detalle-vacio-rueda`, `montar-neumatico`, `montar-nueva`, `montar-siguiente`, `retirar-neumatico`. E2E: `specs/montar-neumaticos.mjs` (coche vacío, montar del stock y nueva, retirar, alta con «Cargar neumáticos ahora», perfil de sucursal, «Otra Empresa SA», concurrencia y API).

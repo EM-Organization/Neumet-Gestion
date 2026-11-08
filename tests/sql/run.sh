@@ -125,6 +125,10 @@ echo "== migración de stock de cubiertas (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261113000000_stock_cubiertas.sql"
 echo "== migración de stock de cubiertas (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261113000000_stock_cubiertas.sql"
+echo "== migración de montar neumáticos (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114500000_montar_neumaticos.sql"
+echo "== migración de montar neumáticos (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114500000_montar_neumaticos.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
