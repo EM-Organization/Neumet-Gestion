@@ -43,6 +43,9 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   if(evento) fail('cambio: se notificó éxito pese al error');
   if($('#cambio-confirmar').disabled) fail('cambio: el botón quedó bloqueado tras el error');
 
+  // Ingreso manual (los campos de quema y km solo se validan para neumáticos que no vienen de una cubierta del stock)
+  d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); await sleep(100);
+  $('#cambio-marca').value = 'Pirelli';
   // Km previos inválidos: no llegan a la RPC
   var antes = cambios().length;
   $('#cambio-km-previos').value = '-5';
@@ -76,5 +79,44 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   if($('#toast-msg').textContent.indexOf('Cambio registrado') === -1) fail('cambio: falta el aviso de éxito');
   if(evento !== 1) fail('cambio: no se emitió el evento de refresco');
   log.push('cambio-flow: rpcs=' + cambios().length);
+
+  // Cubierta individual del stock y devolución del neumático retirado al stock (solo admin y perfil global)
+  var secUser = /[?&]secuser=1/.test(w.parent.location.search);
+  btn.setAttribute('data-posicion', '3');   // P3 no tiene número de quema en los datos de prueba
+  btn.click(); await sleep(600);
+  var cubRadio = d.querySelector('input[name="cambio-origen"][value="cubierta"]');
+  if(secUser){
+    if(cubRadio) fail('cambio(sucursal): ofrece cubiertas del stock');
+    if($('#cambio-retorno-wrap').style.display !== 'none') fail('cambio(sucursal): ofrece devolver al stock');
+  } else {
+    if(!cubRadio || !cubRadio.checked) { fail('cambio: falta la opción «Cubierta del stock» (o no es la predeterminada)'); btn.remove(); return; }
+    var opts = Array.prototype.map.call($('#cambio-cubierta').options, function(o){ return o.textContent; });
+    if(opts.length !== 4 || opts[0] !== 'S-001 · Michelin X <Multi> Z · Nuevo · Montevideo' || opts.join('|').indexOf('Z-900') !== -1) fail('cambio: cubiertas ofrecidas: ' + opts.join(' | '));
+    if($('#cambio-quema-km-wrap').style.display !== 'none') fail('cambio: con cubierta del stock no deben verse quema ni km');
+    if($('#cambio-actual').innerHTML.indexOf('<Multi>') !== -1) fail('cambio: HTML sin escapar');
+    $('#cambio-cubierta').value = '32'; $('#cambio-cubierta').dispatchEvent(new w.Event('change', {bubbles: true}));
+    $('#cambio-motivo').value = 'Desgaste';
+    if($('#cambio-resumen').textContent.indexOf('cubierta S-002 del stock') === -1) fail('cambio: resumen con la cubierta: ' + $('#cambio-resumen').textContent);
+    $('#cambio-confirmar').click(); await sleep(400);
+    var ca = cambios()[cambios().length - 1].args;
+    if(ca.p_cubierta_id !== 32 || ca.p_stock_id !== null || ca.p_nuevo !== null || ca.p_numero_quema !== null || ca.p_km_previos !== 0 || 'p_devolver_stock' in ca) fail('cambio: args con cubierta: ' + JSON.stringify(ca));
+
+    // Almacenar: vuelve al stock en una sucursal; sin quema propia hay que indicarla
+    btn.click(); await sleep(600);
+    if($('#cambio-retorno-wrap').style.display !== 'none') fail('cambio: la sucursal de destino solo se ofrece al almacenar');
+    d.querySelector('input[name="cambio-destino"][value="almacenado"]').click(); await sleep(150);
+    if($('#cambio-retorno-wrap').style.display === 'none') fail('cambio: al almacenar falta la sucursal donde queda en stock');
+    var sucs = Array.prototype.map.call($('#cambio-retorno-suc').options, function(o){ return o.textContent; });
+    if(sucs[0] !== 'Sin sucursal' || sucs.indexOf('Montevideo') === -1 || sucs.indexOf('Ajena') !== -1) fail('cambio: sucursales ofrecidas: ' + sucs.join('|'));
+    if($('#cambio-quema-viejo-wrap').style.display === 'none') fail('cambio: el neumático sin quema debe pedirla para volver al stock');
+    var antesA = cambios().length;
+    d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); $('#cambio-marca').value = 'Pirelli';
+    $('#cambio-confirmar').click(); await sleep(250);
+    if(cambios().length !== antesA || $('#cambio-error').textContent.indexOf('número de quema del neumático retirado') === -1) fail('cambio: llegó a la RPC sin quema del neumático retirado: ' + $('#cambio-error').textContent);
+    $('#cambio-quema-viejo').value = ' Q-OLD '; $('#cambio-retorno-suc').value = '1';
+    $('#cambio-confirmar').click(); await sleep(400);
+    var cv = cambios()[cambios().length - 1].args;
+    if(cambios().length !== antesA + 1 || cv.p_destino_viejo !== 'almacenado' || cv.p_devolver_stock !== true || cv.p_sucursal_stock !== 1 || cv.p_quema_viejo !== 'Q-OLD' || cv.p_cubierta_id !== undefined) fail('cambio: args al devolver al stock: ' + JSON.stringify(cv));
+  }
   btn.remove();
 };

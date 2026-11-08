@@ -54,6 +54,11 @@
       mediciones.push({id:f.posicion*100+k, medicion_id:f.posicion*100+k, estado_montaje:'montado', posicion_actual:f.posicion, vehiculo_id:10, cliente_id:1, posicion:f.posicion, mm1:mm+0.2, mm2:mm, mm3:mm-0.2, promedio:mm, created_at:D(k*7+2)});
     }
   });
+  // Cubiertas del stock del cliente 1 (neumáticos sin vehículo): las ofrece el cambio de neumático al perfil global y al admin.
+  neumaticos.push(
+    {id:3101,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X Multi Z',condicion:'nuevo',sucursal_id:1,estado:'almacenado'},
+    {id:3102,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,estado:'almacenado'},
+    {id:3103,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,estado:'almacenado'});
   var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [] };
 
@@ -61,6 +66,7 @@
     var rows = T[table].slice(), rng = null, single = false;
     var q = {
       select:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; }, not:function(){ return q; },
+      is:function(c,v){ rows = rows.filter(function(r){ return v===null ? (r[c]===null||r[c]===undefined) : r[c]===v; }); return q; },
       eq:function(c,v){ rows = rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
       range:function(a,b){ rng=[a,b]; return q; },
       single:function(){ single=true; return q; }, maybeSingle:function(){ single=true; return q; },

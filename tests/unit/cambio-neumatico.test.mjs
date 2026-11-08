@@ -125,3 +125,71 @@ test('el resumen menciona quema, km previos y odómetro solo cuando se informan'
   assert.match(r.resumen, /1200 km previos/);
   assert.match(r.resumen, /odómetro 1500 km/);
 });
+
+// --- Cubierta individual del stock y devolución del neumático retirado al stock -----------------------------------
+const cubiertas = [
+  { id: 41, numero_quema: 'S-001', marca: 'Michelin', modelo: 'X', condicion: 'nuevo', sucursal_id: 1, vehiculo_id: null, estado: 'almacenado' },
+  { id: 42, numero_quema: 'S-002', marca: 'Pirelli', condicion: 'usado', sucursal_id: null, vehiculo_id: null },
+  { id: 43, numero_quema: 'S-003', marca: 'Montada', vehiculo_id: 10, estado: 'montado' },
+];
+const sucursales = [{ id: 1, nombre: 'Montevideo' }, { id: 2, nombre: 'Salto' }];
+const conCubierta = { ...base, origen: 'cubierta', cubiertaId: '41', cubiertas, sucursales };
+
+test('cubierta individual: envía p_cubierta_id y no la quema ni los km del formulario', () => {
+  const r = validarCambio({ ...conCubierta, numeroQuema: 'IGNORADA', kmPrevios: '500' });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: 'Desgaste',
+    p_odometro_km: null, p_stock_id: null, p_nuevo: null, p_numero_quema: null, p_km_previos: 0, p_cubierta_id: 41 });
+  assert.match(r.resumen, /cubierta S-001 del stock/);
+  assert.doesNotMatch(r.resumen, /IGNORADA|km previos/);
+});
+
+test('cubierta individual: rechaza la que no está disponible o no existe', () => {
+  assert.equal(validarCambio({ ...conCubierta, cubiertaId: '43' }).ok, false);   // montada
+  assert.equal(validarCambio({ ...conCubierta, cubiertaId: '99' }).ok, false);
+  assert.equal(validarCambio({ ...conCubierta, cubiertaId: '' }).ok, false);
+  assert.equal(validarCambio({ ...conCubierta, cubiertas: [] }).ok, false);
+});
+
+test('los lotes y el ingreso manual siguen sin parámetros nuevos (compatibles)', () => {
+  assert.equal('p_cubierta_id' in validarCambio(base).params, false);
+  assert.equal('p_devolver_stock' in validarCambio(base).params, false);
+  assert.equal('p_devolver_stock' in validarCambio({ ...base, destino: 'almacenado', devolverStock: false }).params, false);
+});
+
+test('almacenar con devolución al stock: sucursal indicada o sin sucursal', () => {
+  const a = validarCambio({ ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '2', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
+  assert.equal(a.ok, true);
+  assert.equal(a.params.p_devolver_stock, true);
+  assert.equal(a.params.p_sucursal_stock, 2);
+  assert.equal('p_quema_viejo' in a.params, false);        // ya tiene quema
+  assert.match(a.resumen, /vuelve al stock, Salto/);
+  const b = validarCambio({ ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
+  assert.equal(b.params.p_sucursal_stock, null);
+  assert.match(b.resumen, /vuelve al stock, Sin sucursal/);
+});
+
+test('almacenar sin quema propia exige indicarla; la envía recortada', () => {
+  const sin = { ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '1', sucursales };
+  assert.match(validarCambio(sin).error, /número de quema del neumático retirado/);
+  assert.match(validarCambio({ ...sin, quemaViejo: '  ' }).error, /número de quema del neumático retirado/);
+  assert.match(validarCambio({ ...sin, quemaViejo: 'Q'.repeat(41) }).error, /40/);
+  assert.equal(validarCambio({ ...sin, quemaViejo: ' Q-77 ' }).params.p_quema_viejo, 'Q-77');
+});
+
+test('otros destinos no devuelven al stock aunque se pida', () => {
+  const r = validarCambio({ ...base, destino: 'reparacion', devolverStock: true, sucursalStock: '1' });
+  assert.equal(r.ok, true);
+  assert.equal('p_devolver_stock' in r.params, false);
+});
+
+test('el destino «reencauche» se presenta como «Recauchutado»', () => {
+  assert.equal(DESTINOS.find(d => d.id === 'reencauche').label, 'Recauchutado');
+  assert.match(traducirErrorCambio({ code: '23514', message: 'el neumático ya alcanzó la vida máxima (3 reencauches)' }), /3 recauchutados/);
+});
+
+test('traducirErrorCambio: cubierta y devolución al stock', () => {
+  assert.match(traducirErrorCambio({ code: 'P0002', message: 'cubierta del stock inexistente o ya montada' }), /Esa cubierta ya no está disponible/);
+  assert.match(traducirErrorCambio({ code: '22023', message: 'el neumático retirado necesita número de quema para volver al stock' }), /necesita número de quema/);
+  assert.match(traducirErrorCambio({ message: 'el stock lo gestiona el perfil global: dejar el neumático retirado en el vehículo' }), /no puede usar el stock/);
+});

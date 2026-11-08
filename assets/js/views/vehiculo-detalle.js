@@ -263,7 +263,7 @@ function renderPanel() {
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
-        <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · reencauche ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
+        <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · recauchutado ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
       <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
     </div>
     <div class="vd-p-scroll">

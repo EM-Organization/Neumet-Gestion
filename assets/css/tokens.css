@@ -119,3 +119,37 @@
 /* Campos de texto del ABM de sucursales: mismo aspecto que los selects del panel */
 .sec-alta input, .sec-tabla input[type="text"], .sec-user-form input { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 8px 12px; font-size: 14px; font-family: var(--font); color: var(--text-primary); outline: none; }
 .sec-alta input:focus, .sec-tabla input[type="text"]:focus, .sec-user-form input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
+
+/* ── Stock de cubiertas individuales ── */
+.stk-resumen { color: var(--text-secondary); font-size: 13px; margin: 0 0 12px; min-height: 1em; }
+.stk-lista { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(80px, .8fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) 236px; gap: 12px; align-items: center; padding: 11px 16px; }
+.stk-cab { font-size: 12px; font-weight: 600; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
+.stk-fila { border-bottom: 1px solid var(--border); font-size: 14px; }
+.stk-fila:last-child { border-bottom: 0; }
+.stk-quema { font-family: var(--font-mono); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.stk-sub { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 400; font-family: var(--font); }
+.stk-sin { color: var(--text-tertiary); }
+.stk-acc { display: flex; gap: 6px; justify-content: flex-end; }
+.stk-btn { padding: 4px 10px; font-size: 13px; }
+.stk-btn.stk-del:hover:not(:disabled) { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+.stk-subtitulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 10px; }
+.stk-subtitulo h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+/* Condición: color apagado y siempre con texto */
+.badge.cond-nuevo { background: var(--success-bg); color: var(--success); }
+.badge.cond-usado { background: rgba(56,52,36,0.07); color: var(--text-secondary); }
+.badge.cond-reparado { background: var(--accent-light); color: var(--accent-dark); border: 1px solid var(--accent-border); }
+.badge.cond-recauchutado { background: var(--surface-secondary); color: var(--accent-dark); border: 1px solid var(--border-strong); }
+.cambio-retorno { display: none; }
+/* El filtro por sucursal de la barra superior es de vehículos: en Stock la ubicación se filtra en la propia vista */
+body:has(#contenido[data-vista="stock"]) #sec-selector { display: none !important; }
+@media (max-width: 760px) {
+  .stk-cab { display: none; }
+  .stk-fila { grid-template-columns: 1fr auto; grid-template-areas: "quema cond" "desc desc" "loc compra" "acc acc"; gap: 6px 12px; padding: 12px 14px; }
+  .stk-quema { grid-area: quema; }
+  .stk-cond { grid-area: cond; justify-self: end; }
+  .stk-desc { grid-area: desc; }
+  .stk-loc { grid-area: loc; font-size: 13px; }
+  .stk-compra { grid-area: compra; text-align: right; font-size: 13px; }
+  .stk-acc { grid-area: acc; justify-content: flex-start; flex-wrap: wrap; margin-top: 4px; }
+}

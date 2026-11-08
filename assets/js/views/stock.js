@@ -1,10 +1,16 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/auth.js';
+import { isClienteMode, currentClienteId, currentClienteNombre, currentSucursalId, esAdmin, onLogout } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
-import { registerView } from '../core/nav.js';
+import { registerView, switchView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
+import {
+  CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarCubierta, validarEdicion,
+  argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock
+} from '../domain/stock-cubiertas.js';
 
 let stockItems=[], stockModalMode='create', stockActiveId=null;
 let stockAssignMap={}; // stock_id → [{vehiculo_nombre, count}]
@@ -23,36 +29,123 @@ export async function loadStockAssignments(){
   });
 }
 
+// ── Cubiertas individuales (neumáticos sin montar) ─────────────────────────────────────────────────────────────
+// Cada cubierta es una fila de `neumaticos` sin vehículo. La escritura pasa solo por las RPC stock_cubierta_*: la
+// autorización (admin o perfil global del propio cliente) se verifica en la base. El perfil de sucursal no ve el stock.
+const $=id=>document.getElementById(id);
+let cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0;
+
+const puedeGestionar=()=>esAdmin()||(isClienteMode()&&currentSucursalId===null);
+const sucDe=cid=>sucursales.filter(x=>String(x.cliente_id)===String(cid));
+const nombreCliente=id=>(clientes.find(c=>String(c.id)===String(id))||{}).nombre||'';
+
+function cargarSelect(id,primera,opts,valor){
+  const sel=$(id); const previo=valor===undefined?sel.value:valor;
+  setHtml(sel, joinHtml([html`<option value="">${primera}</option>`, opts.map(o=>html`<option value="${o.id}">${o.label}</option>`)]));
+  if([...sel.options].some(o=>o.value===String(previo))) sel.value=String(previo);
+}
+
+function opcionesFiltros(){
+  const admin=esAdmin();
+  const cli=$('filter-cliente-stock'); cli.style.display=admin?'':'none';
+  if(admin) cargarSelect('filter-cliente-stock','Todos los clientes',clientes.map(c=>({id:c.id,label:c.nombre})));
+  const cid=admin?$('filter-cliente-stock').value:String(currentClienteId);
+  const sucs=cid?sucDe(cid):sucursales;
+  const dup=admin&&!cid;
+  cargarSelect('filter-sucursal-stock','Todas las sucursales',[
+    ...sucs.map(x=>({id:x.id,label:dup?`${x.nombre} · ${nombreCliente(x.cliente_id)}`:x.nombre})),
+    {id:'ninguna',label:'Sin sucursal'}]);
+  cargarSelect('filter-condicion-stock','Todas las condiciones',CONDICIONES.map(c=>({id:c.id,label:c.label})));
+}
+
+const filtros=()=>({
+  texto:$('search-stock').value, cliente:esAdmin()?$('filter-cliente-stock').value:'',
+  sucursal:$('filter-sucursal-stock').value, condicion:$('filter-condicion-stock').value
+});
+
+function renderCubiertas(){
+  const admin=esAdmin();
+  const lista=filtrarCubiertas(ordenarCubiertas(cubiertas),filtros());
+  const r=resumenCubiertas(lista);
+  const alta=puedeGestionar();
+  $('btn-cubierta-nueva').style.display=alta?'':'none';
+  $('stk-resumen').textContent=!cubiertas.length?'':`${plural(r.total,'cubierta')}${r.porCondicion.length?' · '+r.porCondicion.map(c=>`${c.label} ${c.n}`).join(' · '):''}`;
+  if(!cubiertas.length){
+    setHtml($('stk-lista'), html`<div class="empty-state"><div class="empty-title">Sin cubiertas en stock</div>${alta?html`<div class="empty-sub">Usar «Agregar cubierta» para cargar la primera.</div>`:''}</div>`);
+    return;
+  }
+  if(!lista.length){
+    setHtml($('stk-lista'), html`<div class="empty-state"><div class="empty-title">Ninguna cubierta coincide</div><div class="empty-sub">Cambiar la búsqueda o el filtro.</div></div>`);
+    return;
+  }
+  setHtml($('stk-lista'), html`<ul class="stk-lista" aria-label="Cubiertas en stock">
+    <li class="stk-cab" aria-hidden="true"><span>Quema</span><span>Cubierta</span><span>Condición</span><span>Ubicación</span><span>Compra</span><span></span></li>
+    ${lista.map(c=>{
+      const loc=nombreUbicacion(c.sucursal_id,sucursales);
+      const cli=admin?(c.clientes&&c.clientes.nombre)||nombreCliente(c.cliente_id):'';
+      const etq=c.numero_quema||'sin quema';
+      return html`<li class="stk-fila" data-cubierta="${c.id}">
+        <span class="stk-quema">${c.numero_quema||'—'}${cli?html`<span class="stk-sub">${cli}</span>`:''}</span>
+        <span class="stk-desc">${c.marca||'Sin marca'}${c.modelo?html` <span class="stk-sub">${c.modelo}</span>`:''}</span>
+        <span class="stk-cond"><span class="badge ${claseCondicion(c.condicion)}">${etiquetaCondicion(c.condicion)}</span></span>
+        <span class="stk-loc${c.sucursal_id===null?' stk-sin':''}">${loc}</span>
+        <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
+        <span class="stk-acc">${alta?html`
+          <button type="button" class="btn ghost stk-btn" data-action="cubiertaEditar" data-args="[${c.id}]" aria-label="Editar la cubierta ${etq}">Editar</button>
+          <button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Mover la cubierta ${etq}">Mover</button>
+          <button type="button" class="btn ghost stk-btn stk-del" data-action="cubiertaEliminar" data-args="[${c.id}]" aria-label="Eliminar la cubierta ${etq}">Eliminar</button>`:''}</span>
+      </li>`;
+    })}</ul>`);
+}
+
+async function traerCubiertas(){
+  return fetchAll((from,to)=>{
+    let q=db.from('neumaticos')
+      .select('id,cliente_id,numero_quema,marca,modelo,fecha_compra,precio_unidad,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
+      .is('vehiculo_id',null).order('id').range(from,to);
+    if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
+    return q;
+  },{pageSize:PAGE_SIZE,max:50000});
+}
+
 export async function loadStock(){
-  const tbody=document.getElementById('tbody-stock');
+  const mio=++cargaN;
+  const tbody=$('tbody-stock');
   setHtml(tbody, html`<tr><td colspan="9"><div class="loading-state"><div class="spinner"></div></div></td></tr>`);
   let sq=db.from('stock_neumaticos')
     .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
     .order('created_at',{ascending:false});
   if(isClienteMode()) sq=sq.eq('cliente_id',currentClienteId);
-  const {data,error}=await sq;
-  if(error){ showToast(userError(error),true); return; }
-  stockItems=data||[];
-  const sel=document.getElementById('filter-cliente-stock');
-  const cmap=new Map();
-  stockItems.forEach(s=>{ if(s.clientes) cmap.set(s.cliente_id,s.clientes.nombre); });
-  setHtml(sel, joinHtml([html`<option value="">Todos los clientes</option>`, [...cmap.entries()].map(([id,n])=>html`<option value="${id}">${n}</option>`)]));
+  let sucQ=db.from('sucursales').select('id,nombre,cliente_id').order('nombre');
+  if(isClienteMode()) sucQ=sucQ.eq('cliente_id',currentClienteId);
+  const [rl,rc,rs,rcl]=await Promise.all([sq,traerCubiertas(),sucQ,
+    esAdmin()?db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre'):Promise.resolve({data:[]})]);
+  if(mio!==cargaN) return; // llegó una carga más nueva
+  if(rl.error||rc.error){ showToast(userError(rl.error||rc.error),true); return; }
+  stockItems=rl.data||[];
+  cubiertas=rc.rows||[];
+  sucursales=rs.error?[]:(rs.data||[]);
+  clientes=rcl.error?[]:(rcl.data||[]);
+  opcionesFiltros();
   await loadStockAssignments();
+  if(mio!==cargaN) return;
   renderStock();
 }
 
 function renderStock(){
-  document.getElementById('filter-cliente-stock').style.display=isClienteMode()?'none':'';
-  const q=document.getElementById('search-stock').value.toLowerCase();
-  const cid=isClienteMode()?String(currentClienteId):document.getElementById('filter-cliente-stock').value;
-  const tbody=document.getElementById('tbody-stock');
+  renderCubiertas();
+  const q=$('search-stock').value.toLowerCase();
+  const cid=isClienteMode()?String(currentClienteId):$('filter-cliente-stock').value;
+  const tbody=$('tbody-stock');
   const filtered=stockItems.filter(s=>{
     const mq=(s.marca||'').toLowerCase().includes(q)||(s.modelo||'').toLowerCase().includes(q);
     const mc=!cid||String(s.cliente_id)===cid;
     return mq&&mc;
   });
+  // Los lotes anteriores solo se muestran si existen (o para el admin, que los carga).
+  $('stock-lotes').style.display=(stockItems.length||esAdmin())?'':'none';
   if(!filtered.length){
-    setHtml(tbody, html`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin neumáticos en stock</div></div></td></tr>`);
+    setHtml(tbody, html`<tr><td colspan="9"><div class="empty-state"><div class="empty-title">Sin lotes registrados</div></div></td></tr>`);
     return;
   }
   setHtml(tbody, joinHtml(filtered.map(s=>{
@@ -213,11 +306,138 @@ async function removeStock(id){
   showToast('Eliminado');
 }
 
+// ── Alta, edición, traslado y eliminación de cubiertas ──────────────────────────────────────────────────────────
+const err=(id,msg)=>{ $(id).textContent=msg||''; };
+const hoyISO=()=>new Date().toISOString().slice(0,10);
+// Avisa al buscador global (core/buscador.js) para que vuelva a leer las quemas en stock.
+const notificar=()=>document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
+
+function opcionesSucursal(clienteId,primera='Sin sucursal'){
+  return joinHtml([html`<option value="">${primera}</option>`, sucDe(clienteId).map(x=>html`<option value="${x.id}">${x.nombre}</option>`)]);
+}
+
+async function rpcStock(nombre,args,okMsg,campoError){
+  err(campoError,'');
+  const {error}=await db.rpc(nombre,args);
+  if(error){
+    console.error(error);
+    const m=traducirErrorStock(error);
+    err(campoError,m); showToast(m,true);
+    return false;
+  }
+  showToast(okMsg);
+  notificar();
+  await loadStock();
+  return true;
+}
+
+ACTIONS.cubiertaNueva=function(){
+  if(!puedeGestionar()) return;
+  cubiertaModal={modo:'crear'};
+  const admin=esAdmin();
+  $('cubierta-title').textContent='Agregar cubierta';
+  $('cb-cliente-wrap').style.display=admin?'':'none';
+  if(admin){
+    setHtml($('cb-cliente'), joinHtml(clientes.map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
+    const f=$('filter-cliente-stock').value; if(f) $('cb-cliente').value=f;
+  }
+  const cid=admin?$('cb-cliente').value:currentClienteId;
+  ['cb-quema','cb-marca','cb-modelo','cb-fecha','cb-precio'].forEach(id=>{ $(id).value=''; });
+  $('cb-quema').disabled=false; $('cb-quema-hint').textContent='Único por cliente.';
+  $('cb-sucursal-wrap').style.display=''; $('cb-condicion-wrap').style.display='none';
+  setHtml($('cb-sucursal'), opcionesSucursal(cid));
+  err('cb-error','');
+  $('cb-guardar').textContent='Guardar';
+  $('modal-cubierta').classList.add('show');
+};
+ACTIONS.cubiertaCliente=function(){ setHtml($('cb-sucursal'), opcionesSucursal($('cb-cliente').value)); };
+
+ACTIONS.cubiertaEditar=function(id){
+  const c=cubiertas.find(x=>String(x.id)===String(id)); if(!c||!puedeGestionar()) return;
+  cubiertaModal={modo:'editar',cubierta:c};
+  $('cubierta-title').textContent='Editar cubierta';
+  $('cb-cliente-wrap').style.display='none';
+  $('cb-quema').value=c.numero_quema||''; $('cb-quema').disabled=true;
+  $('cb-quema-hint').textContent='La quema identifica a la cubierta y no se edita.';
+  $('cb-marca').value=c.marca||''; $('cb-modelo').value=c.modelo||'';
+  $('cb-fecha').value=c.fecha_compra||''; $('cb-precio').value=c.precio_unidad??'';
+  $('cb-sucursal-wrap').style.display='none'; $('cb-condicion-wrap').style.display='';
+  setHtml($('cb-condicion'), joinHtml([html`<option value="">${etiquetaCondicion(c.condicion)} (actual)</option>`,
+    CONDICIONES_MANUALES.filter(x=>x.id!==c.condicion).map(x=>html`<option value="${x.id}">${x.label}</option>`)]));
+  err('cb-error','');
+  $('cb-guardar').textContent='Guardar';
+  $('modal-cubierta').classList.add('show');
+  setTimeout(()=>$('cb-marca').focus(),60);
+};
+ACTIONS.cubiertaCerrar=function(){ $('modal-cubierta').classList.remove('show'); cubiertaModal=null; };
+
+ACTIONS.cubiertaGuardar=async function(){
+  if(!cubiertaModal||!puedeGestionar()) return;
+  const btn=$('cb-guardar');
+  const campos={ marca:$('cb-marca').value, modelo:$('cb-modelo').value, fechaCompra:$('cb-fecha').value, precio:$('cb-precio').value };
+  let nombre,args,ok;
+  if(cubiertaModal.modo==='crear'){
+    const r=validarCubierta({...campos,quema:$('cb-quema').value,sucursalId:$('cb-sucursal').value,
+      clienteId:esAdmin()?$('cb-cliente').value:null},{esAdmin:esAdmin(),hoy:hoyISO()});
+    if(!r.ok){ err('cb-error',r.error); return; }
+    nombre='stock_cubierta_agregar'; args=r.args; ok='Cubierta agregada';
+  } else {
+    const r=validarEdicion(cubiertaModal.cubierta,{...campos,condicion:$('cb-condicion').value},{hoy:hoyISO()});
+    if(!r.ok){ err('cb-error',r.error); return; }
+    nombre='stock_cubierta_editar'; args=r.args; ok='Cubierta actualizada';
+  }
+  btn.disabled=true; btn.textContent='Guardando…';
+  try{ if(await rpcStock(nombre,args,ok,'cb-error')) ACTIONS.cubiertaCerrar(); }
+  finally{ btn.disabled=false; btn.textContent='Guardar'; }
+};
+
+ACTIONS.cubiertaMover=function(id){
+  const c=cubiertas.find(x=>String(x.id)===String(id)); if(!c||!puedeGestionar()) return;
+  moverId=c.id;
+  $('cubierta-mover-sub').textContent=`Quema ${c.numero_quema||'—'} · ahora en ${nombreUbicacion(c.sucursal_id,sucursales)}`;
+  setHtml($('cbm-sucursal'), opcionesSucursal(c.cliente_id));
+  $('cbm-sucursal').value=c.sucursal_id===null?'':String(c.sucursal_id);
+  err('cbm-error','');
+  $('modal-cubierta-mover').classList.add('show');
+};
+ACTIONS.cubiertaMoverCerrar=function(){ $('modal-cubierta-mover').classList.remove('show'); moverId=null; };
+ACTIONS.cubiertaMoverGuardar=async function(){
+  const c=cubiertas.find(x=>x.id===moverId); if(!c) return;
+  const destino=$('cbm-sucursal').value;
+  if(String(c.sucursal_id??'')===destino){ err('cbm-error','La cubierta ya está en esa ubicación'); return; }
+  const btn=$('cbm-guardar'); btn.disabled=true;
+  try{ if(await rpcStock('stock_cubierta_mover',argsMoverCubierta(c.id,destino),'Cubierta movida','cbm-error')) ACTIONS.cubiertaMoverCerrar(); }
+  finally{ btn.disabled=false; }
+};
+
+ACTIONS.cubiertaEliminar=async function(id){
+  const c=cubiertas.find(x=>String(x.id)===String(id)); if(!c||!puedeGestionar()) return;
+  const ok=await confirmDialog('Eliminar cubierta',`¿Eliminar la cubierta ${c.numero_quema||''}? Solo se puede si nunca se usó.`);
+  if(!ok) return;
+  const {error}=await db.rpc('stock_cubierta_eliminar',{p_id:c.id});
+  if(error){ console.error(error); showToast(traducirErrorStock(error),true); return; }
+  showToast('Cubierta eliminada');
+  notificar();
+  await loadStock();
+};
+
+// Desde el buscador global: abre Stock filtrado por la quema.
+ACTIONS.verStockQuema=function(quema){
+  $('search-stock').value=String(quema||'');
+  $('filter-sucursal-stock').value=''; $('filter-condicion-stock').value='';
+  if(esAdmin()) $('filter-cliente-stock').value='';
+  switchView('stock');
+};
+
+onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubiertaModal=null; moverId=null; $('search-stock').value=''; });
+
 ACTIONS.loadStock=loadStock;
 export const load=loadStock;
 registerView('stock','Stock',loadStock);
 
 export function init(){
-  document.getElementById('search-stock').addEventListener('input',renderStock);
-  document.getElementById('filter-cliente-stock').addEventListener('change',renderStock);
+  $('search-stock').addEventListener('input',renderStock);
+  // Cambiar el cliente reduce las sucursales ofrecidas en el filtro.
+  $('filter-cliente-stock').addEventListener('change',()=>{ opcionesFiltros(); renderStock(); });
+  ['filter-sucursal-stock','filter-condicion-stock'].forEach(id=>$(id).addEventListener('change',renderStock));
 }
