@@ -7,9 +7,9 @@
 ## Infraestructura
 | Pieza | Estado |
 |---|---|
-| Proyecto Supabase `kootszosdejmawanfxug` | Proyecto vigente. Migraciones en `supabase/migrations/` (12, hasta `20261110020000_ultimas_mediciones`); comparar con `list_migrations` antes de cada despliegue |
+| Proyecto Supabase `kootszosdejmawanfxug` | Proyecto vigente. Migraciones en `supabase/migrations/` (15, hasta `20261113000000_stock_cubiertas`), todas aplicadas en el proyecto; comparar con `list_migrations` antes de cada despliegue |
 | Proyecto Supabase anterior `dqgrlflrjcarxlfetvoj` | **Cutover realizado**: sin referencias en código, CSP ni formulario de contacto. Solo queda su payload anon en `.gitleaks.toml` porque sigue en el historial |
-| Edge Function `api-proveedor` | Desplegada (`verify_jwt = false`; el Bearer se valida dentro del handler) |
+| Edge Function `api-proveedor` | Desplegada (`verify_jwt = false`; el Bearer se valida dentro del handler). Devuelve el motivo `sin_neumaticos` (migración `20261112000000`) |
 | Edge Function `contacto` | Desplegada en el proyecto vigente con `RESEND_API_KEY`, `FROM_EMAIL`, `TO_EMAIL` y `ALLOWED_ORIGINS` cargados |
 | Edge Functions `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` | En el repositorio; despliegue y `ALLOWED_ORIGINS` **[confirmar]** |
 | Vercel `neumet-gestion-theta.vercel.app` | Desplegado desde `main`; CSP sin `unsafe-inline` en scripts |
@@ -21,6 +21,11 @@
 - Panel en módulos ES con tests unitarios, smoke, visuales, SQL y E2E contra base real local.
 - Funcionalidades: Inicio con buscador y «Últimas mediciones», Vehículos y detalle con diagrama y gráfico, cambio de neumático, rotación, número de quema, km previos, Sucursales (crear, mover vehículos), Stock, Alertas, Reportes, Dispositivos (solo administrador), ficha de cliente con umbrales y cuentas de API, baja lógica de clientes.
 - Cutover del frontend al proyecto vigente, incluido el formulario de contacto de la landing.
+- Stock individual de cubiertas (migración `20261113000000`): quema, condición, sucursal, traslados y devolución al stock desde el cambio de neumático; demo con las cubiertas `S-001` a `S-012`.
+- Tasa de desgaste robusta (al menos 3 mediciones y 14 días, ventana reiniciada por evento) y `v_estado_neumaticos` por neumático (migración `20261111000000`, función `posiciones_medidas_sin_neumatico`); referencia de flota con `MIN_MUESTRAS` = 5 (ver [15](15-rotacion-alertas-rendimiento.md), C.6 y C.7).
+- Mini vehículos con posiciones legibles en Alertas y en el ciclo de vida del neumático.
+- Motivo `sin_neumaticos` en la API de proveedor (migración `20261112000000`).
+- Pantalla «Sin acceso» para sesiones sin perfil o con perfil `api` (sin menú ni consultas de datos).
 - Documentación del producto: README raíz, índice de `docs/` y guías de revisión y de textos.
 
 ## Pendientes
@@ -35,7 +40,9 @@
 | Cuenta con rol `api` para la app | Crearla desde la ficha del cliente (runbook §2) |
 | Confirmar con DAC el orden físico de `mm1..mm4` | Resuelto en el mapeo (mm1 interno, mm2 centro, mm3 externo); falta la prueba con la app real |
 | Prueba de punta a punta con sesión y datos reales | Los E2E cubren una base local con datos de demo; falta el entorno real |
-| Alertas personalizables, recomendación de rotación y optimización de la vista de desgaste | Diseño en [15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md); implementación pendiente |
+| Alertas personalizables y recomendación de rotación | Diseño en [15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md) (secciones A y B); implementación pendiente |
+| Referencia de flota en el servidor y tabla de estado por neumático | Medidas 2 a 4 de la sección C de [15](15-rotacion-alertas-rendimiento.md); se aplican según el tamaño de la flota |
+| Destinos «reparación» y «recauchutado» sin vuelta al stock | Hoy esas cubiertas quedan aparcadas en el vehículo (fase F1 de [16](16-hoja-de-ruta.md)) |
 
 ### Sugerencias del revisor (sin resolver)
 - `x-forwarded-for` es falseable en el límite de intentos de login.

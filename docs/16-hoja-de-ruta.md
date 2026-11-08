@@ -20,19 +20,23 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Montaje, desmontaje, rotación y cambio con eventos y auditoría | Hecho |
 | Mediciones por cubierta (no por posición), últimas mediciones con comparativa | Hecho |
 | API de proveedor con idempotencia, mapeo mm1/mm2/mm3 y trazabilidad | Hecho |
-| Tasa de desgaste robusta y vista rápida | En curso (PR de tasa) |
-| Stock individual con condición y sucursal | En curso (PR de stock de cubiertas: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
-| Motivo explícito `sin_neumaticos` en la API | En curso |
-| Mini vehículos y posiciones legibles | En curso |
+| Tasa de desgaste robusta y vista rápida | Hecho (migración `20261111000000`; `MIN_MUESTRAS` = 5; ver `docs/15`, C.6 y C.7) |
+| Stock individual con condición y sucursal | Hecho (migración `20261113000000`: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
+| Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
+| Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
+| Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
+| Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
+
+Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubiertas`.
 
 ## Fases propuestas
 
-### F1 · Stock individual y custodia (siguiente)
+### F1 · Stock individual y custodia (en gran parte hecho)
 - Cubierta de stock individual: quema, marca, modelo, fecha de compra, precio opcional, **condición** (Nuevo → Usado al primer montaje; Reparado y Recauchutado manuales) y **ubicación** (sucursal).
 - Traslados entre sucursales con registro del movimiento (origen, destino, fecha, autor).
 - Desmontaje con destino explícito: volver a stock (usado apto), reparación, recauchutado o baja.
 - Criterio de salida: una cubierta conserva su historial completo al pasar por stock, vehículo y sucursal; ninguna operación duplica o pierde unidades.
-- Estado: cubierta individual, condición, ubicación, traslado con registro y devolución al stock desde «Cambiar neumático» (destino «Almacenar») están en el PR de stock de cubiertas. Pendiente de F1: que los destinos «reparación» y «recauchutado» también devuelvan la cubierta a un lugar del stock al volver (hoy quedan aparcadas en el vehículo) y la baja con disposición física (F9).
+- Estado: cubierta individual, condición, ubicación, traslado con registro y devolución al stock desde «Cambiar neumático» (destino «Almacenar») están implementados (migración `20261113000000`). Pendiente de F1: que los destinos «reparación» y «recauchutado» también devuelvan la cubierta a un lugar del stock al volver (hoy quedan aparcadas en el vehículo) y la baja con disposición física (F9).
 
 ### F2 · Montaje como intervalo y km por cubierta
 - Km de la cubierta = km previos + suma de los tramos montados (odómetro final − inicial de cada montaje). No comparar odómetros absolutos entre vehículos.
@@ -59,7 +63,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 ### F6 · Indicadores de desgaste interpretables
 - mm útiles = max(0, mínimo − umbral), caucho útil %, tasa por 1.000 km (cuando hay km confiables), km restantes lineales y fecha estimada de retiro como **escenario** (no garantía).
 - Detección de asimetría interior/exterior (alineación) y de centro frente a hombros (presión), siempre como indicios.
-- Ver diseño y mediciones de rendimiento en `docs/15-rotacion-alertas-rendimiento.md`.
+- Ver diseño y mediciones de rendimiento en `docs/15-rotacion-alertas-rendimiento.md`. La tasa por semana con tiempo transcurrido y la referencia de flota con `MIN_MUESTRAS` = 5 ya están implementadas; faltan las demás métricas de esta fase.
 
 ### F7 · Alertas accionables
 - Un solo tipo de alerta «crítico» personalizable por cliente, con histéresis, reconocimiento, silencio y cierre (etapa 1 de `docs/15`).
