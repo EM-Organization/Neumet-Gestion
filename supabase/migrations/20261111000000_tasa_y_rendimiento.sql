@@ -33,6 +33,36 @@
 -- v_resumen_flota_cliente no cambian (leen esta vista).
 -- =============================================================================
 
+-- Posiciones con mediciones en un vehículo que no tienen fila en neumaticos (regla 3), enumeradas saltando por el
+-- índice vehículo/posición (una sonda por posición distinta). Es una función (y no una CTE recursiva dentro de la
+-- vista) para declarar ROWS 1: el planificador estima ~100 filas por vehículo en una CTE recursiva y la vista salía con
+-- un costo estimado de cientos de miles incluso con 14 vehículos, lo que dispara el JIT de PostgreSQL (jit_above_cost =
+-- 100000) y añade cientos de ms de compilación a cada consulta donde el JIT está disponible (imagen postgres:16 de CI).
+-- SECURITY INVOKER: la RLS de mediciones y neumaticos decide qué ve cada rol.
+create or replace function public.posiciones_medidas_sin_neumatico(p_vehiculo_id bigint)
+returns setof smallint
+language sql
+stable
+security invoker
+set search_path = ''
+rows 1
+as $$
+  with recursive q(posicion) as (
+    (select m.posicion from public.mediciones m where m.vehiculo_id = p_vehiculo_id order by m.posicion limit 1)
+    union all
+    select (select m.posicion from public.mediciones m
+             where m.vehiculo_id = p_vehiculo_id and m.posicion > q.posicion order by m.posicion limit 1)
+      from q where q.posicion is not null
+  )
+  select q.posicion from q
+   where q.posicion is not null
+     and not exists (select 1 from public.neumaticos np
+                      where np.vehiculo_id = p_vehiculo_id and np.posicion = q.posicion)
+$$;
+
+revoke all on function public.posiciones_medidas_sin_neumatico(bigint) from public, anon;
+grant execute on function public.posiciones_medidas_sin_neumatico(bigint) to authenticated;
+
 create or replace view public.v_estado_neumaticos
 with (security_invoker = true) as
 with s as (
@@ -120,17 +150,8 @@ with s as (
     c.umbral_bajo_mm, c.umbral_critico_mm, c.umbral_retiro_mm, c.dias_sin_medir_alerta, c.irregularidad_mm
   from public.vehiculos v
   join public.clientes c on c.id = v.cliente_id and c.deleted_at is null
-  -- Posiciones distintas medidas en el vehículo (salto por el índice vehículo/posición).
-  cross join lateral (
-    with recursive q(posicion) as (
-      (select m.posicion from public.mediciones m where m.vehiculo_id = v.id order by m.posicion limit 1)
-      union all
-      select (select m.posicion from public.mediciones m
-               where m.vehiculo_id = v.id and m.posicion > q.posicion order by m.posicion limit 1)
-        from q where q.posicion is not null
-    )
-    select q.posicion from q where q.posicion is not null
-  ) q
+  -- Posiciones medidas del vehículo sin fila en neumaticos (función con ROWS bajo: ver arriba).
+  cross join lateral public.posiciones_medidas_sin_neumatico(v.id) as q(posicion)
   cross join lateral (
     select max(e.created_at) as cut
       from public.eventos_neumatico e
@@ -156,8 +177,6 @@ with s as (
        and (z.cut is null or m.created_at >= z.cut) and m.created_at >= now() - interval '90 days'
   ) a
   where v.activo
-    and not exists (select 1 from public.neumaticos np
-                     where np.vehiculo_id = v.id and np.posicion = q.posicion)
 ),
 b as (
   select
