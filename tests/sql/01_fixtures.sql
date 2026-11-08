@@ -30,8 +30,8 @@ create temp table _m (veh bigint, cli bigint, pos smallint, dias numeric, a nume
 insert into _m values
   -- V1 pos1: 12,11,10 cada 7 días => 1.0 mm/sem; crítico en 5 sem; retiro en 7
   (1,1,1,14,12,12,12,null,10000),(1,1,1,7,11,11,11,null,10500),(1,1,1,0,10,10,10,null,11000),
-  -- V1 pos2: promedio exacto 8.0 (ok), 1 mm/sem => crítico en 3 sem
-  (1,1,2,7,9,9,9,null,null),(1,1,2,0,8,8,8,null,null),
+  -- V1 pos2: promedio exacto 8.0 (ok), 3 mediciones en 14 días (mínimo para tasa), 1 mm/sem => crítico en 3 sem
+  (1,1,2,14,10,10,10,null,null),(1,1,2,7,9,9,9,null,null),(1,1,2,0,8,8,8,null,null),
   -- V1 pos3: 5.0 exacto (bajo)
   (1,1,3,1,5,5,5,null,null),
   -- V1 pos4: 4.99 (crítico)
@@ -65,10 +65,11 @@ insert into public.dispositivos (mac_address, nombre, cliente_id) values
   ('AA:BB:CC:00:00:01','d1',1),('AA:BB:CC:00:00:02','d2',1),('AA:BB:CC:00:00:03','d3',1),
   ('AA:BB:CC:00:00:04','d4 nunca',1),('AA:BB:CC:00:00:05','d5',2);
 
-insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, odometro_km, costo) values
-  (1, 1, (select id from public.neumaticos where idneumatico='T-1-1'), 'T-1-1', 'montaje', 10000, 350.00),
-  (1, 1, (select id from public.neumaticos where idneumatico='T-1-2'), 'T-1-2', 'reparacion', 10200, 20.50),
-  (2, 3, (select id from public.neumaticos where idneumatico='T-3-1'), 'T-3-1', 'montaje', 500, 400.00);
+-- Fechados 120 días atrás (antes de las mediciones): un evento de montaje/reparación reinicia la ventana de la tasa.
+insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, odometro_km, costo, created_at) values
+  (1, 1, (select id from public.neumaticos where idneumatico='T-1-1'), 'T-1-1', 'montaje', 10000, 350.00, now() - interval '2880 hours'),
+  (1, 1, (select id from public.neumaticos where idneumatico='T-1-2'), 'T-1-2', 'reparacion', 10200, 20.50, now() - interval '2880 hours'),
+  (2, 3, (select id from public.neumaticos where idneumatico='T-3-1'), 'T-3-1', 'montaje', 500, 400.00, now() - interval '2880 hours');
 
 insert into public.gastos (nombre, monto) values ('secreto', 100);
 commit;
