@@ -126,9 +126,9 @@ PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261113000000_stock_
 echo "== migración de stock de cubiertas (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261113000000_stock_cubiertas.sql"
 echo "== migración de km por cubierta (1/2)"
-PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114000000_km_por_cubierta.sql"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261115000000_km_por_cubierta.sql"
 echo "== migración de km por cubierta (2/2: idempotencia)"
-PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114000000_km_por_cubierta.sql"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261115000000_km_por_cubierta.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

@@ -392,7 +392,7 @@ El campo que el taller llamaba «kilometraje» mezclaba dos conceptos y rechazab
 |---|---|---|
 | **Km que ya traía el neumático** (`p_km_previos`) | `neumaticos.km_previos integer not null default 0` | Entero entre 0 y 999 999 999. `0` es válido y es el valor por defecto (neumático nuevo). `NULL` en la RPC se toma como 0. No depende del vehículo |
 | **Odómetro del vehículo** (`p_odometro_km`) | `vehiculos.odometro_km` (sin cambios) | Dato aparte y **opcional**. Si se informa no puede ser menor al actual: `23514` «el odómetro del vehículo no puede ser menor al actual (X km)» (antes la RPC lo aceptaba y solo ignoraba la actualización; para corregir a la baja el admin usa `vehiculo_registrar_odometro`). Se guarda en los eventos del cambio |
-| **Km recorridos** | calculado | Suma de tramos montados (odómetro final menos inicial de cada montaje en el mismo vehículo) más el tramo actual; desde `20261114000000` lo calcula la vista `v_km_cubierta` (apéndice G). Sin odómetro no hay recorridos conocidos y se muestra «Sin dato» |
+| **Km recorridos** | calculado | Suma de tramos montados (odómetro final menos inicial de cada montaje en el mismo vehículo) más el tramo actual; desde `20261115000000` lo calcula la vista `v_km_cubierta` (apéndice G). Sin odómetro no hay recorridos conocidos y se muestra «Sin dato» |
 | **Km totales** | calculado | `km_previos` más km recorridos (`km_totales` de la vista; NULL si ningún tramo tiene dato) |
 
 El modelo ya permitía el cálculo con `eventos_neumatico.odometro_km`; solo hizo falta la columna `km_previos`. El evento de montaje anota la quema y los km previos en `notas`.
@@ -483,7 +483,7 @@ No se migran ni se tocan: `stock_neumaticos` sigue con su cantidad y su RLS (sol
 SQL: `tests/sql/t_85_stock_cubiertas.sql` (matriz admin, global, sucursal, otro cliente, api, sin perfil y anon sobre las cuatro RPC; quema duplicada; sucursal de otro cliente; CHECK y FK; lectura y escritura directa; Nuevo → Usado al montar; no eliminar con uso; historial conservado al mover, montar y devolver; vistas y API sin cubiertas sin montar; lotes y destinos anteriores) y `t_60_seed_demo.sql` (12 cubiertas del demo); `run.sh` aplica la migración dos veces. Unitarias: `stock-cubiertas.test.mjs` y `cambio-neumatico.test.mjs`. Smoke: `stock.flow.js` y `cambio.flow.js`. Visual: `stock`, `stock-alta`, `stock-mover`, `stock-busqueda`, `cambio-cubierta` y `cambio-almacenar`. E2E: `specs/stock-cubiertas.mjs` (lista contra la base, alta, edición, traslado y eliminación por la interfaz, montar y devolver, montajes simultáneos, aislamiento de la sucursal y de «Otra Empresa SA»).
 
 
-# Apéndice G · Km por cubierta y control de odómetro (migración `20261114000000_km_por_cubierta.sql`, hoja de ruta F2)
+# Apéndice G · Km por cubierta y control de odómetro (migración `20261115000000_km_por_cubierta.sql`, hoja de ruta F2)
 
 ## G.1 Regla
 
@@ -507,7 +507,19 @@ SQL: `tests/sql/t_85_stock_cubiertas.sql` (matriz admin, global, sucursal, otro 
 
 Una cubierta montada sin evento de `montaje` (p. ej. cargada a mano antes de existir el historial) tiene tramo actual NULL y `km_confiable = false`: la vista no supone un odómetro de montaje.
 
-**Rendimiento.** Sin CTE recursiva ni `LATERAL`: un agregado por neumático con funciones de ventana sobre `eventos_neumatico` (`eventos_neumatico_neum_idx`) unido a `neumaticos` y `vehiculos`. En el harness de `tests/perf` (3.000 neumáticos, 5.000 eventos, PG16 con `jit = on`) como `authenticated` con RLS: la vista completa cuesta 79.716 (estimado, por debajo de `jit_above_cost = 100000`, así que no activa JIT; `v_estado_neumaticos` cuesta 4,2 millones en las mismas condiciones) y tarda 8 a 11 ms; un vehículo, 6,7 ms; un neumático (por `id`), 0,4 ms; por `idneumatico`, 1,5 ms. Como superusuario la vista completa cuesta 1.939. Producción tiene `jit = off`.
+**Historial completo con RLS.** Los tramos de cada cubierta los agrega `km_tramos_cubierta(p_neumatico)` (`SECURITY DEFINER`, `search_path = ''`, `plpgsql`, `select`/`execute` sin `anon`). La RLS de `eventos_neumatico` oculta a un perfil de sucursal los eventos de vehículos de otras sucursales; si la vista agregara solo los eventos visibles, una cubierta que pasó por otra sucursal mostraría km subestimados con `km_confiable = true`. La función responde **solo** por una cubierta que quien llama ya puede ver (el mismo criterio que las políticas de `neumaticos`: admin; perfil cliente con la cubierta en un vehículo de su cliente y, si es de sucursal, de su sucursal; perfil global con la cubierta en su stock) y devuelve solo agregados (cantidad de tramos, km, último odómetro de montaje y si hubo odómetro decreciente), sin fechas, notas ni datos de otras sucursales. Para `api`, sin perfil u otro cliente no devuelve ninguna fila (ni una de ceros). Un rol que ya omite la RLS (`service_role`, dueño, superusuario) ve todo. Los eventos en sí siguen ocultos para el perfil de sucursal.
+
+**Rendimiento.** Sin CTE recursiva. La vista hace un `LATERAL` correlacionado por `n.id` (la función usa `eventos_neumatico_neum_idx`), así que un filtro por `vehiculo_id` o `neumatico_id` solo agrega los eventos de esas cubiertas. Medido con `tests/perf/gen.sql` (ahora con unos 7 eventos de km por neumático: montajes, desmontajes en otro vehículo y rotaciones) y `tests/perf/bench.sh`, como `authenticated` con RLS, mediana de 3 `EXPLAIN ANALYZE`:
+
+| Consulta | PG17 `jit=off`, 3.000 neumáticos / 18.905 eventos | PG17 `jit=off`, 29.400 / 189.050 | PG16 `jit=on`, 3.000 |
+|---|---|---|---|
+| un vehículo, cliente | 2,7 ms | 2,8 ms | 2,8 ms |
+| un vehículo, admin | 2,3 ms | 2,3 ms | 2,3 ms |
+| un neumático, cliente | 1,8 ms | 1,7 ms | 1,8 ms |
+| vista completa, cliente | 83 ms | 87 ms | 82 ms |
+| vista completa, admin | 72 ms | 819 ms | 73 ms |
+
+Costo estimado del plan: 140 a 153 por vehículo; vista completa 30.350 (3.000) y 303.693 (29.400 como admin, que en una base con JIT activo lo dispararía; producción tiene `jit = off`). La vista completa cuesta unos 30 µs por cubierta (una llamada a la función por fila): para reportes sobre toda la flota (F4) conviene una agregación por lotes.
 
 ## G.3 Diagnóstico `odometro_anomalias(p_vehiculo bigint)`
 
@@ -519,7 +531,7 @@ Función `STABLE`, `SECURITY INVOKER` (la RLS de `eventos_neumatico` y `vehiculo
 | `negativo` | odómetro < 0 (la tabla ya lo impide con un CHECK; defensa por si se relaja) |
 | `actual_menor_que_evento` | el odómetro actual del vehículo es menor al del último evento con odómetro |
 
-Columnas: `vehiculo_id, evento_id, neumatico_id, tipo_evento, fecha, odometro_km, odometro_previo_km, evento_previo_id, anomalia`. La vista marca `odometro_anomalo` con el mismo criterio pero solo sobre los eventos del propio neumático (un odómetro decreciente entre eventos de neumáticos distintos del mismo vehículo lo ve la función, no la vista): así la vista se puede consultar por vehículo o por neumático sin recorrer todos los eventos.
+Columnas: `vehiculo_id, evento_id, neumatico_id, tipo_evento, fecha, odometro_km, odometro_previo_km, evento_previo_id, anomalia`. En la fila `actual_menor_que_evento` no hay evento propio: `evento_id` es NULL, `odometro_km` es el odómetro actual del vehículo y `evento_previo_id`, `odometro_previo_km`, `tipo_evento`, `fecha` y `neumatico_id` son los del último evento con odómetro. La vista marca `odometro_anomalo` con el mismo criterio pero solo sobre los eventos del propio neumático (un odómetro decreciente entre eventos de neumáticos distintos del mismo vehículo lo ve la función, no la vista): así la vista se puede consultar por vehículo o por neumático sin recorrer todos los eventos.
 
 `neumatico_cambiar` rechaza un odómetro menor al actual del vehículo (`23514`) y `vehiculo_registrar_odometro` solo deja bajarlo al admin; no cambian. La corrección auditada de un odómetro queda pendiente de F2.
 
@@ -532,7 +544,7 @@ Columnas: `vehiculo_id, evento_id, neumatico_id, tipo_evento, fecha, odometro_km
 
 ## G.5 Límites
 
-- Un perfil de **sucursal** solo ve los eventos de vehículos de su sucursal (RLS de `eventos_neumatico`): para una cubierta que antes estuvo en otra sucursal la vista suma los tramos que ese perfil puede ver y `km_en_vehiculos` puede quedar por debajo. El tramo actual y el total del perfil global y del admin son exactos. Pendiente (F2): acumular los tramos cerrados en `km_previos` al devolver la cubierta a stock.
+- Un perfil de **sucursal** ve los km completos de sus cubiertas (incluidos los tramos en vehículos de otras sucursales) a través de `km_tramos_cubierta`, pero no los eventos de esas sucursales: el detalle de dónde se recorrieron queda para el perfil global y el admin.
 - Los eventos se ordenan por `created_at` y luego por `id`: una carga manual con fecha anterior que altere el orden puede producir tramos sin dato.
 - El orden de eventos de un mismo instante (varios eventos de una RPC comparten transacción) se resuelve por `id`.
 
@@ -540,4 +552,4 @@ Columnas: `vehiculo_id, evento_id, neumatico_id, tipo_evento, fecha, odometro_km
 
 Panel: el detalle del vehículo (panel de la rueda) y Ciclo de vida muestran «Km que ya traía», «Km recorridos», «En el tramo actual» y «Km totales» desde `v_km_cubierta` (`domain/km-cubierta.js`), con la nota «Estimado: faltan lecturas de odómetro» (o «hay lecturas de odómetro decrecientes») cuando `km_confiable` es false y «Sin dato» cuando no hay ningún tramo con dato. Se retiraron `kmPorNeumatico` y `kmTotalesNeumatico`: el cálculo vive solo en la base.
 
-Pruebas: SQL `tests/sql/t_86_km_por_cubierta.sql` (tramos, rotación sin duplicar, cambio de vehículo por el stock, odómetros faltantes, decreciente, invariantes y matriz admin / global / sucursal Norte y Sur / otro cliente / api / sin perfil / anon); `run.sh` aplica la migración dos veces. Unitarias: `km-cubierta.test.mjs`. Smoke: `vehiculo.flow.js` y `ciclo.flow.js`. Visual: `ciclo-vida` y `detalle-rueda-km`. E2E: `specs/km-cubierta.mjs`.
+Pruebas: SQL `tests/sql/t_86_km_por_cubierta.sql` (tramos, rotación sin duplicar, cambio de vehículo por el stock, odómetros faltantes, decreciente, invariantes, matriz admin / global / sucursal Norte y Sur / otro cliente / api / sin perfil / anon, los km completos que ve Sur de una cubierta que pasó por Norte y `km_tramos_cubierta` sin filas para quien no ve la cubierta); `run.sh` aplica la migración dos veces. Unitarias: `km-cubierta.test.mjs`. Smoke: `vehiculo.flow.js` y `ciclo.flow.js`. Visual: `ciclo-vida` y `detalle-rueda-km`. E2E: `specs/km-cubierta.mjs`.

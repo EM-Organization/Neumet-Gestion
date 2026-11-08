@@ -68,6 +68,8 @@ select test.neu86('K86-E1', 1, 866, 1::smallint, 'montado'), test.neu86('K86-E2'
 select test.ev86('K86-E1', 866, 'montaje', 1000, 2), test.ev86('K86-E2', 867, 'montaje', 200, 2);
 select test.neu86('K86-X1', 2, 868, 1::smallint, 'montado');
 select test.ev86('K86-X1', 868, 'montaje', 100, 2);
+create temp table _k86 as select idneumatico idn, id from public.neumaticos where idneumatico like 'K86-%';
+grant select on _k86 to public;
 create temp table _ev_antes as select count(*) n from public.eventos_neumatico where idneumatico like 'K86-%';
 grant select on _ev_antes to public;
 
@@ -80,6 +82,9 @@ select test.eq('anon sin acceso a la vista', has_table_privilege('anon', 'public
 select test.eq('authenticated lee la vista', has_table_privilege('authenticated', 'public.v_km_cubierta', 'select'), true);
 select test.eq('anon no ejecuta el diagnóstico', has_function_privilege('anon', 'public.odometro_anomalias(bigint)', 'execute'), false);
 select test.eq('authenticated ejecuta el diagnóstico', has_function_privilege('authenticated', 'public.odometro_anomalias(bigint)', 'execute'), true);
+select test.eq('km_tramos_cubierta: security definer con search_path vacío',
+  (select prosecdef and proconfig = '{search_path=\"\"}' from pg_proc where oid = 'public.km_tramos_cubierta(bigint)'::regprocedure), true);
+select test.eq('anon no ejecuta km_tramos_cubierta', has_function_privilege('anon', 'public.km_tramos_cubierta(bigint)', 'execute'), false);
 select test.eq('el diagnóstico es security invoker', (select not prosecdef from pg_proc where oid = 'public.odometro_anomalias(bigint)'::regprocedure), true);
 
 -- ---------------------------------------------------------------------------------------------
@@ -194,28 +199,39 @@ select test.eq('cliente global A ve las de su cliente (montadas y en stock)',
   (select count(*) from public.v_km_cubierta where idneumatico like 'K86-%'), 12::bigint);
 select test.eq('cliente global A no ve la de otro cliente', (select count(*) from public.v_km_cubierta where idneumatico = 'K86-X1'), 0::bigint);
 select test.eq('cliente global A ve los km exactos de A1', test.km86('K86-A1'), '1000|5000|300|6300|true');
+select test.eq('cliente global A: km_tramos_cubierta de su cubierta en stock', (select km_cerrados from public.km_tramos_cubierta((select id from pg_temp._k86 where idn = 'K86-C5'))), 1000::bigint);
 select test.eq('cliente global A ve el diagnóstico de su vehículo', (select count(*) from public.odometro_anomalias(865)), 2::bigint);
 reset role;
 select test.become('authenticated', test.u_cli_b());
 select test.eq('otro cliente ve solo lo suyo', (select string_agg(idneumatico, ',') from public.v_km_cubierta where idneumatico like 'K86-%'), 'K86-X1');
 select test.eq('otro cliente: km de lo suyo', test.km86('K86-X1'), '0|0|200|200|true');
 select test.eq('otro cliente no ve el diagnóstico de un vehículo ajeno', (select count(*) from public.odometro_anomalias(865)), 0::bigint);
+select test.eq('otro cliente: km_tramos_cubierta de una cubierta ajena no devuelve filas (ni una de ceros)',
+  (select count(*) from public.km_tramos_cubierta((select id from pg_temp._k86 where idn = 'K86-A1'))), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_k86n());
 select test.eq('sucursal Norte solo ve neumáticos de vehículos de su sucursal (sin stock ni otras sucursales)',
   (select string_agg(idneumatico, ',' order by idneumatico) from public.v_km_cubierta where idneumatico like 'K86-%'),
   'K86-B1,K86-B2,K86-C1,K86-C2,K86-D1,K86-D2,K86-E1,K86-E2');
 select test.eq('sucursal Norte: no ve A1 (montada en Sur)', (select count(*) from public.v_km_cubierta where idneumatico = 'K86-A1'), 0::bigint);
+select test.eq('sucursal Norte: km_tramos_cubierta de A1 (Sur) no devuelve filas', (select count(*) from public.km_tramos_cubierta((select id from pg_temp._k86 where idn = 'K86-A1'))), 0::bigint);
 select test.eq('sucursal Norte: ve el diagnóstico de su vehículo', (select count(*) from public.odometro_anomalias(865)), 2::bigint);
 select test.eq('sucursal Norte: no ve el diagnóstico de un vehículo de Sur', (select count(*) from public.odometro_anomalias(862)), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_k86s());
 select test.eq('sucursal Sur solo ve la montada en su vehículo', (select string_agg(idneumatico, ',') from public.v_km_cubierta where idneumatico like 'K86-%'), 'K86-A1');
+select test.eq('sucursal Sur ve los km completos de A1 aunque el tramo de Norte esté fuera de su RLS',
+  test.km86('K86-A1'), '1000|5000|300|6300|true');
+select test.eq('sucursal Sur no ve los eventos de Norte (la RLS sigue igual)',
+  (select count(*) from public.eventos_neumatico where idneumatico = 'K86-A1'), 1::bigint);
 select test.eq('sucursal Sur no ve el diagnóstico de Norte', (select count(*) from public.odometro_anomalias(865)), 0::bigint);
+select test.eq('sucursal Sur: km_tramos_cubierta de una cubierta de Norte no devuelve filas',
+  (select count(*) from public.km_tramos_cubierta((select id from pg_temp._k86 where idn = 'K86-B1'))), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_api());
 select test.eq('rol api no ve nada', (select count(*) from public.v_km_cubierta), 0::bigint);
 select test.eq('rol api: diagnóstico vacío', (select count(*) from public.odometro_anomalias(865)), 0::bigint);
+select test.eq('rol api: km_tramos_cubierta vacío', (select count(*) from public.km_tramos_cubierta((select id from pg_temp._k86 where idn = 'K86-A1'))), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_sinperfil());
 select test.eq('sin perfil no ve nada', (select count(*) from public.v_km_cubierta), 0::bigint);
@@ -223,6 +239,7 @@ reset role;
 select test.become('anon', null);
 select test.denied('anon no lee la vista', $$select count(*) from public.v_km_cubierta$$);
 select test.denied('anon no ejecuta el diagnóstico', $$select * from public.odometro_anomalias(865)$$);
+select test.denied('anon no ejecuta km_tramos_cubierta', $$select * from public.km_tramos_cubierta(1)$$);
 reset role;
 
 rollback;

@@ -121,10 +121,10 @@ function renderTimeline(){
     <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell" data-label="N.º de quema">${n.numero_quema||'—'}</td><td data-label="Vida">${n.vida||0}</td>
     <td class="mono-cell" data-label="Km previos">${fmtKm(n.km_previos||0)}</td>
     ${k.disponible?html`<td class="mono-cell" data-label="Km recorridos">${km(k.recorridos)}</td>
-    <td class="mono-cell" data-label="Tramo actual">${km(k.tramoActual)}</td>
-    <td class="mono-cell" data-label="Km totales">${km(k.totales)}</td>`:html`<td class="mono-cell" data-label="Km recorridos">—</td><td class="mono-cell" data-label="Tramo actual">—</td><td class="mono-cell" data-label="Km totales">—</td>`}</tr>
+    <td class="mono-cell" data-label="En el tramo actual">${km(k.tramoActual)}</td>
+    <td class="mono-cell" data-label="Km totales">${km(k.totales)}</td>`:html`<td class="mono-cell" data-label="Km recorridos">—</td><td class="mono-cell" data-label="En el tramo actual">—</td><td class="mono-cell" data-label="Km totales">—</td>`}</tr>
     ${k.nota?html`<tr class="ciclo-km-nota"><td colspan="8">${k.nota}</td></tr>`:''}`; });
-  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>Tramo actual</th><th>Km totales</th></tr></thead><tbody>${kmRows}</tbody></table>`
+  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>En el tramo actual</th><th>Km totales</th></tr></thead><tbody>${kmRows}</tbody></table>`
     :html`<div class="ciclo-sub">Sin km registrados.</div>`);
   const lista=ordenarEventos(eventos,true).filter(e=>!filtroNeum||String(e.neumatico_id)===filtroNeum);
   setHtml($('ciclo-timeline'), lista.length?joinHtml(lista.map(e=>{

@@ -25,7 +25,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
-| Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta, migración `20261114000000` pendiente de aplicar: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice G) |
+| Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta, migración `20261115000000` pendiente de aplicar: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice G) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubiertas`.
@@ -43,7 +43,7 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 - Km de la cubierta = km previos + suma de los tramos montados (odómetro final − inicial de cada montaje). No comparar odómetros absolutos entre vehículos.
 - Invariantes: un solo montaje activo por cubierta y por posición, sin solapamientos, rotación múltiple atómica.
 - Detección de odómetro negativo o reiniciado, con corrección auditada.
-- Estado: en el PR de km por cubierta están la vista `v_km_cubierta` (tramos, `km_confiable`, NULL si faltan odómetros), `odometro_anomalias(p_vehiculo)`, la verificación de los invariantes de montaje (ya garantizados por `unique (vehiculo_id, posicion)`, el índice de auxilio y el CHECK de stock; rotación atómica en `neumatico_rotar`) y los km en el panel de la rueda y en Ciclo de vida. **Pendiente de F2:** corrección auditada de un odómetro (hoy solo se señala) y acumular los tramos en `km_previos` al devolver a stock para que un perfil de sucursal vea el total aunque la cubierta haya pasado por otras sucursales.
+- Estado: en el PR de km por cubierta están la vista `v_km_cubierta` (tramos, `km_confiable`, NULL si faltan odómetros), `odometro_anomalias(p_vehiculo)`, la verificación de los invariantes de montaje (ya garantizados por `unique (vehiculo_id, posicion)`, el índice de auxilio y el CHECK de stock; rotación atómica en `neumatico_rotar`) y los km en el panel de la rueda y en Ciclo de vida. **Pendiente de F2:** corrección auditada de un odómetro (hoy solo se señala) (el perfil de sucursal ya ve el total de km aunque la cubierta haya pasado por otras sucursales, mediante `km_tramos_cubierta`).
 
 ### F3 · Calidad de datos y unidades
 - Controles al ingresar: aumento de profundidad sin nueva banda, lectura repetida, rango fuera de lo físico, posición incorrecta.

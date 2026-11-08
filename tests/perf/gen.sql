@@ -2,7 +2,8 @@
 --   o -v ncli=10 -v veh=300 (30.000 / 1,8 M); después PERF_PG_URL=... tests/perf/bench.sh etiqueta
 -- Datos sintéticos: :ncli clientes x :veh vehículos x 10 neumáticos x 60 mediciones en 210 días.
 -- 5% de los vehículos son "históricos" (mediciones sin idneumatico -> regla 2), 2% sin filas en neumaticos (regla 3),
--- 3% de los neumáticos con evento de reparación a mitad de ventana.
+-- 3% de los neumáticos con evento de reparación a mitad de ventana y unos 7 eventos de km por neumático (montajes,
+-- desmontajes y rotaciones) para medir v_km_cubierta.
 insert into auth.users (id, email)
   select ('a0000000-0000-0000-0000-' || lpad(g::text, 12, '0'))::uuid, 'u' || g || '@t' from generate_series(1, :ncli + 1) g;
 insert into public.clientes (id, nombre, auth_user_id)
@@ -35,4 +36,21 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, m
 insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, created_at)
   select n.cliente_id, n.vehiculo_id, n.id, n.idneumatico, 'reparacion', now() - interval '40 days'
   from public.neumaticos n where n.id % 33 = 0;
+
+-- Historial de km (v_km_cubierta): odómetro de cada vehículo; montaje de cada neumático hace 300 días; 20% con un tramo
+-- anterior cerrado en otro vehículo (montaje + desmontaje); 5 rotaciones por neumático (unos 7 eventos por neumático).
+update public.vehiculos set odometro_km = 200000 + (id % 500) * 100;
+insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, odometro_km, created_at)
+  select n.cliente_id, o.id, n.id, n.idneumatico, x.tipo, x.odo, now() - x.dias * interval '1 day'
+  from public.neumaticos n
+  join lateral (select v.id from public.vehiculos v where v.cliente_id = n.cliente_id and v.id <> n.vehiculo_id order by v.id limit 1) o on true
+  cross join (values ('montaje', 10000, 500), ('desmontaje', 60000, 320)) x(tipo, odo, dias)
+  where n.id % 5 = 0;
+insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, odometro_km, created_at)
+  select n.cliente_id, n.vehiculo_id, n.id, n.idneumatico, 'montaje', 100000 + (n.id % 1000), now() - interval '300 days'
+  from public.neumaticos n;
+insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, posicion_origen, posicion_destino, odometro_km, created_at)
+  select n.cliente_id, n.vehiculo_id, n.id, n.idneumatico, 'rotacion', n.posicion, n.posicion, 100000 + (n.id % 1000) + k * 15000,
+         now() - (300 - k * 50) * interval '1 day'
+  from public.neumaticos n, generate_series(1, 5) k;
 analyze;

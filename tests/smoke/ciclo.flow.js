@@ -25,7 +25,7 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
     if(kmT.querySelectorAll('.mini-veh').length !== kmT.querySelectorAll('tbody tr:not(.ciclo-km-nota)').length) fail('ciclo: un mini vehículo por neumático');
     // Km por cubierta (v_km_cubierta): total y tramo actual; nota de confiabilidad solo donde faltan lecturas; «Sin dato», nunca 0
     var kmRows = kmT.querySelectorAll('tbody tr:not(.ciclo-km-nota)'), notas = Array.prototype.map.call(kmT.querySelectorAll('tr.ciclo-km-nota'), function(r){ return r.textContent.trim(); }), kmTxt = function(i){ return kmRows[i] ? kmRows[i].textContent.replace(/\s+/g, ' ') : ''; };
-    if(kmT.querySelector('thead').textContent.indexOf('Km recorridos') === -1 || kmT.querySelector('thead').textContent.indexOf('Tramo actual') === -1) fail('ciclo: la tabla de km sin columnas Km recorridos y Tramo actual');
+    if(kmT.querySelector('thead').textContent.indexOf('Km recorridos') === -1 || kmT.querySelector('thead').textContent.indexOf('En el tramo actual') === -1) fail('ciclo: la tabla de km sin columnas Km recorridos y En el tramo actual');
     if(kmTxt(0).indexOf('4.000 km') === -1 || kmTxt(0).indexOf('19.000 km') === -1 || /Sin dato/.test(kmTxt(0))) fail('ciclo: fila con datos completos: ' + kmTxt(0))
     if(notas.length !== 2) fail('ciclo: solo las filas con km no confiables llevan nota (' + notas.length + ')');
     if(kmTxt(1).indexOf('1.200 km') === -1 || notas.indexOf('Estimado: faltan lecturas de odómetro') === -1) fail('ciclo: fila estimada sin la nota de confiabilidad: ' + kmTxt(1) + ' / ' + notas.join('|'));
