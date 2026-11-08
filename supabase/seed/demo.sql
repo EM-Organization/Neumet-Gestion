@@ -18,6 +18,8 @@
 --     desgaste lineal con ruido y tasas distintas; mezcla ok / bajo / crítico,
 --     alertas "cruzará crítico pronto", desgaste irregular, un neumático sin ninguna
 --     medición y neumáticos sin medir hace más de 30 días.
+--   * 10 vehículos medidos en los últimos 5 días (visitas semanales con medición previa y última, que alimentan
+--     «Últimas mediciones» de Inicio) y 5 neumáticos recién montados con una sola medición (sin comparativa).
 --   * Stock de ejemplo y algunos eventos (rotación, reparación, montaje).
 -- Las fechas son relativas a now(): volver a ejecutar el script REFRESCA el demo
 -- (borra y regenera las mediciones/eventos/stock del cliente Demo con fechas
@@ -105,6 +107,10 @@ begin
     -- montado y nunca medido
     (9, 5, null, null, false, true);
 
+  -- Neumáticos recién montados: solo tienen la medición de la última visita, así que no muestran comparativa.
+  create temp table _demo_nuevo (veh int, pos int) on commit drop;
+  insert into _demo_nuevo values (2, 9), (5, 6), (9, 7), (10, 10), (11, 3);
+
   -- ---- Vehículos, neumáticos y mediciones --------------------------------------
   for r in select * from (values
       -- n, número de coche (vehiculos.nombre), patente, nº neumáticos, auxilio, sucursal, dispositivo, días desde la última medición
@@ -165,7 +171,7 @@ begin
       end;
     end loop;
 
-    -- Mediciones semanales (10 sesiones), una por neumático
+    -- Mediciones semanales (10 visitas), una por neumático; todas las filas de una visita comparten instante
     for k in 0 .. 9 loop
       v_ses := gen_random_uuid();
       ts := now() - (r.ultima_dias * interval '1 day') - (k * interval '7 days') - ((random() * 8) * interval '1 hour');
@@ -175,6 +181,7 @@ begin
           from _demo_esc e where e.veh = r.n and e.pos = t.posicion;
         v_irreg := coalesce(v_irreg, false); v_nomed := coalesce(v_nomed, false);
         continue when v_nomed;
+        continue when k > 0 and exists (select 1 from _demo_nuevo x where x.veh = r.n and x.pos = t.posicion);
         if t.auxilio then
           a := 13.0;                                              -- el auxilio no se desgasta
         else

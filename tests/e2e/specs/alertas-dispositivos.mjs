@@ -33,6 +33,7 @@ export function registrar(env) {
       });
     });
 
+    if (rol !== 'admin') continue;
     test(`Dispositivos (${rol}): estados y MAC coinciden con v_salud_dispositivos`, async () => {
       const a = ALCANCE[rol];
       const filas = json(env, `select d.mac_address, s.estado from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where ${a.dis} order by 1`);
@@ -53,6 +54,27 @@ export function registrar(env) {
         if (rol === 'global' || rol === 'admin') assert.deepEqual([cuenta('caido'), cuenta('sin_actividad'), cuenta('activo')], [1, 1, 4]);
         if (rol === 'salto') assert.deepEqual([cuenta('caido'), cuenta('sin_actividad'), cuenta('activo')], [1, 0, 1]);
         if (rol === 'montevideo') assert.deepEqual([cuenta('caido'), cuenta('sin_actividad'), cuenta('activo')], [0, 1, 3]);
+      });
+    });
+  }
+
+  // El cliente no gestiona hardware: ni el menú ni el router ni una acción forzada le abren Dispositivos.
+  for (const rol of ['global', 'salto', 'montevideo', 'otra']) {
+    test(`Dispositivos (${rol}): el cliente no accede a la vista`, async () => {
+      await flujo(env, 'dispositivos-cliente', rol, async p => {
+        assert.equal(await p.eval(`[...document.querySelectorAll('.nav-item[data-view="dispositivos"]')].filter(n => n.getClientRects().length).length`), 0, 'entrada de menú visible');
+        await p.eval(`document.querySelector('.nav-item[data-view="dispositivos"]').click()`);
+        await dormir(400);
+        assert.equal(await p.eval(`document.querySelector('#view-dispositivos').classList.contains('active')`), false, 'el menú abrió la vista');
+        await p.eval(`(() => { const b = document.createElement('button'); b.dataset.action = 'irA'; b.dataset.args = '["dispositivos"]'; document.body.appendChild(b); b.click(); b.remove(); })()`);
+        await dormir(400);
+        assert.equal(await p.eval(`document.querySelector('#view-dispositivos').classList.contains('active')`), false, 'irA abrió la vista');
+        assert.equal(await p.eval(`document.querySelector('#view-inicio').classList.contains('active') && document.querySelector('.nav-item.active').dataset.view`), 'inicio');
+        // Cargar la vista directamente tampoco pide la lista de dispositivos.
+        const antes = env.peticiones.length;
+        await p.eval(`(() => { const b = document.createElement('button'); b.dataset.action = 'loadDispositivos'; document.body.appendChild(b); b.click(); b.remove(); })()`);
+        await dormir(500);
+        assert.deepEqual(env.peticiones.slice(antes).filter(r => /v_salud_dispositivos|get_unregistered_devices/.test(r.path)), [], 'cargó datos de dispositivos');
       });
     });
   }

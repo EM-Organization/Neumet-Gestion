@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
-  clientesConUrgencias, textoSemanas,
+  clientesConUrgencias, textoSemanas, ultimasMediciones, comparativaDesgaste,
 } from '../../assets/js/domain/inicio.js';
 
 // Fila de v_estado_neumaticos con los campos que usa Inicio.
@@ -132,4 +132,69 @@ test('clientesConUrgencias: solo con urgencias, más urgencias primero, acotado'
   assert.equal(clientesConUrgencias(res, 1).length, 1);
   assert.deepEqual(clientesConUrgencias([]), []);
   assert.deepEqual(clientesConUrgencias(null), []);
+});
+
+// ---- Últimas mediciones ----
+const um = (vid, pos, ahora, antes, extra = {}) => ({
+  vehiculo_id: vid, nombre: `Camión ${vid}`, patente: `P${vid}`, numero: String(100 + vid), medido_at: '2026-06-10T10:00:00Z',
+  posicion: pos, idneumatico: `N-${vid}-${pos}`, mm_ahora: ahora, mm_antes: antes, antes_at: antes === null ? null : '2026-06-03T10:00:00Z', ...extra,
+});
+
+test('comparativa: sin medición previa no hay comparativa (null, undefined, vacío)', () => {
+  assert.equal(comparativaDesgaste(9, null), null);
+  assert.equal(comparativaDesgaste(9, undefined), null);
+  assert.equal(comparativaDesgaste(9, ''), null);
+  assert.equal(comparativaDesgaste(null, 9), null);
+  assert.equal(comparativaDesgaste('x', 9), null);
+});
+
+test('comparativa: diferencia y nivel (normal, alto, lectura mayor)', () => {
+  assert.deepEqual(comparativaDesgaste(8.6, 9), { antes: 9, ahora: 8.6, dif: -0.4, nivel: 'normal' });
+  assert.equal(comparativaDesgaste('8.60', '9.00').dif, -0.4);   // PostgREST puede devolver numeric como texto
+  assert.equal(comparativaDesgaste(8, 9).nivel, 'normal');       // exactamente 1 mm: no se destaca
+  assert.equal(comparativaDesgaste(7.9, 9).nivel, 'alto');
+  assert.equal(comparativaDesgaste(9, 9).dif, 0);
+  assert.equal(comparativaDesgaste(9.3, 9).nivel, 'normal');     // +0,3 es ruido de lectura
+  assert.equal(comparativaDesgaste(9.4, 9).nivel, 'sube');
+  assert.equal(comparativaDesgaste(0.1 + 0.2, 0.3).dif, 0);      // sin errores de coma flotante
+});
+
+test('ultimasMediciones: vacío o null', () => {
+  assert.deepEqual(ultimasMediciones([]), []);
+  assert.deepEqual(ultimasMediciones(null), []);
+  assert.deepEqual(ultimasMediciones(undefined), []);
+});
+
+test('ultimasMediciones: agrupa por vehículo, conserva el orden y ordena las posiciones', () => {
+  const r = ultimasMediciones([um(2, 3, 9, 9.5), um(2, 1, 10, 10.4), um(1, 1, 7, null), um(2, 2, 11, null)]);
+  assert.deepEqual(r.map(v => v.vehiculo_id), [2, 1]);
+  assert.deepEqual(r[0].neumaticos.map(n => n.posicion), [1, 2, 3]);
+  assert.deepEqual(r[0], {
+    vehiculo_id: 2, nombre: 'Camión 2', patente: 'P2', numero: '102', medido_at: '2026-06-10T10:00:00Z',
+    neumaticos: r[0].neumaticos,
+  });
+});
+
+test('ultimasMediciones: neumático sin medición previa conserva los mm y no tiene comparativa', () => {
+  const [v] = ultimasMediciones([um(1, 1, 15.5, null), um(1, 2, 12, 12.5)]);
+  assert.equal(v.neumaticos[0].comparativa, null);
+  assert.equal(v.neumaticos[0].mm, 15.5);
+  assert.equal(v.neumaticos[1].comparativa.dif, -0.5);
+});
+
+test('ultimasMediciones: acota a 8 vehículos por defecto y respeta max', () => {
+  const rows = Array.from({ length: 12 }, (_, i) => um(i + 1, 1, 9, 9.2));
+  assert.equal(ultimasMediciones(rows).length, 8);
+  assert.equal(ultimasMediciones(rows, { max: 3 }).length, 3);
+  // las filas de un vehículo ya aceptado no se pierden aunque lleguen después del corte
+  const mezcladas = [...rows.slice(0, 8), um(1, 2, 9, 9.1)];
+  assert.equal(ultimasMediciones(mezcladas)[0].neumaticos.length, 2);
+});
+
+test('ultimasMediciones: un solo vehículo con un solo neumático y campos faltantes', () => {
+  const [v] = ultimasMediciones([{ vehiculo_id: 5, posicion: 4, mm_ahora: 6, mm_antes: null }]);
+  assert.equal(v.nombre, '');
+  assert.equal(v.patente, '');
+  assert.equal(v.numero, '');
+  assert.equal(v.neumaticos.length, 1);
 });

@@ -163,9 +163,9 @@ export function registrar(env) {
 
   test('Buscador global (otra): encuentra SAB-1234 como SAB1234 y abre su detalle', async () => {
     await flujo(env, 'buscador-global-otra', 'otra', async p => {
-      await irA(p, 'dispositivos');
+      await irA(p, 'stock');
       for (const q of ['SAB1234', 'sab-1234', '301']) {
-        await irA(p, 'dispositivos');
+        await irA(p, 'stock');
         await p.escribir('#busq-global-input', q);
         await p.enter();
         await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /SAB-1234/.test(document.querySelector('#vd-cab').innerText)`, { que: `detalle tras buscar ${q}` });
