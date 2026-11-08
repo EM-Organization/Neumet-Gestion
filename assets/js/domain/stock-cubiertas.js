@@ -152,6 +152,9 @@ export function etiquetaCubierta(c, sucursales) {
 // Cubiertas que se pueden montar: sin vehículo y almacenadas (la RLS ya limita qué ve cada perfil).
 export const cubiertasMontables = rows => ordenarCubiertas((rows || []).filter(c => (c.vehiculo_id === null || c.vehiculo_id === undefined) && (c.estado || 'almacenado') === 'almacenado'));
 
+// Mensaje para un error inesperado (los de negocio tienen su propio texto y no se registran en consola).
+export const ERROR_GENERICO = 'No se pudo guardar. Reintentar';
+
 // Error de las RPC stock_cubierta_* -> mensaje en una frase.
 export function traducirErrorStock(err) {
   const code = err && err.code ? String(err.code) : '';
@@ -169,7 +172,7 @@ export function traducirErrorStock(err) {
   if (msg.includes('precio')) return 'El precio no es válido';
   if (msg.includes('condici')) return 'La condición solo puede cambiarse a Reparado o Recauchutado';
   if (code === '22023' || code === '22004' || code === '23514' || code === '22007') return 'Datos del formulario inválidos';
-  return 'No se pudo guardar. Reintentar';
+  return ERROR_GENERICO;
 }
 
 // ---- Buscador global: cubiertas en stock por número de quema -----------------------------------------------------

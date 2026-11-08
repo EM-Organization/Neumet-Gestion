@@ -9,7 +9,7 @@ import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
 import {
   CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarCubierta, validarEdicion,
-  argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock
+  argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock, ERROR_GENERICO
 } from '../domain/stock-cubiertas.js';
 
 let stockItems=[], stockModalMode='create', stockActiveId=null;
@@ -320,8 +320,8 @@ async function rpcStock(nombre,args,okMsg,campoError){
   err(campoError,'');
   const {error}=await db.rpc(nombre,args);
   if(error){
-    console.error(error);
     const m=traducirErrorStock(error);
+    if(m===ERROR_GENERICO) console.error(error); // los rechazos de negocio (quema repetida, sin permiso...) no son fallos
     err(campoError,m); showToast(m,true);
     return false;
   }
@@ -415,7 +415,11 @@ ACTIONS.cubiertaEliminar=async function(id){
   const ok=await confirmDialog('Eliminar cubierta',`¿Eliminar la cubierta ${c.numero_quema||''}? Solo se puede si nunca se usó.`);
   if(!ok) return;
   const {error}=await db.rpc('stock_cubierta_eliminar',{p_id:c.id});
-  if(error){ console.error(error); showToast(traducirErrorStock(error),true); return; }
+  if(error){
+    const m=traducirErrorStock(error);
+    if(m===ERROR_GENERICO) console.error(error);
+    showToast(m,true); return;
+  }
   showToast('Cubierta eliminada');
   notificar();
   await loadStock();

@@ -8,7 +8,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 |---|---|
 | Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos críticos |
 | El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Inicio y en Vehículos lo reemplaza el buscador propio de la pantalla |
-| Stock era una pestaña escondida en Vehículos | Entrada propia del menú: **Stock** (solo lectura para el cliente) |
+| Stock era una pestaña escondida en Vehículos | Entrada propia del menú: **Stock**. El perfil global agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
 | «Estado de la flota» duplicaba a Inicio para el cliente | El cliente no la ve: su equivalente es **Vehículos**, ordenado por urgencia con el estado de cada uno. El administrador la conserva en Administración como vista entre clientes |
 | Clientes y Ficha de cliente eran dos entradas | Una sola entrada, **Clientes**. El nombre de un cliente abre su ficha, con «Volver a Clientes» y migas «Clientes › Nombre» |
 | Vehículos mencionados sin enlace al detalle | Todo vehículo de Inicio, Alertas, Estado de la flota y Reportes abre el detalle |
@@ -29,11 +29,13 @@ flowchart TD
   M --> V[Vehículos]
   M --> A[Alertas]
   M --> S[Stock]
+  S -->|perfil global: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
   M -->|solo perfil global| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
   SU -->|agregar vehículo, mover con confirmación| SU
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
+  B -->|quema de una cubierta en stock| S
   I -->|buscador de Inicio| VD
   I -->|Ver coche en Requieren atención| VD
   I -->|Ver coche en Próximos cambios| VD
@@ -66,6 +68,8 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Pantalla | Elemento | Destino | Menú resaltado |
 |---|---|---|---|
 | Barra superior (todas menos Inicio y Vehículos) | Buscador: Enter con una coincidencia, o elegir un resultado | Detalle de vehículo | Vehículos |
+| Barra superior e Inicio | Buscador con la quema de una cubierta que está en stock (resultado «Quema S-001 · En stock · …») | Stock filtrado por esa quema | Stock |
+| Cambio de neumático | «Cubierta del stock» (opción por defecto si hay) o «Lote del stock»; destino «Almacenar» con la sucursal donde queda | Detalle del vehículo (se refresca) | Vehículos |
 | Inicio | Buscador | Detalle (una coincidencia) o lista de resultados | Inicio → Vehículos |
 | Inicio | «Ver coche N» de «Requieren atención» | Detalle de vehículo (rueda señalada seleccionada) | Vehículos |
 | Inicio | «Ver coche N» de «Próximos cambios» | Detalle de vehículo (rueda seleccionada) | Vehículos |
@@ -85,7 +89,8 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Vehículos | Encontrar un camión | Buscar por matrícula o número de coche, abrir el detalle |
 | Detalle de vehículo | Ver el estado de cada rueda | Elegir una rueda, ver mediciones y gráfico, cambiar neumático, rotar, registrar odómetro |
 | Alertas | Lista de problemas activos | Filtrar por severidad y tipo, abrir el vehículo |
-| Stock | Inventario de neumáticos | Solo lectura |
+| Stock (perfil global) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
+| Stock (perfil de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el perfil global |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
 | Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); agregar un vehículo (número de coche, matrícula, tipo de ruedas, sucursal opcional); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 
@@ -119,14 +124,15 @@ flowchart TD
   FI --> SE[Sucursales y usuarios]
   FI --> API[Cuenta de API]
   V -->|Nuevo vehículo / editar| VM[Formulario de vehículo]
-  S -->|Agregar compra / editar| SM[Formulario de stock]
+  S -->|Agregar cubierta| SC[Formulario de cubierta: cliente, quema, marca, sucursal]
+  S -->|Agregar compra / editar lote| SM[Formulario de lote anterior]
   D -->|alta / editar / eliminar| DM[Formulario de dispositivo]
 ```
 
 | Pantalla | Qué hace el administrador además | Menú resaltado |
 |---|---|---|
 | Vehículos | Alta, edición y baja de vehículos; filtro por cliente; ver detalle | Vehículos |
-| Stock | Alta y edición de compras; filtro por cliente | Stock |
+| Stock | Alta de cubiertas a nombre de un cliente elegido; filtro por cliente; alta y edición de lotes anteriores | Stock |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
 | Ficha de cliente | Editar umbrales; crear sucursales, asignar vehículos y dispositivos, crear usuarios de sucursal; crear cuentas de API | Clientes |

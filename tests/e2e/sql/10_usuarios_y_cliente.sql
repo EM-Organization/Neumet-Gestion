@@ -37,3 +37,12 @@ insert into public.vehiculos (cliente_id, nombre, patente, numero, tipo_ruedas, 
     from public.clientes c,
          (values ('Tractor Ñandú', 'ab 123 cd', null), ('Sin matrícula', null, '7'), ('Camión con guion', 'SAB-1234', '301')) v(nombre, patente, numero)
    where c.nombre = 'Otra Empresa SA';
+
+-- Stock de cubiertas del cliente ajeno (sin sucursales: Otra Empresa SA no tiene ninguna al empezar). La quema 'S-001' se repite
+-- a propósito con la del demo (la unicidad es por cliente) y 'OTRA-Q1' no existe en ningún otro cliente.
+insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, estado, condicion, marca, modelo, numero_quema)
+  select null, c.id, null, 'CB-OTRA-1', 'almacenado', 'nuevo', 'MarcaAjena', 'Modelo Z', 'S-001'
+    from public.clientes c where c.nombre = 'Otra Empresa SA';
+insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, estado, condicion, marca, numero_quema)
+  select null, c.id, null, 'CB-OTRA-2', 'almacenado', 'usado', 'MarcaAjena', 'OTRA-Q1'
+    from public.clientes c where c.nombre = 'Otra Empresa SA';

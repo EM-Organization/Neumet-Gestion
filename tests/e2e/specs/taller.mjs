@@ -130,7 +130,8 @@ export function registrar(env) {
       await seleccionarRueda(p, 3);
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
       await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && /P3/.test(document.querySelector('#cambio-actual').textContent)`, { que: 'modal de cambio de P3' });
-      assert.ok(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]')`), 'el perfil global puede elegir del stock');
+      assert.ok(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]') && !!document.querySelector('input[name="cambio-origen"][value="cubierta"]')`), 'el perfil global puede elegir un lote o una cubierta del stock');
+      await p.eval(`document.querySelector('input[name="cambio-origen"][value="stock"]').click()`);   // lote anterior (la cubierta individual es la opción por defecto)
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`(() => { const m = document.querySelector('#cambio-motivo'); m.value = 'Desgaste E2E'; m.dispatchEvent(new Event('change', { bubbles: true })); })()`);
       await p.eval(`(() => { const s = document.querySelector('#cambio-stock'); s.value = '${stock.id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
@@ -160,7 +161,8 @@ export function registrar(env) {
       await seleccionarRueda(p, 2);
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
       await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'modal de cambio' });
-      assert.equal(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]')`), false, 'la sucursal no ve el stock');
+      assert.equal(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]') || !!document.querySelector('input[name="cambio-origen"][value="cubierta"]')`), false, 'la sucursal no ve el stock');
+      assert.equal(await p.eval(`!!document.querySelector('#cambio-retorno-wrap').offsetParent`), false, 'la sucursal no devuelve neumáticos al stock');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Pinchazo'); set('#cambio-marca', 'MarcaE2E'); set('#cambio-modelo', 'Modelo X'); })()`);
       await p.click('#cambio-confirmar');

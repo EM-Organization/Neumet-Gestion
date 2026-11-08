@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, filasVehiculos, irA, dormir, texto } from '../lib/flujo.mjs';
-import { ALCANCE, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
+import { ALCANCE, DEMO, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
 import { LEER_INICIO, INICIO_LISTO } from './inicio.mjs';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
@@ -85,11 +85,23 @@ export function registrar(env) {
         const leer = (t, c) => p.eval(`(${LEER_API})(${JSON.stringify(t)}, ${JSON.stringify(c)})`);
         const veh = await leer('vehiculos', 'id,cliente_id,sucursal_id');
         assert.deepEqual(veh.map(v => v.id).sort((x, y) => x - y), [...ids].sort((x, y) => x - y), 'vehiculos');
+        // Las cubiertas de stock (neumáticos y eventos sin vehículo) solo las ve el perfil global de su cliente.
+        const sinVehiculo = rol === 'global' || rol === 'otra';
+        const miCliente = rol === 'otra' ? Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`)) : Number(env.sql(`select ${DEMO}`));
         for (const t of ['neumaticos', 'v_estado_neumaticos', 'v_alertas', 'eventos_neumatico']) {
-          const f = await leer(t, 'vehiculo_id');
+          const f = await leer(t, 'vehiculo_id,cliente_id');
           assert.ok(f.length > 0 || t === 'eventos_neumatico', `${t}: sin filas`);
-          for (const r of f) assert.ok(ids.has(r.vehiculo_id), `${t}: fila de un vehículo ajeno (${r.vehiculo_id})`);
+          for (const r of f) {
+            if (r.vehiculo_id === null && (t === 'neumaticos' || t === 'eventos_neumatico')) {
+              assert.ok(sinVehiculo, `${t}: el perfil de sucursal no debe ver filas sin vehículo (stock)`);
+              assert.equal(r.cliente_id, miCliente, `${t}: fila de stock de otro cliente`);
+              continue;
+            }
+            assert.ok(ids.has(r.vehiculo_id), `${t}: fila de un vehículo ajeno (${r.vehiculo_id})`);
+          }
         }
+        const stockSinVeh = (await leer('neumaticos', 'id,vehiculo_id')).filter(r => r.vehiculo_id === null).length;
+        assert.equal(stockSinVeh, sinVehiculo ? Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id is null and cliente_id = ${miCliente}`)) : 0, 'cubiertas de stock visibles');
         const med = await leer('mediciones', 'vehiculo_id,device_id');
         if (rol !== 'otra') assert.ok(med.length > 0, 'mediciones'); // el cliente ajeno no tiene mediciones
         if (rol === 'global') assert.ok(med.length > 1000, 'mediciones (más de una página)');

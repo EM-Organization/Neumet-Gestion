@@ -21,7 +21,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Mediciones por cubierta (no por posición), últimas mediciones con comparativa | Hecho |
 | API de proveedor con idempotencia, mapeo mm1/mm2/mm3 y trazabilidad | Hecho |
 | Tasa de desgaste robusta y vista rápida | En curso (PR de tasa) |
-| Stock individual con condición y sucursal | En curso (diseño acordado) |
+| Stock individual con condición y sucursal | En curso (PR de stock de cubiertas: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
 | Motivo explícito `sin_neumaticos` en la API | En curso |
 | Mini vehículos y posiciones legibles | En curso |
 
@@ -32,6 +32,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 - Traslados entre sucursales con registro del movimiento (origen, destino, fecha, autor).
 - Desmontaje con destino explícito: volver a stock (usado apto), reparación, recauchutado o baja.
 - Criterio de salida: una cubierta conserva su historial completo al pasar por stock, vehículo y sucursal; ninguna operación duplica o pierde unidades.
+- Estado: cubierta individual, condición, ubicación, traslado con registro y devolución al stock desde «Cambiar neumático» (destino «Almacenar») están en el PR de stock de cubiertas. Pendiente de F1: que los destinos «reparación» y «recauchutado» también devuelvan la cubierta a un lugar del stock al volver (hoy quedan aparcadas en el vehículo) y la baja con disposición física (F9).
 
 ### F2 · Montaje como intervalo y km por cubierta
 - Km de la cubierta = km previos + suma de los tramos montados (odómetro final − inicial de cada montaje). No comparar odómetros absolutos entre vehículos.
