@@ -32,7 +32,7 @@ export async function loadDispositivos(){
   ]);
   if(error){ setStatus(false); showToast(userError(error),true); setHtml($('tbody-dispositivos'), filaEstado(8, estadoError('', 'loadDispositivos'))); return; }
   filas=data||[];
-  if(hayFiltroSeccional()){ // la vista no trae la seccional: se cruza con los dispositivos de la seccional elegida
+  if(hayFiltroSeccional()){ // la vista no trae la sucursal: se cruza con los dispositivos de la sucursal elegida
     const {data:ds,error:e2}=await filtrarConsulta(db.from('dispositivos').select('id').eq('cliente_id',currentClienteId));
     if(e2){ setStatus(false); showToast(userError(e2),true); setHtml($('tbody-dispositivos'), filaEstado(8, estadoError('', 'loadDispositivos'))); return; }
     const ok=new Set((ds||[]).map(d=>String(d.id)));

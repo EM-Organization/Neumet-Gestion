@@ -10,9 +10,9 @@ y recorre las vistas y los modales principales. El resultado queda en `document.
 Requiere Google Chrome y `python3`:
 
 ```
-tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de seccionales)
-tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, mediciones, selector de seccional; Dispositivos no existe para el cliente)
-tests/smoke/run.sh secuser    # sesión de cliente con perfil de SECCIONAL (sin selector; seccionales.fixture.js)
+tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de sucursales)
+tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, mediciones, selector de sucursal, vista Sucursales; Dispositivos no existe para el cliente)
+tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin selector; sucursales.fixture.js)
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
 tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)
 ```

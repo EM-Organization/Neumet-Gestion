@@ -36,8 +36,16 @@
     {cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:6,tipo:'desgaste_irregular',severidad:2,valor:3.1,mensaje:'Desgaste irregular: 3.1 mm entre huellas (máx. 2 mm)',ultima_medicion_at:D(2)}
   ];
   var eventos = [
-    {id:1,cliente_id:1,vehiculo_id:10,neumatico_id:1003,idneumatico:'N10-3',tipo:'rotacion',posicion_origen:4,posicion_destino:3,odometro_km:120000,notas:'Rotación <programada>',created_at:D(30)}
+    {id:1,cliente_id:1,vehiculo_id:10,neumatico_id:1003,idneumatico:'N10-3',tipo:'rotacion',posicion_origen:4,posicion_destino:3,odometro_km:120000,notas:'Rotación <programada>',created_at:D(30)},
+    {id:2,cliente_id:1,vehiculo_id:10,neumatico_id:1003,idneumatico:'N10-3',tipo:'montaje',posicion_destino:3,odometro_km:120000,notas:null,created_at:D(60)}
   ];
+  // Neumáticos con número de quema y km previos: P3 con montaje a 120000 km; P5 sin quema; vehículo 14 con una quema propia.
+  var neumaticos = [];
+  for(var pn = 1; pn <= 10; pn++){
+    neumaticos.push({id:1000+pn,vehiculo_id:10,cliente_id:1,posicion:pn,marca:'Michelin',modelo:'X MultiWay',idneumatico:'N10-'+pn,vida:0,estado:'montado',
+      numero_quema:pn === 3 ? 'Q-0103' : null,km_previos:pn === 3 ? 20000 : 0});
+  }
+  neumaticos.push({id:1401,vehiculo_id:14,cliente_id:1,posicion:1,marca:'Michelin',modelo:'X MultiWay',idneumatico:'N14-1',vida:0,estado:'montado',numero_quema:'q-1401',km_previos:0});
   // 10 mediciones semanales por rueda del vehículo 10 (como el demo): el gráfico se juzga con una serie realista.
   var mediciones = [];
   estado.filter(function(f){ return f.vehiculo_id === 10 && f.promedio !== null; }).forEach(function(f){
@@ -46,13 +54,13 @@
       mediciones.push({id:f.posicion*100+k, medicion_id:f.posicion*100+k, estado_montaje:'montado', posicion_actual:f.posicion, vehiculo_id:10, cliente_id:1, posicion:f.posicion, mm1:mm+0.2, mm2:mm, mm3:mm-0.2, promedio:mm, created_at:D(k*7+2)});
     }
   });
-  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones};
+  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [] };
 
   function Q(table){
     var rows = T[table].slice(), rng = null, single = false;
     var q = {
-      select:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; },
+      select:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; }, not:function(){ return q; },
       eq:function(c,v){ rows = rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
       range:function(a,b){ rng=[a,b]; return q; },
       single:function(){ single=true; return q; }, maybeSingle:function(){ single=true; return q; },

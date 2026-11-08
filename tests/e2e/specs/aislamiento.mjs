@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { flujo, filasVehiculos, irA, dormir, texto } from '../lib/flujo.mjs';
 import { ALCANCE, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
 import { LEER_INICIO, INICIO_LISTO } from './inicio.mjs';
+import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
 // Pide a la API con el JWT de la sesión (el mismo que usa el panel). Devuelve las filas de todas las páginas.
 const LEER_API = `async (tabla, cols) => {
@@ -33,7 +34,7 @@ export function registrar(env) {
         }
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === ${n}`, { que: `${n} filas` });
         const nombres = (await filasVehiculos(p)).map(f => f.nombre).sort();
-        assert.deepEqual(nombres, propios.map(v => v.nombre).sort());
+        assert.deepEqual(nombres, propios.map(v => etiquetaCoche(v.nombre)).sort());
         const todo = await texto(p, '#view-vehiculos');
         if (rol !== 'otra') assert.doesNotMatch(todo, /OTRA001|Camión Ajeno|Ñandú/);
         else assert.doesNotMatch(todo, /DEMO0/);
@@ -103,15 +104,15 @@ export function registrar(env) {
         assert.equal(perf.length, 1, 'cada sesión solo ve su propio perfil');
         assert.equal((await leer('gastos', 'id')).length, 0, 'gastos: solo admin');
         const stock = await leer('stock_neumaticos', 'cliente_id,cantidad');
-        if (rol === 'salto' || rol === 'montevideo') assert.equal(stock.length, 0, 'la seccional no ve el stock (lo gestiona el perfil global)');
+        if (rol === 'salto' || rol === 'montevideo') assert.equal(stock.length, 0, 'la sucursal no ve el stock (lo gestiona el perfil global)');
         if (rol === 'global') assert.ok(stock.length > 0 && stock.every(s => s.cliente_id === veh[0].cliente_id));
       });
     });
   }
 
-  test('Aislamiento (global): el selector de seccional filtra Vehículos e Inicio', async () => {
+  test('Aislamiento (global): el selector de sucursal filtra Vehículos e Inicio', async () => {
     await flujo(env, 'selector-seccional', 'global', async p => {
-      await p.esperar(`document.querySelector('#sec-select') && document.querySelectorAll('#sec-select option').length === 3`, { que: 'selector con las 2 seccionales' });
+      await p.esperar(`document.querySelector('#sec-select') && document.querySelectorAll('#sec-select option').length === 3`, { que: 'selector con las 2 sucursales' });
       for (const [valor, rol, n] of [['Salto', 'salto', 5], ['Montevideo', 'montevideo', 9], ['', 'global', 14]]) {
         const id = valor ? env.sql(`select id from public.sucursales where nombre = '${valor}'`) : '';
         await p.eval(`(() => { const s = document.querySelector('#sec-select'); s.value = '${id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);

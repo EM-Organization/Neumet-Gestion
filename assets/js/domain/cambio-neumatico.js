@@ -1,6 +1,7 @@
 // Lógica pura del cambio de neumático en el taller (sin DOM ni red): validación del formulario, armado de los
 // parámetros de la RPC neumatico_cambiar y traducción de sus errores. docs/08 apéndice (autorización de escritura).
-import { parseEnteroNoNeg, VIDA_MAX } from './ciclo-vida.js';
+import { VIDA_MAX } from './ciclo-vida.js';
+import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo } from './quema.js';
 
 export const DESTINOS = [
   { id: 'baja', label: 'Baja por desgaste', ayuda: 'El neumático se retira definitivamente.' },
@@ -20,7 +21,10 @@ export function stockDisponible(stock) {
 }
 export const etiquetaStock = s => `${[s.marca, s.modelo].filter(Boolean).join(' ') || 'Sin marca'} · ${s.cantidad} u.`;
 
-// f: {neum, destino, motivo, origen:'stock'|'nuevo', stockId, stock:[...], marca, modelo, codigo, odometro, odometroActual}
+// f: {neum, destino, motivo, origen:'stock'|'nuevo', stockId, stock:[...], marca, modelo, codigo,
+//     kmPrevios, numeroQuema, odometro, odometroActual}
+// Conceptos separados: kmPrevios = km que ya traía el NEUMÁTICO (0 si es nuevo); odometro = lectura opcional del
+// VEHÍCULO, que no puede ser menor al odómetro actual.
 // Devuelve {ok:true, params, resumen} (params = argumentos de la RPC) o {ok:false, error}.
 export function validarCambio(f) {
   const n = f && f.neum;
@@ -28,21 +32,19 @@ export function validarCambio(f) {
   if (n.estado === 'baja') return { ok: false, error: 'El neumático de esa posición ya está dado de baja' };
   if (!DESTINO_IDS.includes(f.destino)) return { ok: false, error: 'Elegir el destino del neumático retirado' };
   if (f.destino === 'reencauche' && (n.vida || 0) >= VIDA_MAX) {
-    return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dalo de baja` };
+    return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dar de baja` };
   }
   const motivo = String(f.motivo == null ? '' : f.motivo).trim();
   if (f.destino === 'baja' && !motivo) return { ok: false, error: 'Falta el motivo de la baja' };
   if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo es demasiado largo (máx. ${MAX_MOTIVO})` };
 
-  const odoTxt = f.odometro == null ? '' : String(f.odometro).trim();
-  let odo = null;
-  if (odoTxt !== '') {
-    odo = parseEnteroNoNeg(odoTxt);
-    if (odo === null) return { ok: false, error: 'El kilometraje debe ser un número entero mayor o igual a 0' };
-    if (Number.isInteger(f.odometroActual) && odo < f.odometroActual) {
-      return { ok: false, error: `El kilometraje no puede ser menor al actual (${f.odometroActual} km)` };
-    }
-  }
+  const kp = parseKmPrevios(f.kmPrevios);
+  if (!kp.ok) return { ok: false, error: kp.error };
+  const q = normalizarQuema(f.numeroQuema);
+  if (!q.ok) return { ok: false, error: q.error };
+  const od = validarOdometroVehiculo(f.odometro, f.odometroActual);
+  if (!od.ok) return { ok: false, error: od.error };
+  const odo = od.valor;
 
   let stockId = null, nuevo = null, nuevoTxt;
   if (f.origen === 'stock') {
@@ -75,16 +77,20 @@ export function validarCambio(f) {
       p_motivo: motivo || null,
       p_odometro_km: odo,
       p_stock_id: stockId,
-      p_nuevo: nuevo
+      p_nuevo: nuevo,
+      p_numero_quema: q.valor,
+      p_km_previos: kp.valor
     },
-    resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo)
+    resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo, { quema: q.valor, kmPrevios: kp.valor })
   };
 }
 
-export function resumenCambio(n, destino, motivo, nuevoTxt, odo) {
+export function resumenCambio(n, destino, motivo, nuevoTxt, odo, extra = {}) {
   const viejo = [n.marca, n.modelo].filter(Boolean).join(' ') || 'Sin marca';
   return `P${n.posicion}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}) y entra ${nuevoTxt}`
-    + (odo != null ? ` · ${odo} km` : '');
+    + (extra.quema ? ` · quema ${extra.quema}` : '')
+    + (extra.kmPrevios > 0 ? ` · ${extra.kmPrevios} km previos` : '')
+    + (odo != null ? ` · odómetro ${odo} km` : '');
 }
 
 // Error de la RPC (PostgREST: {code, message}) -> mensaje comprensible para el gomero.
@@ -101,10 +107,17 @@ export function traducirErrorCambio(err) {
     if (msg.includes('neumático')) return 'Ya no hay un neumático montado en esa posición. Actualizar la pantalla';
     return 'No se encontró el vehículo o el neumático. Actualizar la pantalla';
   }
-  if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dalo de baja`;
+  if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} reencauches): dar de baja`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja';
   if (msg.includes('motivo')) return 'Motivo obligatorio para la baja (máx. 200 caracteres)';
-  if (msg.includes('odómetro') || msg.includes('kilometraje')) return 'Kilometraje inválido: no puede ser negativo ni menor al actual';
+  if (code === '23505' || msg.includes('número de quema ya')) return 'Ese número de quema ya está registrado en otro neumático';
+  if (msg.includes('quema demasiado')) return 'El número de quema admite hasta 40 caracteres';
+  if (msg.includes('km previos')) return 'Los km que ya traía el neumático deben ser un número entero mayor o igual a 0';
+  if (msg.includes('odómetro del vehículo no puede ser menor')) {
+    const m = /\((\d+) km\)/.exec(String(err.message));
+    return m ? `El odómetro del vehículo no puede ser menor al actual (${m[1]} km)` : 'El odómetro del vehículo no puede ser menor al actual';
+  }
+  if (msg.includes('odómetro') || msg.includes('kilometraje')) return 'Odómetro del vehículo inválido: no puede ser negativo ni menor al actual';
   if (msg.includes('marca') || msg.includes('precio') || msg.includes('vida fuera')) return 'Datos del neumático nuevo inválidos';
   if (msg.includes('posición libre')) return 'No hay lugar para guardar el neumático retirado en este vehículo';
   if (code === '22023' || code === '22004' || code === '23514') return 'Datos del formulario inválidos';

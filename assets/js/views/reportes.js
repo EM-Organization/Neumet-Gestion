@@ -9,6 +9,7 @@ import { PAGE_SIZE, MAX_ROWS, medicionesCsv, resumenFlota, rangoFechas, safeFile
 import { printDoc } from './report.js';
 import { contextoListo, hayFiltroSeccional, sucursalSeleccionada, filtrarConsulta } from '../core/seccional.js';
 import { fmtMm } from '../domain/formato.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const COLOR = { ok: '#1a7f37', bajo: '#b25000', critico: '#c0392b', null: '#8e8e93' };
@@ -32,7 +33,7 @@ async function loadVehiculos() {
   if (cid) q = q.eq('cliente_id', cid);
   const { data, error } = await q;
   if (error) { showToast(userError(error), true); return; }
-  fillSelect($('rep-vehiculo'), 'Todos los vehículos', (data || []).map(v => ({ id: v.id, label: v.patente ? `${v.nombre} (${v.patente})` : v.nombre })));
+  fillSelect($('rep-vehiculo'), 'Todos los vehículos', (data || []).map(v => ({ id: v.id, label: v.patente ? `${etiquetaCoche(v.nombre)} (${v.patente})` : etiquetaCoche(v.nombre) })));
 }
 
 export async function load() {
@@ -53,7 +54,7 @@ async function fetchMediciones() {
   const cid = isClienteMode() ? currentClienteId : $('rep-cliente').value;
   const vid = $('rep-vehiculo').value;
   const page = (from, to) => {
-    // Con una seccional elegida se filtra por el vehículo (join interno) en el servidor.
+    // Con una sucursal elegida se filtra por el vehículo (join interno) en el servidor.
     const porSeccional = hayFiltroSeccional();
     let q = db.from('mediciones')
       .select(porSeccional
@@ -118,9 +119,9 @@ function buildDoc(rows, truncated) {
   const n = scopeNames();
   const titulo = n.vehiculo ? `Vehículo: ${n.vehiculo}` : `Flota${n.cliente ? ': ' + n.cliente : ''}`;
   const kpi = (cls, num, label) => html`<div class="kpi ${cls}"><div class="kpi-n">${num}</div><div class="kpi-l">${label}</div></div>`;
-  const porVeh = joinHtml(r.vehiculos.map(v => html`<tr><td>${v.nombre}</td><td>${v.patente || '—'}</td><td>${v.neumaticos}</td><td>${v.ok}</td><td>${v.bajo}</td><td>${v.critico}</td></tr>`));
+  const porVeh = joinHtml(r.vehiculos.map(v => html`<tr><td>${etiquetaCoche(v.nombre)}</td><td>${v.patente || '—'}</td><td>${v.neumaticos}</td><td>${v.ok}</td><td>${v.bajo}</td><td>${v.critico}</td></tr>`));
   const detalle = joinHtml(r.neumaticos.map(t => html`<tr>
-    <td>${t.nombre}</td><td>${t.patente || '—'}</td><td>Pos. ${t.posicion ?? '—'}</td><td>${t.idneumatico ?? '—'}</td>
+    <td>${etiquetaCoche(t.nombre)}</td><td>${t.patente || '—'}</td><td>Pos. ${t.posicion ?? '—'}</td><td>${t.idneumatico ?? '—'}</td>
     <td style="font-weight:700;color:${COLOR[t.estado]}">${LABEL[t.estado]}</td><td>${fmtMm(t.promedio)}</td><td>${fmtDate(t.created_at)}</td></tr>`));
   return html`<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"/><title>Reporte NEUMET · ${titulo}</title>

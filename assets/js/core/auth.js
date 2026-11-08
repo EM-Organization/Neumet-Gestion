@@ -4,7 +4,7 @@ import { userError } from './ui.js';
 // ── MODO CLIENTE ─────────────────────────────────
 // null = admin (ve todo), número = cliente (ve solo lo suyo). Exportados como live bindings (solo auth.js los modifica).
 export let currentClienteId=null, currentClienteNombre='';
-// Seccional del perfil (null = perfil global del cliente o admin). Un perfil de seccional solo recibe de la RLS lo de su seccional.
+// Sucursal del perfil (null = perfil global del cliente o admin). Un perfil de sucursal solo recibe de la RLS lo de su sucursal.
 export let currentSucursalId=null;
 
 export function isClienteMode(){ return currentClienteId!==null; }
@@ -22,11 +22,11 @@ function applyClienteMode(){
   // Badge dispositivos no aplica a clientes
   document.getElementById('nav-unreg-badge').style.display='none';
   document.getElementById('user-email').textContent=currentClienteNombre||'Cliente';
-  document.getElementById('user-role').textContent=currentSucursalId!==null?'Seccional':'Cliente';
+  document.getElementById('user-role').textContent=currentSucursalId!==null?'Sucursal':'Cliente';
 }
 
-// Resuelve admin vs cliente. Primero el perfil (cubre usuarios de seccional, que no figuran en clientes.auth_user_id);
-// si no hay perfil de cliente, se usa el vínculo clientes.auth_user_id (cuentas anteriores a las seccionales).
+// Resuelve admin vs cliente. Primero el perfil (cubre usuarios de sucursal, que no figuran en clientes.auth_user_id);
+// si no hay perfil de cliente, se usa el vínculo clientes.auth_user_id (cuentas anteriores a las sucursales).
 async function resolverRol(userId){
   currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
   const {data:perfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();

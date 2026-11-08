@@ -1,7 +1,7 @@
 // Inicio: panel de decisión. Buscador de vehículos, proporciones de la flota, vehículos que requieren atención y
 // próximos cambios y últimas mediciones, con enlace directo al detalle de cada vehículo. Usa las vistas SQL v_estado_neumaticos,
 // v_alertas y v_salud_dispositivos y la función ultimas_mediciones (security invoker: la RLS decide qué ve cada rol; la
-// seccional elegida se aplica además aquí). Los dispositivos solo se gestionan desde administración.
+// sucursal elegida se aplica además aquí). Los dispositivos solo se gestionan desde administración.
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -16,6 +16,7 @@ import {
   clientesConUrgencias, textoSemanas, ultimasMediciones, MAX_ULTIMAS,
 } from '../domain/inicio.js';
 import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -26,14 +27,14 @@ const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '')
 function filaAtencion(v) {
   return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
     <span class="inicio-punto ${v.nivel === 'critico' ? 'critico' : ''}" aria-hidden="true"></span>
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${v.nombre} ${matricula(v.patente)}</span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
       <span class="inicio-fila-causa">${v.nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${v.causa}</span></span>
     <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
 }
 
 function filaProximo(p) {
   return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(p.vehiculo_id)}">
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${p.nombre} ${matricula(p.patente)}</span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(p.nombre)} ${matricula(p.patente)}</span>
       <span class="inicio-fila-causa">Posición ${p.posicion}${p.mm !== null ? ` · ${fmtNum(p.mm, 1)} mm` : ''}</span></span>
     <span class="inicio-semanas">${textoSemanas(p.semanas)}</span></button></li>`;
 }
@@ -98,8 +99,8 @@ function neumaticoMedido(n) {
 
 function filaMedida(v) {
   return html`<li><button type="button" class="inicio-fila um-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${v.nombre} ${matricula(v.patente)}</span>
-      <span class="inicio-fila-causa">${v.numero ? `Coche ${v.numero} · ` : ''}${fmtFecha(v.medido_at)}</span>
+    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
+      <span class="inicio-fila-causa">${v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : ''}${fmtFecha(v.medido_at)}</span>
       <ul class="um-neus">${joinHtml(v.neumaticos.map(neumaticoMedido))}</ul></span>
     <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
 }

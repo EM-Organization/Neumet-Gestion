@@ -81,13 +81,15 @@ Deno.test('JSON inválido => 400 y cuerpo grande => 413', async () => {
   assertEquals((await handle(req({ ...ok, pad: 'y'.repeat(11000) }), deps)).status, 413);
 });
 
-Deno.test('cliente inexistente => 404 y seccional inexistente => 404 (sin crear usuario)', async () => {
+Deno.test('cliente inexistente => 404 y sucursal inexistente => 404 (sin crear usuario)', async () => {
   const { deps, calls } = mk();
   assertEquals((await handle(req({ ...ok, cliente_id: 99 }), deps)).status, 404);
-  assertEquals((await handle(req({ ...ok, sucursal_id: 99 }), deps)).status, 404);
+  const r = await handle(req({ ...ok, sucursal_id: 99 }), deps);
+  assertEquals(r.status, 404);
+  assertEquals((await r.json()).error, 'Sucursal inexistente'); // el mensaje usa el término de la interfaz
   assertEquals(none(calls), 0);
 });
-Deno.test('seccional de OTRO cliente => 400 (sin crear usuario)', async () => {
+Deno.test('sucursal de OTRO cliente => 400 (sin crear usuario)', async () => {
   const { deps, calls } = mk();
   const r = await handle(req({ ...ok, sucursal_id: 80 }), deps);
   assertEquals(r.status, 400);
@@ -95,7 +97,7 @@ Deno.test('seccional de OTRO cliente => 400 (sin crear usuario)', async () => {
   assertEquals(calls.perfiles.length, 0);
 });
 
-Deno.test('alta de seccional con password: createUser + perfil con sucursal', async () => {
+Deno.test('alta de sucursal con password: createUser + perfil con sucursal', async () => {
   const { deps, calls } = mk();
   const r = await handle(req({ ...ok, password: 'una-clave-larga-1' }), deps);
   assertEquals(r.status, 201);

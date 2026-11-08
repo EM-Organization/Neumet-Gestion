@@ -31,7 +31,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(um.length !== 3) fail('inicio('+rol+'): últimas mediciones: se esperaban 3 vehículos, hay '+um.length);
   else {
     var t0 = um[0].textContent.replace(/\s+/g, ' ');
-    if(!/Camión 01/.test(t0) || !/AB123CD/.test(t0) || !/Coche 101/.test(t0) || !/14\/6\/2026/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta nombre, matrícula, coche o fecha: '+t0);
+    if(!/Coche 101/.test(t0) || /Camión/.test(t0) || /Coche 101 · Coche/.test(t0) || !/AB123CD/.test(t0) || !/14\/6\/2026/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta nombre, matrícula, coche o fecha: '+t0);
     if(!/13,0 → 12,6 mm/.test(t0) || !/\u22120,4/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta la comparativa: '+t0);
     var sin = um[0].querySelectorAll('.um-sin');
     if(sin.length !== 1 || !/15,5 mm/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): el neumático sin medición previa debe mostrar solo los mm y "Sin previa"');
@@ -67,7 +67,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var bi = $('#busq-inicio-input');
   if(!bi || !visible(bi)) fail('inicio('+rol+'): falta el buscador prominente');
   else {
-    if(bi.placeholder !== 'Matrícula o número de coche') fail('inicio: placeholder del buscador: '+bi.placeholder);
+    if(bi.placeholder !== 'Matrícula, número de coche o quema') fail('inicio: placeholder del buscador: '+bi.placeholder);
     var escribirB = async function(inp, v){ inp.value = v; inp.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(350); };
     var enviar = async function(inp){ inp.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(700); };
     await escribirB(bi, 'cam'); await enviar(bi);
@@ -84,6 +84,15 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     await escribirB(bi, '205'); await enviar(bi); // por número de coche
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: el número de coche no abre el detalle');
     $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    // Por número de quema: el resultado nombra la quema y Enter abre el vehículo donde está montado el neumático
+    await escribirB(bi, 'q 7788');
+    var opq = all('#busq-inicio-res .busq-op');
+    if(opq.length !== 1 || opq[0].textContent.indexOf('Quema Q-7788') === -1) fail('inicio: la quema no lista el vehículo con su quema: '+$('#busq-inicio-res').textContent);
+    await enviar(bi);
+    if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf('Camión 01') === -1) fail('inicio: la quema no abre el vehículo donde está montado');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    await escribirB(bi, 'Q-9999');
+    if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: una quema inexistente debe decir que no hay coincidencias');
     await escribirB(bi, 'zzz'); 
     if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: falta el mensaje sin coincidencias');
     bi.value = ''; bi.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(100);
@@ -114,7 +123,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    if(visibles.join(',') !== 'inicio,vehiculos,alertas,stock,reportes') fail('menu(cliente): menú inesperado: '+visibles.join(','));
+    // Sucursales solo para el perfil global; el de sucursal no lo ve.
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,reportes,sucursales';
+    if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
     // Defensa en el router: aunque se fuerce la vista Dispositivos (botón de menú oculto o acción), el cliente sigue en Inicio
     $('.nav-item[data-view="dispositivos"]').click(); await sleep(400);
     if($('#view-dispositivos').classList.contains('active') || !$('#view-inicio').classList.contains('active')) fail('dispositivos(cliente): el router abrió la vista');
