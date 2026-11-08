@@ -41,10 +41,12 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | neumático | goma, cubierta, llanta |
 | posición (P1, P2…) | lugar, ubicación |
 | interno / centro / externo (huellas de la banda) | izquierda / derecha, borde |
-| seccional | sucursal, filial (en la interfaz) |
+| sucursal | seccional, filial (en la interfaz) |
 | matrícula | patente (en la interfaz; la columna de la base se llama `patente`) |
-| número de coche | número interno, nº de unidad |
-| vehículo | camión, unidad (salvo el nombre propio que le puso el cliente) |
+| número de coche | número interno, nº de unidad, nombre del vehículo |
+| número de quema | número de serie, código de quema |
+| km que ya traía el neumático | km de fábrica, km iniciales |
+| vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |
 | crítico, desgaste bajo, OK, sin datos | rojo, amarillo, verde |
@@ -53,7 +55,9 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | Cambiar neumático (acción del taller) | Reemplazar, sustituir |
 | Rotar | Permutar, intercambiar |
 
-El buscador usa el texto «Matrícula o número de coche» en todas partes.
+El buscador de la barra superior y el de Inicio usan el texto «Matrícula, número de coche o quema» (la quema abre el vehículo donde está montado el neumático). El filtro de la lista de Vehículos usa «Matrícula o número de coche».
+
+El campo `vehiculos.nombre` se presenta siempre como «Número de coche»: «Coche 106» cuando el nombre son solo dígitos; los nombres anteriores con texto se muestran tal cual.
 
 ## 4. Revisión
 

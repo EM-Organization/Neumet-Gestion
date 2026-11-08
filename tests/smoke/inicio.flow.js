@@ -43,7 +43,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var bi = $('#busq-inicio-input');
   if(!bi || !visible(bi)) fail('inicio('+rol+'): falta el buscador prominente');
   else {
-    if(bi.placeholder !== 'Matrícula o número de coche') fail('inicio: placeholder del buscador: '+bi.placeholder);
+    if(bi.placeholder !== 'Matrícula, número de coche o quema') fail('inicio: placeholder del buscador: '+bi.placeholder);
     var escribirB = async function(inp, v){ inp.value = v; inp.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(350); };
     var enviar = async function(inp){ inp.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(700); };
     await escribirB(bi, 'cam'); await enviar(bi);
@@ -60,6 +60,15 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     await escribirB(bi, '205'); await enviar(bi); // por número de coche
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: el número de coche no abre el detalle');
     $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    // Por número de quema: el resultado nombra la quema y Enter abre el vehículo donde está montado el neumático
+    await escribirB(bi, 'q 7788');
+    var opq = all('#busq-inicio-res .busq-op');
+    if(opq.length !== 1 || opq[0].textContent.indexOf('Quema Q-7788') === -1) fail('inicio: la quema no lista el vehículo con su quema: '+$('#busq-inicio-res').textContent);
+    await enviar(bi);
+    if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf('Camión 01') === -1) fail('inicio: la quema no abre el vehículo donde está montado');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    await escribirB(bi, 'Q-9999');
+    if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: una quema inexistente debe decir que no hay coincidencias');
     await escribirB(bi, 'zzz'); 
     if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: falta el mensaje sin coincidencias');
     bi.value = ''; bi.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(100);

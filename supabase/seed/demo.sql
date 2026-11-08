@@ -3,13 +3,13 @@
 -- =============================================================================
 -- NO es una migración: no está en supabase/migrations y no se aplica solo.
 -- Se ejecuta A MANO (SQL editor de Supabase o psql) DESPUÉS de aplicar todas las
--- migraciones (requiere 20261107020000_seccionales.sql) y de crear el cliente
+-- migraciones (requiere hasta 20261110000000_numero_quema.sql) y de crear el cliente
 -- 'Demo Transportes' desde el panel admin (Clientes > Nuevo cliente), que crea su
 -- usuario global. Si el cliente no existe, el script falla con un mensaje claro.
 --
 -- QUÉ CREA (todo ficticio, solo para el cliente Demo; no toca ningún otro cliente):
---   * 2 seccionales: Montevideo y Salto.
---   * 14 vehículos 'Camión 1xx/2xx' con patentes DEMO001..DEMO014 (9 en Montevideo,
+--   * 2 sucursales: Montevideo y Salto.
+--   * 14 vehículos con número de coche 101..109 y 201..205 (vehiculos.nombre y numero) y patentes DEMO001..DEMO014 (9 en Montevideo,
 --     5 en Salto). Camiones con 6 o 10 neumáticos montados (tipo_ruedas=10, el
 --     CHECK de la tabla solo admite 10 o 16) y, en algunos, neumático de auxilio (pos. 99).
 --   * 6 dispositivos con MAC ficticias 02:DE:00:00:00:0N: 4 activos, 1 sin actividad
@@ -21,7 +21,7 @@
 --   * Stock de ejemplo y algunos eventos (rotación, reparación, montaje).
 -- Las fechas son relativas a now(): volver a ejecutar el script REFRESCA el demo
 -- (borra y regenera las mediciones/eventos/stock del cliente Demo con fechas
--- actuales; vehículos, neumáticos, dispositivos y seccionales se actualizan sin duplicar).
+-- actuales; vehículos, neumáticos, dispositivos y sucursales se actualizan sin duplicar).
 -- Es seguro ejecutarlo varias veces. Como las mediciones no son editables desde el
 -- panel, hay que correrlo con un rol que no esté sujeto a RLS (SQL editor / postgres).
 -- =============================================================================
@@ -63,7 +63,7 @@ begin
 
   perform setseed(0.42);  -- ruido reproducible
 
-  -- ---- Seccionales ----------------------------------------------------------
+  -- ---- Sucursales ----------------------------------------------------------
   insert into public.sucursales (cliente_id, nombre) values (v_cli, 'Montevideo'), (v_cli, 'Salto')
     on conflict (cliente_id, (lower(btrim(nombre)))) do nothing;
   select id into v_mvd from public.sucursales where cliente_id = v_cli and lower(btrim(nombre)) = 'montevideo';
@@ -107,21 +107,21 @@ begin
 
   -- ---- Vehículos, neumáticos y mediciones --------------------------------------
   for r in select * from (values
-      -- n, nombre, patente, nº neumáticos, auxilio, seccional, dispositivo, días desde la última medición
-      (1,  'Camión 101', 'DEMO001', 10, true,  'mvd', 1, 1),
-      (2,  'Camión 102', 'DEMO002', 10, false, 'mvd', 1, 2),
-      (3,  'Camión 103', 'DEMO003',  6, false, 'mvd', 2, 0),
-      (4,  'Camión 104', 'DEMO004', 10, true,  'mvd', 2, 3),
-      (5,  'Camión 105', 'DEMO005',  6, false, 'mvd', 3, 1),
-      (6,  'Camión 106', 'DEMO006', 10, false, 'mvd', 3, 4),
-      (7,  'Camión 107', 'DEMO007', 10, false, 'mvd', 4, 15),   -- dispositivo 4: sin actividad
-      (8,  'Camión 108', 'DEMO008',  6, false, 'mvd', 4, 17),
-      (9,  'Camión 109', 'DEMO009', 10, true,  'mvd', 1, 2),
-      (10, 'Camión 201', 'DEMO010', 10, false, 'slt', 5, 1),
-      (11, 'Camión 202', 'DEMO011',  6, false, 'slt', 5, 2),
-      (12, 'Camión 203', 'DEMO012', 10, true,  'slt', 5, 0),
-      (13, 'Camión 204', 'DEMO013', 10, false, 'slt', 6, 45),   -- dispositivo 6: caído (>30 días)
-      (14, 'Camión 205', 'DEMO014',  6, false, 'slt', 6, 48)
+      -- n, número de coche (vehiculos.nombre), patente, nº neumáticos, auxilio, sucursal, dispositivo, días desde la última medición
+      (1,  '101', 'DEMO001', 10, true,  'mvd', 1, 1),
+      (2,  '102', 'DEMO002', 10, false, 'mvd', 1, 2),
+      (3,  '103', 'DEMO003',  6, false, 'mvd', 2, 0),
+      (4,  '104', 'DEMO004', 10, true,  'mvd', 2, 3),
+      (5,  '105', 'DEMO005',  6, false, 'mvd', 3, 1),
+      (6,  '106', 'DEMO006', 10, false, 'mvd', 3, 4),
+      (7,  '107', 'DEMO007', 10, false, 'mvd', 4, 15),   -- dispositivo 4: sin actividad
+      (8,  '108', 'DEMO008',  6, false, 'mvd', 4, 17),
+      (9,  '109', 'DEMO009', 10, true,  'mvd', 1, 2),
+      (10, '201', 'DEMO010', 10, false, 'slt', 5, 1),
+      (11, '202', 'DEMO011',  6, false, 'slt', 5, 2),
+      (12, '203', 'DEMO012', 10, true,  'slt', 5, 0),
+      (13, '204', 'DEMO013', 10, false, 'slt', 6, 45),   -- dispositivo 6: caído (>30 días)
+      (14, '205', 'DEMO014',  6, false, 'slt', 6, 48)
     ) x(n, nombre, patente, n_neum, aux, suc, dev, ultima_dias)
   loop
     v_suc := case r.suc when 'mvd' then v_mvd else v_slt end;
@@ -133,11 +133,11 @@ begin
     if v_veh is null then
       insert into public.vehiculos (cliente_id, nombre, patente, numero, tipo_ruedas, activo, sucursal_id,
                                     fecha_compra, notas)
-      values (v_cli, r.nombre, r.patente, (100 + r.n)::text, 10, true, v_suc,
+      values (v_cli, r.nombre, r.patente, r.nombre, 10, true, v_suc,
               (current_date - (400 + r.n * 20)), 'Datos de ejemplo (demo)')
       returning id into v_veh;
     else
-      update public.vehiculos set nombre = r.nombre, tipo_ruedas = 10, activo = true, sucursal_id = v_suc where id = v_veh;
+      update public.vehiculos set nombre = r.nombre, numero = r.nombre, tipo_ruedas = 10, activo = true, sucursal_id = v_suc where id = v_veh;
     end if;
     update public.vehiculos
        set odometro_km = v_odo, odometro_actualizado_at = now() - (r.ultima_dias * interval '1 day'),
@@ -153,13 +153,15 @@ begin
       begin
         h := abs(hashtext(v_id));
         insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, modelo, idneumatico, codigo,
-                                       auxilio, fecha_compra, precio_unidad, vida, estado, notas)
+                                       auxilio, fecha_compra, precio_unidad, vida, estado, notas, numero_quema, km_previos)
         values (v_veh, v_cli, v_pos, v_marcas[1 + h % 5], v_modelos[1 + (h / 7) % 5], v_id, 'COD-' || (h % 9000 + 1000),
                 v_aux, current_date - (300 + h % 200), 380 + (h % 14) * 10, (h % 7) / 6, 'montado',
-                'Datos de ejemplo (demo)')
+                'Datos de ejemplo (demo)',
+                format('Q%s-%s', lpad(r.n::text, 2, '0'), lpad(v_pos::text, 2, '0')), (h % 5) * 20000)
         on conflict (vehiculo_id, posicion) do update
           set marca = excluded.marca, modelo = excluded.modelo, idneumatico = excluded.idneumatico,
-              auxilio = excluded.auxilio, estado = 'montado', vida = excluded.vida, precio_unidad = excluded.precio_unidad;
+              auxilio = excluded.auxilio, estado = 'montado', numero_quema = excluded.numero_quema,
+              km_previos = excluded.km_previos, vida = excluded.vida, precio_unidad = excluded.precio_unidad;
       end;
     end loop;
 
@@ -219,7 +221,7 @@ begin
     (v_cli, 'Bridgestone', 'R249 Ecopia', 4, 420.00, current_date - 35, 'Datos de ejemplo (demo)'),
     (v_cli, 'Pirelli',     'FH88 Fleet',  2, 390.00, current_date - 10, 'Datos de ejemplo (demo)');
 
-  raise notice 'Demo listo para el cliente % (id %): seccionales Montevideo=% Salto=%', c_nombre, v_cli, v_mvd, v_slt;
+  raise notice 'Demo listo para el cliente % (id %): sucursales Montevideo=% Salto=%', c_nombre, v_cli, v_mvd, v_slt;
 end
 $demo$;
 

@@ -113,14 +113,14 @@
         <h1 class="breadcrumb"><button type="button" class="breadcrumb-parent" id="breadcrumb-parent" data-action="irA" hidden></button><span class="breadcrumb-sep" id="breadcrumb-sep" aria-hidden="true" hidden> › </span><span id="breadcrumb-current">Inicio</span></h1>
       </div>
       <form class="busq busq-barra" id="busq-global" role="search" data-buscador autocomplete="off">
-        <label class="sr-only" for="busq-global-input">Buscar vehículo por matrícula o número de coche</label>
+        <label class="sr-only" for="busq-global-input">Buscar vehículo por matrícula, número de coche o número de quema</label>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input id="busq-global-input" type="search" placeholder="Matrícula o número de coche" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-global-res" aria-expanded="false"/>
+        <input id="busq-global-input" type="search" placeholder="Matrícula, número de coche o quema" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-global-res" aria-expanded="false"/>
         <kbd class="busq-atajo" aria-hidden="true">/</kbd>
         <ul class="busq-resultados" id="busq-global-res" hidden></ul>
       </form>
-      <label class="sec-selector" id="sec-selector" style="display:none">Seccional
-        <select id="sec-select" class="flota-select" data-change="seccionalCambiar" aria-label="Seccional"></select>
+      <label class="sec-selector" id="sec-selector" style="display:none">Sucursal
+        <select id="sec-select" class="flota-select" data-change="seccionalCambiar" aria-label="Sucursal"></select>
       </label>
       <div class="status-pill disconnected" id="status-pill" role="status" hidden>
         <div class="status-dot"></div>
@@ -140,9 +140,9 @@
           <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
         </div>
         <form class="busq busq-grande" id="busq-inicio" role="search" data-buscador autocomplete="off">
-          <label class="sr-only" for="busq-inicio-input">Buscar vehículo por matrícula o número de coche</label>
+          <label class="sr-only" for="busq-inicio-input">Buscar vehículo por matrícula, número de coche o número de quema</label>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input id="busq-inicio-input" type="search" placeholder="Matrícula o número de coche" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
+          <input id="busq-inicio-input" type="search" placeholder="Matrícula, número de coche o quema" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
           <ul class="busq-resultados" id="busq-inicio-res" hidden></ul>
         </form>
         <div id="inicio-contenido" aria-live="polite">
@@ -337,7 +337,7 @@
             <table>
               <thead><tr>
                 <th scope="col" style="width:60px">ID</th>
-                <th scope="col">Nombre</th>
+                <th scope="col">Coche</th>
                 <th scope="col">Matrícula</th>
                 <th scope="col">Cliente</th>
                 <th scope="col">Ruedas</th>
@@ -670,7 +670,7 @@
             <option value="sin_datos">Sin datos</option>
             <option value="ok">OK</option>
           </select>
-          <div class="search"><input id="flota-q" type="text" placeholder="Matrícula o nombre" aria-label="Filtrar por matrícula o nombre"/></div>
+          <div class="search"><input id="flota-q" type="text" placeholder="Matrícula o número de coche" aria-label="Filtrar por matrícula o número de coche"/></div>
         </div>
         <div class="rep-progress" id="flota-msg" role="status" aria-live="polite"></div>
         <div class="dash-fleet-grid" id="flota-grid"></div>
@@ -731,11 +731,11 @@
           </div>
         </div>
         <div class="ficha-card" id="ficha-seccionales" data-admin-only>
-          <div class="ficha-card-title">Seccionales y usuarios</div>
-          <div class="ficha-sub">Un usuario global ve toda la flota del cliente; un usuario de seccional solo ve los vehículos y dispositivos de su seccional (y no puede editar umbrales).</div>
+          <div class="ficha-card-title">Sucursales y usuarios</div>
+          <div class="ficha-sub">Un usuario global ve toda la flota del cliente; un usuario de sucursal solo ve los vehículos y dispositivos de su sucursal (y no puede editar umbrales).</div>
           <div class="sec-alta">
-            <input type="text" id="sec-nombre" maxlength="100" placeholder="Nueva seccional" aria-label="Nombre de la nueva seccional"/>
-            <button class="btn primary" data-action="seccionalCrear">Agregar seccional</button>
+            <input type="text" id="sec-nombre" maxlength="100" placeholder="Nueva sucursal" aria-label="Nombre de la nueva sucursal"/>
+            <button class="btn primary" data-action="seccionalCrear">Agregar sucursal</button>
           </div>
           <div class="login-error" id="sec-error" role="alert"></div>
           <div id="sec-lista"></div>
@@ -848,16 +848,12 @@
       <div class="modal-section-title">Datos del vehículo</div>
       <div class="field-row">
         <div class="field"><label for="vf-cliente">Cliente</label><select id="vf-cliente"></select></div>
-        <div class="field"><label for="vf-nombre">Nombre del vehículo</label><input type="text" id="vf-nombre" placeholder="Unidad 07"/></div>
+        <div class="field"><label for="vf-nombre">Número de coche</label><input type="text" id="vf-nombre" placeholder="106" maxlength="40" autocomplete="off"/></div>
       </div>
       <div class="field-row">
         <div class="field">
           <label for="vf-patente">Matrícula <span class="label-opt">(opcional)</span></label>
           <input type="text" id="vf-patente" placeholder="AB 123 CD" style="text-transform:uppercase"/>
-        </div>
-        <div class="field">
-          <label for="vf-numero">Número de coche <span class="label-opt">(opcional)</span></label>
-          <input type="text" id="vf-numero" placeholder="007" maxlength="10"/>
         </div>
       </div>
       <div class="field-row">
@@ -980,9 +976,17 @@
               <input id="cambio-modelo" type="text" maxlength="60" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
           </div>
         </div>
+        <div class="field-row">
+          <div class="field"><label for="cambio-quema">Número de quema <span class="label-opt">(opcional)</span></label>
+            <input id="cambio-quema" type="text" maxlength="40" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+          <div class="field"><label for="cambio-km-previos">Km que ya traía el neumático</label>
+            <input id="cambio-km-previos" type="number" inputmode="numeric" min="0" step="1" value="0" data-change="neumatico-cambiar-resumen"/>
+            <div class="field-hint">0 para un neumático nuevo.</div></div>
+        </div>
       </fieldset>
-      <div class="field"><label for="cambio-odo">Kilometraje actual <span class="label-opt">(opcional)</span></label>
-        <input id="cambio-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-cambiar-resumen"/></div>
+      <div class="field"><label for="cambio-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+        <input id="cambio-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-cambiar-resumen"/>
+        <div class="field-hint" id="cambio-odo-hint">Lectura actual del vehículo, aparte de los km del neumático.</div></div>
       <div id="cambio-resumen" class="cambio-resumen" aria-live="polite"></div>
       <div id="cambio-error" class="cambio-error" role="alert"></div>
     </div>

@@ -6,6 +6,9 @@ import { showToast, userError } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
 import { MED_CFG } from '../domain/camion.js';
 import { getVehiculos } from './vehiculos.js';
+import { invalidarCatalogo } from '../core/buscador.js';
+import { etiquetaCoche } from '../domain/coche.js';
+import { normalizarQuema, parseKmPrevios } from '../domain/quema.js';
 
 let neumVehiculoId=null, neumSelPos=null, neumAssignments={}, neumStockCache=[];
 
@@ -178,6 +181,10 @@ function renderNeumDetailPanel(pos){
       <div class="field"><label>Precio/ud</label><input id="ndp-precio" type="number" value="${n.precio_unidad??''}" placeholder="0.00" min="0" step="0.01"/></div>
       <div class="field"><label>Fecha compra</label><input id="ndp-fecha" type="date" value="${n.fecha_compra||''}"/></div>
     </div>
+    <div class="field-row" style="gap:8px">
+      <div class="field"><label>Número de quema</label><input id="ndp-quema" value="${(n.numero_quema||'')}" maxlength="40" autocomplete="off"/></div>
+      <div class="field"><label>Km que ya traía el neumático</label><input id="ndp-km-previos" type="number" value="${n.km_previos??0}" min="0" step="1"/></div>
+    </div>
     <div class="field"><label>Notas</label><textarea id="ndp-notas" rows="2" placeholder="Dimensión, observaciones...">${(n.notas||'')}</textarea></div>
     <button class="btn primary ndp-btn" data-action="neumApplyPos" data-args="[${pos}]">Aplicar</button>
   `);
@@ -194,6 +201,12 @@ ACTIONS.neumFillFromStock=function(pos){
 };
 
 ACTIONS.neumApplyPos=function(pos){
+  const q=normalizarQuema(document.getElementById('ndp-quema').value);
+  if(!q.ok){ showToast(q.error,true); return; }
+  const kp=parseKmPrevios(document.getElementById('ndp-km-previos').value);
+  if(!kp.ok){ showToast(kp.error,true); return; }
+  const repetida=Object.entries(neumAssignments).some(([p,x])=>Number(p)!==pos && q.valor && x.numero_quema && x.numero_quema.toLowerCase()===q.valor.toLowerCase());
+  if(repetida){ showToast('Ese número de quema ya está en otra posición de este vehículo',true); return; }
   const sid=parseInt(document.getElementById('ndp-stock').value)||null;
   const precio=document.getElementById('ndp-precio').value;
   neumAssignments[pos]={
@@ -203,7 +216,9 @@ ACTIONS.neumApplyPos=function(pos){
     modelo:document.getElementById('ndp-modelo').value.trim()||null,
     precio_unidad:precio!==''&&precio!=null?parseFloat(precio):null,
     fecha_compra:document.getElementById('ndp-fecha').value||null,
-    notas:document.getElementById('ndp-notas').value.trim()||null
+    notas:document.getElementById('ndp-notas').value.trim()||null,
+    numero_quema:q.valor,
+    km_previos:kp.valor
   };
   neumDrawTruck(); // actualizar colores
   showToast(`P${pos} actualizada. Guardar para confirmar`,false);
@@ -219,7 +234,7 @@ ACTIONS.neumClearPos=function(pos){
 ACTIONS.openNeumaticosModal=async function(vehiculoId){
   neumVehiculoId=vehiculoId; neumSelPos=null; neumAssignments={};
   const v=getVehiculos().find(x=>x.id===vehiculoId);
-  document.getElementById('neum-modal-title').textContent=`Neumáticos · ${v?.nombre||''}`;
+  document.getElementById('neum-modal-title').textContent=`Neumáticos · ${etiquetaCoche(v?.nombre)}`;
   document.getElementById('modal-neumaticos').classList.add('show');
   setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Elegir una rueda</span></div>`);
 
@@ -251,15 +266,20 @@ ACTIONS.saveNeumaticos=async function(){
       modelo:n.modelo||null,
       precio_unidad:n.precio_unidad!=null?n.precio_unidad:null,
       fecha_compra:n.fecha_compra||null,
-      notas:n.notas||null
+      notas:n.notas||null,
+      numero_quema:n.numero_quema||null,
+      km_previos:n.km_previos||0
     }));
     if(rows.length){
       const {error}=await db.from('neumaticos').upsert(rows,{onConflict:'vehiculo_id,posicion'});
       if(error) throw error;
     }
+    invalidarCatalogo(); // las quemas del buscador
     showToast('Neumáticos guardados');
     ACTIONS.closeNeumaticosModal();
-  } catch(e){ showToast(userError(e),true); }
+  } catch(e){
+    showToast(e&&e.code==='23505'?'Número de quema repetido: ya lo usa otro neumático del cliente':userError(e),true);
+  }
   finally{ btn.disabled=false; btn.textContent='Guardar todo'; }
 };
 

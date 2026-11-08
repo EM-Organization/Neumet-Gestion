@@ -9,7 +9,7 @@ export function registerView(name,label,load,{menu}={}){ NAV_LABELS[name]=label;
 let activa=null;
 export const vistaActiva=()=>activa;
 export const etiquetaVista=v=>NAV_LABELS[v]||v;
-// Recarga la vista activa (p. ej. al cambiar el selector de seccional).
+// Recarga la vista activa (p. ej. al cambiar el selector de sucursal).
 export function reloadActiveView(){ if(activa&&LOADERS[activa]) LOADERS[activa](); }
 
 // Título de la barra superior: "Padre › Actual". `padre` = nombre de una vista (enlaza a ella) o null.

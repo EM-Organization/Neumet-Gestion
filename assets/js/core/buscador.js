@@ -1,4 +1,4 @@
-// Buscador de vehículos por matrícula o número de coche. Lo comparten la barra superior (todas las pantallas) y Inicio:
+// Buscador de vehículos por matrícula, número de coche o número de quema (abre el vehículo donde está montado el neumático). Lo comparten la barra superior (todas las pantallas) y Inicio:
 // cada <form data-buscador> con su <input> y su <ul class="busq-resultados"> se monta con initBuscador().
 // Tiene su propio catálogo de vehículos (paginado, sin depender de que Vehículos esté cargada ni del estado de los
 // neumáticos, que es una consulta pesada): se carga al iniciar sesión y se renueva cada 5 minutos o al invalidarlo.
@@ -9,7 +9,8 @@ import { isClienteMode, currentClienteId, onLogin, onLogout } from './auth.js';
 import { runAction, registerActions } from './actions.js';
 import { filtrarFilas } from './seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { resolverBusqueda } from '../domain/vehiculo-busqueda.js';
+import { resolverBusqueda, quemaCoincidente } from '../domain/vehiculo-busqueda.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 const COLS = 'id,nombre,patente,numero,activo,cliente_id,sucursal_id';
 const VIGENCIA_MS = 5 * 60 * 1000;
@@ -32,6 +33,25 @@ function traer(conCliente) {
   }, { pageSize: PAGE_SIZE, max: MAX_VEHICULOS });
 }
 
+// Números de quema de los neumáticos montados, por vehículo. La RLS acota qué ve cada perfil; si la consulta falla
+// la búsqueda por matrícula y número de coche sigue funcionando.
+async function traerQuemas() {
+  const r = await fetchAll((from, to) => {
+    let q = db.from('neumaticos').select('vehiculo_id,numero_quema').eq('estado', 'montado')
+      .not('numero_quema', 'is', null).order('id').range(from, to);
+    if (isClienteMode()) q = q.eq('cliente_id', currentClienteId);
+    return q;
+  }, { pageSize: PAGE_SIZE, max: MAX_VEHICULOS });
+  if (r.error) return new Map();
+  const porVehiculo = new Map();
+  for (const n of r.rows) {
+    if (!n.numero_quema) continue;
+    if (!porVehiculo.has(n.vehiculo_id)) porVehiculo.set(n.vehiculo_id, []);
+    porVehiculo.get(n.vehiculo_id).push(n.numero_quema);
+  }
+  return porVehiculo;
+}
+
 // Carga (o reutiliza) el catálogo. Devuelve true si hay catálogo utilizable.
 export function cargarCatalogo(forzar = false) {
   const vigente = promesa && (enCurso || (!fallo && Date.now() - cargadoEn < VIGENCIA_MS));
@@ -41,7 +61,11 @@ export function cargarCatalogo(forzar = false) {
     try {
       let r = await traer(true);
       if (r.error) r = await traer(false); // por si falla la relación con clientes: se busca igual, sin el nombre del cliente
-      if (r.error) { fallo = true; catalogo = []; } else catalogo = r.rows;
+      if (r.error) { fallo = true; catalogo = []; } else {
+        let quemas = new Map();
+        try { quemas = await traerQuemas(); } catch (_e) { /* sin quemas: se busca igual por matrícula y coche */ }
+        catalogo = r.rows.map(v => (quemas.has(v.id) ? { ...v, quemas: quemas.get(v.id) } : v));
+      }
     } catch (_e) { fallo = true; catalogo = []; }
     cargadoEn = Date.now(); enCurso = false;
     return !fallo;
@@ -51,20 +75,26 @@ export function cargarCatalogo(forzar = false) {
 
 // Tras alta, edición o baja de un vehículo: el catálogo se vuelve a pedir en la próxima búsqueda.
 export function invalidarCatalogo() { cargadoEn = 0; }
+// Un cambio de neumático puede traer otro número de quema (evento de views/cambio-neumatico.js; sin importarlo: core no depende de views).
+document.addEventListener('neumet:neumatico-cambiado', invalidarCatalogo);
 
-// Vehículos buscables: el cliente solo busca activos; la seccional elegida acota.
+// Vehículos buscables: el cliente solo busca activos; la sucursal elegida acota.
 const visibles = () => filtrarFilas(catalogo.filter(v => !isClienteMode() || v.activo !== false), 'id');
 
-function metaDe(v) {
+function metaDe(v, texto) {
   const partes = [v.patente || 'Sin matrícula'];
-  if (v.numero !== null && v.numero !== undefined && v.numero !== '') partes.push(`Coche ${v.numero}`);
+  // El nombre ya muestra "Coche 106"; el número se repite solo si es otro dato (vehículos anteriores).
+  const coche = v.numero !== null && v.numero !== undefined && v.numero !== '' ? `Coche ${v.numero}` : '';
+  if (coche && coche !== etiquetaCoche(v.nombre)) partes.push(coche);
+  const quema = quemaCoincidente(v, texto);
+  if (quema) partes.push(`Quema ${quema}`);
   if (!isClienteMode() && v.clientes && v.clientes.nombre) partes.push(v.clientes.nombre);
   if (v.activo === false) partes.push('Inactivo');
   return partes.join(' · ');
 }
 
-const opcion = v => html`<li><button type="button" class="busq-op" data-action="verVehiculo" data-args="${JSON.stringify([v.id])}">
-  <span class="busq-nom">${v.nombre}</span><span class="busq-meta">${metaDe(v)}</span></button></li>`;
+const opcion = (v, texto) => html`<li><button type="button" class="busq-op" data-action="verVehiculo" data-args="${JSON.stringify([v.id])}">
+  <span class="busq-nom">${etiquetaCoche(v.nombre)}</span><span class="busq-meta">${metaDe(v, texto)}</span></button></li>`;
 
 function montar(form) {
   const input = form.querySelector('input');
@@ -96,7 +126,7 @@ function montar(form) {
     if (r.accion === 'ninguno') { mensaje('Ningún vehículo coincide.'); return; }
     const resto = r.total - r.items.length;
     setHtml(lista, joinHtml([
-      r.items.map(opcion),
+      r.items.map(v => opcion(v, input.value)),
       resto > 0 ? html`<li class="busq-msg">${resto} más: escribir más caracteres para acotar.</li>` : '',
     ]));
     abrir();

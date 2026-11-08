@@ -5,6 +5,7 @@ import { showToast, userError } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
 import { WEAR, wearStatus } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 export async function exportMedicionesCSV(){
   const vid=parseInt(document.getElementById('med-vehiculo-select').value);
@@ -170,7 +171,7 @@ export async function generarReportePDF(){
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<title>Reporte NEUMET · ${(veh?.nombre||'')}</title>
+<title>Reporte NEUMET · ${etiquetaCoche(veh?.nombre)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#383424;padding:40px;font-size:14px}
@@ -210,7 +211,7 @@ export async function generarReportePDF(){
     <div style="font-size:12px;color:#615A3F;margin-top:4px">Reporte de estado de neumáticos</div>
   </div>
   <div class="report-meta">
-    <div><strong>Vehículo:</strong> ${(veh?.nombre||'—')}</div>
+    <div><strong>Vehículo:</strong> ${(etiquetaCoche(veh?.nombre)||'—')}</div>
     <div><strong>Patente:</strong> ${(veh?.patente||'—')}</div>
     <div><strong>Fecha:</strong> ${fmtDate(new Date().toISOString())}</div>
   </div>

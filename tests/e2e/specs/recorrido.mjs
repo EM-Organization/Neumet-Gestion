@@ -92,7 +92,7 @@ export function registrar(env) {
     });
   });
 
-  test('Stock (global): el stock del cliente se lista y es de solo lectura; la seccional no lo ve', async () => {
+  test('Stock (global): el stock del cliente se lista y es de solo lectura; la sucursal no lo ve', async () => {
     const lotes = json(env, `select marca, cantidad from public.stock_neumaticos where cliente_id = (select id from public.clientes where nombre = 'Demo Transportes') order by marca`);
     assert.ok(lotes.length >= 3);
     const marcas = () => `[...document.querySelectorAll('#tbody-stock tr:not(.stock-asig-detail)')].map(r => r.cells[0] && r.cells[0].textContent.trim()).filter(Boolean).sort()`;
@@ -106,7 +106,7 @@ export function registrar(env) {
     await flujo(env, 'stock-seccional', 'salto', async p => {
       await irA(p, 'stock');
       await dormir(700);
-      assert.deepEqual(await p.eval(marcas()), ['Sin neumáticos en stock'], 'la seccional no ve lotes de stock');
+      assert.deepEqual(await p.eval(marcas()), ['Sin neumáticos en stock'], 'la sucursal no ve lotes de stock');
     });
   });
 }

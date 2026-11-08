@@ -16,7 +16,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 ## 2. Rol cliente (gomero / gestor de flota)
 
-Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes · Dispositivos**. El cliente con perfil global ve además **Sucursales** (entre Reportes y Dispositivos); el perfil de sucursal no la ve. Con perfil global aparece además el selector **Seccional** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de seccional no lo ve porque la base ya le limita los datos.
+Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes · Dispositivos**. El cliente con perfil global ve además **Sucursales** (entre Reportes y Dispositivos); el perfil de sucursal no la ve. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
 flowchart TD
@@ -30,7 +30,7 @@ flowchart TD
   M --> D[Dispositivos]
   SU -->|crear, renombrar, eliminar| SU
   SU -->|agregar vehículo, mover con confirmación| SU
-  B[Buscador de la barra superior - tecla /] -->|matrícula o número de coche| VD[Detalle de vehículo]
+  B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   I -->|buscador de Inicio| VD
   I -->|fila de Requieren atención| VD
   I -->|fila de Próximos cambios| VD
@@ -105,7 +105,7 @@ flowchart TD
   C -->|eliminar| BL[Baja lógica]
   FI -->|Volver a Clientes| C
   FI --> U[Umbrales de desgaste]
-  FI --> SE[Seccionales y usuarios]
+  FI --> SE[Sucursales y usuarios]
   FI --> API[Cuenta de API]
   V -->|Nuevo vehículo / editar| VM[Formulario de vehículo]
   S -->|Agregar compra / editar| SM[Formulario de stock]
@@ -118,7 +118,7 @@ flowchart TD
 | Stock | Alta y edición de compras; filtro por cliente | Stock |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
-| Ficha de cliente | Editar umbrales; crear seccionales, asignar vehículos y dispositivos, crear usuarios de seccional; crear cuentas de API | Clientes |
+| Ficha de cliente | Editar umbrales; crear sucursales, asignar vehículos y dispositivos, crear usuarios de sucursal; crear cuentas de API | Clientes |
 | Estado de la flota | Resumen por vehículo con prioridades, filtrable por cliente; abre el detalle | Estado de la flota |
 | Mediciones | Historial de mediciones por vehículo y dispositivo | Mediciones |
 | Balance | Gastos y valor del inventario | Balance |

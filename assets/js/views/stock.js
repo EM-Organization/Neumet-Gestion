@@ -4,6 +4,7 @@ import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
+import { etiquetaCoche } from '../domain/coche.js';
 
 let stockItems=[], stockModalMode='create', stockActiveId=null;
 let stockAssignMap={}; // stock_id → [{vehiculo_nombre, count}]
@@ -16,7 +17,7 @@ export async function loadStockAssignments(){
   stockAssignMap={};
   (data||[]).forEach(n=>{
     if(!n.stock_id) return;
-    const vnom=n.vehiculos?.nombre||'Vehículo desconocido';
+    const vnom=etiquetaCoche(n.vehiculos?.nombre)||'Vehículo desconocido';
     if(!stockAssignMap[n.stock_id]) stockAssignMap[n.stock_id]={};
     stockAssignMap[n.stock_id][vnom]=(stockAssignMap[n.stock_id][vnom]||0)+1;
   });

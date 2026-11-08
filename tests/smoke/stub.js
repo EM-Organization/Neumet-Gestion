@@ -24,7 +24,7 @@
         vehiculos:{nombre:veh[0].nombre,patente:veh[0].patente,tipo_ruedas:10},patente_raw:null,numero_raw:null});
     }
   });
-  var neu = [1,2,3].map(function(p){ return {id:p,vehiculo_id:10,cliente_id:1,posicion:p,marca:'Michelin',modelo:'X <MultiWay>',fecha_compra:'2025-01-10',precio_unidad:450000,notas:'ok',stock_id:p===1?1:null,vehiculos:{nombre:veh[0].nombre}}; });
+  var neu = [1,2,3].map(function(p){ return {id:p,vehiculo_id:10,cliente_id:1,posicion:p,marca:'Michelin',modelo:'X <MultiWay>',fecha_compra:'2025-01-10',precio_unidad:450000,notas:'ok',stock_id:p===1?1:null,numero_quema:p===3?null:'Q-778'+(p+7),km_previos:p===1?15000:0,vehiculos:{nombre:veh[0].nombre}}; });
   var stock = [
     {id:1,marca:'Michelin',modelo:'X MultiWay',cliente_id:1,precio_unidad:450000,fecha_compra:'2025-01-10',cantidad:8,notas:'lote A',created_at:D(5),clientes:{nombre:cl[0].nombre}},
     {id:2,marca:'Bridgestone',modelo:null,cliente_id:2,precio_unidad:380000,fecha_compra:null,cantidad:4,notas:null,created_at:D(3),clientes:{nombre:cl[1].nombre}}

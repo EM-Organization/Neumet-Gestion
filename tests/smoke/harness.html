@@ -119,6 +119,14 @@
       nav(m[0]); await sleep(400);
       if(click(act(m[1]),m[1])){ await sleep(400);
         if(!$('#'+m[2]).classList.contains('show')) fail('modal no abierto: '+m[2]);
+        if(m[2]==='modal-vehiculo'){
+          // El vehículo se identifica por su número de coche (vehiculos.nombre): un solo campo, sin "Nombre del vehículo".
+          var ln=$('#modal-vehiculo label[for="vf-nombre"]');
+          if(!ln||ln.textContent.trim()!=='Número de coche') fail('vehiculo: la etiqueta del campo debe ser "Número de coche": '+(ln&&ln.textContent));
+          if($('#vf-numero')) fail('vehiculo: sobra el campo separado de número');
+          if($('#vf-nombre').placeholder!=='106') fail('vehiculo: placeholder del número de coche: '+$('#vf-nombre').placeholder);
+          if(/Nombre del vehículo/.test($('#modal-vehiculo').textContent)) fail('vehiculo: aparece "Nombre del vehículo"');
+        }
         click(act(m[3]),m[3]); await sleep(100);
         if($('#'+m[2]).classList.contains('show')) fail('modal no cerrado: '+m[2]);
       }
@@ -157,7 +165,7 @@
     // --- fin clientes ---
     // --- salud de dispositivos y ficha de cliente: tests/smoke/salud.flow.js ---
     await window.saludFlow(w,d,sleep,fail,log,cliMode);
-    // --- seccionales (ABM admin, selector del perfil global, perfil de seccional): tests/smoke/seccionales.flow.js ---
+    // --- sucursales (ABM admin, selector del perfil global, perfil de sucursal): tests/smoke/seccionales.flow.js ---
     if(!cliMode) await window.seccionalesAdminFlow(w,d,sleep,fail,log);
     else if(/[?&]secuser=1/.test(location.search)) await window.seccionalesUsuarioFlow(w,d,sleep,fail,log);
     else await window.seccionalesClienteFlow(w,d,sleep,fail,log);
