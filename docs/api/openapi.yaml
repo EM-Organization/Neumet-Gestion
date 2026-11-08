@@ -10,8 +10,8 @@ info:
     para las ambigüedades abiertas (§5) y el diseño de seguridad (§4).
     El éxito requiere HTTP 2xx y `code = 200` en el cuerpo (login: HTTP exactamente 200).
 servers:
-  - url: https://CAMBIAR-BASE-URL
-    description: Base a comunicar al cliente (staging y producción distintas)
+  - url: https://kootszosdejmawanfxug.supabase.co/functions/v1/api-proveedor
+    description: Producción. La función acepta las rutas con y sin este prefijo
 paths:
   /auth/login:
     post:

@@ -2,7 +2,7 @@
 
 > **Nota (2026-11):** las referencias `app.js:N` de este documento apuntan al monolito `assets/js/app.js` previo a la modularización (PR del refactor a módulos ES). Hoy el panel vive en módulos ES bajo `assets/js/` (`main.js`, `core/`, `domain/`, `views/`; ver [`assets/js/README.md`](../assets/js/README.md)); los números de línea ya no existen y se conservan como evidencia histórica.
 
-> Estado: diagnóstico (2026-11-06). Sin cambios de código. Los hallazgos marcados **[verificar]** dependen de configuración que vive solo en el dashboard de Supabase y no pudo auditarse desde el repo.
+> Estado: Auditoría de 2026-11-06, conservada como registro histórico; varios hallazgos ya están corregidos (ver [10-tablero.md](10-tablero.md)). El proyecto Supabase citado como `dqgrlflrjcarxlfetvoj` es el anterior, ya sin uso.
 
 ## 1. Búsqueda de claves filtradas
 
@@ -16,7 +16,7 @@
 | `service_role` | — | ✅ No encontrada en árbol ni historial |
 | `RESEND_API_KEY` | Solo `Deno.env.get(...)` en `contacto/index.ts:3` | ✅ Correctamente externalizada (secret de Supabase) |
 | Secrets de GitHub Actions (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) | Workflow eliminado; solo referencias `${{ secrets.* }}` | ✅ Nunca hubo valores en claro |
-| Project ref `dqgrlflrjcarxlfetvoj` | README y código | ℹ️ Identificador, no secreto. Facilita reconocimiento del objetivo |
+| Project ref `dqgrlflrjcarxlfetvoj` (proyecto anterior, histórico) | README y código de entonces | ℹ️ Identificador, no secreto. Facilita reconocimiento del objetivo |
 | Email de destino `contacto.neumet@gmail.com` | `contacto/index.ts:4` | ℹ️ Hardcodeado; ver §5 |
 | Commit `39e5b13` "change recipient to emarichal.uy@gmail.com for testing" | Historial | ℹ️ Email personal en historial |
 

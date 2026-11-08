@@ -130,14 +130,14 @@ Un solo tipo de alerta: **«Neumático en estado crítico»**. Un neumático mon
 |---|---|
 | Umbral crítico | Por cliente (hoy `clientes.umbral_critico_mm`, queda como valor base). Anulaciones opcionales por **eje** (p. ej. direccional 6 mm), por **posición** y por **marca y modelo**. Precedencia: posición, luego marca/modelo, luego eje, luego cliente. Debe mantenerse `umbral_retiro_mm < umbral_critico_mm`. |
 | Histéresis | `histeresis_mm` por cliente, 0,5 mm por defecto. Se abre cuando `promedio < U`; se resuelve cuando `promedio >= U + histeresis`. Evita abrir y cerrar con el ruido del sensor (la dispersión entre huellas de un mismo neumático puede ser de décimas de mm; ajustar con datos reales). |
-| Destinatarios y canal | Tabla de destinatarios por cliente (y opcionalmente por seccional): correo en la etapa 2; webhook y mensajería quedan como TODO. Cada alerta nueva produce un envío; los recordatorios son configurables. |
+| Destinatarios y canal | Tabla de destinatarios por cliente (y opcionalmente por sucursal): correo en la etapa 2; webhook y mensajería quedan como TODO. Cada alerta nueva produce un envío; los recordatorios son configurables. |
 | Silenciar | Por neumático o por vehículo, hasta una fecha (`silenciada_hasta`), con motivo y autor. Una alerta silenciada sigue abierta pero no notifica. |
 | Reconocer | Un usuario con permiso sobre el vehículo marca «Reconocida» (con nota opcional); no cierra la alerta, indica que alguien la atiende. |
 | Evitar duplicados | Índice único parcial: a lo sumo una alerta no resuelta por neumático. Una rotación no genera alerta nueva: la alerta sigue al neumático. Un neumático nuevo en la posición es otro neumático. |
 | Reapertura | Si una alerta resuelta por recuperación vuelve a cruzar el umbral dentro de 7 días (configurable), se reabre la misma fila y se incrementa `veces_reabierta`, en lugar de crear una nueva. |
 | Resolución | Automática: `promedio >= U + histéresis` (motivo `recuperada`), cambio del neumático (`cambio`), baja (`baja`). Manual: un usuario con permiso (`manual`, con nota). |
 | Auditoría | Toda transición queda en `audit_log` (trigger como `trg_audit_*`) y en columnas de la propia alerta (`abierta_at`, `reconocida_por`, `resuelta_motivo`…). |
-| RLS | Lectura con la misma regla que `vehiculos` (cliente, seccional, admin). Sin `INSERT`/`UPDATE` directo para `authenticated`: las transiciones van por funciones `SECURITY DEFINER` que llaman a `neumatico_autorizar_vehiculo`, como `neumatico_rotar`. La configuración la edita el administrador del cliente. |
+| RLS | Lectura con la misma regla que `vehiculos` (cliente, sucursal, admin). Sin `INSERT`/`UPDATE` directo para `authenticated`: las transiciones van por funciones `SECURITY DEFINER` que llaman a `neumatico_autorizar_vehiculo`, como `neumatico_rotar`. La configuración la edita el administrador del cliente. |
 
 ### B.4 Cómo se evalúa: dos alternativas
 
@@ -218,7 +218,7 @@ create index if not exists alertas_vehiculo_idx on public.alertas (vehiculo_id);
 alter table public.alertas enable row level security;
 revoke all on public.alertas from anon, authenticated;
 grant select on public.alertas to authenticated;
--- policy de lectura: misma regla que vehiculos (admin, cliente, seccional)
+-- policy de lectura: misma regla que vehiculos (admin, cliente, sucursal)
 -- create policy alertas_select on public.alertas for select to authenticated using (...);
 create trigger trg_audit_alertas after insert or update or delete on public.alertas
   for each row execute function public.audit_row();   -- nombre real según el trigger de auditoría existente
@@ -240,7 +240,7 @@ $$;
 3. Reapertura: cruce nuevo dentro de 7 días reabre la misma fila (`veces_reabierta + 1`).
 4. Rotar un neumático con alerta abierta conserva la alerta (misma fila, nueva posición vía `neumatico_id`); cambiarlo la resuelve con motivo `cambio`.
 5. El umbral por eje y por posición se respeta con la precedencia indicada; cambiarlo y llamar a `alerta_reevaluar_cliente` abre o resuelve según corresponda.
-6. Aislamiento: un usuario de otro cliente o de otra seccional no ve ni reconoce la alerta (`42501` en la función, cero filas por RLS). El rol `api` no accede.
+6. Aislamiento: un usuario de otro cliente o de otra sucursal no ve ni reconoce la alerta (`42501` en la función, cero filas por RLS). El rol `api` no accede.
 7. `authenticated` no puede hacer `INSERT/UPDATE/DELETE` directos sobre `alertas`.
 8. `audit_log` registra apertura, reconocimiento y resolución con el usuario.
 9. Consistencia: para toda la base de prueba, el conjunto de neumáticos con alerta no resuelta coincide con los de `v_estado_neumaticos` en estado `critico` (salvo la banda de histéresis, que se verifica aparte).
@@ -269,7 +269,7 @@ Hay dos cálculos separados.
 
 - Inicio (`views/inicio.js` y `domain/inicio.js`): descarga `v_estado_neumaticos` y `v_alertas` completas con `fetchAll`, páginas de 1 000 filas, secuenciales (cada página es una consulta que recalcula toda la vista) y hasta `MAX_FILAS` = 20 000. `requierenAtencion` llama a `referenciaTasas` una vez y a `evaluarDesgaste` por cada fila.
 - Ficha del vehículo (`views/vehiculo-detalle.js`, línea 358): para mostrar **un** vehículo descarga **toda** la flota visible solo para obtener la referencia (`referenciaTasas`, línea 366); después `evaluarDesgaste` se llama en el resumen (una vez por fila), en el dibujo de cada rueda (línea 119) y en el panel de la rueda (línea 238).
-- La «flota» de referencia es la que el usuario puede ver (cliente o seccional), por lo que el mismo neumático puede recibir una frase distinta según quién la mire.
+- La «flota» de referencia es la que el usuario puede ver (cliente o sucursal), por lo que el mismo neumático puede recibir una frase distinta según quién la mire.
 
 ### C.2 Costo medido
 

@@ -19,7 +19,7 @@ tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vista
 
 Todos los modos (admin y cliente) arrancan con `inicio.flow.js`: página de Inicio (contadores de atención y enlaces; con vehículos pero sin
 neumáticos medidos NO muestra «sin datos»), aviso de conexión oculto salvo problema real, menú por rol
-(el cliente ve solo Inicio, Vehículos, Alertas, Reportes y Dispositivos, sin elementos `data-admin-only`; Dispositivos y Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
+(el cliente ve Inicio, Vehículos, Alertas, Stock y Reportes, y Sucursales si es global; sin elementos `data-admin-only` ni Dispositivos; Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
 
 Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:
 
