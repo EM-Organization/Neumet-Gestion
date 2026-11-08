@@ -8,6 +8,7 @@
 <script src="/tests/smoke/ciclo.flow.js"></script>
 <script src="/tests/smoke/cambio.flow.js"></script>
 <script src="/tests/smoke/stock.flow.js"></script>
+<script src="/tests/smoke/montar.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
 <script src="/tests/smoke/sinacceso.flow.js"></script>
@@ -23,7 +24,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
@@ -97,7 +98,9 @@
     }
     if(/[?&]detalle=1/.test(location.search)){
       // Vehículos como cliente: buscador + detalle con diagrama (vehiculo.fixture.js): tests/smoke/vehiculo.flow.js
-      await window.detalleFlow(w,d,sleep,fail,log);
+      // Con ?montar=1: coche sin neumáticos, montar y retirar (montar.fixture.js): tests/smoke/montar.flow.js
+      if(/[?&]montar=1/.test(location.search)) await window.montarFlow(w,d,sleep,fail,log);
+      else await window.detalleFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
     }

@@ -55,6 +55,8 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | crítico, desgaste bajo, OK, sin datos | rojo, amarillo, verde |
 | Requieren atención | Urgentes, en problemas |
 | Próximos cambios | Pronósticos, predicciones |
+| Montar neumático (poner uno en una posición vacía), Cargar neumáticos (montar varios en un vehículo sin ellos), Retirar neumático (sin reemplazo) | Colocar, instalar, sacar |
+| posición vacía (rueda punteada: sin neumático montado) | rueda libre, hueco; no confundir con «sin datos» (neumático montado sin mediciones) |
 | Cambiar neumático (acción del taller) | Reemplazar, sustituir |
 | Rotar | Permutar, intercambiar |
 

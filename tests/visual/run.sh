@@ -14,7 +14,7 @@ fi
 [ -n "$CHROME" ] || { echo "No se encontró Chrome (definí CHROME=...)"; exit 2; }
 SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
 # escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
-ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both ciclo-vida:admin vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both stock-alta:both stock-mover:cliente stock-busqueda:cliente busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente cambio-cubierta:cliente cambio-almacenar:cliente selector-seccional:cliente"
+ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both ciclo-vida:admin vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both stock-alta:both stock-mover:cliente stock-busqueda:cliente busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente cambio-cubierta:cliente cambio-almacenar:cliente detalle-vacio:cliente detalle-vacio-rueda:cliente montar-neumatico:cliente montar-nueva:cliente montar-siguiente:cliente retirar-neumatico:cliente selector-seccional:cliente"
 mkdir -p "$OUT_DIR"
 python3 -m http.server "$PORT" >/dev/null 2>&1 &
 SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
@@ -29,7 +29,8 @@ for item in $ALL; do
       Q="shot=$scene&vw=$W&vh=$H"
       [ "$role" = cliente ] && Q="$Q&cliente=1"
       [ "$role" = cliente ] && [ "$scene" = vehiculos ] && Q="$Q&detalle=1"
-      case "$scene" in vehiculos-busqueda|detalle*|cambio-neumatico|cambio-cubierta|cambio-almacenar) Q="$Q&detalle=1&cliente=1";; esac
+      case "$scene" in detalle-vacio*|montar-*|retirar-neumatico) Q="$Q&detalle=1&cliente=1&montar=1";;
+        vehiculos-busqueda|detalle*|cambio-neumatico|cambio-cubierta|cambio-almacenar) Q="$Q&detalle=1&cliente=1";; esac
       [ "$scene" = login ] && Q="$Q&nosession=1"
       [ "$scene" = sin-acceso ] && Q="$Q&sinperfil=1"
       f="$OUT_DIR/$role-$size-$scene.png"; rm -f "$f"

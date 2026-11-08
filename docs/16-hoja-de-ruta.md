@@ -22,6 +22,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | API de proveedor con idempotencia, mapeo mm1/mm2/mm3 y trazabilidad | Hecho |
 | Tasa de desgaste robusta y vista rápida | Hecho (migración `20261111000000`; `MIN_MUESTRAS` = 5; ver `docs/15`, C.6 y C.7) |
 | Stock individual con condición y sucursal | Hecho (migración `20261113000000`: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
+| Montar neumáticos en un vehículo sin ellos y retirar sin reemplazo | Hecho (migración `20261114500000`: `neumatico_montar` y `neumatico_desmontar`; ver `docs/08` apéndice G) |
 | Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |

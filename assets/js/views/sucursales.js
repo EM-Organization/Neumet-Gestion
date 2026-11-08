@@ -7,6 +7,7 @@ import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, currentSucursalId, onLogin, onLogout } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
+import { abrirDetalle } from './vehiculo-detalle.js';
 import { refrescarSucursales } from '../core/seccional.js';
 import {
   validarNombreSucursal, validarVehiculoNuevo, argsMover, contarPorSucursal, filtrarVehiculos,
@@ -76,10 +77,10 @@ async function recargar() {
   await Promise.all([loadSucursales(), refrescarSucursales()]);
 }
 
-// Ejecuta una RPC; ante error muestra el mensaje y devuelve false.
+// Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
 async function rpc(nombre, args, okMsg) {
   err('');
-  const { error } = await db.rpc(nombre, args);
+  const { data, error } = await db.rpc(nombre, args);
   if (error) {
     const m = mensajeErrorGestion(error);
     if (m.startsWith('No se pudo')) userError(error);
@@ -89,7 +90,7 @@ async function rpc(nombre, args, okMsg) {
   }
   if (okMsg) showToast(okMsg);
   await recargar();
-  return true;
+  return data || true;
 }
 
 registerActions({
@@ -120,7 +121,11 @@ registerActions({
       tipoRuedas: $('suc-veh-ruedas').value, sucursalId: $('suc-veh-sucursal').value,
     });
     if (!r.ok) { err(r.error); return; }
-    if (await rpc('vehiculo_crear', r.args, 'Vehículo agregado')) { $('suc-veh-numero').value = ''; $('suc-veh-patente').value = ''; }
+    const creado = await rpc('vehiculo_crear', r.args, 'Vehículo agregado');
+    if (!creado) return;
+    $('suc-veh-numero').value = ''; $('suc-veh-patente').value = '';
+    // «Cargar neumáticos ahora»: el vehículo nuevo no tiene neumáticos; el detalle ofrece cargarlos.
+    if ($('suc-veh-cargar').checked && creado.id) { $('suc-veh-cargar').checked = false; abrirDetalle(Number(creado.id)); }
   },
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);

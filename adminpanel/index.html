@@ -394,6 +394,7 @@
               <option value="16">16 ruedas</option>
             </select>
             <select id="suc-veh-sucursal" class="select-filter" aria-label="Sucursal del vehículo nuevo"></select>
+            <label class="sec-check"><input type="checkbox" id="suc-veh-cargar"/> Cargar neumáticos ahora</label>
             <button type="button" class="btn primary" data-action="sucursalVehiculoCrear">Agregar vehículo</button>
           </div>
           <div class="sec-sub">Asignación</div>
@@ -1031,6 +1032,97 @@
     <div class="modal-footer">
       <button class="btn ghost" data-action="neumatico-cambiar-cerrar">Cancelar</button>
       <button class="btn primary" id="cambio-confirmar" data-action="neumatico-cambiar-confirmar">Confirmar cambio</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Montar neumático (posición libre: cubierta del stock o cubierta nueva) -->
+<div class="modal-backdrop" id="modal-montar" data-backdrop-close="neumatico-montar-cerrar">
+  <div class="modal cambio-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="mont-title">Montar neumático</div>
+      <div class="modal-sub" id="mont-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div id="mont-aviso" class="mont-aviso" role="status" aria-live="polite"></div>
+      <div class="field"><label for="mont-pos">Posición</label>
+        <select id="mont-pos" data-change="neumatico-montar-pos"></select></div>
+      <div class="mont-tabs" role="tablist" aria-label="Origen del neumático">
+        <button type="button" role="tab" id="mont-tab-stock" aria-controls="mont-panel-stock" aria-selected="true" data-action="neumatico-montar-tab" data-args='["stock"]'>Del stock</button>
+        <button type="button" role="tab" id="mont-tab-nuevo" aria-controls="mont-panel-nuevo" aria-selected="false" tabindex="-1" data-action="neumatico-montar-tab" data-args='["nuevo"]'>Cubierta nueva</button>
+      </div>
+      <div id="mont-panel-stock" role="tabpanel" aria-labelledby="mont-tab-stock">
+        <div class="field"><label for="mont-buscar" class="sr-only">Buscar cubierta</label>
+          <input id="mont-buscar" type="search" placeholder="Quema, marca o modelo" autocomplete="off" spellcheck="false"/></div>
+        <div id="mont-lista" class="mont-lista" role="radiogroup" aria-label="Cubiertas del stock"></div>
+      </div>
+      <div id="mont-panel-nuevo" role="tabpanel" aria-labelledby="mont-tab-nuevo">
+        <div class="field-row">
+          <div class="field"><label for="mont-marca">Marca</label>
+            <input id="mont-marca" type="text" maxlength="60" placeholder="Michelin" data-change="neumatico-montar-resumen" autocomplete="off"/></div>
+          <div class="field"><label for="mont-modelo">Modelo <span class="label-opt">(opcional)</span></label>
+            <input id="mont-modelo" type="text" maxlength="60" placeholder="X Multi Z" data-change="neumatico-montar-resumen" autocomplete="off"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="mont-quema">Número de quema <span class="label-opt">(opcional)</span></label>
+            <input id="mont-quema" type="text" maxlength="40" data-change="neumatico-montar-resumen" autocomplete="off"/>
+            <div class="field-hint">Único por cliente.</div></div>
+          <div class="field"><label for="mont-km-previos">Km que ya traía el neumático</label>
+            <input id="mont-km-previos" type="number" inputmode="numeric" min="0" step="1" value="0" data-change="neumatico-montar-resumen"/>
+            <div class="field-hint">0 para un neumático nuevo.</div></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="mont-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label>
+            <input id="mont-fecha" type="date" data-change="neumatico-montar-resumen"/></div>
+          <div class="field"><label for="mont-precio">Precio <span class="label-opt">(opcional)</span></label>
+            <input id="mont-precio" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" data-change="neumatico-montar-resumen"/></div>
+        </div>
+        <div class="field"><label for="mont-vida">Recauchutados previos</label>
+          <select id="mont-vida" data-change="neumatico-montar-resumen">
+            <option value="0">0 (banda original)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      </div>
+      <div class="field"><label for="mont-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+        <input id="mont-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-montar-resumen"/>
+        <div class="field-hint" id="mont-odo-hint"></div></div>
+      <div id="mont-resumen" class="cambio-resumen" aria-live="polite"></div>
+      <div id="mont-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" id="mont-cerrar" data-action="neumatico-montar-cerrar">Cancelar</button>
+      <button class="btn primary" id="mont-confirmar" data-action="neumatico-montar-confirmar">Montar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Retirar neumático (sin reemplazo) -->
+<div class="modal-backdrop" id="modal-retirar" data-backdrop-close="neumatico-retirar-cerrar">
+  <div class="modal cambio-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="ret-title">Retirar neumático</div>
+      <div class="modal-sub" id="ret-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div id="ret-actual" class="cambio-actual"></div>
+      <fieldset class="cambio-grupo"><legend>Destino del neumático</legend>
+        <div id="ret-destinos" class="cambio-opciones"></div></fieldset>
+      <div class="field"><label for="ret-motivo">Motivo <span class="label-opt" id="ret-motivo-opt">(opcional)</span></label>
+        <input id="ret-motivo" type="text" maxlength="200" data-change="neumatico-retirar-resumen" autocomplete="off"/></div>
+      <div id="ret-stock-wrap" class="cambio-retorno">
+        <div class="field"><label for="ret-suc">Sucursal donde queda en stock</label>
+          <select id="ret-suc" data-change="neumatico-retirar-resumen"></select></div>
+        <div class="field" id="ret-quema-wrap"><label for="ret-quema">Número de quema</label>
+          <input id="ret-quema" type="text" maxlength="40" data-change="neumatico-retirar-resumen" autocomplete="off"/>
+          <div class="field-hint">Obligatorio para guardar el neumático en el stock.</div></div>
+      </div>
+      <div class="field"><label for="ret-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+        <input id="ret-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-retirar-resumen"/>
+        <div class="field-hint" id="ret-odo-hint"></div></div>
+      <div id="ret-resumen" class="cambio-resumen" aria-live="polite"></div>
+      <div id="ret-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="neumatico-retirar-cerrar">Cancelar</button>
+      <button class="btn primary" id="ret-confirmar" data-action="neumatico-retirar-confirmar">Retirar</button>
     </div>
   </div>
 </div>
