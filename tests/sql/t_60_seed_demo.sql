@@ -8,7 +8,12 @@ select setval(pg_get_serial_sequence('public.vehiculos','id'), (select max(id) f
 insert into auth.users (id, email) values ('a0000000-0000-0000-0000-0000000000d1', 'demo@t');
 insert into public.clientes (id, nombre, auth_user_id) values (50, 'Demo Transportes', 'a0000000-0000-0000-0000-0000000000d1');
 \ir ../../supabase/seed/demo.sql
--- 3. Segunda ejecución: idempotente (mismos conteos, sin duplicar)
+-- Simula un cambio de neumático hecho desde el panel entre ejecuciones:
+-- el viejo queda estacionado (baja) con su idneumatico DEMO-.. y entra uno nuevo CN-x.
+update public.neumaticos set posicion = 98, estado = 'baja' where cliente_id = 50 and idneumatico = 'DEMO-06-02';
+insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, modelo, idneumatico)
+  select vehiculo_id, cliente_id, 2, marca, modelo, 'CN-x' from public.neumaticos where cliente_id = 50 and idneumatico = 'DEMO-06-02';
+-- 3. Segunda ejecución: idempotente (mismos conteos, sin duplicar) aun con lo creado a mano
 \ir ../../supabase/seed/demo.sql
 
 begin;
@@ -30,6 +35,8 @@ select test.eq('6 dispositivos', (select count(*) from public.dispositivos where
 select test.eq('6 neumáticos en camiones de 6', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO003')), 6::bigint);
 select test.eq('10 neumáticos + auxilio en DEMO001', (select count(*) from public.neumaticos where vehiculo_id = (select id from public.vehiculos where patente = 'DEMO001')), 11::bigint);
 select test.eq('hay neumáticos de auxilio', (select count(*) > 0 from public.neumaticos where cliente_id = 50 and auxilio), true);
+select test.eq('124 neumáticos tras cambio de neumático entre ejecuciones', (select count(*) from public.neumaticos where cliente_id = 50), 124::bigint);
+select test.eq('el neumático manual CN-x se borró', (select count(*) from public.neumaticos where idneumatico = 'CN-x'), 0::bigint);
 select test.eq('un solo set de neumáticos (sin duplicar)', (select count(*) from public.neumaticos where cliente_id = 50),
   (select count(distinct idneumatico) from public.neumaticos where cliente_id = 50));
 select test.eq('mediciones: 10 sesiones por neumático medido (5 recién montados con una sola)',
