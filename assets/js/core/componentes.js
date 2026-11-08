@@ -44,7 +44,7 @@ export function miniVehiculo(modelo) {
   const ruedas = [...modelo.ruedas].sort((a, b) => Number(a.destacada) - Number(b.destacada));
   return html`<svg class="mini-veh" viewBox="${`${n(modelo.x0)} 0 ${n(modelo.ancho)} ${n(modelo.alto)}`}" role="img" aria-label="${modelo.aria}" focusable="false">
     <rect class="mv-chasis" x="${n(c.x)}" y="${n(c.y)}" width="${n(c.ancho)}" height="${n(c.alto)}" rx="10"/>
-    ${ruedas.map(r => html`<rect class="mv-rueda${r.destacada ? ' mv-dest' : ''}${r.fill ? '' : ' mv-sd'}" x="${n(r.x)}" y="${n(r.y)}" width="${n(r.ancho)}" height="${n(r.alto)}" rx="6"${r.fill ? html` fill="${r.fill}"` : ''}/>`)}
+    ${ruedas.map(r => html`<rect class="mv-rueda${r.destacada ? ' mv-dest' : ''}${r.ausente ? ' mv-aus' : r.fill ? '' : ' mv-sd'}" x="${n(r.x)}" y="${n(r.y)}" width="${n(r.ancho)}" height="${n(r.alto)}" rx="6"${r.fill ? html` fill="${r.fill}"` : ''}/>`)}
   </svg>`;
 }
 

@@ -713,6 +713,7 @@
 .mv-chasis { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 2; }
 .mv-rueda { stroke: #8f8a73; stroke-width: 2; }
 .mv-sd { fill: #e4e1d2; }
+.mv-aus { fill: none; stroke: #c9c5b0; stroke-width: 2; stroke-dasharray: 5 4; }
 .mv-dest { stroke: #383424; stroke-width: 7; }
 .inicio-fila-mini { gap: 8px 14px; flex-wrap: wrap; padding: 12px 4px; cursor: default; }
 .inicio-fila-mini:hover { background: none; }

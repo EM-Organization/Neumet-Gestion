@@ -62,7 +62,9 @@ export function resumenPosiciones(posiciones, tipo) {
  * Modelo del mini vehículo de un vehículo.
  *  - filas: filas de v_estado_neumaticos (o { posicion, promedio, umbral_* }) de ESE vehículo.
  *  - destacadas: posiciones a resaltar.
- * Devuelve { ancho, alto, x0, chasis, ruedas: [{ posicion, x, y, ancho, alto, fill, nivel, destacada }], aria }.
+ * Devuelve { ancho, alto, x0, chasis, ruedas: [{ posicion, x, y, ancho, alto, fill, nivel, destacada, ausente }], aria }.
+ *  - ausente: la posición no figura en `filas` (el vehículo no tiene esa rueda registrada).
+ *  - sin datos (nivel 'sin_datos', no ausente): hay fila de la posición pero sin medición.
  * `fill` es el color de la escala sobria del detalle (null = sin datos). Se dibuja el chasis completo del tipo.
  */
 export function modeloMini(filas, { destacadas = [], tipo } = {}) {
@@ -78,7 +80,8 @@ export function modeloMini(filas, { destacadas = [], tipo } = {}) {
     const mm = f ? f.promedio : null;
     return {
       posicion: r.posicion, x: r.x, y: r.y, ancho: r.ancho, alto: r.alto,
-      fill: colorDesgaste(mm, u).hex, nivel: nivelDesgaste(mm, u), destacada: dest.has(r.posicion),
+      // ausente = el vehículo no tiene esa rueda con datos ni señalada (se dibuja el hueco del chasis); distinto de «sin datos».
+      ausente: !r.presente && !dest.has(r.posicion), fill: colorDesgaste(mm, u).hex, nivel: nivelDesgaste(mm, u), destacada: dest.has(r.posicion),
     };
   });
   // Recorte horizontal al contenido: así las ruedas se leen más grandes.

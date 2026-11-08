@@ -66,6 +66,18 @@ describe('modeloMini', () => {
     assert.equal(m.ruedas.find(r => r.posicion === 7).fill, null);
     assert.equal(m.ruedas.find(r => r.posicion === 7).nivel, 'sin_datos');
   });
+  test('rueda ausente (sin fila) se distingue de «sin datos» (fila sin medición)', () => {
+    const m = modeloMini([{ posicion: 1, promedio: 10 }, { posicion: 2, promedio: null }]);
+    const r = n => m.ruedas.find(x => x.posicion === n);
+    assert.equal(r(2).ausente, false); assert.equal(r(2).nivel, 'sin_datos');
+    assert.equal(r(1).ausente, false);
+    assert.equal(r(7).ausente, true);
+    assert.equal(modeloMini([], { destacadas: [4] }).ruedas.find(x => x.posicion === 4).ausente, false);
+  });
+  test('el tipo de ruedas define el chasis dibujado', () => {
+    assert.equal(modeloMini([{ posicion: 1, promedio: 9 }], { tipo: 16 }).ruedas.length, 16);
+    assert.equal(modeloMini([{ posicion: 1, promedio: 9 }], { tipo: 10 }).ruedas.length, 10);
+  });
   test('color igual al del detalle de vehículo (misma escala y umbrales)', () => {
     const m = modeloMini(filas);
     assert.equal(m.ruedas.find(r => r.posicion === 1).fill, colorDesgaste(12, { bajo: 8, critico: 5, retiro: 3 }).hex);

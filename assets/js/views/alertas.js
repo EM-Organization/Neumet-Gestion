@@ -8,7 +8,7 @@ import { isClienteMode } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { contextoListo, filtrarFilas } from '../core/seccional.js';
+import { contextoListo, filtrarFilas, filtrarConsulta } from '../core/seccional.js';
 import {
   ordenarAlertas, filtrarAlertas, contarPorSeveridad, tiposPresentes,
   severidadLabel, tipoLabel, SEVERIDAD_BADGE,
@@ -22,6 +22,7 @@ const SEV_SIMBOLO = { 3: '✕', 2: '▲', 1: 'i' };
 const chipSeveridad = s => chip(SEVERIDAD_BADGE[s] || 'gray', severidadLabel(s), SEV_SIMBOLO[s] || 'i');
 let alertas = [];
 let clientes = [];
+let tipos = new Map(); // tipo_ruedas por vehículo (chasis y nombre de la posición)
 let porVeh = new Map(); // v_estado_neumaticos por vehículo: colores del mini vehículo (sin datos si no cargó)
 
 function filtros() {
@@ -35,7 +36,7 @@ function filtros() {
 // Posición de la alerta: mini vehículo con la rueda resaltada y su nombre en texto; «—» si la alerta es del vehículo.
 function celdaPosicion(a) {
   if (a.posicion === null || a.posicion === undefined) return '—';
-  return html`<div class="pos-mini">${miniVehiculo(modeloMini(porVeh.get(a.vehiculo_id), { destacadas: [a.posicion] }))}<span>${nombrePosicion(a.posicion)}</span></div>`;
+  return html`<div class="pos-mini">${miniVehiculo(modeloMini(porVeh.get(a.vehiculo_id), { destacadas: [a.posicion], tipo: tipos.get(a.vehiculo_id) }))}<span>${nombrePosicion(a.posicion, tipos.get(a.vehiculo_id))}</span></div>`;
 }
 
 function fila(a, mostrarCliente) {
@@ -86,15 +87,17 @@ export async function load() {
   $('alert-msg').textContent = '';
   setHtml($('alert-tbody'), filaEstado(7, estadoCarga('Cargando alertas…')));
   await contextoListo();
-  const [al, res, est] = await Promise.all([
+  const [al, res, est, vtp] = await Promise.all([
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
     // Solo para colorear el mini vehículo: si falla, las ruedas salen sin datos y la lista sigue funcionando.
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
+    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas')).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
   ]);
   if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(7, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
+  tipos = vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas]));
   porVeh = est.error ? new Map() : agruparPorVehiculo(est.rows);
   clientes = res.data || [];
   fillFiltros();
