@@ -5,7 +5,7 @@ import { normalizarPatente, claveBusqueda, buscarVehiculos, coincidenciaExacta }
 import {
   layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda,
 } from '../../assets/js/domain/vehiculo-diagrama.js';
-import { mediana, referenciaTasas, evaluarDesgaste } from '../../assets/js/domain/desgaste-flota.js';
+import { mediana, referenciaTasas, evaluarDesgaste, MIN_MUESTRAS } from '../../assets/js/domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
 
 describe('normalización de búsqueda', () => {
@@ -197,18 +197,18 @@ describe('desgaste mayor al normal', () => {
     assert.equal(mediana([4, 1, 2, 3]), 2.5);
     assert.equal(mediana([]), null);
   });
-  const flota = [fila(1, 3, 0.5), fila(2, 3, 0.4), fila(3, 3, 0.6), fila(4, 3, 1.2), fila(1, 1, 0.3), fila(2, 1, 0.3), fila(3, 1, 0.35)];
+  const flota = [fila(1, 3, 0.5), fila(2, 3, 0.4), fila(3, 3, 0.6), fila(4, 3, 1.2), fila(5, 3, 0.45), fila(1, 1, 0.3), fila(2, 1, 0.3), fila(3, 1, 0.35)];
   const ref = referenciaTasas(flota);
   test('tasa > 1,5 x mediana de la misma posición marca el neumático y explica por qué', () => {
-    const r = evaluarDesgaste(flota[3], ref); // mediana pos 3 = 0,55 -> 1,2 es 2,2 veces
+    const r = evaluarDesgaste(flota[3], ref); // mediana pos 3 = 0,5 (5 neumáticos) -> 1,2 es 2,4 veces
     assert.equal(r.mayorAlNormal, true);
     assert.equal(r.tasaAlta, true);
     assert.match(r.razon, /1,20 mm por semana/);
     assert.match(r.razon, /posición 3/);
   });
   test('en el límite (exactamente 1,5 x) no marca', () => {
-    const f = [fila(1, 5, 1), fila(2, 5, 1), fila(3, 5, 1), fila(4, 5, 1.5)];
-    assert.equal(evaluarDesgaste(f[3], referenciaTasas(f)).mayorAlNormal, false);
+    const f = [fila(1, 5, 1), fila(2, 5, 1), fila(3, 5, 1), fila(4, 5, 1), fila(5, 5, 1.5)];
+    assert.equal(evaluarDesgaste(f[4], referenciaTasas(f)).mayorAlNormal, false);
   });
   test('tasa normal no marca', () => assert.equal(evaluarDesgaste(flota[0], ref).mayorAlNormal, false));
   test('irregular marca aunque la tasa sea normal', () => {
@@ -217,9 +217,18 @@ describe('desgaste mayor al normal', () => {
     assert.equal(r.irregular, true);
     assert.match(r.razon, /3,1 mm entre sí/);
   });
+  test('MIN_MUESTRAS es 5: con 4 neumáticos en la posición no hay referencia', () => {
+    assert.equal(MIN_MUESTRAS, 5);
+    const cuatro = [fila(1, 3, 0.5), fila(2, 3, 0.4), fila(3, 3, 0.6), fila(4, 3, 1.2)];
+    const r = evaluarDesgaste(cuatro[3], referenciaTasas(cuatro));
+    assert.equal(r.tasaAlta, false);
+    assert.equal(r.mediana, null);
+    const cinco = [...cuatro, fila(5, 3, 0.45)];
+    assert.equal(evaluarDesgaste(cinco[3], referenciaTasas(cinco)).tasaAlta, true);
+  });
   test('sin muestra suficiente en la posición compara con el eje; sin eje suficiente no evalúa la tasa', () => {
-    const f = [fila(1, 3, 0.4), fila(2, 4, 0.5), fila(3, 5, 0.6), fila(4, 6, 2)];
-    const r = evaluarDesgaste(f[3], referenciaTasas(f)); // posición 6 tiene 1 muestra; eje 2 tiene 4 (mediana 0,55)
+    const f = [fila(1, 3, 0.4), fila(2, 4, 0.5), fila(3, 5, 0.6), fila(4, 3, 0.45), fila(5, 4, 0.55), fila(6, 6, 2)];
+    const r = evaluarDesgaste(f[5], referenciaTasas(f)); // posición 6 tiene 1 muestra; eje 2 tiene 6 (mediana 0,525)
     assert.equal(r.tasaAlta, true);
     assert.match(r.razon, /el eje 2/);
     const sola = [fila(1, 9, 5)];
