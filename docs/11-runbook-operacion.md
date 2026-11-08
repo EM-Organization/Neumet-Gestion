@@ -31,23 +31,39 @@ La cuenta es de mínimo privilegio y queda ligada a un cliente. Contrato en [07-
 3. Probar el login contra `api-proveedor` (contrato en [`api/openapi.yaml`](api/openapi.yaml)). **[pendiente]**: cuenta aún no creada.
 4. Limitaciones conocidas: un JWT no se revoca antes de expirar (aprox. 1 h); la baja de un cliente no desactiva su perfil `api` (sugerencias del revisor en el tablero).
 
-## 3. Aplicar migraciones
-Las migraciones están en `supabase/migrations/` y deben ser idempotentes. Orden (por nombre de archivo): `20261106000000_init_schema`, `20261106010000_api_proveedor`, `20261106020000_producto_vistas`, `20261107000000_rpc_rotacion`, `20261107010000_cuentas_api`, `20261107020000_seccionales`, `20261108000000_cambio_neumatico`, `20261108010000_comentarios_mm`, `20261109000000_mediciones_por_neumatico`, `20261110000000_numero_quema`, `20261110010000_gestion_sucursales`, `20261110020000_ultimas_mediciones`. El nombre `seccionales` es histórico: en la interfaz y en la documentación el término es «sucursal».
-1. Revisar el PR (el CI ejecuta el job `sql` contra un PostgreSQL desechable).
-2. Aplicar con el MCP de Supabase (`apply_migration`) o con el CLI (`supabase db push`) apuntando a `kootszos…`.
-3. Verificar con `list_migrations`, `get_advisors` (seguridad) y `supabase/audit/rls_audit.sql`.
+## 3. Aplicar migraciones y desplegar funciones
 
-Comparar `list_migrations` con la lista anterior antes de fusionar un front que dependa de una migración nueva.
+### 3.1 Orden general
+1. **Migración antes del front.** Un front que usa una columna, vista o RPC nueva no se fusiona (ni se despliega en Vercel) hasta que la migración esté aplicada y verificada; de lo contrario el panel consulta objetos que todavía no existen.
+2. **Función después de la migración.** Una Edge Function que llama a una RPC o columna nueva se despliega solo cuando la migración ya está aplicada. Las funciones y el front que dependen de la misma migración se publican después de ella, nunca antes.
+3. Comparar `list_migrations` con los archivos de `supabase/migrations/` antes de fusionar cualquier PR que dependa de una migración nueva.
 
-## 4. Desplegar funciones
-Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`. La configuración de `verify_jwt` está en `supabase/config.toml`.
+### 3.2 Aplicar migraciones
+Las migraciones están en `supabase/migrations/` y deben ser idempotentes (el job `sql` del CI las aplica dos veces). Las 15 actuales, por nombre de archivo: `20261106000000_init_schema`, `20261106010000_api_proveedor`, `20261106020000_producto_vistas`, `20261107000000_rpc_rotacion`, `20261107010000_cuentas_api`, `20261107020000_seccionales`, `20261108000000_cambio_neumatico`, `20261108010000_comentarios_mm`, `20261109000000_mediciones_por_neumatico`, `20261110000000_numero_quema`, `20261110010000_gestion_sucursales`, `20261110020000_ultimas_mediciones`, `20261111000000_tasa_y_rendimiento`, `20261112000000_api_sin_neumaticos` y `20261113000000_stock_cubiertas`. El nombre `seccionales` es histórico: en la interfaz y en la documentación el término es «sucursal».
+1. Revisar el PR (el CI ejecuta el job `sql` contra un PostgreSQL desechable) y leer la migración entera: permisos, `search_path`, RLS.
+2. Aplicar con el MCP de Supabase (`apply_migration`) o con el CLI (`supabase db push`) apuntando a `kootszos…`. Las migraciones no llevan `begin`/`commit` propios (salvo `20261106000000_init_schema` y `20261106010000_api_proveedor`): la herramienta que las aplica ya las envuelve en una transacción.
+3. Con el MCP, la herramienta pide una **confirmación en pantalla que vence a los 2 minutos**. Quien aplica debe estar atento a la ventana: si la confirmación no llega en ese plazo, la llamada no se completa y no debe darse por aplicada. Ante la duda, comprobar con `list_migrations` y, si falta, repetir la llamada.4. Verificar con `list_migrations` (la nueva figura al final), `get_advisors` (seguridad y rendimiento) y `supabase/audit/rls_audit.sql`.
+5. Solo entonces fusionar el front y desplegar las funciones que la usan.
+
+### 3.3 Desplegar funciones
+Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
+
+**Todas tienen `verify_jwt = false`** en `supabase/config.toml`: `api-proveedor` (el Bearer se valida dentro del handler), `contacto` (formulario público), `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional` (validan el JWT y el rol admin dentro del handler; el preflight CORS no lleva token). Con el CLI el valor sale de `config.toml`; con el MCP (`deploy_edge_function`) pasar `verify_jwt` en `false` de forma explícita, y comprobarlo después en `list_edge_functions`. Desplegar con `verify_jwt` activo rompe el preflight CORS y el login de la app de medición. La confirmación de 2 minutos descrita en 3.2 rige también para el despliegue por MCP.
 1. Cargar antes los secrets (acción del dueño o `supabase secrets set`):
    - `contacto`: `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`, `ALLOWED_ORIGINS`, opcional `TURNSTILE_SECRET` (ver `supabase/functions/contacto/README.md`).
    - `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver sus README). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.
    - `api-proveedor`: usa `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, que provee Supabase. Otros secrets: **[pendiente]** confirmar.
 2. Antes de desplegar: `deno test --config supabase/functions/deno.json supabase/functions/<funcion>`.
-3. Desplegar con `supabase functions deploy <funcion>` o el MCP (`deploy_edge_function`), respetando `verify_jwt` de `config.toml`.
+3. Desplegar con `supabase functions deploy <funcion>` o el MCP (`deploy_edge_function`), siempre con `verify_jwt = false`.
 4. Comprobar los logs (`query_logs`) y hacer una llamada de humo.
+
+## 4. Regenerar el demo
+`supabase/seed/demo.sql` no es una migración: no se aplica solo y se ejecuta a mano (SQL Editor de Supabase o `psql`) con un rol que no esté sujeto a RLS (por ejemplo `postgres`), porque las mediciones no son editables desde el panel.
+1. Requisitos: todas las migraciones aplicadas hasta `20261113000000_stock_cubiertas` (§3.2) y el cliente `Demo Transportes` creado desde el panel (Clientes > Nuevo cliente). Sin el cliente, el script falla con un mensaje claro.
+2. Ejecutar el archivo completo. Es seguro repetirlo y **refresca el demo**: borra y regenera todo lo regenerable del cliente Demo, a saber eventos, mediciones, neumáticos y stock (`stock_neumaticos`), incluido lo creado a mano en pruebas (cambios de neumático, rotaciones, cubiertas agregadas o movidas). Las fechas son relativas a `now()`.
+3. Qué regenera: 14 vehículos con número de coche 101 a 109 y 201 a 205, mediciones semanales de unas 10 semanas, 6 dispositivos de ejemplo, el stock con 3 lotes antiguos y las **12 cubiertas individuales `S-001` a `S-012`** (condiciones nuevo, usado, reparado y recauchutado, repartidas entre Montevideo, Salto y sin sucursal), y algunos eventos. Las sucursales, los vehículos y los dispositivos se actualizan sin duplicar.
+4. No toca ningún otro cliente. No ejecutarlo contra un cliente real: el nombre se busca por `Demo Transportes`.
+5. Tras regenerar, comprobar en el panel que Inicio, Alertas y Stock muestran datos con fechas actuales. La prueba `tests/sql/t_60_seed_demo.sql` cubre el script contra un Postgres desechable.
 
 ## 5. Rotar claves
 - **Cuenta `api`**: cambiar la contraseña en Authentication → Users y actualizarla en la app; los JWT ya emitidos siguen válidos hasta expirar (aprox. 1 h). Una rotación asistida por RPC está **[pendiente]** (PR en curso).
@@ -61,8 +77,8 @@ El frontend ya apunta al proyecto vigente. La lista queda como registro y como g
 
 - [x] Migraciones aplicadas (revisar `get_advisors` antes del corte).
 - [ ] Usuario admin creado con rol en `perfiles` y signup desactivado (§1).
-- [x] `contacto` desplegada con `RESEND_API_KEY`, `FROM_EMAIL`, `TO_EMAIL` y `ALLOWED_ORIGINS` cargados (§4).
-- [ ] `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional` desplegadas, con `ALLOWED_ORIGINS` (§4). Confirmar.
+- [x] `contacto` desplegada con `RESEND_API_KEY`, `FROM_EMAIL`, `TO_EMAIL` y `ALLOWED_ORIGINS` cargados (§3.3).
+- [ ] `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional` desplegadas, con `ALLOWED_ORIGINS` (§3.3). Confirmar.
 - [ ] Cuenta `api` creada y login probado (§2).
 - [x] `assets/config.js`: `SUPABASE_URL` y `SUPABASE_KEY` (publishable) del proyecto nuevo. El formulario de contacto de la landing toma la URL de esa misma constante.
 - [x] `vercel.json`: `connect-src` apunta solo a `https://kootszosdejmawanfxug.supabase.co` (el proyecto anterior se retiró; `tests/unit/despliegue.test.mjs` lo verifica).

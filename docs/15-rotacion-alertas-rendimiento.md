@@ -1,6 +1,6 @@
 # 15 · Rotación, alerta única de estado crítico y rendimiento del indicador de desgaste
 
-Documento de investigación y diseño. No cambia código de producción ni crea migraciones: los esbozos de SQL y de JavaScript son propuestas. Estilo de textos según `docs/14-guia-de-textos.md`.
+Documento de investigación y diseño. Los esbozos de SQL y de JavaScript de las secciones A y B son propuestas. De la sección C ya están implementadas la tasa robusta, la vista rápida y la referencia con `MIN_MUESTRAS` = 5 (ver C.6 y C.7); las tablas de C.1 a C.5 describen el estado **anterior** a esos cambios y se conservan como registro de la medición. Estilo de textos según `docs/14-guia-de-textos.md`.
 
 Contenido: A) recomendación de rotación; B) alerta única de estado crítico, personalizable por cliente; C) auditoría de rendimiento del texto «Desgaste mayor al normal…».
 
@@ -256,6 +256,8 @@ Ejemplo de texto: «Desgaste mayor al normal. Se gasta 0,69 mm por semana, 1,7 v
 
 ### C.1 Dónde y cuándo se calcula
 
+> Descripción anterior a la migración `20261111000000`. El estado vigente está en C.6.
+
 Hay dos cálculos separados.
 
 **En la base de datos, en cada consulta, sin guardar nada.** La tasa `tasa_mm_semana` sale de una regresión (`regr_slope`) sobre los últimos 90 días de mediciones, calculada dentro de `v_estado_neumaticos` (`20261109000000_mediciones_por_neumatico.sql`). Se recalcula completa cada vez que alguien consulta la vista, **para toda la flota visible, aunque se pida una fila**. Motivos medidos en los planes:
@@ -344,16 +346,48 @@ Otros puntos:
 - **Tasa negativa**: `referenciaTasas` y `evaluarDesgaste` ignoran tasas menores o iguales a 0 (no entran en la mediana ni generan frase). Bien tratado, pero el neumático con salto positivo queda sin indicador en lugar de reiniciar la ventana.
 - **Cambio de neumático**: robusto. La tasa se calcula por neumático (`idneumatico`); el nuevo figura «sin datos» hasta tener mediciones propias y no hereda la tasa del anterior (cubierto por `t_55_mediciones_neumatico.sql` y el e2e `mediciones-neumatico`). Un neumático recién montado tiene pocas muestras: aplica el caso «pocas muestras».
 - **Rotación**: la tasa sigue al neumático, pero se compara con la mediana de la **posición actual**; un neumático que pasó de dirección a tracción conserva en la regresión semanas de otro régimen de desgaste.
-- **Referencia**: `MIN_MUESTRAS` = 3 hace que la mediana de una posición con tres neumáticos sea inestable, y el factor 1,5 es una convención sin calibrar con datos reales. Mezclar camiones y buses o rutas muy distintas en una misma referencia puede sobrar o faltar.
+- **Referencia**: `MIN_MUESTRAS` = 3 hacía que la mediana de una posición con tres neumáticos fuera inestable (ya corregido: ver C.7), y el factor 1,5 es una convención sin calibrar con datos reales. Mezclar camiones y buses o rutas muy distintas en una misma referencia puede sobrar o faltar.
 - **Resultado equivalente en el texto**: la frase muestra «1,7 veces lo habitual», pero con 2 mediciones no hay forma de saber si es real.
 
-Correcciones propuestas (a aplicar junto con la medida 1 de C.4; no se implementan en este PR):
+Correcciones propuestas (los puntos 1, 2 y 4 ya están aplicados, ver C.6 y C.7; el 3 queda como mejora posterior):
 
 1. Exigir tiempo transcurrido, no fechas: tasa solo si hay al menos 3 mediciones y el intervalo entre la primera y la última es de al menos 14 días; de lo contrario, nula y sin `cruza_critico_pronto`.
 2. Reiniciar la ventana en el último evento del neumático de tipo `reencauche`, `reparacion` o `montaje` (de `eventos_neumatico`), o cuando `promedio` suba más de la dispersión esperada (p. ej. 1,5 mm) entre dos mediciones consecutivas.
 3. Estimador robusto (Theil-Sen, mediana de pendientes entre pares) como mejora posterior si el ruido real lo exige.
 4. Elevar `MIN_MUESTRAS` a 5 y publicar en la frase el tamaño del grupo («mediana de 12 neumáticos de la posición 3»).
 5. Tests: casos de la tabla anterior en `tests/sql/t_55_mediciones_neumatico.sql` y en `tests/unit/desgaste.test.mjs`.
+
+### C.6 Estado de implementación: tasa robusta y vista rápida
+
+Implementado en `supabase/migrations/20261111000000_tasa_y_rendimiento.sql` (prueba SQL: `tests/sql/t_58_tasa_robusta.sql`):
+
+- **Tasa robusta.** `tasa_mm_semana` se calcula con tiempo transcurrido, no con fechas distintas. Exige al menos 3 mediciones y 14 días entre la primera y la última de la ventana de 90 días; si no se cumple, es nula y no se dispara `cruza_critico_pronto`. La ventana se reinicia en el último evento del neumático de tipo `reencauche`, `reparacion` o `montaje`. Una pendiente negativa queda nula. `n_mediciones_90d` conserva su significado.
+- **Vista rápida (medida 1 de C.4).** `v_estado_neumaticos` se calcula por neumático: una sonda al índice `mediciones_idneumatico_idx` para la última medición y otra por el rango de 90 días para la regresión. Un filtro externo (`vehiculo_id`, `cliente_id`, `LIMIT`) se aplica en el origen: consultar un vehículo ya no cuesta lo mismo que consultar toda la flota. Las mediciones históricas sin `idneumatico` se conservan con las mismas reglas, como respaldo por índice solo donde hace falta (sin backfill de datos).
+- **Función `posiciones_medidas_sin_neumatico(p_vehiculo_id)`.** Enumera las posiciones con mediciones que no tienen fila en `neumaticos` (regla 3). Es `SECURITY INVOKER`, `STABLE`, con `search_path` vacío y `ROWS 1`; la RLS de `mediciones` y `neumaticos` decide qué ve cada rol.
+
+**Por qué es una función con `ROWS 1` y no una CTE recursiva dentro de la vista.** La primera versión enumeraba esas posiciones con una CTE recursiva dentro de la vista. El planificador de PostgreSQL estima unas 100 filas por vehículo en una CTE recursiva, y la vista salía con un costo estimado de cientos de miles incluso con 14 vehículos. Ese costo supera `jit_above_cost` (100 000 por defecto) y activa el JIT, que añade cientos de milisegundos de compilación a cada consulta donde está disponible (la imagen `postgres:16` del CI). Declarar la función con `ROWS 1` mantiene baja la estimación de esa parte y evita el disparo. Producción corre PostgreSQL 17.11 con `jit=off`, de modo que allí el JIT no interviene; la función protege los entornos con JIT activo.
+
+**Medición tras el cambio.** PostgreSQL 17.11 local, 2 940 neumáticos y 180 000 mediciones generados con `tests/perf/gen.sql`, rol `authenticated`, mediana de 3 ejecuciones. La instalación local no tiene JIT (`pg_jit_available()` es falso), por lo que no se midió su efecto.
+
+| Consulta | Antes (C.2) | Ahora |
+|---|---|---|
+| `v_estado_neumaticos`, página 1, cliente | 480 ms | 17 ms |
+| `v_estado_neumaticos`, un vehículo, cliente | 477 ms | 2 ms |
+| `v_estado_neumaticos`, página 1, administrador | 469 ms | 18 ms |
+| `v_alertas`, página 1, cliente | 470 ms | 25 ms |
+
+Tras `20261113000000_stock_cubiertas.sql` (que ajusta `v_mediciones_neumatico` para que el historial siga a la cubierta en stock) se midió también esa vista, con los mismos datos: primeras 1 000 filas, 0,9 ms (costo estimado 42 106); todas las filas del cliente (`count(*)`), 119 ms; un vehículo, 17 ms. `v_estado_neumaticos` con `LIMIT 1000` tiene un costo estimado de 1,38 millones en el plan aunque se ejecuta en 18 ms: la estimación del planificador es alta para esta vista (sin JIT local no hay efecto visible); si algún entorno con JIT activo mostrara compilaciones largas en esas consultas, conviene fijar `jit=off` o revisar las estimaciones antes de ampliar la vista.
+
+Siguen pendientes las medidas 2 a 4 de C.4 (referencia de flota en el servidor, paginación en Inicio, tabla de estado), que dependen del tamaño de la flota. Las cifras de «Ahora» no son comparables al milímetro con las de «Antes» (otro volumen sintético y otra máquina), pero el orden de magnitud sí.
+
+### C.7 `MIN_MUESTRAS`: de 3 a 5
+
+`MIN_MUESTRAS` está definido en `assets/js/domain/desgaste-flota.js` y lo usa `referenciaTasas`: una posición solo aporta una mediana de referencia si tiene al menos ese número de neumáticos con tasa mayor a 0 en la flota visible. Pasó de 3 a 5 por robustez de la mediana:
+
+- Con 3 tasas la referencia depende de solo tres neumáticos: dos valores atípicos bastan para llevar la mediana a cualquier valor. Con 5, hacen falta tres.
+- La frase «N veces lo habitual» y el umbral `FACTOR_TASA` (1,5) se calculan sobre esa mediana, de modo que su error pasa directo al indicador de cada neumático de la posición.
+
+Efecto en flotas chicas: si una posición tiene menos de 5 neumáticos con tasa, no se usa su mediana y se recurre a la del mismo eje; si el eje tampoco llega a 5, no se evalúa la tasa y el neumático no recibe la frase por tasa (el desgaste irregular no depende de la flota y se evalúa igual). Una flota pequeña puede no ver ese indicador hasta acumular muestras suficientes: es el costo aceptado de no emitir una comparación poco fiable. El valor queda fijado por `tests/unit/vehiculo-detalle.test.mjs` («MIN_MUESTRAS es 5: con 4 neumáticos en la posición no hay referencia»). Queda pendiente publicar el tamaño del grupo en la frase.
 
 ---
 
@@ -363,5 +397,5 @@ Correcciones propuestas (a aplicar junto con la medida 1 de C.4; no se implement
 |---|---|---|
 | Rotación | Función pura `recomendarRotacion` con umbral por cliente (3,0 mm por defecto, equivalente a 4/32 pulgada) y restricciones por grupo, marca, modelo y vida; usa `neumatico_rotar` | Aplicable ya (medida y tipo de eje: TODO) |
 | Alertas | Un solo tipo «Neumático en estado crítico» con tabla `alertas` de estados, histéresis y umbral por cliente, eje y posición | Etapa 1 en un PR; destinatarios y reglas finas: TODO |
-| Rendimiento | Reescribir `v_estado_neumaticos` por neumático con ventana de 90 días en el origen; luego referencia en el servidor y tabla de estado | Medida 1 ya; medidas 2 a 4 por tamaño |
-| Robustez de la tasa | Exigir 3 mediciones y 14 días, reiniciar en eventos, no extrapolar de dos puntos | A aplicar junto con la medida 1 |
+| Rendimiento | Reescribir `v_estado_neumaticos` por neumático con ventana de 90 días en el origen; luego referencia en el servidor y tabla de estado | Medida 1 hecha (`20261111000000`); medidas 2 a 4 por tamaño |
+| Robustez de la tasa | Exigir 3 mediciones y 14 días, reiniciar en eventos, no extrapolar de dos puntos | Hecho (`20261111000000`, `desgaste-flota.js`); falta el tamaño del grupo en la frase |
