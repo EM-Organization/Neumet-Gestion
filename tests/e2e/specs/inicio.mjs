@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo } from '../lib/flujo.mjs';
 import { ALCANCE, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
+import { nombrePosicion } from '../../../assets/js/domain/posicion.js';
 
 // Lee de la pantalla de Inicio las proporciones, el contador de alertas, los dispositivos y las listas.
 export const LEER_INICIO = `(() => {
@@ -13,8 +14,8 @@ export const LEER_INICIO = `(() => {
   const alertas = c.querySelector('[data-action="irA"][data-args=\\'["alertas"]\\']');
   const linea = (c.querySelector('.inicio-linea') || {}).textContent || '';
   const atencion = [...c.querySelectorAll('#inicio-h-atencion ~ ul .inicio-fila')].map(f => ({
-    patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', critico: !!f.querySelector('.inicio-punto.critico') }));
-  const proximos = [...c.querySelectorAll('#inicio-h-proximos ~ ul .inicio-fila')].map(f => ({ patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '' }));
+    patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', critico: !!f.querySelector('.inicio-punto.critico'), mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
+  const proximos = [...c.querySelectorAll('#inicio-h-proximos ~ ul .inicio-fila')].map(f => ({ patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
   return { cifras, frase: frase.replace(/\\s+/g, ' ').trim(), alertas: alertas ? alertas.textContent : '', linea: linea.replace(/\\s+/g, ' ').trim(),
            atencion, proximos, texto: c.innerText, titulo: document.querySelector('#inicio-title').textContent,
            segmentos: c.querySelectorAll('.inicio-seg').length, cardsRojas: c.querySelectorAll('.badge.red').length };
@@ -47,9 +48,9 @@ export function ultimasEsperadas(env, rol) {
 
 const f1 = n => Number(n).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 export function textoNeumatico(f) {
-  if (f.antes === null) return { pos: `P${f.posicion}`, mm: `${f1(f.ahora)} mm`, dif: 'Sin previa', destacado: false };
+  if (f.antes === null) return { pos: nombrePosicion(f.posicion), mm: `${f1(f.ahora)} mm`, dif: 'Sin previa', destacado: false };
   const dif = Math.round((f.ahora - f.antes) * 100) / 100;
-  return { pos: `P${f.posicion}`, mm: `${f1(f.antes)} → ${f1(f.ahora)} mm`, dif: `${dif > 0 ? '+' : dif < 0 ? '\u2212' : ''}${f1(Math.abs(dif))}`, destacado: dif <= 0 && -dif > 1 };
+  return { pos: nombrePosicion(f.posicion), mm: `${f1(f.antes)} → ${f1(f.ahora)} mm`, dif: `${dif > 0 ? '+' : dif < 0 ? '\u2212' : ''}${f1(Math.abs(dif))}`, destacado: dif <= 0 && -dif > 1 };
 }
 
 export const INICIO_LISTO = `document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 4`;
@@ -78,6 +79,9 @@ export function registrar(env) {
         const visibles = new Set((await vehiculosVisibles(env, rol)).map(v => v.patente));
         assert.ok(l.atencion.length > 0, 'lista de vehículos que requieren atención vacía');
         for (const f of l.atencion) assert.ok(visibles.has(f.patente), `${f.patente} no pertenece al alcance de ${rol}`);
+        // Cada fila lleva su mini vehículo con ruedas resaltadas y el botón «Ver coche N» (nada de «P<n>»).
+        for (const f of [...l.atencion, ...l.proximos]) assert.ok(f.mini && /^Ver (coche \d+|vehículo)$/.test(f.ver), `fila sin mini vehículo o sin botón: ${JSON.stringify(f)}`);
+        assert.doesNotMatch(l.texto.replace(/[A-Z]{2,3}\d{3,4}|DEMO\d+/g, ''), /(^|\s)P\d/, 'quedan etiquetas «P<n>» en Inicio');
         const criticosListados = Math.min(6, e.vehCriticos);
         assert.equal(l.atencion.filter(f => f.critico).length, criticosListados, 'vehículos críticos en la lista');
         assert.deepEqual(l.atencion.slice(0, criticosListados).map(f => f.critico), Array(criticosListados).fill(true), 'los críticos van primero');
@@ -109,7 +113,7 @@ export function registrar(env) {
         const visiblesU = new Set((await vehiculosVisibles(env, rol)).map(v => v.patente));
         for (const v of ult) assert.ok(visiblesU.has(v.patente), `${v.patente} (últimas mediciones) fuera del alcance de ${rol}`);
         // Click abre el detalle del vehículo.
-        await p.click('#inicio-contenido #inicio-h-ultimas ~ ul > li:first-child .inicio-fila');
+        await p.click('#inicio-contenido #inicio-h-ultimas ~ ul > li:first-child .inicio-ver');
         await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelector('#vd-cab').innerText.includes(${JSON.stringify(vehEsp[0])})`, { que: 'detalle del primer vehículo medido' });
       });
     });

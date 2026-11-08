@@ -78,12 +78,15 @@ test('requierenAtencion: orden por urgencia y una frase de causa por vehículo',
   const r = requierenAtencion(rows, { max: 10 });
   assert.deepEqual(r.items.map(v => v.vehiculo_id), [3, 4, 2, 5, 6, 1]);
   assert.equal(r.total, 6);
-  assert.equal(r.items[0].causa, '2 neumáticos críticos (P1, P2)');
-  assert.equal(r.items[1].causa, '1 neumático crítico (P1)');
-  assert.equal(r.items[2].causa, 'Cruza el límite crítico en ~2 semanas (P1)');
-  assert.equal(r.items[3].causa, '1 neumático con desgaste bajo (P1)');
-  assert.equal(r.items[4].causa, 'Desgaste mayor al normal (P1)');
+  assert.equal(r.items[0].causa, '2 neumáticos críticos');
+  assert.equal(r.items[1].causa, '1 neumático crítico');
+  assert.equal(r.items[2].causa, 'Cruza el límite crítico en ~2 semanas');
+  assert.equal(r.items[3].causa, '1 neumático con desgaste bajo');
+  assert.equal(r.items[4].causa, 'Desgaste mayor al normal');
   assert.equal(r.items[5].causa, 'Sin medir hace 19 días');
+  // Las posiciones van aparte (la vista las dibuja en el mini vehículo): nunca en el texto como «P1».
+  assert.deepEqual(r.items.map(v => v.posiciones), [[1, 2], [1], [1], [1], [1], [1]]);
+  assert.ok(r.items.every(v => !/\bP\d/.test(v.causa)));
 });
 
 test('requierenAtencion: respeta el máximo y devuelve el total real; un solo vehículo funciona', () => {

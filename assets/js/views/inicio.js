@@ -9,7 +9,7 @@ import { isClienteMode, currentClienteNombre, onLogin } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
 import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
-import { estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
+import { estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../core/componentes.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
@@ -17,6 +17,7 @@ import {
 } from '../domain/inicio.js';
 import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { nombrePosicion, resumenPosiciones, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -24,19 +25,37 @@ const MAX_FILAS = 20000;
 const verVehiculo = id => JSON.stringify([id]);
 const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '');
 
-function filaAtencion(v) {
-  return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
-    <span class="inicio-punto ${v.nivel === 'critico' ? 'critico' : ''}" aria-hidden="true"></span>
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
-      <span class="inicio-fila-causa">${v.nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${v.causa}</span></span>
-    <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
+// Botón «Ver coche 106»: abre el detalle del vehículo y, si se indica, deja seleccionada esa rueda.
+const textoVer = nombre => { const t = etiquetaCoche(nombre); return /^Coche /.test(t) ? `Ver coche ${t.slice(6)}` : 'Ver vehículo'; };
+const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-action="verVehiculo" data-args="${JSON.stringify(pos == null ? [v.vehiculo_id] : [v.vehiculo_id, pos])}">${textoVer(v.nombre)}</button>`;
+
+// Mini vehículo de un vehículo con sus ruedas coloreadas; `filas` = v_estado_neumaticos de ese vehículo.
+// tipo_ruedas por vehículo (el estado de neumáticos no lo trae): define el chasis dibujado y el nombre de la posición.
+let tipos = new Map();
+const tipoDe = id => tipos.get(id);
+const miniDe = (filas, destacadas, id) => miniVehiculo(modeloMini(filas, { destacadas, tipo: tipoDe(id) }));
+
+// Fila con mini vehículo: [mini] [nombre, detalle, posiciones] [dato] [Ver coche N]. `extra` va bajo el texto.
+function filaMini(v, filas, { destacadas = [], detalle, pos = '', dato = '', extra = '', cls = '', nivel = '' }) {
+  return html`<li class="inicio-fila inicio-fila-mini ${cls}">
+    ${miniDe(filas, destacadas, v.vehiculo_id)}
+    <div class="inicio-fila-txt"><span class="inicio-fila-nom">${nivel === 'critico' ? html`<span class="inicio-punto critico" aria-hidden="true"></span>` : ''}${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
+      ${detalle ? html`<span class="inicio-fila-causa">${nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${detalle}</span>` : ''}
+      ${pos ? html`<span class="inicio-fila-pos">${pos}</span>` : ''}${extra}</div>
+    ${dato}${botonVer(v, destacadas.length ? destacadas[0] : null)}</li>`;
 }
 
-function filaProximo(p) {
-  return html`<li><button type="button" class="inicio-fila" data-action="verVehiculo" data-args="${verVehiculo(p.vehiculo_id)}">
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(p.nombre)} ${matricula(p.patente)}</span>
-      <span class="inicio-fila-causa">Posición ${p.posicion}${p.mm !== null ? ` · ${fmtNum(p.mm, 1)} mm` : ''}</span></span>
-    <span class="inicio-semanas">${textoSemanas(p.semanas)}</span></button></li>`;
+function filaAtencion(v, porVeh) {
+  const filas = porVeh.get(v.vehiculo_id) || [];
+  return filaMini(v, filas, { destacadas: v.posiciones, detalle: v.causa, pos: resumenPosiciones(v.posiciones, tipoDe(v.vehiculo_id)), nivel: v.nivel === 'critico' ? 'critico' : '' });
+}
+
+function filaProximo(p, porVeh) {
+  const filas = porVeh.get(p.vehiculo_id) || [];
+  return filaMini(p, filas, {
+    destacadas: [p.posicion], detalle: `${nombrePosicion(p.posicion, tipoDe(p.vehiculo_id))}${p.mm !== null ? ` · ${fmtNum(p.mm, 1)} mm` : ''}`,
+    dato: html`<span class="inicio-semanas">${textoSemanas(p.semanas)}</span>`,
+  });
 }
 
 function filaCliente(r) {
@@ -60,21 +79,21 @@ function bloqueResumen(rs, ult) {
   </section>`;
 }
 
-function bloqueAtencion(at, nAlertas) {
+function bloqueAtencion(at, nAlertas, porVeh) {
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
     ${at.items.length
-      ? html`<ul class="inicio-lista">${joinHtml(at.items.map(filaAtencion))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
+      ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
     <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
   </section>`;
 }
 
-function bloqueProximos(px) {
+function bloqueProximos(px, porVeh) {
   return html`<section class="inicio-card" aria-labelledby="inicio-h-proximos">
     <h3 id="inicio-h-proximos" class="inicio-h">Próximos cambios</h3>
     ${px.items.length
-      ? html`<ul class="inicio-lista">${joinHtml(px.items.map(filaProximo))}</ul>${px.total > px.items.length ? html`<p class="inicio-meta">${px.total - px.items.length} más.</p>` : ''}`
+      ? html`<ul class="inicio-lista">${joinHtml(px.items.map(p => filaProximo(p, porVeh)))}</ul>${px.total > px.items.length ? html`<p class="inicio-meta">${px.total - px.items.length} más.</p>` : ''}`
       : estadoVacio('Ningún neumático cerca del nivel crítico.')}
   </section>`;
 }
@@ -90,34 +109,39 @@ function lineaDispositivos(d, cliente) {
 const signo = dif => (dif > 0 ? '+' : dif < 0 ? '\u2212' : '');
 const textoDif = dif => `${signo(dif)}${fmtNum(Math.abs(dif), 1)}`;
 
-function neumaticoMedido(n) {
+function neumaticoMedido(n, id) {
   const c = n.comparativa;
-  return html`<li class="um-neu"><span class="um-pos">P${n.posicion}</span>${c
+  return html`<li class="um-neu"><span class="um-pos">${nombrePosicion(n.posicion, tipoDe(id))}</span>${c
     ? html`<span class="um-mm">${fmtNum(c.antes, 1)} → ${fmtNum(c.ahora, 1)} mm</span><span class="um-dif ${c.nivel}">${c.nivel === 'alto' ? html`<span class="sr-only">Desgaste alto: </span>` : ''}${textoDif(c.dif)}</span>`
     : html`<span class="um-mm">${fmtNum(n.mm, 1)} mm</span><span class="um-sin">Sin previa</span>`}</li>`;
 }
 
-function filaMedida(v) {
-  return html`<li><button type="button" class="inicio-fila um-fila" data-action="verVehiculo" data-args="${verVehiculo(v.vehiculo_id)}">
-    <span class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
-      <span class="inicio-fila-causa">${v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : ''}${fmtFecha(v.medido_at)}</span>
-      <ul class="um-neus">${joinHtml(v.neumaticos.map(neumaticoMedido))}</ul></span>
-    <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
+function filaMedida(v, porVeh) {
+  // Colores del estado actual del vehículo; sin esas filas, los mm de esta visita.
+  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion, promedio: n.mm }));
+  const coche = v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : '';
+  return html`<li class="um-fila">
+    <div class="um-cab">${miniDe(filas, [], v.vehiculo_id)}
+      <div class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
+        <span class="inicio-fila-causa">${coche}${fmtFecha(v.medido_at)}</span></div>
+      ${botonVer(v, null)}</div>
+    <ul class="um-neus">${joinHtml(v.neumaticos.map(n => neumaticoMedido(n, v.vehiculo_id)))}</ul></li>`;
 }
 
 // `ultimas` = filas de ultimas_mediciones; null si la consulta falló (el resto de Inicio sigue mostrándose).
-function bloqueUltimas(ultimas) {
+function bloqueUltimas(ultimas, porVeh) {
   const lista = ultimas === null ? [] : ultimasMediciones(ultimas);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-ultimas">
     <h3 id="inicio-h-ultimas" class="inicio-h">Últimas mediciones</h3>
     ${ultimas === null ? estadoError('', 'loadInicio')
-      : lista.length ? html`<ul class="inicio-lista">${joinHtml(lista.map(filaMedida))}</ul>
+      : lista.length ? html`<ul class="inicio-lista">${joinHtml(lista.map(v => filaMedida(v, porVeh)))}</ul>
         <p class="inicio-meta">Medición anterior → última · diferencia en mm.</p>`
       : estadoVacio('Sin mediciones registradas')}
   </section>`;
 }
 
-export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [] }) {
+export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map() }) {
+  tipos = tiposRuedas;
   const cliente = isClienteMode();
   const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
   if (estado === 'vacio') {
@@ -134,9 +158,10 @@ export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0
   const at = requierenAtencion(estadoRows);
   const px = proximosCambios(estadoRows);
   const clientes = !cliente ? clientesConUrgencias(resumen) : [];
-  return html`${bloqueResumen(rs, ultimaMedicion(estadoRows))}
-    <div class="inicio-cols">${bloqueAtencion(at, alertas.length)}${bloqueProximos(px)}</div>
-    ${bloqueUltimas(ultimas)}
+  const porVeh = agruparPorVehiculo(estadoRows);
+  return html`<div class="inicio-cols">${bloqueAtencion(at, alertas.length, porVeh)}${bloqueProximos(px, porVeh)}</div>
+    ${bloqueResumen(rs, ultimaMedicion(estadoRows))}
+    ${bloqueUltimas(ultimas, porVeh)}
     ${clientes.length ? html`<section class="inicio-card" aria-labelledby="inicio-h-clientes"><h3 id="inicio-h-clientes" class="inicio-h">Clientes con más urgencias</h3><ul class="inicio-lista">${joinHtml(clientes.map(filaCliente))}</ul></section>` : ''}
     ${lineaDispositivos(resumenDispositivos(salud), cliente)}`;
 }
@@ -149,7 +174,7 @@ export async function load() {
   $('inicio-subtitle').textContent = [isClienteMode() ? currentClienteNombre : '', fmtFechaLarga(new Date()), sel ? nombreSucursal(sel) : ''].filter(Boolean).join(' · ');
   cont.setAttribute('aria-busy', 'true');
   setHtml(cont, estadoCarga('Cargando…'));
-  const [est, al, sa, res, veh, dis, ult] = await Promise.all([
+  const [est, al, sa, res, veh, dis, ult, vtp] = await Promise.all([
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_salud_dispositivos').select('dispositivo_id,cliente_id,estado'),
@@ -159,6 +184,8 @@ export async function load() {
     sel ? filtrarConsulta(db.from('dispositivos').select('id')) : Promise.resolve({ data: null }),
     // Últimos vehículos medidos con la medición anterior de cada neumático; si falla, solo ese bloque muestra el error.
     db.rpc('ultimas_mediciones', { p_limite: MAX_ULTIMAS, p_sucursal: sel ? Number(sel) : null }),
+    // Solo para dibujar el chasis correcto; si falla, se deduce de las posiciones.
+    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas').eq('activo', true)).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
   ]);
   cont.setAttribute('aria-busy', 'false');
   const err = est.error || al.error || sa.error || res.error || veh.error || dis.error;
@@ -169,6 +196,7 @@ export async function load() {
   setHtml(cont, render({
     estadoRows: filtrarFilas(est.rows), alertas: filtrarFilas(al.rows), salud, resumen: res.data || [],
     vehiculosTotal: veh.count ?? 0, ultimas: ult.error ? null : (ult.data || []),
+    tiposRuedas: vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas])),
   }));
 }
 

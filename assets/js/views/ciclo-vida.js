@@ -13,25 +13,30 @@ import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 import { kmTotalesNeumatico } from '../domain/quema.js';
 import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, kmPorNeumatico, ordenarEventos } from '../domain/ciclo-vida.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { nombrePosicion, modeloMini } from '../domain/posicion.js';
+import { miniVehiculo } from '../core/componentes.js';
 
-let vehId=null, veh=null, neums=[], eventos=[], filtroNeum='';
+let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], filtroNeum='';
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
 const hoyISO=()=>new Date().toISOString().slice(0,10);
-const neumLabel=n=>`P${n.posicion} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
+const nomPos=p=>nombrePosicion(p, veh&&veh.tipo_ruedas);
+const neumLabel=n=>`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
 
 async function cargar(){
-  const [rv,rn,re]=await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
+  const [rv,rn,re,rs]=await Promise.all([
+    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,fecha_baja,motivo_baja,numero_quema,km_previos').eq('vehiculo_id',vehId).order('posicion'),
-    db.from('eventos_neumatico').select('*').eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500)
+    db.from('eventos_neumatico').select('*').eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
+    // Solo colorea el mini vehículo: si falla, las ruedas salen sin datos.
+    db.from('v_estado_neumaticos').select('*').eq('vehiculo_id',vehId).order('posicion')
   ]);
   const err=rv.error||rn.error||re.error;
   if(err){ showToast(userError(err),true); return false; }
   const base=getVehiculos().find(x=>x.id===vehId)||{};
   veh={...base,...(rv.data||{})};
-  neums=rn.data||[]; eventos=re.data||[];
+  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]);
   return true;
 }
 
@@ -110,17 +115,17 @@ function renderTimeline(){
   setHtml(sel, joinHtml([html`<option value="">Todos los neumáticos</option>`, neums.map(n=>html`<option value="${n.id}" ${String(n.id)===filtroNeum?'selected':''}>${neumLabel(n)}</option>`)]));
   // Km del neumático = km que ya traía + km recorridos con este vehículo (odómetro actual menos el del montaje).
   const kmRows=neums.filter(n=>kms['n'+n.id]||n.numero_quema||n.km_previos>0).map(n=>{ const k=kms['n'+n.id]; const t=kmTotalesNeumatico(n,k); return html`<tr>
-    <td>P${n.posicion}</td><td>${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell">${n.numero_quema||'—'}</td><td>${n.vida||0}</td>
+    <td><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td><td>${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell">${n.numero_quema||'—'}</td><td>${n.vida||0}</td>
     <td class="mono-cell">${fmtKm(t.previos)}</td>
     <td class="mono-cell">${k?html`${fmtKm(k.km)}${k.abierto?' (en uso)':''}`:'—'}</td>
     <td class="mono-cell">${fmtKm(t.total)}</td>
     <td>${k&&k.incompletos?html`<span class="badge orange">${k.incompletos} tramo(s) sin odómetro</span>`:''}</td></tr>`; });
-  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Pos.</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>Km totales</th><th></th></tr></thead><tbody>${kmRows}</tbody></table>`
+  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>Km totales</th><th></th></tr></thead><tbody>${kmRows}</tbody></table>`
     :html`<div class="ciclo-sub">Sin km registrados todavía.</div>`);
   const lista=ordenarEventos(eventos,true).filter(e=>!filtroNeum||String(e.neumatico_id)===filtroNeum);
   setHtml($('ciclo-timeline'), lista.length?joinHtml(lista.map(e=>{
     const n=neums.find(x=>x.id===e.neumatico_id);
-    const pos=e.tipo==='rotacion'?`P${e.posicion_origen??'?'} → P${e.posicion_destino??'?'}`:(e.posicion_origen!=null?`P${e.posicion_origen}`:'');
+    const pos=e.tipo==='rotacion'?`${e.posicion_origen!=null?nomPos(e.posicion_origen):'?'} → ${e.posicion_destino!=null?nomPos(e.posicion_destino):'?'}`:(e.posicion_origen!=null?nomPos(e.posicion_origen):'');
     return html`<div class="ciclo-ev ciclo-ev-${safeCls(e.tipo)}">
       <div class="ciclo-ev-head"><strong>${TIPO_LABEL[e.tipo]||e.tipo}</strong> <span class="ciclo-sub">${pos}${n?' · '+(n.marca||''):(e.idneumatico?' · '+e.idneumatico:'')}</span></div>
       <div class="ciclo-sub">${fmtFecha(e.created_at)}${e.odometro_km!=null?' · '+fmtKm(e.odometro_km):''}${e.costo!=null?' · costo '+e.costo:''}</div>
@@ -186,7 +191,7 @@ ACTIONS.cicloRegistrarEvento=async function(){
     const rot=planRotacion(neums,n,p.posicionDestino);
     if(!rot.ok){ showToast(rot.error,true); return; }
     rotar=true;
-    if(rot.intercambio && !(await confirmDialog('Intercambiar neumáticos',`La posición P${p.posicionDestino} está ocupada: se intercambiarán los neumáticos de P${n.posicion} y P${p.posicionDestino}.`))) return;
+    if(rot.intercambio && !(await confirmDialog('Intercambiar neumáticos',`La posición ${nomPos(p.posicionDestino)} está ocupada: se intercambiarán los neumáticos de ${nomPos(n.posicion)} y ${nomPos(p.posicionDestino)}.`))) return;
   }
   const btn=$('ciclo-ev-save'); btn.disabled=true;
   try{

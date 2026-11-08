@@ -33,6 +33,7 @@ const NIVEL_CLS = { ok: 'green', bajo: 'orange', critico: 'red', retiro: 'red', 
 let vehiculoId = null;
 let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, porPos }
 let seleccion = null;
+let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace desde Inicio)
 let ultimoFoco = null;
 let tokenGrafico = 0;
 const cacheMediciones = new Map();
@@ -43,11 +44,12 @@ const puedeOperar = () => true;
 // Vista desde la que se abrió el detalle: "Volver" regresa a ella (Inicio, Alertas, Flota, Vehículos...).
 let origen = 'vehiculos';
 
-export function abrirDetalle(id) {
+export function abrirDetalle(id, pos = null) {
   const o = vistaActiva();
   if (o && o !== 'vehiculo-detalle') origen = o;
   vehiculoId = id;
   seleccion = null;
+  preseleccion = nulo(pos) ? null : Number(pos);
   cacheMediciones.clear();
   const volver = $('vd-volver');
   if (volver) volver.textContent = `← Volver a ${etiquetaVista(origen)}`;
@@ -398,12 +400,14 @@ export async function load() {
   cabecera(); resumen(); leyenda(); dibujarDiagrama();
   if (!nulo(seleccion) && !datos.porPos.has(seleccion)) seleccion = null;
   renderPanel();
+  if (!nulo(preseleccion)) { const p = preseleccion; preseleccion = null; if (datos.porPos.has(p)) seleccionarRueda(p); }
 }
 
 registerActions({
   verVehiculoDetalle: id => abrirDetalle(Number(id)),
   detalleVolver: () => switchView(origen),
-  verVehiculo: id => abrirDetalle(Number(id)),
+  // Segundo argumento opcional: posición de la rueda que queda seleccionada al abrir (enlaces de Inicio).
+  verVehiculo: (id, pos) => abrirDetalle(Number(id), pos),
   detalleRueda: pos => seleccionarRueda(pos),
   detalleCerrarPanel: () => cerrarPanel(),
   recargarVehiculoDetalle: () => { cacheMediciones.clear(); return load(); },

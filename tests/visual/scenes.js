@@ -18,6 +18,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'sin-acceso': async function(){ if(!$('#sin-acceso-screen') || $('#sin-acceso-screen').classList.contains('hidden')) fail('escena '+name+': no se ve Sin acceso'); },
     'inicio': async function(){ nav('inicio'); await sleep(800); },
     'ultimas-mediciones': async function(){ nav('inicio'); await sleep(800); var h = $('#inicio-h-ultimas'); if(h) h.scrollIntoView(); else fail('escena '+name+': sin el bloque Últimas mediciones'); await sleep(300); },
+    'ciclo-vida': async function(){ nav('vehiculos'); await sleep(600); click('#tbody-vehiculos [data-va="neum"]'); await sleep(600); click('[data-action="cicloDesdeNeum"]'); await sleep(900); var k = $('#ciclo-km'); if(k) k.scrollIntoView(); await sleep(300); },
     'vehiculos': async function(){ nav('vehiculos'); await sleep(700); },
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },

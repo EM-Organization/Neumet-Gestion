@@ -14,6 +14,16 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   var cb = $('#modal-ciclo [data-action="neumatico-cambiar"]');
   if(!cb || cb.getAttribute('data-vehiculo-id') !== '10' || !cb.getAttribute('data-posicion')) fail('ciclo: falta el botón Cambiar neumático (punto de entrada temporal)');
 
+  // Sin etiquetas «P<n>»: las posiciones salen con nombre y, en la tabla de km, con mini vehículo
+  var opts = Array.prototype.map.call(d.querySelectorAll('#modal-ciclo select option'), function(o){ return o.textContent; }).join(' | ');
+  if(/(^|[ |])P\d/.test(opts)) fail('ciclo: opciones con etiqueta «P<n>»: ' + opts);
+  if(!/Delantera izquierda|Eje \d/.test(opts)) fail('ciclo: las opciones de neumático no nombran la posición: ' + opts);
+  var kmT = $('#ciclo-km');
+  if(kmT.querySelector('table')){
+    if(!kmT.querySelector('.pos-mini .mini-veh .mv-dest')) fail('ciclo: la tabla de km no muestra el mini vehículo con la rueda resaltada');
+    if(/(^|\s)P\d/.test(kmT.textContent)) fail('ciclo: la tabla de km conserva «P<n>»: ' + kmT.textContent.slice(0, 120));
+    if(kmT.querySelectorAll('.mini-veh').length !== kmT.querySelectorAll('tbody tr').length) fail('ciclo: un mini vehículo por neumático');
+  }
   // Odómetro: inválido no escribe; válido actualiza vehiculos
   setv('#ciclo-odo-input', '-5'); $('#ciclo-odo-save').click(); await sleep(150);
   if(writes('vehiculos').length) fail('ciclo: odómetro negativo llegó a la BD');

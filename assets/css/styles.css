@@ -662,9 +662,13 @@
 .busq input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
 .busq-atajo { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 12px var(--font-mono); color: var(--text-tertiary); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; pointer-events: none; }
 .busq input:focus ~ .busq-atajo { display: none; }
-.busq-grande { flex: none; max-width: 560px; margin-bottom: 20px; }
-.busq-grande input { font-size: 16px; padding: 12px 14px 12px 40px; }
-.busq-grande > svg { left: 14px; width: 17px; height: 17px; }
+.busq-grande { flex: none; width: 100%; max-width: 640px; margin: 0 auto; }
+.busq-grande input { font-size: 18px; padding: 16px 16px 16px 48px; border-radius: 12px; border-color: var(--border-strong); box-shadow: 0 1px 2px rgba(56,52,36,0.08); }
+.busq-grande > svg { left: 16px; width: 20px; height: 20px; }
+/* Buscador de Inicio: bloque propio, centrado y más alto que las tarjetas que siguen */
+.inicio-hero { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 16px; padding: 28px 24px 32px; margin: 4px 0 32px; text-align: center; }
+.inicio-hero-tit { display: block; font-size: 15px; font-weight: 600; color: var(--text-secondary); margin: 0 0 12px; }
+@media (max-width: 760px) { .inicio-hero { padding: 18px 12px 20px; margin-bottom: 24px; } .busq-grande input { font-size: 15px; padding: 14px 10px 14px 40px; } .busq-grande > svg { left: 13px; width: 18px; height: 18px; } }
 .busq-resultados { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 50; list-style: none; margin: 0; padding: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(56,52,36,0.16); max-height: 360px; overflow-y: auto; }
 .busq-resultados[hidden] { display: none; }
 .busq-op { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: 0; padding: 9px 10px; border-radius: 7px; font: inherit; color: var(--text-primary); cursor: pointer; }
@@ -695,13 +699,32 @@
 }
 
 /* ── Inicio: últimas mediciones (comparativa por neumático; color solo de apoyo, siempre con el número) ── */
-.um-fila { align-items: flex-start; }
-.um-neus { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 20px; }
+.um-neus { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 20px; }
 .inicio-lista .um-neu + .um-neu { border-top: 0; }
-.um-neu { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 0; }
-.um-pos { width: 28px; flex: none; color: var(--text-tertiary); }
+.um-neu { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 0; }
+.um-pos { flex: 1 1 150px; color: var(--text-secondary); }
 .um-mm { color: var(--text-primary); white-space: nowrap; }
 .um-dif { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
 .um-dif.alto { color: var(--warning); }
 .um-sin { color: var(--text-tertiary); }
-.um-fila .inicio-fila-ir { align-self: center; }
+
+/* ── Mini vehículo (reemplaza las etiquetas «P1, P2…»): ruedas por desgaste, la señalada con trazo oscuro ── */
+.mini-veh { height: 84px; width: auto; flex: none; display: block; }
+.mv-chasis { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 2; }
+.mv-rueda { stroke: #8f8a73; stroke-width: 2; }
+.mv-sd { fill: #e4e1d2; }
+.mv-aus { fill: none; stroke: #c9c5b0; stroke-width: 2; stroke-dasharray: 5 4; }
+.mv-dest { stroke: #383424; stroke-width: 7; }
+.inicio-fila-mini { gap: 8px 14px; flex-wrap: wrap; padding: 12px 4px; cursor: default; }
+.inicio-fila-mini:hover { background: none; }
+.inicio-fila-mini .inicio-fila-txt { flex: 1 1 160px; }
+.inicio-fila-pos { font-size: 13px; color: var(--text-primary); }
+.inicio-ver { flex: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-dark); cursor: pointer; white-space: nowrap; }
+.inicio-ver:hover { background: var(--surface-2); }
+.inicio-ver:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.um-fila { padding: 12px 4px; }
+.um-cab { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.um-cab .inicio-fila-txt { flex: 1 1 160px; }
+.pos-mini { display: flex; align-items: center; gap: 10px; }
+.pos-mini .mini-veh { height: 52px; }
+@media (max-width: 480px) { .inicio-fila-mini .inicio-ver { margin-left: 0; } }

@@ -42,6 +42,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
   if(rows()[0].textContent.indexOf('Neumático crítico: 3 mm') === -1) fail('alertas: falta mensaje');
   if(!rows()[0].querySelector('[data-action="verVehiculo"]')) fail('alertas: falta enlace al vehiculo');
+  if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('.pos-mini .mini-veh .mv-dest'); }).length !== 4) fail('alertas: cada alerta de rueda debe mostrar el mini vehículo con la rueda resaltada');
+  if(!/Delantera izquierda/.test(rows()[0].textContent) || /(^|\s)P\d/.test(rows()[0].textContent)) fail('alertas: posición sin nombre: '+rows()[0].textContent);
+  if(!/Posición/.test($('#view-alertas thead').textContent)) fail('alertas: falta la columna Posición');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1 || d.body.innerHTML.indexOf('<Beta>') !== -1) fail('alertas: HTML sin escapar');
   setSel('#alert-severidad', '2'); await sleep(100);
   if(rows().length !== 2) fail('alertas: filtro severidad 2 -> '+rows().length);

@@ -151,12 +151,14 @@
           </div>
           <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
         </div>
-        <form class="busq busq-grande" id="busq-inicio" role="search" data-buscador autocomplete="off">
-          <label class="sr-only" for="busq-inicio-input">Buscar vehículo por matrícula, número de coche o número de quema</label>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input id="busq-inicio-input" type="search" placeholder="Matrícula, número de coche o quema" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
-          <ul class="busq-resultados" id="busq-inicio-res" hidden></ul>
-        </form>
+        <section class="inicio-hero" aria-label="Buscador de vehículos">
+          <label class="inicio-hero-tit" for="busq-inicio-input">Buscar vehículo</label>
+          <form class="busq busq-grande" id="busq-inicio" role="search" data-buscador autocomplete="off">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="busq-inicio-input" type="search" placeholder="Matrícula, número de coche o quema" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
+            <ul class="busq-resultados" id="busq-inicio-res" hidden></ul>
+          </form>
+        </section>
         <div id="inicio-contenido" aria-live="polite">
           <div class="loading-state" role="status"><div class="spinner" aria-hidden="true"></div>Cargando…</div>
         </div>
@@ -711,7 +713,7 @@
         <div class="rep-progress" id="alert-msg" role="status" aria-live="polite"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th scope="col">Severidad</th><th scope="col">Tipo</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Pos.</th><th scope="col">Última medición</th><th scope="col"></th></tr></thead>
+            <thead><tr><th scope="col">Severidad</th><th scope="col">Tipo</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Posición</th><th scope="col">Última medición</th><th scope="col"></th></tr></thead>
             <tbody id="alert-tbody"></tbody>
           </table>
         </div>

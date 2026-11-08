@@ -14,6 +14,8 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 | Vehículos mencionados sin enlace al detalle | Todo vehículo de Inicio, Alertas, Estado de la flota y Reportes abre el detalle |
 | Dispositivos no aporta al cliente (no gestiona hardware) | La vista es solo de administración: sin ítem de menú para el cliente y el router la rechaza (`registerView(..., { soloAdmin: true })`: `switchView` devuelve a Inicio al cliente que la pida por menú, enlace o acción). El estado de sus equipos queda en Inicio como dato, sin enlace |
 | Inicio no mostraba qué se midió últimamente | Bloque «Últimas mediciones»: los 8 vehículos medidos más recientemente con la comparativa de desgaste de cada neumático respecto de su medición anterior |
+| Inicio mostraba las posiciones como «P1, P2…», sin significado a la vista | Mini vehículo (SVG liviano, vista desde arriba) con las ruedas coloreadas por desgaste y la rueda en cuestión resaltada, más el nombre de la posición en texto («Delantera izquierda», «Eje 2 derecha exterior»; convención en `assets/js/domain/posicion.js`). Se usa en Requieren atención, Próximos cambios, Últimas mediciones, Alertas y la tabla de km del ciclo de vida |
+| El buscador de Inicio no se distinguía de las tarjetas y el resumen de proporciones iba antes de las decisiones | El buscador es un bloque propio, centrado y alto, sobre las tarjetas. El resumen «N de M neumáticos en buen estado» va después de Próximos cambios |
 | Migas y menú activo incoherentes | `registerView(..., { menu })` define qué ítem queda resaltado; las migas muestran «Padre › Actual» |
 
 ## 2. Rol cliente (gomero / gestor de flota)
@@ -33,9 +35,9 @@ flowchart TD
   SU -->|agregar vehículo, mover con confirmación| SU
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   I -->|buscador de Inicio| VD
-  I -->|fila de Requieren atención| VD
-  I -->|fila de Próximos cambios| VD
-  I -->|fila de Últimas mediciones| VD
+  I -->|Ver coche en Requieren atención| VD
+  I -->|Ver coche en Próximos cambios| VD
+  I -->|Ver coche en Últimas mediciones| VD
   I -->|Ver todas las alertas| A
   V -->|buscador de la lista| VD
   V -->|fila de vehículo| VD
@@ -49,6 +51,10 @@ flowchart TD
   R -->|CSV / versión imprimible| X[Descarga]
 ```
 
+Orden de Inicio (de arriba abajo): buscador (bloque destacado) · Requieren atención y Próximos cambios (dos columnas en escritorio) · resumen «N de M neumáticos en buen estado» · Últimas mediciones · Clientes con más urgencias (solo administración) · línea de dispositivos.
+
+Cada fila de vehículo trae un mini vehículo y el botón «Ver coche 106», que abre el detalle y deja seleccionada la rueda señalada (`verVehiculo` acepta la posición como segundo argumento; si el vehículo no tiene datos de esa posición, abre sin selección). Las posiciones se nombran así: eje 1 «Delantera izquierda/derecha»; ejes siguientes «Eje N izquierda/derecha» y, si son duales, «exterior» o «interior» (la más cercana al chasis); posición 99 «Auxilio». En las listas compactas, más de tres posiciones se resumen como «N posiciones».
+
 Inicio incluye una línea con los dispositivos activos y los que llevan días sin actividad (solo informativa en el cliente; sin enlace ni gestión).
 
 ### Últimas mediciones (Inicio)
@@ -61,12 +67,12 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 |---|---|---|---|
 | Barra superior (todas menos Inicio y Vehículos) | Buscador: Enter con una coincidencia, o elegir un resultado | Detalle de vehículo | Vehículos |
 | Inicio | Buscador | Detalle (una coincidencia) o lista de resultados | Inicio → Vehículos |
-| Inicio | Fila de «Requieren atención» | Detalle de vehículo | Vehículos |
-| Inicio | Fila de «Próximos cambios» | Detalle de vehículo | Vehículos |
+| Inicio | «Ver coche N» de «Requieren atención» | Detalle de vehículo (rueda señalada seleccionada) | Vehículos |
+| Inicio | «Ver coche N» de «Próximos cambios» | Detalle de vehículo (rueda seleccionada) | Vehículos |
 | Inicio | «Ver todas las alertas» | Alertas | Alertas |
-| Inicio | Fila de «Últimas mediciones» | Detalle de vehículo | Vehículos |
+| Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo | Vehículos |
+| Alertas | «Ver vehículo» | Detalle de vehículo (rueda de la alerta seleccionada) | Vehículos |
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
-| Alertas | «Ver vehículo» | Detalle de vehículo | Vehículos |
 | Reportes | «Ver vehículo» (con un vehículo elegido) | Detalle de vehículo | Vehículos |
 | Detalle | «Volver a …» | Pantalla desde la que se abrió | La de esa pantalla |
 | Detalle | Miga «Vehículos» | Vehículos | Vehículos |
