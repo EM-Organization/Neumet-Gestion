@@ -20,7 +20,7 @@ core/
   ui.js                 showToast, setStatus (aviso de conexión: oculto salvo problema real), confirmDialog, relDate, userError, avatarFor
   conexion.js           eventos online/offline + acción «Reintentar» del aviso de conexión
   actions.js            ACTIONS + registerActions + listener delegado (data-action / data-change / data-backdrop-close)
-  auth.js               checkAuth, login/logout, modo cliente (currentClienteId, isClienteMode), hooks onLogin/onLogout
+  auth.js               checkAuth, login/logout, rol de la sesión (currentRol: admin | cliente | sin_acceso; pantalla «Sin acceso»), modo cliente (currentClienteId, isClienteMode), hooks onLogin/onLogout
   nav.js                registerView(nombre, etiqueta, load, {menu}), switchView, setTitulo (migas), sidebar móvil
   buscador.js           buscador de vehículos por matrícula o número (barra superior, Inicio; atajo «/»)
   brand.js              BRAND (paleta para SVG generados por JS)
@@ -29,6 +29,7 @@ domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
   inicio.js             PURO: estadoInicio, proporciones, requierenAtencion, proximosCambios, resumen de dispositivos
+  rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso)
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/

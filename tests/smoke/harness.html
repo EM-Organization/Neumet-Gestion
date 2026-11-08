@@ -9,6 +9,7 @@
 <script src="/tests/smoke/cambio.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
+<script src="/tests/smoke/sinacceso.flow.js"></script>
 <script src="/tests/visual/scenes.js"></script>
 <script>
 // Carga adminpanel/index.html en un iframe (srcdoc), sustituye el CDN de supabase por tests/smoke/stub.js
@@ -21,7 +22,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
@@ -42,8 +43,14 @@
     var click=function(el,what){ if(!el){ fail('no existe elemento: '+what); return false; } el.click(); return true; };
     var nav=function(v){ return click($('.nav-item[data-view="'+v+'"]'),'nav '+v); };
     await sleep(600);
-    if($('#app').classList.contains('hidden') && !/[?&]nosession=1/.test(location.search)) fail('la app no salio del login');
+    var sinAcceso=/[?&](sinperfil|api)=1/.test(location.search);
+    if($('#app').classList.contains('hidden') && !sinAcceso && !/[?&]nosession=1/.test(location.search)) fail('la app no salio del login');
 
+    if(sinAcceso && !/[?&]shot=/.test(location.search)){
+      // Sesión sin perfil o con rol api: solo «Sin acceso» (tests/smoke/sinacceso.flow.js)
+      await window.sinAccesoFlow(w,d,sleep,fail,log);
+      throw new Error('__done');
+    }
     var shotName=(location.search.match(/[?&]shot=([a-z0-9-]+)/)||[])[1];
     if(shotName){
       // Modo capturas (tests/visual/run.sh): deja la vista pedida en pantalla; el PNG lo saca Chrome (tests/visual/scenes.js)

@@ -11,12 +11,13 @@ export const dormir = ms => new Promise(r => setTimeout(r, ms));
  * @param rol        'admin' | 'global' | 'salto' | 'montevideo'
  * @param fn         async (pagina) => {...}
  * @param opciones.http     [{ ruta: RegExp, status: number|number[] }] respuestas 4xx/5xx esperadas
+ * @param opciones.sinAcceso true si la sesión debe quedar en la pantalla «Sin acceso» en vez de abrir el panel
  * @param opciones.consola  [RegExp] mensajes de console.error esperados (p. ej. el panel registra el error de una RPC denegada)
  */
-export async function flujo(env, nombre, rol, fn, { http = [], consola = [] } = {}) {
+export async function flujo(env, nombre, rol, fn, { http = [], consola = [], sinAcceso = false } = {}) {
   env.web.setTag(`${rol}/${nombre}`);
   const desde = env.peticiones.length;
-  const p = await env.abrirPanel(rol);
+  const p = await env.abrirPanel(rol, { sinAcceso });
   try {
     await fn(p);
     await dormir(250); // deja terminar peticiones y renders en vuelo antes de revisar
