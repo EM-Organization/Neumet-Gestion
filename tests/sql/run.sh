@@ -113,6 +113,10 @@ echo "== migración de últimas mediciones (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261110020000_ultimas_mediciones.sql"
 echo "== migración de últimas mediciones (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261110020000_ultimas_mediciones.sql"
+echo "== migración de motivo sin_neumaticos (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261112000000_api_sin_neumaticos.sql"
+echo "== migración de motivo sin_neumaticos (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261112000000_api_sin_neumaticos.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

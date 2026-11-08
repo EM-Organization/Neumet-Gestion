@@ -49,6 +49,7 @@ export function crearEntorno() {
     { id: 10, cliente_id: 1, patente_norm: 'ABCD12', numero: '123' },
     { id: 11, cliente_id: 1, patente_norm: null, numero: '777' },
     { id: 20, cliente_id: 2, patente_norm: 'ZZZZ99', numero: '555' },
+    { id: 12, cliente_id: 1, patente_norm: 'SINN01', numero: '888' }, // existe, sin neumáticos
   ];
   const neumaticos: Neu[] = [
     { vehiculo_id: 10, posicion: 1, idneumatico: 'N1', codigo: 'C1', auxilio: false },
@@ -126,15 +127,23 @@ export function crearEntorno() {
           return Promise.resolve({
             estado: 'no_encontrado',
             replay: false,
-            resultados: a.montajes.map((m) => ({ posicion: m.posicion, guardado: false })),
+            resultados: a.montajes.map((m) => ({ posicion: m.posicion, guardado: false, motivo: 'vehiculo' })),
           });
         }
+        const tiene = neumaticos.some((x) => x.vehiculo_id === v.id && x.idneumatico !== null);
         const resultados = a.montajes.map((m) => {
           const n = neumaticos.find((x) =>
             x.vehiculo_id === v.id && x.posicion === m.posicion && x.idneumatico !== null
           );
-          if (m.rechazar || !n) return { posicion: m.posicion, guardado: false };
-          if (m.mm1 === null && m.mm2 === null && m.mm3 === null) return { posicion: m.posicion, guardado: n.auxilio };
+          // Mismo orden de decisión que api_guardar_montaje (20261112000000).
+          if (!tiene) return { posicion: m.posicion, guardado: false, motivo: 'sin_neumaticos' };
+          if (m.rechazar) return { posicion: m.posicion, guardado: false, motivo: m.rechazar };
+          if (!n) return { posicion: m.posicion, guardado: false, motivo: 'posicion' };
+          if (m.mm1 === null && m.mm2 === null && m.mm3 === null) {
+            return n.auxilio
+              ? { posicion: m.posicion, guardado: true, motivo: null }
+              : { posicion: m.posicion, guardado: false, motivo: 'sin_medicion' };
+          }
           mediciones.push({
             vehiculo_id: v.id,
             cliente_id: a.cliente_id,
@@ -145,7 +154,7 @@ export function crearEntorno() {
             sesion_id: a.sesion_id,
             device_id: 'api:' + a.cuenta,
           });
-          return { posicion: m.posicion, guardado: true };
+          return { posicion: m.posicion, guardado: true, motivo: null };
         });
         const out: GuardarRpc = { estado: 'ok', replay: false, vehiculo_id: v.id, resultados };
         idem.set(a.cuenta + '|' + a.clave, { hash: a.hash, resp: out });

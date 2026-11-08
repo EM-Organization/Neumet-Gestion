@@ -13,6 +13,7 @@ import { registrar as taller } from './specs/taller.mjs';
 import { registrar as medicionesNeumatico } from './specs/mediciones-neumatico.mjs';
 import { registrar as sucursales } from './specs/sucursales.mjs';
 import { registrar as sinAcceso } from './specs/sin-acceso.mjs';
+import { registrar as apiSinNeumaticos } from './specs/api-sin-neumaticos.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -27,4 +28,5 @@ taller(env);
 medicionesNeumatico(env);
 sucursales(env);
 sinAcceso(env);
+apiSinNeumaticos(env);
 contrato(env);

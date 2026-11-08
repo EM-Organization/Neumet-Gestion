@@ -9,6 +9,21 @@ info:
     Contrato derivado de `API_PROVEEDOR.pdf`. BORRADOR: ver docs/07-api-proveedor.md
     para las ambigüedades abiertas (§5) y el diseño de seguridad (§4).
     El éxito requiere HTTP 2xx y `code = 200` en el cuerpo (login: HTTP exactamente 200).
+
+    ## Motivos de rechazo por posición (internos, en `ingesta_log`; no viajan en la respuesta)
+
+    | Motivo | Significado / acción esperada |
+    |---|---|
+    | `vehiculo` | Matrícula inexistente o de otro cliente (misma respuesta). Revisar la matrícula. |
+    | `sin_neumaticos` | El coche existe pero no tiene neumáticos montados con `idneumatico`. Cargar las ruedas del coche en el panel. Estado global ok. |
+    | `posicion` | El coche tiene neumáticos pero la posición no existe en su montaje. Revisar con `obtener_montaje`. |
+    | `sin_medicion` | Rueda no auxilio con los cuatro mm null. Medir y reenviar. |
+    | `incompleta` | Algunos mm null y otros con valor. Enviar los cuatro. |
+    | `rango` | mm fuera de 0..40. Repetir la medición. |
+    | `duplicado_distinto` | mm3 distinto de mm2. Corregir la app. |
+    | `error` | Fallo inesperado en esa posición. Reintentar; si persiste, avisar con `X-Request-Id`. |
+
+    `obtener_montaje` de un coche existente sin neumáticos responde `code 200` y `data: []` (sin campos nuevos).
 servers:
   - url: https://kootszosdejmawanfxug.supabase.co/functions/v1/api-proveedor
     description: Producción. La función acepta las rutas con y sin este prefijo
@@ -44,7 +59,7 @@ paths:
             schema: { $ref: '#/components/schemas/ObtenerMontajeRequest' }
       responses:
         '200':
-          description: Procesado (vehículo inexistente o ajeno => data vacío o code distinto de 200)
+          description: Procesado (vehículo inexistente o ajeno => code 404 y data vacío; vehículo sin neumáticos cargados => code 200 y data vacío)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ObtenerMontajeResponse' }
@@ -63,7 +78,11 @@ paths:
             schema: { $ref: '#/components/schemas/GuardarMontajeRequest' }
       responses:
         '200':
-          description: Procesado. Fallos por neumático se informan con guardado=false (HTTP 2xx)
+          description: |
+            Procesado. Fallos por neumático se informan con guardado=false (HTTP 2xx).
+            La respuesta NO incluye el motivo; se registra en `ingesta_log` (ver tabla de motivos
+            en `info.description` y docs/07 Apéndice B). Un coche existente sin neumáticos cargados
+            devuelve guardado=false en todas sus posiciones (motivo interno `sin_neumaticos`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
