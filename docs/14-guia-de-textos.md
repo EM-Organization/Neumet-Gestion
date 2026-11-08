@@ -39,7 +39,7 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | Usar | No usar |
 |---|---|
 | neumático | goma, cubierta, llanta |
-| posición (P1, P2…) | lugar, ubicación |
+| posición, con nombre en las listas («Delantera izquierda», «Eje 2 derecha exterior») y mini vehículo; el número de posición solo en el diagrama del detalle y en el taller | lugar, ubicación; «P1, P2…» en listas |
 | interno / centro / externo (huellas de la banda) | izquierda / derecha, borde |
 | sucursal | seccional, filial (en la interfaz) |
 | matrícula | patente (en la interfaz; la columna de la base se llama `patente`) |

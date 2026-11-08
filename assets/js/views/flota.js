@@ -11,6 +11,7 @@ import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { contextoListo, hayFiltroSeccional, filtrarFilas } from '../core/seccional.js';
 import { resumenDesdeFilas } from '../domain/seccional.js';
+import { nombrePosicion } from '../domain/posicion.js';
 import {
   agruparVehiculos, filtrarVehiculos, kpisFlota,
 } from '../domain/flota.js';
@@ -50,7 +51,7 @@ function card(v, mostrarCliente) {
       ${v.n_sin_datos ? html`<span class="flota-n">${v.n_sin_datos} sin datos</span>` : ''}
     </div>
     <div class="flota-meta">
-      ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: posición ${v.peor_posicion}, ${fmtMm(v.min_mm)}`}
+      ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: ${nombrePosicion(v.peor_posicion).toLowerCase()}, ${fmtMm(v.min_mm)}`}
       ${v.n_sin_medir ? html` · ${v.n_sin_medir} sin medir` : ''}${v.n_irregular ? html` · ${v.n_irregular} con desgaste irregular` : ''}
       <br>Última medición: ${v.ultima_medicion_at ? relDate(v.ultima_medicion_at) : 'nunca'}
     </div>

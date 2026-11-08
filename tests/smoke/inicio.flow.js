@@ -62,6 +62,39 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!cliMode && !listaClientes) fail('inicio(admin): falta la lista de clientes');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre de vehículo sin escapar');
   log.push('inicio('+rol+'): '+txt.slice(0,160));
+  // Orden: Requieren atención + Próximos cambios, luego el resumen de proporciones, luego Últimas mediciones
+  var hPx = $('#inicio-h-proximos'), hRs = $('#inicio-h-resumen'), hUl = $('#inicio-h-ultimas');
+  var antes = function(a, b){ return !!(a.compareDocumentPosition(b) & w.Node.DOCUMENT_POSITION_FOLLOWING); };
+  if(!hPx || !hRs || !hUl || !antes(hPx, hRs) || !antes(hRs, hUl)) fail('inicio('+rol+'): el resumen "N de M neumáticos" debe ir después de Próximos cambios y antes de Últimas mediciones');
+  // Sin etiquetas «P1, P2…»: posiciones con nombre y mini vehículo
+  if(/(^|[^A-Za-z0-9])P\d/.test(txt.replace(/CR0001|XY987ZZ|AB123CD|NN0003/g, ''))) fail('inicio('+rol+'): quedan etiquetas «P<n>»: '+txt.slice(0,200));
+  if(!/Delantera izquierda/.test(txt)) fail('inicio('+rol+'): falta el nombre de la posición');
+  var minis = all('#inicio-contenido .mini-veh');
+  if(minis.length < 5) fail('inicio('+rol+'): faltan mini vehículos: '+minis.length);
+  minis.forEach(function(m){ if(!m.getAttribute('aria-label') || m.querySelectorAll('.mv-rueda').length < 10) fail('inicio('+rol+'): mini vehículo sin aria-label o sin ruedas'); if(m.getBoundingClientRect().height < 40) fail('inicio('+rol+'): mini vehículo demasiado pequeño'); });
+  var cardPx = hPx.closest('section');
+  if(cardPx.querySelectorAll('.mini-veh').length !== cardPx.querySelectorAll('li').length || cardPx.querySelectorAll('.mini-veh .mv-dest').length !== cardPx.querySelectorAll('li').length) fail('inicio('+rol+'): cada próximo cambio debe resaltar su rueda');
+  var coloreadas = all('#inicio-contenido .mini-veh .mv-rueda[fill]').length;
+  if(!coloreadas) fail('inicio('+rol+'): ruedas sin color por desgaste');
+  var btnPx = cardPx.querySelector('button.inicio-ver');
+  if(!btnPx || !/^Ver /.test(btnPx.textContent)) fail('inicio('+rol+'): falta el botón "Ver coche"');
+  else {
+    var argsPx = JSON.parse(btnPx.dataset.args);
+    btnPx.click(); await sleep(900);
+    if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio('+rol+'): "Ver coche" no abre el detalle');
+    var sel = $('#vd-diagrama .vd-rueda.sel');
+    if(argsPx.length !== 2 || !sel || Number(sel.dataset.pos) !== Number(argsPx[1])) fail('inicio('+rol+'): "Ver coche" no selecciona la rueda '+argsPx[1]);
+    $('.nav-item[data-view="inicio"]').click(); await sleep(600);
+  }
+  // Buscador destacado: bloque propio, centrado y alto
+  var hero = $('.inicio-hero'), inpH = $('#busq-inicio-input');
+  if(!hero || !hero.contains(inpH)) fail('inicio('+rol+'): el buscador debe estar en el bloque .inicio-hero');
+  else {
+    var rh = hero.getBoundingClientRect(), ri = inpH.getBoundingClientRect();
+    if(ri.height < 48) fail('inicio('+rol+'): buscador poco alto: '+ri.height);
+    if(Math.abs((ri.left + ri.width / 2) - (rh.left + rh.width / 2)) > 2) fail('inicio('+rol+'): buscador no centrado');
+    if(w.getComputedStyle(hero).backgroundColor === w.getComputedStyle(cont.querySelector('.inicio-card')).backgroundColor) fail('inicio('+rol+'): el bloque del buscador no se distingue de las tarjetas');
+  }
 
   // --- Buscador de Inicio: Enter abre el detalle con una coincidencia; lista si hay varias ---
   var bi = $('#busq-inicio-input');

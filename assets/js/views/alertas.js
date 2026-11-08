@@ -2,7 +2,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
-import { chip, estadoVacio, estadoCarga, estadoError, filaEstado } from '../core/componentes.js';
+import { chip, estadoVacio, estadoCarga, estadoError, filaEstado, miniVehiculo } from '../core/componentes.js';
 import { fmtNum, plural } from '../domain/formato.js';
 import { isClienteMode } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
@@ -14,6 +14,7 @@ import {
   severidadLabel, tipoLabel, SEVERIDAD_BADGE,
 } from '../domain/flota.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { nombrePosicion, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 10000;
@@ -21,6 +22,7 @@ const SEV_SIMBOLO = { 3: '✕', 2: '▲', 1: 'i' };
 const chipSeveridad = s => chip(SEVERIDAD_BADGE[s] || 'gray', severidadLabel(s), SEV_SIMBOLO[s] || 'i');
 let alertas = [];
 let clientes = [];
+let porVeh = new Map(); // v_estado_neumaticos por vehículo: colores del mini vehículo (sin datos si no cargó)
 
 function filtros() {
   return {
@@ -30,15 +32,21 @@ function filtros() {
   };
 }
 
+// Posición de la alerta: mini vehículo con la rueda resaltada y su nombre en texto; «—» si la alerta es del vehículo.
+function celdaPosicion(a) {
+  if (a.posicion === null || a.posicion === undefined) return '—';
+  return html`<div class="pos-mini">${miniVehiculo(modeloMini(porVeh.get(a.vehiculo_id), { destacadas: [a.posicion] }))}<span>${nombrePosicion(a.posicion)}</span></div>`;
+}
+
 function fila(a, mostrarCliente) {
-  const arg = JSON.stringify([a.vehiculo_id]);
+  const arg = JSON.stringify(a.posicion === null || a.posicion === undefined ? [a.vehiculo_id] : [a.vehiculo_id, a.posicion]);
   const cli = mostrarCliente ? (clientes.find(c => String(c.cliente_id) === String(a.cliente_id)) || {}).nombre : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}">
     <td>${chipSeveridad(a.severidad)}</td>
     <td>${tipoLabel(a.tipo)}</td>
     <td>${a.mensaje}</td>
     <td>${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
-    <td>${a.posicion ?? '—'}</td>
+    <td>${celdaPosicion(a)}</td>
     <td>${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
     <td><button class="btn ghost" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button></td>
   </tr>`;
@@ -78,13 +86,16 @@ export async function load() {
   $('alert-msg').textContent = '';
   setHtml($('alert-tbody'), filaEstado(7, estadoCarga('Cargando alertas…')));
   await contextoListo();
-  const [al, res] = await Promise.all([
+  const [al, res, est] = await Promise.all([
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
+    // Solo para colorear el mini vehículo: si falla, las ruedas salen sin datos y la lista sigue funcionando.
+    fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
   ]);
   if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(7, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
+  porVeh = est.error ? new Map() : agruparPorVehiculo(est.rows);
   clientes = res.data || [];
   fillFiltros();
   $('alert-msg').textContent = al.truncated ? `Se muestran las primeras ${MAX_FILAS} alertas: la lista está incompleta.` : '';

@@ -26,12 +26,12 @@ const criticosInicio = async p => {
   return (await p.eval(LEER_INICIO)).cifras[2];
 };
 
-// Filas de la tabla de alertas de un camión: [{tipo, posicion}]
+// Filas de la tabla de alertas de un camión: [{tipo, posicion}]. La posición sale del botón «Ver vehículo» (la celda muestra el nombre).
 const alertasUi = async (p, patente) => {
   await irA(p, 'alertas');
   await p.esperar(`/\\d+ alertas?/.test(document.querySelector('#alert-count').textContent)`, { que: 'tabla de alertas' });
   return p.eval(`[...document.querySelectorAll('#alert-tbody tr')].filter(r => r.innerText.includes(${JSON.stringify(patente)}))
-    .map(r => ({ tipo: r.dataset.tipo, posicion: r.children[4].textContent.trim() }))`);
+    .map(r => ({ tipo: r.dataset.tipo, posicion: String(JSON.parse(r.querySelector('[data-action="verVehiculo"]').dataset.args)[1] ?? '') }))`);
 };
 
 async function seleccionarRueda(p, pos) {

@@ -49,28 +49,29 @@ export function textoSemanas(s) {
 }
 
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
-const posiciones = filas => filas.map(f => `P${f.posicion}`).join(', ');
+// Posiciones (números) de las filas, sin repetir: la vista las muestra como mini vehículo y con su nombre.
+const posiciones = filas => [...new Set(filas.map(f => Number(f.posicion)))].sort((a, b) => a - b);
 
 // Causa principal de un vehículo, en una frase. Orden de urgencia (rango): crítico, cruza el límite pronto, desgaste bajo,
 // desgaste mayor al normal, sin medir. Devuelve null si el vehículo no necesita atención.
 function causaDe(filas, ref) {
   const crit = filas.filter(f => f.estado === 'critico');
-  if (crit.length) return { nivel: 'critico', rango: 0, n: crit.length, causa: `${plural(crit.length, 'neumático crítico', 'neumáticos críticos')} (${posiciones(crit)})` };
+  if (crit.length) return { nivel: 'critico', rango: 0, n: crit.length, posiciones: posiciones(crit), causa: plural(crit.length, 'neumático crítico', 'neumáticos críticos') };
   const cruza = filas
     .filter(f => (f.estado === 'ok' || f.estado === 'bajo') && num(f.semanas_hasta_critico) !== null && num(f.semanas_hasta_critico) <= SEMANAS_ATENCION)
     .sort((a, b) => num(a.semanas_hasta_critico) - num(b.semanas_hasta_critico));
   if (cruza.length) {
     const s = num(cruza[0].semanas_hasta_critico);
-    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, causa: `Cruza el límite crítico en ${textoSemanas(s)} (P${cruza[0].posicion})` };
+    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(cruza[0].posicion)], causa: `Cruza el límite crítico en ${textoSemanas(s)}` };
   }
   const bajo = filas.filter(f => f.estado === 'bajo');
-  if (bajo.length) return { nivel: 'bajo', rango: 2, n: bajo.length, causa: `${plural(bajo.length, 'neumático con desgaste bajo', 'neumáticos con desgaste bajo')} (${posiciones(bajo)})` };
+  if (bajo.length) return { nivel: 'bajo', rango: 2, n: bajo.length, posiciones: posiciones(bajo), causa: plural(bajo.length, 'neumático con desgaste bajo', 'neumáticos con desgaste bajo') };
   const anormal = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal);
-  if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, causa: `Desgaste mayor al normal (${posiciones(anormal)})` };
+  if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, posiciones: posiciones(anormal), causa: 'Desgaste mayor al normal' };
   const sinMedir = filas.filter(f => f.sin_medir);
   if (sinMedir.length) {
     const dias = Math.max(...sinMedir.map(f => num(f.dias_desde_medicion) ?? -1));
-    return { nivel: 'sin_medir', rango: 4, n: sinMedir.length, causa: dias >= 0 ? `Sin medir hace ${plural(dias, 'día', 'días')}` : 'Sin mediciones registradas' };
+    return { nivel: 'sin_medir', rango: 4, n: sinMedir.length, posiciones: posiciones(sinMedir), causa: dias >= 0 ? `Sin medir hace ${plural(dias, 'día', 'días')}` : 'Sin mediciones registradas' };
   }
   return null;
 }

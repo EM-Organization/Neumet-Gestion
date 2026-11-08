@@ -36,6 +36,18 @@ export function estadoError(mensaje, reintentar) {
   return html`<div class="empty-state error-state" role="alert"><div class="empty-title">No se pudieron cargar los datos</div><div class="empty-sub">${mensaje || 'Revisar la conexión y reintentar.'}</div>${reintentar ? html`<div class="empty-action">${boton({ label: 'Reintentar', action: reintentar, primaria: true })}</div>` : ''}</div>`;
 }
 
+// Mini vehículo (SVG liviano): ruedas coloreadas por desgaste y las señaladas con trazo oscuro. El nombre de la
+// posición va siempre en texto junto al dibujo; el aria-label describe el dibujo. `modelo` = modeloMini().
+export function miniVehiculo(modelo) {
+  const { chasis: c } = modelo;
+  const n = v => Math.round(v * 10) / 10;
+  const ruedas = [...modelo.ruedas].sort((a, b) => Number(a.destacada) - Number(b.destacada));
+  return html`<svg class="mini-veh" viewBox="${`${n(modelo.x0)} 0 ${n(modelo.ancho)} ${n(modelo.alto)}`}" role="img" aria-label="${modelo.aria}" focusable="false">
+    <rect class="mv-chasis" x="${n(c.x)}" y="${n(c.y)}" width="${n(c.ancho)}" height="${n(c.alto)}" rx="10"/>
+    ${ruedas.map(r => html`<rect class="mv-rueda${r.destacada ? ' mv-dest' : ''}${r.fill ? '' : ' mv-sd'}" x="${n(r.x)}" y="${n(r.y)}" width="${n(r.ancho)}" height="${n(r.alto)}" rx="6"${r.fill ? html` fill="${r.fill}"` : ''}/>`)}
+  </svg>`;
+}
+
 // Fila de tabla que ocupa todas las columnas (vacío, carga o error dentro de un <tbody>).
 export function filaEstado(columnas, contenido) {
   return html`<tr><td colspan="${columnas}">${contenido}</td></tr>`;
