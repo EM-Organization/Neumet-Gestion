@@ -5,7 +5,7 @@ create temp table _esperado (obj text, admin bigint, a bigint, b bigint);
 insert into _esperado values
   -- v_ultima_medicion ya no lista posiciones de neumáticos que no están montados (baja, pos. 9).
   ('v_ultima_medicion',       14, 11, 3),
-  ('v_mediciones_neumatico',  19, 16, 3),
+  ('v_mediciones_neumatico',  20, 17, 3),
   ('v_estado_neumaticos',     14, 11, 3),
   ('v_alertas',               10,  7, 3),
   ('v_resumen_flota_cliente',  2,  1, 1),

@@ -25,20 +25,21 @@ insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, e
   (11, 1, 1, 'N-11-1', 'montado', 'Vieja'), (11, 1, 2, 'N-11-2', 'montado', 'Vieja'),
   (11, 1, 3, 'N-11-3', 'montado', 'Vieja'), (11, 1, 4, 'N-11-4', 'montado', 'Vieja');
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values
-  (11, 1, 1, 'N-11-1', 6.2, 6.2, 6.2, now() - interval '336 hours'),
+  (11, 1, 1, 'N-11-1', 6.2, 6.2, 6.2, now() - interval '336 hours 1 second'),
   (11, 1, 1, 'N-11-1', 5.2, 5.2, 5.2, now() - interval '168 hours'),
   (11, 1, 1, 'N-11-1', 4.2, 4.2, 4.2, now() - interval '1 second'),
   (11, 1, 2, 'N-11-2', 9.0, 9.0, 9.0, now() - interval '24 hours'),
   (11, 1, 3, null,     7.0, 7.0, 7.0, now() - interval '72 hours');   -- histórica, posición 3
 
+-- La primera medición va a 14 días + 1 s de la actual: la tasa exige al menos 14 días entre la primera y la última.
 -- V12: dos neumáticos medidos con tasas distintas (A en P1: 1 mm/sem; B en P2: 0.5 mm/sem)
 insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, estado, marca) values
   (12, 1, 1, 'N-12-A', 'montado', 'A'), (12, 1, 2, 'N-12-B', 'montado', 'B');
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values
-  (12, 1, 1, 'N-12-A', 11, 11, 11, now() - interval '336 hours'),
+  (12, 1, 1, 'N-12-A', 11, 11, 11, now() - interval '336 hours 1 second'),
   (12, 1, 1, 'N-12-A', 10, 10, 10, now() - interval '168 hours'),
   (12, 1, 1, 'N-12-A',  9,  9,  9, now() - interval '1 second'),
-  (12, 1, 2, 'N-12-B', 7.5, 7.5, 7.5, now() - interval '336 hours'),
+  (12, 1, 2, 'N-12-B', 7.5, 7.5, 7.5, now() - interval '336 hours 1 second'),
   (12, 1, 2, 'N-12-B', 7.0, 7.0, 7.0, now() - interval '168 hours'),
   (12, 1, 2, 'N-12-B', 6.5, 6.5, 6.5, now() - interval '1 second');
 
