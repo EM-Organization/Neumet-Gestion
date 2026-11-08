@@ -13,6 +13,7 @@ Punto de partida: el [README](../README.md) de la raíz (qué es NEUMET, arquite
 | [13 · Checklist de revisión de PR](13-checklist-revision-prs.md) | Criterio de pruebas y de revisión |
 | [14 · Guía de textos](14-guia-de-textos.md) | Reglas de redacción de la interfaz y de la documentación |
 | [15 · Rotación, alertas y rendimiento](15-rotacion-alertas-rendimiento.md) | Diseño pendiente: recomendación de rotación, alerta única de estado crítico y rendimiento del indicador de desgaste |
+| [16 · Hoja de ruta de producto](16-hoja-de-ruta.md) | Fases propuestas sin machine learning: stock individual, km por cubierta, calidad de datos, costo por km, recauchutado, alertas |
 | [03 · Despliegue Vercel + Supabase](03-despliegue-vercel-supabase.md) | Plan de despliegue y decisiones de la CSP (la sección final está al día) |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos y tipografía (assets en [`assets/brand/`](../assets/brand/README.md)) |
 
