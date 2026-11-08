@@ -117,6 +117,10 @@ echo "== migración de tasa y rendimiento (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261111000000_tasa_y_rendimiento.sql"
 echo "== migración de tasa y rendimiento (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261111000000_tasa_y_rendimiento.sql"
+echo "== migración de motivo sin_neumaticos (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261112000000_api_sin_neumaticos.sql"
+echo "== migración de motivo sin_neumaticos (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261112000000_api_sin_neumaticos.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

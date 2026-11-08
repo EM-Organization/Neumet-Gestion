@@ -10,6 +10,17 @@ export const MM_MAX = 40;
 export const RATE_CUENTA_POR_MIN = 120;
 export const RATE_LOGIN_IP_POR_MIN = 30;
 const PATENTE_RE = /^[A-Z0-9-]{3,12}$/;
+/** Motivos por posición que devuelve api_guardar_montaje (docs/07 §9). */
+const MOTIVOS_POSICION = new Set([
+  'vehiculo',
+  'posicion',
+  'sin_neumaticos',
+  'sin_medicion',
+  'incompleta',
+  'rango',
+  'duplicado_distinto',
+  'error',
+]);
 const IDEM_KEY_RE = /^[\x21-\x7E]{1,128}$/;
 
 class HttpError extends Error {
@@ -255,7 +266,8 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
         200,
         c.requestId,
       ),
-      motivo: null,
+      // Respuesta idéntica al contrato (code 200, data []); el motivo solo queda en ingesta_log.
+      motivo: data.length === 0 ? 'sin_neumaticos' : null,
     };
   }
 
@@ -353,10 +365,29 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     const guardados = items.map((it, i) => ({ posicion: it.posicion, guardado: r.resultados[i].guardado === true }));
     log.n_guardados = guardados.filter((g) => g.guardado).length;
     log.n_fallidos = guardados.length - log.n_guardados;
-    log.payload_resumen = { ...log.payload_resumen, replay: r.replay === true };
+    // Recuento de motivos por posición (solo vocabulario cerrado de la RPC; nunca texto del cliente).
+    const motivos: Record<string, number> = {};
+    for (const x of r.resultados) {
+      if (x.guardado !== true && typeof x.motivo === 'string' && MOTIVOS_POSICION.has(x.motivo)) {
+        motivos[x.motivo] = (motivos[x.motivo] ?? 0) + 1;
+      }
+    }
+    log.payload_resumen = {
+      ...log.payload_resumen,
+      replay: r.replay === true,
+      ...(Object.keys(motivos).length > 0 ? { motivos } : {}),
+    };
+    // Motivo agregado para el admin. La respuesta a DAC no lo lleva: conserva {posicion, guardado}.
+    const todasSinNeumaticos = r.resultados.length > 0 && r.resultados.every((x) => x.motivo === 'sin_neumaticos');
     return {
       response: respuesta({ code: 200, data: { guardados } }, 200, c.requestId),
-      motivo: r.estado === 'no_encontrado' ? 'no_encontrado' : log.n_fallidos > 0 ? 'fallo_parcial' : null,
+      motivo: r.estado === 'no_encontrado'
+        ? 'no_encontrado'
+        : todasSinNeumaticos
+        ? 'sin_neumaticos'
+        : log.n_fallidos > 0
+        ? 'fallo_parcial'
+        : null,
     };
   }
 }

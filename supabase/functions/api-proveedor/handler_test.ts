@@ -460,3 +460,82 @@ Deno.test('vehículo ajeno se registra como rechazado en el log', async () => {
   assertEquals(e.logs.at(-1)!.status, 'rechazado');
   assertEquals(e.logs.at(-1)!.vehiculo_id, null);
 });
+
+// ------------------------------------------------- motivo sin_neumaticos
+Deno.test('coche sin neumáticos: DAC recibe guardado:false por posición (formato intacto); el log lleva sin_neumaticos', async () => {
+  const e = crearEntorno();
+  const antes = e.mediciones.length;
+  const r = await e.handler(post(
+    R_GUA,
+    montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }, { posicion: 2, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], 'SINN01'),
+    { token: T },
+  ));
+  assertEquals(r.status, 200);
+  // Respuesta al contrato: solo posicion y guardado, sin campos nuevos.
+  assertEquals(await j(r), {
+    code: 200,
+    data: { guardados: [{ posicion: 1, guardado: false }, { posicion: 2, guardado: false }] },
+  });
+  assertEquals(e.mediciones.length, antes);
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.status, l.http_code, l.n_guardados, l.n_fallidos, l.vehiculo_id], [
+    'sin_neumaticos',
+    'rechazado',
+    200,
+    0,
+    2,
+    12,
+  ]);
+  assertEquals(l.payload_resumen.motivos, { sin_neumaticos: 2 });
+});
+
+Deno.test('coche con neumáticos y posición inexistente: el log dice fallo_parcial con motivos {posicion}', async () => {
+  const e = crearEntorno();
+  await e.handler(post(
+    R_GUA,
+    montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }, { posicion: 50, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }]),
+    { token: T },
+  ));
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.status, l.n_guardados, l.n_fallidos], ['fallo_parcial', 'ok', 1, 1]);
+  assertEquals(l.payload_resumen.motivos, { posicion: 1 });
+});
+
+Deno.test('solo posición inexistente en coche con neumáticos: fallo_parcial, no sin_neumaticos', async () => {
+  const e = crearEntorno();
+  await e.handler(post(R_GUA, montaje([{ posicion: 50, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }]), { token: T }));
+  assertEquals(e.logs.at(-1)!.motivo, 'fallo_parcial');
+});
+
+Deno.test('coche de otro cliente o inexistente: motivo no_encontrado en el log, sin revelar sin_neumaticos', async () => {
+  const e = crearEntorno();
+  // Vehículo 20 (cliente 2) tiene neumáticos; el de cliente 1 sin neumáticos no cambia nada para él.
+  for (const p of ['ZZZZ99', 'NOEXISTE1']) {
+    const r = await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], p), { token: T }));
+    assertEquals(await j(r), { code: 200, data: { guardados: [{ posicion: 1, guardado: false }] } });
+    assertEquals(e.logs.at(-1)!.motivo, 'no_encontrado');
+  }
+});
+
+Deno.test('replay de un coche sin neumáticos: misma respuesta, sin escribir y motivo en el log', async () => {
+  const e = crearEntorno();
+  const cuerpo = montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], 'SINN01');
+  const h = { 'idempotency-key': 'k-sin-1' };
+  const a = await j(await e.handler(post(R_GUA, cuerpo, { token: T, headers: h })));
+  const b = await j(await e.handler(post(R_GUA, cuerpo, { token: T, headers: h })));
+  assertEquals(a, b);
+  assertEquals(e.mediciones.length, 1);
+  assertEquals(e.logs.at(-1)!.motivo, 'sin_neumaticos');
+  assertEquals(e.logs.at(-1)!.payload_resumen.replay, true);
+});
+
+Deno.test('obtener en coche sin neumáticos: contrato intacto (code 200, data []) y motivo sin_neumaticos en el log', async () => {
+  const e = crearEntorno();
+  const r = await e.handler(post(R_OBT, { matricula: 'SINN01', numero: '' }, { token: T }));
+  assertEquals(r.status, 200);
+  assertEquals(await j(r), { code: 200, matricula: 'SINN01', numero: '888', data: [] });
+  assertEquals(e.logs.at(-1)!.motivo, 'sin_neumaticos');
+  // Coche con neumáticos: sin motivo
+  await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T }));
+  assertEquals(e.logs.at(-1)!.motivo, null);
+});

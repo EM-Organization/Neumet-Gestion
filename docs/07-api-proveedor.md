@@ -151,3 +151,32 @@ Implementación: `supabase/functions/api-proveedor/` (Deno, sin dependencias ext
 **Pruebas.** `deno task test` (en `supabase/functions`): 35 pruebas con dobles (login, token, rol, aislamiento, auxilio, mm3≠mm2, fallo parcial, duplicados, límites, idempotencia, rate limit, logs, mapeo) y `sql_test.ts`, que levanta un Postgres local desechable (initdb temporal, socket unix), aplica ambas migraciones y prueba las RPC, la idempotencia (ventanas y TTL), el aislamiento, el rate limit y los privilegios (anon/authenticated sin acceso; la cuenta `api` sin lectura por PostgREST). Se omite si no hay binarios de Postgres. **No probado:** Supabase real (Auth, PostgREST, límites de tiempo de la Edge Function), la app real de DAC, carga.
 
 **Antes de desplegar.** Aplicar la migración; crear el usuario Auth y su `perfiles(rol='api', cliente_id)`; cargar `neumaticos.idneumatico` (sin inventario `obtener_montaje` devuelve `data` vacío, §5.7); definir `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` (los provee Supabase por defecto); confirmar el orden de `mm1..mm4`.
+
+## Apéndice B · Motivos de rechazo (2026-11-12)
+
+`api_guardar_montaje` devuelve por posición `{posicion, guardado, motivo}`. **La respuesta a DAC no cambia**: la Edge Function solo reenvía `{posicion, guardado}` (contrato intacto). El motivo queda en `ingesta_log`: `motivo` agregado de la petición y, en `payload_resumen.motivos`, el recuento por motivo de posición (sin valores ni datos del cliente).
+
+### Motivos por posición (RPC)
+
+| Motivo | Cuándo | Significado / acción esperada |
+|---|---|---|
+| `vehiculo` | La matrícula no existe o es de otro cliente (misma respuesta, no revela existencia) | Revisar la matrícula enviada. Estado global `no_encontrado`. |
+| `sin_neumaticos` | El coche existe pero no tiene ningún neumático montado con `idneumatico` | Cargar las ruedas del coche en el panel para que se guarden las mediciones. Estado global `ok` (el coche se encontró). Prevalece sobre `rango`, `incompleta` y `posicion`; no se escribe nada. |
+| `posicion` | El coche tiene neumáticos pero esa posición no existe en su montaje visible (o el neumático no está montado o no tiene `idneumatico`) | Revisar el montaje con `obtener_montaje` y la posición enviada. |
+| `sin_medicion` | Rueda que no es auxilio con los cuatro `mm` en `null` | Medir la rueda y reenviar. (El auxilio sin medir es `guardado:true`, sin motivo.) |
+| `incompleta` | Algunos `mm` `null` y otros con valor | Enviar los cuatro valores. |
+| `rango` | Algún `mm` fuera de 0..40 o no finito | Repetir la medición. |
+| `duplicado_distinto` | `mm3` distinto de `mm2` | Corregir la app: `mm3` debe ser igual a `mm2`. |
+| `error` | Fallo inesperado al guardar esa posición (el resto se guarda) | Reintentar; si persiste, avisar a Neumet con el `X-Request-Id`. |
+
+### Motivo agregado en `ingesta_log.motivo`
+
+`no_encontrado` (vehículo), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno` y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta y el mismo motivo.
+
+### Contrato de `obtener_montaje`
+
+Sin cambios: coche existente sin neumáticos cargados responde `code 200`, `data: []` (la app de DAC lo interpreta como «sin ruedas»). No se agregó ningún campo; el motivo solo se registra en `ingesta_log`.
+
+### Panel admin: siguiente paso
+
+El panel **no tiene hoy ninguna vista del log de ingesta** (`ingesta_log` solo la lee el admin por SQL/API), por lo que no se creó una. Siguiente paso: una lista de ingesta para el admin que muestre este motivo con la etiqueta «Coche sin neumáticos cargados» y la ayuda «Cargar las ruedas del coche en el panel para que se guarden las mediciones» (textos según `14-guia-de-textos.md`).
