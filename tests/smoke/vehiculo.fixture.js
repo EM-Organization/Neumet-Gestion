@@ -59,7 +59,14 @@
     {id:3101,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X Multi Z',condicion:'nuevo',sucursal_id:1,estado:'almacenado'},
     {id:3102,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,estado:'almacenado'},
     {id:3103,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,estado:'almacenado'});
-  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
+  // v_km_cubierta: P3 con datos completos (20.000 previos + 3.456 del tramo actual); P5 sin lecturas; P6 estimado.
+  var kmcub = [
+    {neumatico_id:1003,cliente_id:1,vehiculo_id:10,km_previos:20000,km_en_vehiculos:0,km_tramo_actual:3456,km_totales:23456,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
+    {neumatico_id:1005,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:1006,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:9000,km_tramo_actual:null,km_totales:9000,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:1007,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:0,km_tramo_actual:100,km_totales:100,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:true}
+  ];
+  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){

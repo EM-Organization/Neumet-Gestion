@@ -10,13 +10,13 @@ import { getVehiculos } from './vehiculos.js';
 import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { getNeumVehiculoId } from './neumaticos.js';
 import { EVENTO_CAMBIO } from './cambio-neumatico.js';
-import { kmTotalesNeumatico } from '../domain/quema.js';
-import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, kmPorNeumatico, ordenarEventos } from '../domain/ciclo-vida.js';
+import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
+import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, ordenarEventos } from '../domain/ciclo-vida.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
 import { miniVehiculo } from '../core/componentes.js';
 
-let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], filtroNeum='';
+let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), filtroNeum='';
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
@@ -25,18 +25,20 @@ const nomPos=p=>nombrePosicion(p, veh&&veh.tipo_ruedas);
 const neumLabel=n=>`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
 
 async function cargar(){
-  const [rv,rn,re,rs]=await Promise.all([
+  const [rv,rn,re,rs,rk]=await Promise.all([
     db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,fecha_baja,motivo_baja,numero_quema,km_previos').eq('vehiculo_id',vehId).order('posicion'),
     db.from('eventos_neumatico').select('*').eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
     // Solo colorea el mini vehículo: si falla, las ruedas salen sin datos.
-    db.from('v_estado_neumaticos').select('*').eq('vehiculo_id',vehId).order('posicion')
+    db.from('v_estado_neumaticos').select('*').eq('vehiculo_id',vehId).order('posicion'),
+    // Km por cubierta (v_km_cubierta): si falla, la tabla de km muestra «Sin dato» en lugar de inventar valores.
+    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id',vehId)
   ]);
   const err=rv.error||rn.error||re.error;
   if(err){ showToast(userError(err),true); return false; }
   const base=getVehiculos().find(x=>x.id===vehId)||{};
   veh={...base,...(rv.data||{})};
-  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]);
+  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data);
   return true;
 }
 
@@ -110,18 +112,20 @@ function renderExtra(){
 }
 
 function renderTimeline(){
-  const kms=kmPorNeumatico(eventos, veh.odometro_km??null);
   const sel=$('ciclo-filtro');
   setHtml(sel, joinHtml([html`<option value="">Todos los neumáticos</option>`, neums.map(n=>html`<option value="${n.id}" ${String(n.id)===filtroNeum?'selected':''}>${neumLabel(n)}</option>`)]));
-  // Km del neumático = km que ya traía + km recorridos con este vehículo (odómetro actual menos el del montaje).
-  const kmRows=neums.filter(n=>kms['n'+n.id]||n.numero_quema||n.km_previos>0).map(n=>{ const k=kms['n'+n.id]; const t=kmTotalesNeumatico(n,k); return html`<tr>
-    <td><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td><td>${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell">${n.numero_quema||'—'}</td><td>${n.vida||0}</td>
-    <td class="mono-cell">${fmtKm(t.previos)}</td>
-    <td class="mono-cell">${k?html`${fmtKm(k.km)}${k.abierto?' (en uso)':''}`:'—'}</td>
-    <td class="mono-cell">${fmtKm(t.total)}</td>
-    <td>${k&&k.incompletos?html`<span class="badge orange">${k.incompletos} tramo(s) sin odómetro</span>`:''}</td></tr>`; });
-  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>Km totales</th><th></th></tr></thead><tbody>${kmRows}</tbody></table>`
-    :html`<div class="ciclo-sub">Sin km registrados todavía.</div>`);
+  // Km del neumático (v_km_cubierta): km que ya traía + tramos montados (también los de otros vehículos).
+  const km=v=>v==null?'Sin dato':fmtKm(v);
+  const kmRows=neums.filter(n=>kmCub.has(n.id)||n.numero_quema||n.km_previos>0).map(n=>{ const k=resumenKm(kmCub.get(n.id)); return html`<tr>
+    <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td>
+    <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell" data-label="N.º de quema">${n.numero_quema||'—'}</td><td data-label="Vida">${n.vida||0}</td>
+    <td class="mono-cell" data-label="Km previos">${fmtKm(n.km_previos||0)}</td>
+    ${k.disponible?html`<td class="mono-cell" data-label="Km recorridos">${km(k.recorridos)}</td>
+    <td class="mono-cell" data-label="En el tramo actual">${km(k.tramoActual)}</td>
+    <td class="mono-cell" data-label="Km totales">${km(k.totales)}</td>`:html`<td class="mono-cell" data-label="Km recorridos">—</td><td class="mono-cell" data-label="En el tramo actual">—</td><td class="mono-cell" data-label="Km totales">—</td>`}</tr>
+    ${k.nota?html`<tr class="ciclo-km-nota"><td colspan="8">${k.nota}</td></tr>`:''}`; });
+  setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>En el tramo actual</th><th>Km totales</th></tr></thead><tbody>${kmRows}</tbody></table>`
+    :html`<div class="ciclo-sub">Sin km registrados.</div>`);
   const lista=ordenarEventos(eventos,true).filter(e=>!filtroNeum||String(e.neumatico_id)===filtroNeum);
   setHtml($('ciclo-timeline'), lista.length?joinHtml(lista.map(e=>{
     const n=neums.find(x=>x.id===e.neumatico_id);

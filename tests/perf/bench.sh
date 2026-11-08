@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mide v_estado_neumaticos (mediana de 3 EXPLAIN ANALYZE, en ms) como rol authenticated (RLS activa) y como superusuario.
+# Mide v_estado_neumaticos y v_km_cubierta (mediana de 3 EXPLAIN ANALYZE, en ms) como rol authenticated (RLS activa) y como superusuario.
 # No forma parte de la CI. Uso:
 #   PERF_PG_URL=postgresql://postgres@host/base tests/perf/bench.sh etiqueta
 # La base debe tener las migraciones y los datos de tests/perf/gen.sql (con el usuario administrador a0000000-...-0001
@@ -29,3 +29,8 @@ echo "estado cliente_id=1, superusuario:              $(t su x 'select * from pu
 echo "estado p1, superusuario:                        $(t su x 'select * from public.v_estado_neumaticos limit 1000')"
 echo "estado count(*) toda la base, superusuario:     $(t su x 'select count(*) from public.v_estado_neumaticos')"
 echo "v_resumen_flota_cliente, superusuario:          $(t su x 'select * from public.v_resumen_flota_cliente')"
+echo "km de 1 vehiculo, authenticated cliente:       $(t auth $CLI 'select * from public.v_km_cubierta where vehiculo_id = 5')"
+echo "km de 1 neumatico, authenticated cliente:      $(t auth $CLI 'select * from public.v_km_cubierta where neumatico_id = 50')"
+echo "km de 1 vehiculo, authenticated admin:         $(t auth $ADM 'select * from public.v_km_cubierta where vehiculo_id = 5')"
+echo "km toda la vista, authenticated cliente:       $(t auth $CLI 'select * from public.v_km_cubierta')"
+echo "km toda la vista, authenticated admin:         $(t auth $ADM 'select * from public.v_km_cubierta')"

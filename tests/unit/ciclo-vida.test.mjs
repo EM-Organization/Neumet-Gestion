@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarOdometro, planEvento, planRotacion, kmPorNeumatico, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg } from '../../assets/js/domain/ciclo-vida.js';
+import { validarOdometro, planEvento, planRotacion, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg } from '../../assets/js/domain/ciclo-vida.js';
 
 test('parseEnteroNoNeg y parseMontoNoNeg', () => {
   assert.equal(parseEnteroNoNeg('0'), 0);
@@ -89,42 +89,9 @@ test('planRotacion: mover a posición libre o detectar intercambio', () => {
   assert.equal(planRotacion([a, { ...b, estado: 'baja' }], a, 2).ok, false);
 });
 
-const ev = (id, tipo, neumatico_id, odometro_km, dia) =>
-  ({ id, tipo, neumatico_id, odometro_km, created_at: `2026-0${dia}-01T00:00:00Z` });
-
-test('kmPorNeumatico: tramo cerrado, rotación no corta, baja cierra', () => {
-  const r = kmPorNeumatico([
-    ev(1, 'montaje', 7, 1000, 1), ev(2, 'rotacion', 7, 5000, 2), ev(3, 'desmontaje', 7, 9000, 3),
-    ev(4, 'montaje', 7, 9500, 4), ev(5, 'baja', 7, 12000, 5)
-  ], 99999);
-  assert.deepEqual(r.n7, { km: 8000 + 2500, tramos: 2, abierto: false, incompletos: 0 });
-});
-
-test('kmPorNeumatico: tramo abierto usa el odómetro actual; orden por fecha', () => {
-  const r = kmPorNeumatico([ev(2, 'desmontaje', 8, 3000, 2), ev(1, 'montaje', 8, 1000, 1), ev(3, 'montaje', 8, 3500, 3)], 4000);
-  assert.deepEqual(r.n8, { km: 2000 + 500, tramos: 2, abierto: true, incompletos: 0 });
-});
-
-test('kmPorNeumatico: datos faltantes o inconsistentes no suman km', () => {
-  const r = kmPorNeumatico([
-    ev(1, 'montaje', 1, null, 1), ev(2, 'desmontaje', 1, 500, 2),
-    ev(3, 'montaje', 2, 900, 1), ev(4, 'desmontaje', 2, 100, 2),
-    ev(5, 'montaje', 3, 100, 1),
-    ev(6, 'desmontaje', 4, 100, 1), // desmontaje sin montaje previo
-    ev(7, 'inspeccion', 5, 100, 1)
-  ], null);
-  assert.deepEqual(r.n1, { km: 0, tramos: 0, abierto: false, incompletos: 1 });
-  assert.deepEqual(r.n2, { km: 0, tramos: 0, abierto: false, incompletos: 1 });
-  assert.deepEqual(r.n3, { km: 0, tramos: 0, abierto: true, incompletos: 1 });
-  assert.deepEqual(r.n4, { km: 0, tramos: 0, abierto: false, incompletos: 0 });
-  assert.equal(r.n5.km, 0);
-});
-
-test('kmPorNeumatico: agrupa por idneumatico si el neumático fue borrado; ordenarEventos desc', () => {
+test('ordenarEventos: por fecha y luego id, y en orden descendente', () => {
   const e = [
-    { id: 1, tipo: 'montaje', neumatico_id: null, idneumatico: 'T9', odometro_km: 10, created_at: '2026-01-01T00:00:00Z' },
-    { id: 2, tipo: 'desmontaje', neumatico_id: null, idneumatico: 'T9', odometro_km: 60, created_at: '2026-01-02T00:00:00Z' }
+    { id: 1, created_at: '2026-01-01T00:00:00Z' }, { id: 2, created_at: '2026-01-02T00:00:00Z' }
   ];
-  assert.equal(kmPorNeumatico(e).iT9.km, 50);
   assert.deepEqual(ordenarEventos(e, true).map(x => x.id), [2, 1]);
 });

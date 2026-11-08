@@ -17,8 +17,8 @@ import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.j
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
 import { semaforoVehiculo } from '../domain/flota.js';
-import { TIPO_LABEL, kmPorNeumatico } from '../domain/ciclo-vida.js';
-import { kmTotalesNeumatico } from '../domain/quema.js';
+import { TIPO_LABEL } from '../domain/ciclo-vida.js';
+import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import {
   layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
@@ -226,18 +226,20 @@ function seccionTasa(fila, u, razonMostrada) {
     <ul class="vd-alertas">${frase(`Nivel crítico (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Retiro (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
-// Datos propios del neumático montado: número de quema y km (previos + recorridos desde el montaje).
+// Datos propios del neumático montado: número de quema y km (previos + tramos montados, calculados en v_km_cubierta).
 function seccionNeumatico(fila) {
   const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
   if (!n) return html`<p class="vd-p-nota">Sin datos del neumático.</p>`;
-  const k = kmTotalesNeumatico(n, datos.km['n' + n.id]);
+  const k = resumenKm(datos.km.get(n.id));
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
+  const km = v => (v === null ? 'Sin dato' : `${fmtNum(v)} km`);
   return html`<dl class="vd-datos vd-datos-neum">
     ${dato('Número de quema', n.numero_quema || 'Sin registrar')}
-    ${dato('Km que ya traía', `${fmtNum(k.previos)} km`)}
-    ${dato('Km recorridos', k.completo ? `${fmtNum(k.recorridos)} km` : (k.recorridos > 0 ? `${fmtNum(k.recorridos)} km (parcial)` : 'Sin odómetro al montar'))}
-    ${dato('Km totales', `${fmtNum(k.total)} km`)}
-  </dl>`;
+    ${dato('Km que ya traía', `${fmtNum(n.km_previos || 0)} km`)}
+    ${k.disponible ? html`${dato('Km recorridos', km(k.recorridos))}
+    ${dato('En el tramo actual', km(k.tramoActual))}
+    ${dato('Km totales', km(k.totales))}` : ''}
+  </dl>${k.nota ? html`<p class="vd-p-nota">${k.nota}</p>` : ''}`;
 }
 
 function quemaDe(fila) {
@@ -424,13 +426,15 @@ export async function load() {
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren();
   await contextoListo();
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
-  const [v, est, al, ev, nm] = await Promise.all([
+  const [v, est, al, ev, nm, kc] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_alertas').select('*').eq('vehiculo_id', vehiculoId).order('severidad', { ascending: false }),
     db.from('eventos_neumatico').select('id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_at')
       .eq('vehiculo_id', vehiculoId).order('created_at', { ascending: false }).limit(100),
     db.from('neumaticos').select('id,posicion,estado,numero_quema,km_previos').eq('vehiculo_id', vehiculoId),
+    // Km por cubierta (previos + tramos montados, incluidos los de otros vehículos). Si falla, el panel omite los km.
+    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id', vehiculoId),
   ]);
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
@@ -441,7 +445,7 @@ export async function load() {
   datos = {
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
-    km: kmPorNeumatico(ev.error ? [] : (ev.data || []), nulo(v.data.odometro_km) ? null : v.data.odometro_km),
+    km: indexarKm(kc.error ? [] : kc.data),
     layout, geo: geometriaDiagrama(layout), u: umbralesDe(filas[0]), porPos: new Map(filas.map(f => [Number(f.posicion), f])),
   };
   cabecera(); resumen(); leyenda(); dibujarDiagrama();
