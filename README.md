@@ -135,6 +135,7 @@ Otras pruebas, con sus propios lanzadores:
 | Smoke | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
 | Visual | `tests/visual/run.sh` | Capturas de escritorio y móvil para revisión a ojo ([`README`](tests/visual/README.md)) |
 | SQL | `tests/sql/run.sh` | Todas las migraciones (aplicadas dos veces) y pruebas por rol en un Postgres desechable |
+| Rendimiento (fuera del CI) | `tests/perf/gen.sql` y `tests/perf/bench.sh` | Datos sintéticos y tiempos de `v_estado_neumaticos`; exige `PERF_PG_URL` apuntando a un Postgres local desechable, nunca a producción |
 | Edge Functions | `deno task --config supabase/functions/deno.json test` | Pruebas de las funciones con dobles; `check` y `lint` equivalentes |
 
 La integración continua (`.github/workflows/ci.yml`) ejecuta: `secrets` (gitleaks sobre todo el historial), `lint`, `static`, `deno`, `test`, `sql` y `e2e`.
@@ -155,7 +156,7 @@ La integración continua (`.github/workflows/ci.yml`) ejecuta: `secrets` (gitlea
 | `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` | `ALLOWED_ORIGINS` (sin él se deniega todo origen de navegador); opcional `INVITE_REDIRECT_TO` |
 | `api-proveedor` | `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, provistos por Supabase |
 
-Procedimientos paso a paso (crear el administrador, cuentas de API, migraciones, funciones, rotación de claves): [`docs/11-runbook-operacion.md`](docs/11-runbook-operacion.md). Política de seguridad y reporte de vulnerabilidades: [`SECURITY.md`](SECURITY.md).
+Procedimientos paso a paso (crear el administrador, cuentas de API, migraciones y funciones, regenerar el demo, rotación de claves): [`docs/11-runbook-operacion.md`](docs/11-runbook-operacion.md). Política de seguridad y reporte de vulnerabilidades: [`SECURITY.md`](SECURITY.md).
 
 ## 9. Procesos del equipo
 
@@ -189,7 +190,8 @@ vercel.json, .gitleaks.toml        Despliegue y escaneo de secretos
 
 - **Alertas personalizables**: hoy `v_alertas` genera cinco tipos sin estado. La propuesta es una sola alerta de «Neumático en estado crítico», con estados, histéresis y umbral por cliente, eje y posición. Diseño en [`docs/15-rotacion-alertas-rendimiento.md`](docs/15-rotacion-alertas-rendimiento.md) (sección B); implementación pendiente.
 - **Rotación**: la acción manual existe; la recomendación automática de qué rotar está diseñada (sección A del mismo documento) y pendiente.
-- **Optimización de vista**: auditoría de rendimiento del indicador de desgaste y reescritura de `v_estado_neumaticos` por neumático (sección C del mismo documento); se aplica según el tamaño de la flota.
+- **Rendimiento y tasa de desgaste (hecho en parte)**: la tasa robusta (al menos 3 mediciones y 14 días, ventana reiniciada por evento) y `v_estado_neumaticos` por neumático ya están aplicadas (migración `20261111000000`); la referencia de flota exige `MIN_MUESTRAS` = 5 neumáticos por posición. Siguen pendientes la referencia calculada en el servidor y la tabla de estado por neumático (sección C del mismo documento), según el tamaño de la flota.
+- **Estado de las migraciones**: 15 archivos en `supabase/migrations/`, aplicados en el proyecto vigente hasta `20261113000000_stock_cubiertas`.
 - **Decisiones abiertas** con el dueño del producto: un cliente con más de un usuario global, retención de `mediciones`, plan de Vercel y Supabase, región y política de datos. Lista en [`docs/05-roadmap.md`](docs/05-roadmap.md).
 - **Estado operativo**: prueba de punta a punta con sesión y datos reales, y sugerencias del revisor sin resolver, en [`docs/10-tablero.md`](docs/10-tablero.md).
 
