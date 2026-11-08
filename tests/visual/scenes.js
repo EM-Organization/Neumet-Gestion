@@ -11,6 +11,13 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     var i = escribir('AB123CD'); await sleep(150);
     i.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); await sleep(1000);
   };
+  // Coche 301 sin neumáticos (montar.fixture.js: ?montar=1)
+  var abrirVacio = async function(){
+    nav('vehiculos'); await sleep(600);
+    var i = escribir('301'); await sleep(150);
+    i.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); await sleep(1000);
+  };
+  var abrirMontar = async function(){ await abrirVacio(); click('#vd-resumen [data-action="neumatico-montar"]'); await sleep(900); };
   var rueda3 = function(){ var r = $('#vd-diagrama .vd-rueda[data-pos="3"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 3'); };
 
   var escenas = {
@@ -23,6 +30,12 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    'detalle-vacio': async function(){ await abrirVacio(); },
+    'detalle-vacio-rueda': async function(){ await abrirVacio(); var r = $('#vd-diagrama .vd-rueda[data-pos="4"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 4'); await sleep(700); },
+    'montar-neumatico': async function(){ await abrirMontar(); },
+    'montar-nueva': async function(){ await abrirMontar(); click('#mont-tab-nuevo'); await sleep(300); },
+    'montar-siguiente': async function(){ await abrirMontar(); click('input[name="mont-cubierta"]'); await sleep(200); click('#mont-confirmar'); await sleep(900); click('#mont-tab-nuevo'); await sleep(300); },
+    'retirar-neumatico': async function(){ await abrirMontar(); click('input[name="mont-cubierta"]'); await sleep(200); click('#mont-confirmar'); await sleep(900); click('#mont-cerrar'); await sleep(600); var r = $('#vd-diagrama .vd-rueda[data-pos="1"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(500); click('#vd-panel [data-action="neumatico-retirar"]'); await sleep(900); },
     'detalle-rueda-km': async function(){ await abrirDetalle(); var r = $('#vd-diagrama .vd-rueda[data-pos="6"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 6'); await sleep(900); },
     'cambio-neumatico': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); },
     'cambio-cubierta': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); $('#cambio-confirmar').scrollIntoView(); },

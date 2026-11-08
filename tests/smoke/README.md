@@ -16,6 +16,7 @@ tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin s
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
 tests/smoke/run.sh sinperfil  # sesión sin perfil: solo «Sin acceso», sin menú ni consultas de datos (sinacceso.flow.js)
 tests/smoke/run.sh api        # perfil de rol 'api': igual que sinperfil
+tests/smoke/run.sh montar     # coche sin neumáticos: estado vacío, montar del stock y cubierta nueva seguidas, retirar (montar.fixture.js, montar.flow.js)
 tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)
 ```
 

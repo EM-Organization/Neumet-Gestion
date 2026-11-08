@@ -1,5 +1,5 @@
 // Presentación de los km por cubierta (lógica pura, sin DOM ni red). Los km se calculan en la base (vista
-// v_km_cubierta, docs/08 apéndice G); aquí solo se decide qué mostrar y con qué nota de confiabilidad.
+// v_km_cubierta, docs/08 apéndice H); aquí solo se decide qué mostrar y con qué nota de confiabilidad.
 // Tests: tests/unit/km-cubierta.test.mjs
 export const COLUMNAS_KM = 'neumatico_id,km_previos,km_en_vehiculos,km_tramo_actual,km_totales,km_confiable,tramos_sin_dato,odometro_anomalo';
 

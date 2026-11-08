@@ -4,7 +4,7 @@
 -- Requiere 20261106000000 (init), 20261106020000 (eventos_neumatico), 20261110000000 (km_previos) y
 -- 20261113000000 (neumaticos sin vehículo). Sin begin/commit: la herramienta que aplica la migración ya la envuelve.
 -- Idempotente (drop view if exists + create, create or replace, revoke/grant repetibles). No modifica datos.
--- Diseño y reglas: docs/08-esquema-datos.md (apéndice G).
+-- Diseño y reglas: docs/08-esquema-datos.md (apéndice H).
 --
 -- Km totales de una cubierta = km_previos + suma de los TRAMOS montados. Un tramo es un montaje y su cierre en el
 -- mismo vehículo: odómetro del evento de cierre (desmontaje o baja) menos odómetro del evento de montaje. Nunca se
@@ -24,7 +24,7 @@
 -- qué filas aparecen.
 --
 -- Costo: sin CTE recursiva. La vista hace un LATERAL correlacionado por n.id sobre eventos_neumatico_neum_idx, de
--- modo que un filtro por vehiculo_id o neumatico_id solo agrega los eventos de esas cubiertas (docs/08 apéndice G).
+-- modo que un filtro por vehiculo_id o neumatico_id solo agrega los eventos de esas cubiertas (docs/08 apéndice H).
 -- =============================================================================
 
 drop view if exists public.v_km_cubierta;
@@ -175,7 +175,7 @@ from (
 ) b;
 
 comment on view public.v_km_cubierta is
-  'Km por cubierta: km_previos + tramos montados. NULL y km_confiable=false cuando faltan odómetros (docs/08 apéndice G).';
+  'Km por cubierta: km_previos + tramos montados. NULL y km_confiable=false cuando faltan odómetros (docs/08 apéndice H).';
 
 revoke all on public.v_km_cubierta from public, anon;
 grant select on public.v_km_cubierta to authenticated;

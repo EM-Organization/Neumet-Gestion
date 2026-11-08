@@ -740,3 +740,38 @@
 .pos-mini { display: flex; align-items: center; gap: 10px; }
 .pos-mini .mini-veh { height: 52px; }
 @media (max-width: 480px) { .inicio-fila-mini .inicio-ver { margin-left: 0; } }
+
+/* Montar y retirar neumáticos (detalle del vehículo) */
+.vd-vacio { border: 1px dashed var(--border-strong); border-radius: 12px; padding: 16px; margin-bottom: 4px; }
+.vd-vacio-titulo { font-size: 15px; font-weight: 600; }
+.vd-vacio-texto { font-size: 13px; color: var(--text-secondary); margin: 4px 0 12px; }
+.vd-montar-mas { margin-left: auto; padding: 2px 8px; min-height: 0; font-size: 13px; }
+.vd-goma-vacia { fill: var(--surface); stroke: rgba(56,52,36,0.45); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.vd-vacia:hover rect.vd-goma-vacia { stroke-width: 1.8; }
+.vd-vacia:focus-visible rect.vd-goma-vacia { stroke: #0b57d0; stroke-dasharray: none; }
+.vd-vacia.sel rect.vd-goma-vacia { stroke: var(--text-primary); stroke-width: 1.8; }
+.vd-vacia text { fill: var(--text-secondary); }
+.vd-vacia .vd-sim { font-size: 8px; letter-spacing: 0; }
+.vd-rueda .vd-mas { font-size: 16px; font-weight: 400; fill: var(--text-secondary); }
+.vd-muestra-vacia { background: transparent; border: 1.4px dashed rgba(56,52,36,0.45); }
+.mont-aviso { font-size: 13px; color: var(--text-primary); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; }
+.mont-aviso:empty { display: none; }
+.mont-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 0 0 12px; }
+.mont-tabs button { flex: 1; padding: 9px 12px; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-secondary); background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; min-height: 40px; }
+.mont-tabs button[aria-selected="true"] { color: var(--accent-dark); border-bottom-color: var(--accent-dark); font-weight: 600; }
+.mont-tabs button:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+.mont-lista { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; margin-bottom: 14px; }
+.mont-fila { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; border: 1px solid var(--border-strong); border-radius: 10px; padding: 8px 10px; cursor: pointer; background: var(--surface); font-size: 14px; }
+.mont-fila input { grid-row: 1 / span 2; }
+.mont-fila:has(input:checked) { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
+.mont-fila:focus-within { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+.mont-quema { font-weight: 600; overflow-wrap: anywhere; }
+.mont-desc { color: var(--text-primary); overflow-wrap: anywhere; }
+.mont-meta { grid-column: 2; font-size: 12px; color: var(--text-secondary); }
+.mont-vacio { font-size: 13px; color: var(--text-secondary); padding: 8px 2px; }
+@media (max-width: 640px) { .mont-lista { max-height: 200px; } }
+.sec-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-secondary); min-height: 40px; cursor: pointer; }
+.sec-alta .sec-check input { flex: none; min-width: 0; width: 16px; height: 16px; padding: 0; margin: 0; }
+.cambio-modal .field-row { margin-bottom: 12px; }
+.cambio-modal .field-row > .field { margin-bottom: 0; }
+.cambio-modal .modal-body > .field { margin-bottom: 12px; }

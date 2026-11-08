@@ -67,7 +67,7 @@
     {neumatico_id:1007,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:0,km_tramo_actual:100,km_totales:100,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:true}
   ];
   var T = {vehiculos:veh, v_km_cubierta:kmcub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
-  var fx = window.__vehFx = { queries: [] };
+  var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){
     var rows = T[table].slice(), rng = null, single = false;

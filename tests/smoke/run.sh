@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Uso: tests/smoke/run.sh [admin|cliente] [captura.png]   (requiere Google Chrome y python3)
+# Uso: tests/smoke/run.sh [admin|cliente|montar|...] [captura.png]   (requiere Google Chrome y python3)
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 MODE="${1:-admin}"; PORT="${PORT:-8791}"
@@ -12,6 +12,7 @@ Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = reportes ] && Q="?reportes=1"
 [ "$MODE" = flota ] && Q="?flota=1"
 [ "$MODE" = detalle ] && Q="?cliente=1&detalle=1"
+[ "$MODE" = montar ] && Q="?cliente=1&detalle=1&montar=1"
 [ "$MODE" = secuser ] && Q="?cliente=1&secuser=1"
 [ "$MODE" = sinperfil ] && Q="?sinperfil=1"
 [ "$MODE" = api ] && Q="?api=1"
