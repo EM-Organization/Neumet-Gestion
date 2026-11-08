@@ -30,3 +30,6 @@ tests/visual/out/
 
 # Material de referencia privado (no versionar)
 referencias/
+
+# Estado local del CLI de Supabase
+supabase/.temp/
