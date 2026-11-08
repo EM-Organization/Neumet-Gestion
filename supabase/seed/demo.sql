@@ -22,8 +22,9 @@
 --     «Últimas mediciones» de Inicio) y 5 neumáticos recién montados con una sola medición (sin comparativa).
 --   * Stock de ejemplo y algunos eventos (rotación, reparación, montaje).
 -- Las fechas son relativas a now(): volver a ejecutar el script REFRESCA el demo
--- (borra y regenera las mediciones/eventos/stock del cliente Demo con fechas
--- actuales; vehículos, neumáticos, dispositivos y sucursales se actualizan sin duplicar).
+-- (borra y regenera mediciones, eventos, neumáticos y stock del cliente Demo,
+-- incluso lo creado a mano en pruebas, con fechas actuales; vehículos, dispositivos y
+-- sucursales se actualizan sin duplicar).
 -- Es seguro ejecutarlo varias veces. Como las mediciones no son editables desde el
 -- panel, hay que correrlo con un rol que no esté sujeto a RLS (SQL editor / postgres).
 -- =============================================================================
@@ -63,6 +64,13 @@ begin
       using errcode = 'P0002';
   end if;
 
+  -- ---- Limpieza de TODO lo regenerable del cliente Demo (orden por FKs) ---------
+  -- Incluye lo creado a mano en pruebas (cambios de neumático, rotaciones, estacionados).
+  delete from public.eventos_neumatico where cliente_id = v_cli;
+  delete from public.mediciones where cliente_id = v_cli;
+  delete from public.neumaticos where cliente_id = v_cli;
+  delete from public.stock_neumaticos where cliente_id = v_cli;
+
   perform setseed(0.42);  -- ruido reproducible
 
   -- ---- Sucursales ----------------------------------------------------------
@@ -86,11 +94,6 @@ begin
     on conflict (mac_address) do update
       set nombre = excluded.nombre, activo = true, sucursal_id = excluded.sucursal_id;
   end loop;
-
-  -- ---- Limpieza de lo regenerable ---------------------------------------------
-  delete from public.mediciones where cliente_id = v_cli and (idneumatico like 'DEMO-%');
-  delete from public.eventos_neumatico where cliente_id = v_cli;
-  delete from public.stock_neumaticos where cliente_id = v_cli and notas = 'Datos de ejemplo (demo)';
 
   -- ---- Escenarios por neumático (veh, pos, mm actual, mm/semana, irregular, nunca medido) -----
   create temp table _demo_esc (veh int, pos int, cur numeric, rate numeric, irregular boolean, nomed boolean) on commit drop;
