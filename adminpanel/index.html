@@ -65,6 +65,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Reportes
       </button>
+      <button type="button" class="nav-item" data-view="sucursales" data-global-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+        Sucursales
+      </button>
       <button type="button" class="nav-item" data-view="dispositivos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
         Dispositivos
@@ -345,6 +349,47 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- SUCURSALES (cliente con perfil global) -->
+      <div class="view" id="view-sucursales">
+        <div class="page-header">
+          <h2 class="page-title">Sucursales</h2>
+          <div class="page-actions">
+            <button type="button" class="btn ghost" data-action="sucursalesRecargar">Actualizar</button>
+          </div>
+        </div>
+        <div class="login-error" id="suc-error" role="alert"></div>
+        <div class="ficha-card">
+          <div class="ficha-card-title">Sucursales</div>
+          <div class="sec-alta">
+            <input type="text" id="suc-nombre" maxlength="100" placeholder="Nombre de la sucursal" aria-label="Nombre de la sucursal nueva"/>
+            <button type="button" class="btn primary" data-action="sucursalCrear">Agregar sucursal</button>
+          </div>
+          <div class="table-wrap" id="suc-lista"></div>
+        </div>
+        <div class="ficha-card">
+          <div class="ficha-card-title">Vehículos</div>
+          <div class="sec-sub">Agregar vehículo</div>
+          <div class="sec-alta">
+            <input type="text" id="suc-veh-numero" maxlength="50" placeholder="Número de coche" aria-label="Número de coche" autocomplete="off"/>
+            <input type="text" id="suc-veh-patente" maxlength="20" placeholder="Matrícula" aria-label="Matrícula" autocomplete="off" autocapitalize="characters"/>
+            <select id="suc-veh-ruedas" class="select-filter" aria-label="Tipo de ruedas">
+              <option value="10">10 ruedas</option>
+              <option value="16">16 ruedas</option>
+            </select>
+            <select id="suc-veh-sucursal" class="select-filter" aria-label="Sucursal del vehículo nuevo"></select>
+            <button type="button" class="btn primary" data-action="sucursalVehiculoCrear">Agregar vehículo</button>
+          </div>
+          <div class="sec-sub">Asignación</div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="suc-buscar" type="search" placeholder="Matrícula o número de coche" aria-label="Matrícula o número de coche" autocomplete="off" spellcheck="false"/>
+            </div>
+          </div>
+          <div class="table-wrap" id="suc-vehiculos"></div>
         </div>
       </div>
 

@@ -38,8 +38,8 @@ function render() {
   $('sec-select').value = seleccion;
 }
 
-async function cargar() {
-  seleccion = '';
+async function cargar(conservar = false) {
+  if (!conservar) seleccion = '';
   sucursales = []; vehiculos = [];
   if (!isClienteMode()) { render(); return; }
   const [s, v] = await Promise.all([
@@ -49,8 +49,13 @@ async function cargar() {
   // Si falla (p. ej. migración de sucursales sin aplicar) el panel sigue funcionando sin selector.
   sucursales = s.error ? [] : (s.data || []);
   vehiculos = v.error ? [] : (v.data || []);
+  // Si la sucursal elegida ya no existe (se eliminó), vuelve a «Todas».
+  if (!sucursales.some(x => String(x.id) === String(seleccion))) seleccion = '';
   render();
 }
+
+// Recarga sucursales y vehículos tras gestionarlos (alta, baja, movimiento) sin perder la selección vigente.
+export function refrescarSucursales() { listo = cargar(true); return listo; }
 
 registerActions({
   seccionalCambiar(valor) {

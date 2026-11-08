@@ -11,7 +11,7 @@ Requiere Google Chrome y `python3`:
 
 ```
 tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de sucursales)
-tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, dispositivos, mediciones, selector de sucursal)
+tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, dispositivos, mediciones, selector de sucursal, vista Sucursales)
 tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin selector; sucursales.fixture.js)
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
 tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)

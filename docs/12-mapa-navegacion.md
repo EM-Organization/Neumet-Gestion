@@ -16,7 +16,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 ## 2. Rol cliente (gomero / gestor de flota)
 
-Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes · Dispositivos**. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
+Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes · Dispositivos**. El cliente con perfil global ve además **Sucursales** (entre Reportes y Dispositivos); el perfil de sucursal no la ve. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
 flowchart TD
@@ -26,7 +26,10 @@ flowchart TD
   M --> A[Alertas]
   M --> S[Stock]
   M --> R[Reportes]
+  M -->|solo perfil global| SU[Sucursales]
   M --> D[Dispositivos]
+  SU -->|crear, renombrar, eliminar| SU
+  SU -->|agregar vehículo, mover con confirmación| SU
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   I -->|buscador de Inicio| VD
   I -->|fila de Requieren atención| VD
@@ -62,6 +65,7 @@ flowchart TD
 | Detalle | Miga «Vehículos» | Vehículos | Vehículos |
 | Detalle | Rueda | Panel de la rueda (cambiar, rotar) | Vehículos |
 | Estado vacío de Inicio | «Ver dispositivos» | Dispositivos | Dispositivos |
+| Sucursales | Alta, nombre, «Eliminar», «Agregar vehículo», selector de sucursal de cada vehículo | La misma pantalla (aviso y recarga) | Sucursales |
 
 | Pantalla | Para qué sirve | Qué puede hacer el cliente |
 |---|---|---|
@@ -71,6 +75,7 @@ flowchart TD
 | Alertas | Lista de problemas activos | Filtrar por severidad y tipo, abrir el vehículo |
 | Stock | Inventario de neumáticos | Solo lectura |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
+| Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); agregar un vehículo (número de coche, matrícula, tipo de ruedas, sucursal opcional); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 | Dispositivos | Saber si los calibres envían datos | Estado y última actividad (solo lectura) |
 
 ## 3. Rol administrador (NEUMET)
@@ -129,11 +134,14 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Alertas | `alertas` | |
 | Stock | `stock` | |
 | Reportes | `reportes` | |
+| Sucursales (cliente global) | `sucursales` | |
 | Dispositivos | `dispositivos` | |
 | Estado de la flota (admin) | `flota` | |
 | Mediciones (admin) | `mediciones` | |
 | Clientes (admin) | `clientes` | `ficha` |
 | Balance (admin) | `balance` | |
+
+Las RPC de sucursales aceptan al administrador (indicando el cliente) y al perfil global de un cliente, solo sobre su propio cliente; el perfil de sucursal, otro cliente, el rol `api`, una sesión sin perfil y `anon` reciben «permiso denegado». La administración de sucursales del administrador sigue en la ficha de cliente.
 
 La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada rol y comprueba que cargan sin errores de consola ni recursos sin cargar, que solo un ítem queda resaltado y que cada vista tiene título. Las pruebas `salud.flow.js`, `flota.flow.js` y `vehiculo.flow.js` comprueban la ficha, los enlaces al detalle y el botón «Volver».
 
@@ -144,7 +152,8 @@ La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada
 - Dispositivos usa `v_salud_dispositivos`.
 - El buscador usa su propio catálogo: tabla `vehiculos` (`id`, `nombre`, `patente`, `numero`, `activo`, `cliente_id`, `sucursal_id`), paginada. No depende de `v_estado_neumaticos`.
 - Detalle de vehículo usa `v_estado_neumaticos`, `v_ultima_medicion`, `mediciones` y `eventos_neumatico`.
-- Todas las escrituras del cliente pasan por operaciones acotadas (`neumatico_cambiar`, `neumatico_rotar`, `vehiculo_registrar_odometro`); el cliente no escribe tablas directamente.
+- Sucursales usa las tablas `sucursales` y `vehiculos` (lectura, filtradas por cliente) y escribe solo con `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar`, `vehiculo_crear` y `vehiculo_mover_sucursal`. Mover un vehículo solo cambia `vehiculos.sucursal_id`: mediciones, neumáticos y eventos siguen asociados al vehículo y el movimiento queda en `audit_log` (acción `MOVER_SUCURSAL`).
+- Todas las escrituras del cliente pasan por operaciones acotadas (`neumatico_cambiar`, `neumatico_rotar`, `vehiculo_registrar_odometro` y las de sucursales); el cliente no escribe tablas directamente.
 
 ## 6. Reglas de navegación
 

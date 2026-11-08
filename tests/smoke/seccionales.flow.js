@@ -112,10 +112,96 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
 };
 
 window.seccionalesUsuarioFlow = async function(w, d, sleep, fail, log){
+  var navS = d.querySelector('.nav-item[data-view="sucursales"]');
+  if (navS && navS.getClientRects().length) fail('seccional: el perfil de sucursal no debe ver la entrada Sucursales');
   var sel = d.querySelector('#sec-selector');
   if (sel && sel.style.display !== 'none') fail('sucursal: el selector no debe verse para un perfil de sucursal');
   if (d.querySelector('#user-role').textContent !== 'Sucursal') fail('sucursal: rol mostrado incorrecto: ' + d.querySelector('#user-role').textContent);
   d.querySelector('.nav-item[data-view="flota"]').click(); await sleep(500);
   if (d.querySelectorAll('#flota-grid .flota-card').length < 1) fail('sucursal: Flota vacía');
   log.push('seccional-usuario-flow: ok');
+};
+
+// Vista Sucursales del perfil global: alta, renombrar, eliminar (con y sin vehículos), alta y movimiento de vehículos
+// con confirmación, escape de nombres y actualización del selector de la barra superior.
+window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
+  var fx = w.__secFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
+  var toast = function(){ return $('#toast-msg').textContent; };
+  var setSel = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  var filas = function(){ return all('#suc-lista tr[data-sucursal]').length; };
+  var visible = function(el){ return !!el && el.getClientRects().length > 0; };
+  fx.rpcs.length = 0;
+  $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
+  if (!$('#view-sucursales').classList.contains('active')) { fail('sucursales: vista no activa'); return; }
+  if ($('#breadcrumb-current').textContent !== 'Sucursales') fail('sucursales: título incorrecto');
+  if (filas() !== 2) fail('sucursales: se esperaban 2 sucursales propias, hay ' + filas());
+  if (d.body.innerHTML.indexOf('<Hostil>') !== -1 || d.body.innerHTML.indexOf('<Norte>') !== -1) fail('sucursales: nombre sin escapar');
+  var vrows = function(){ return Array.prototype.slice.call(all('#suc-vehiculos tr[data-vehiculo]')); };
+  if (vrows().length !== 3) fail('sucursales: se esperaban 3 vehículos del cliente, hay ' + vrows().length);
+  if (vrows().some(function(r){ return r.dataset.vehiculo === '17'; })) fail('sucursales: aparece un vehículo de otro cliente');
+
+  // Alta (validación de nombre vacío, alta, duplicado)
+  $('#suc-nombre').value = '  '; $('[data-action="sucursalCrear"]').click(); await sleep(100);
+  if ($('#suc-error').textContent.indexOf('nombre') === -1 || fx.rpcs.length) fail('sucursales: falta validación de nombre vacío');
+  $('#suc-nombre').value = 'Rivera'; $('[data-action="sucursalCrear"]').click(); await sleep(400);
+  if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_crear' && r.args.p_nombre === 'Rivera'; })) fail('sucursales: no llamó a sucursal_crear');
+  if (filas() !== 3) fail('sucursales: la lista no creció (' + filas() + ')');
+  if (all('#sec-select option').length !== 4) fail('sucursales: el selector de la barra no se actualizó (' + all('#sec-select option').length + ' opciones)');
+  $('#suc-nombre').value = 'rivera'; $('[data-action="sucursalCrear"]').click(); await sleep(400);
+  if (toast().indexOf('Ya existe una sucursal') === -1) fail('sucursales: sin mensaje de duplicado: ' + toast());
+
+  // Renombrar
+  $('#suc-n-1').value = 'Montevideo Centro'; $('#suc-lista tr[data-sucursal="1"] [data-action="sucursalRenombrar"]').click(); await sleep(400);
+  if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_renombrar' && r.args.p_sucursal_id === 1 && r.args.p_nombre === 'Montevideo Centro'; })) fail('sucursales: renombrar incorrecto');
+
+  // Eliminar con vehículos: no llama a la base y explica
+  var n = fx.rpcs.length;
+  $('#suc-lista tr[data-sucursal="2"] [data-action="sucursalEliminar"]').click(); await sleep(200);
+  if (fx.rpcs.length !== n || $('#suc-error').textContent.indexOf('Moverlos') === -1) fail('sucursales: eliminar con vehículos debía bloquearse: ' + $('#suc-error').textContent);
+  if (filas() !== 3) fail('sucursales: se borró una sucursal con vehículos');
+  // Eliminar vacía: pide confirmación; cancelar no hace nada
+  var vacia = all('#suc-lista tr[data-sucursal]')[2].dataset.sucursal;
+  var btn = $('#suc-lista tr[data-sucursal="' + vacia + '"] [data-action="sucursalEliminar"]');
+  btn.click(); await sleep(150);
+  if (!$('#modal-confirm').classList.contains('show')) fail('sucursales: eliminar no pidió confirmación');
+  $('#confirm-cancel').click(); await sleep(200);
+  if (filas() !== 3) fail('sucursales: cancelar eliminó igual');
+  $('#suc-lista tr[data-sucursal="' + vacia + '"] [data-action="sucursalEliminar"]').click(); await sleep(150);
+  $('#confirm-ok').click(); await sleep(400);
+  if (filas() !== 2) fail('sucursales: no eliminó la sucursal vacía (' + filas() + ')');
+
+  // Agregar vehículo (validación, alta con sucursal, duplicado)
+  $('#suc-veh-numero').value = ' '; $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(100);
+  if ($('#suc-error').textContent.indexOf('número de coche') === -1) fail('sucursales: falta validación del número de coche');
+  $('#suc-veh-numero').value = '321'; $('#suc-veh-patente').value = 'QQ 0001'; $('#suc-veh-ruedas').value = '16'; $('#suc-veh-sucursal').value = '2';
+  $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(400);
+  var cr = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).pop();
+  if (!cr || cr.args.p_numero !== '321' || cr.args.p_patente !== 'QQ 0001' || cr.args.p_tipo_ruedas !== 16 || cr.args.p_sucursal_id !== 2) fail('sucursales: vehiculo_crear con argumentos incorrectos: ' + JSON.stringify(cr));
+  if (vrows().length !== 4) fail('sucursales: el vehículo nuevo no aparece (' + vrows().length + ')');
+  $('#suc-veh-numero').value = '321'; $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(400);
+  if (toast().indexOf('número de coche') === -1) fail('sucursales: sin mensaje de número duplicado: ' + toast());
+
+  // Mover: confirmar y cancelar
+  var selFila = function(id){ return $('#suc-vehiculos tr[data-vehiculo="' + id + '"] select'); };
+  setSel(selFila(15), '1'); await sleep(150);
+  if (!$('#modal-confirm').classList.contains('show') || $('#confirm-title').textContent !== 'Mover vehículo') fail('sucursales: mover no pidió confirmación');
+  if ($('#confirm-ok').textContent !== 'Mover' || $('#confirm-ok').classList.contains('danger')) fail('sucursales: el botón de mover no debe ser de borrado');
+  $('#confirm-cancel').click(); await sleep(200);
+  if (selFila(15).value !== '') fail('sucursales: cancelar no restableció el select');
+  if (fx.rpcs.some(function(r){ return r.name === 'vehiculo_mover_sucursal'; })) fail('sucursales: movió pese a cancelar');
+  setSel(selFila(15), '1'); await sleep(150); $('#confirm-ok').click(); await sleep(400);
+  var mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
+  if (!mv || mv.args.p_vehiculo_id !== 15 || mv.args.p_sucursal_id !== 1) fail('sucursales: mover con argumentos incorrectos: ' + JSON.stringify(mv));
+  if (selFila(15).value !== '1' || toast().indexOf('movido') === -1) fail('sucursales: el movimiento no se reflejó');
+  // A "sin sucursal"
+  setSel(selFila(10), ''); await sleep(150); $('#confirm-ok').click(); await sleep(400);
+  mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
+  if (!mv || mv.args.p_vehiculo_id !== 10 || mv.args.p_sucursal_id !== null) fail('sucursales: mover a «sin sucursal» incorrecto: ' + JSON.stringify(mv));
+  // Buscador del listado
+  $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
+  if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');
+  $('#suc-buscar').value = 'nada'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
+  if ($('#suc-vehiculos').textContent.indexOf('Ningún vehículo coincide') === -1) fail('sucursales: falta estado vacío del buscador');
+  if (!visible($('.nav-item[data-view="sucursales"]'))) fail('sucursales: la entrada del menú no es visible para el perfil global');
+  log.push('sucursales-cliente: rpcs=' + fx.rpcs.length);
 };
