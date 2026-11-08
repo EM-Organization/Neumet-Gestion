@@ -69,10 +69,11 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');
-  // Número de quema y km del neumático: previos 20.000 + recorridos (123.456 - 120.000 del montaje) = 23.456
-  ['Número de quema','Q-0103','Km que ya traía','20.000 km','Km recorridos','3.456 km','Km totales','23.456 km'].forEach(function(t){
+  // Número de quema y km del neumático (v_km_cubierta): previos 20.000 + tramo actual 3.456 (123.456 - 120.000 del montaje) = 23.456
+  ['Número de quema','Q-0103','Km que ya traía','20.000 km','Km recorridos','3.456 km','En el tramo actual','Km totales','23.456 km'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
+  if(/Estimado|Sin dato/.test(panel)) fail('detalle: km confiables no deberían llevar nota: '+panel.replace(/\s+/g,' ').slice(0,300));
   if(d.body.innerHTML.indexOf('<programada>') !== -1) fail('detalle: evento sin escapar');
   for(var t = 0; t < 40 && !$('#vd-chart-wrap svg'); t++) await sleep(50);
   var ch = $('#vd-chart-wrap svg');
@@ -137,7 +138,14 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
 
   // Click en la rueda sin datos (5) y en una rueda normal
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
-  if($('#vd-panel').textContent.indexOf('Sin registrar') === -1 || $('#vd-panel').textContent.indexOf('Sin odómetro al montar') === -1) fail('detalle: rueda sin quema ni montaje deberia decirlo');
+  if($('#vd-panel').textContent.indexOf('Sin registrar') === -1 || $('#vd-panel').textContent.indexOf('Sin dato: faltan lecturas de odómetro') === -1) fail('detalle: rueda sin quema ni odómetro deberia decirlo');
+  if(/(^|[^\d.])0 km/.test($('#vd-panel-body').textContent.split('Km recorridos')[1] || '')) fail('detalle: sin lecturas no debe mostrar 0 km: '+$('#vd-panel-body').textContent.replace(/\s+/g,' ').slice(0,300));
+  // Estimado (falta un tramo) y odómetro decreciente: nota sobria con el motivo, el valor conocido se muestra
+  $('#vd-diagrama .vd-rueda[data-pos="6"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
+  if($('#vd-panel').textContent.indexOf('Estimado: faltan lecturas de odómetro') === -1 || $('#vd-panel').textContent.indexOf('9.000 km') === -1) fail('detalle: rueda con un tramo sin odómetro deberia mostrar la nota Estimado y 9.000 km');
+  $('#vd-diagrama .vd-rueda[data-pos="7"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
+  if($('#vd-panel').textContent.indexOf('Estimado: hay lecturas de odómetro decrecientes') === -1) fail('detalle: odómetro decreciente deberia indicarse');
+  $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
   if($('#vd-panel').textContent.indexOf('todavía no tiene mediciones') === -1) fail('detalle: rueda sin datos deberia explicarlo');
   $('#vd-panel [data-action="detalleCerrarPanel"]').click(); await sleep(100);
 

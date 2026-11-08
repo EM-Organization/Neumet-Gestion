@@ -49,6 +49,8 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | número de coche | número interno, nº de unidad, nombre del vehículo |
 | número de quema | número de serie, código de quema |
 | km que ya traía el neumático | km de fábrica, km iniciales |
+| Km recorridos (km en vehículos: tramos cerrados más el tramo actual); Km totales (km previos más recorridos); «Sin dato» cuando faltan odómetros | 0 km cuando el dato no existe; «km estimados» sin motivo |
+| Estimado: faltan lecturas de odómetro; Estimado: hay lecturas de odómetro decrecientes; Sin dato: faltan lecturas de odómetro (notas de confiabilidad, siempre en texto) | tono de alarma o color como único indicador |
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |

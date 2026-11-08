@@ -23,6 +23,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    'detalle-rueda-km': async function(){ await abrirDetalle(); var r = $('#vd-diagrama .vd-rueda[data-pos="6"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 6'); await sleep(900); },
     'cambio-neumatico': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); },
     'cambio-cubierta': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); $('#cambio-confirmar').scrollIntoView(); },
     'cambio-almacenar': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); click('input[name="cambio-destino"][value="almacenado"]'); await sleep(300); $('#cambio-retorno-wrap').scrollIntoView(); },

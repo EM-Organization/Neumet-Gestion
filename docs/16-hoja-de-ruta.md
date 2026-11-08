@@ -23,6 +23,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Tasa de desgaste robusta y vista rápida | En curso (PR de tasa) |
 | Stock individual con condición y sucursal | En curso (PR de stock de cubiertas: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
 | Motivo explícito `sin_neumaticos` en la API | En curso |
+| Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice G) |
 | Mini vehículos y posiciones legibles | En curso |
 
 ## Fases propuestas
@@ -38,6 +39,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 - Km de la cubierta = km previos + suma de los tramos montados (odómetro final − inicial de cada montaje). No comparar odómetros absolutos entre vehículos.
 - Invariantes: un solo montaje activo por cubierta y por posición, sin solapamientos, rotación múltiple atómica.
 - Detección de odómetro negativo o reiniciado, con corrección auditada.
+- Estado: en el PR de km por cubierta están la vista `v_km_cubierta` (tramos, `km_confiable`, NULL si faltan odómetros), `odometro_anomalias(p_vehiculo)`, la verificación de los invariantes de montaje (ya garantizados por `unique (vehiculo_id, posicion)`, el índice de auxilio y el CHECK de stock; rotación atómica en `neumatico_rotar`) y los km en el panel de la rueda y en Ciclo de vida. **Pendiente de F2:** corrección auditada de un odómetro (hoy solo se señala) y acumular los tramos en `km_previos` al devolver a stock para que un perfil de sucursal vea el total aunque la cubierta haya pasado por otras sucursales.
 
 ### F3 · Calidad de datos y unidades
 - Controles al ingresar: aumento de profundidad sin nueva banda, lectura repetida, rango fuera de lo físico, posición incorrecta.

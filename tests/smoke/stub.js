@@ -52,7 +52,13 @@
   }
   // v_mediciones_neumatico: las mismas mediciones atribuidas al neumático montado en esa posición.
   var medNeu = med.map(function(m){ return Object.assign({}, m, {posicion_actual:m.posicion, estado_montaje:'montado', medicion_id:m.id}); });
-  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas};
+  // v_km_cubierta: neumático 1 con datos completos, 2 con un tramo sin odómetro (estimado) y 3 sin ningún dato.
+  var kmc = [
+    {neumatico_id:1,cliente_id:1,vehiculo_id:10,km_previos:15000,km_en_vehiculos:0,km_tramo_actual:4000,km_totales:19000,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
+    {neumatico_id:2,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:1200,km_tramo_actual:null,km_totales:1200,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:3,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false}
+  ];
+  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;

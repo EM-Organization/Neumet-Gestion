@@ -107,32 +107,3 @@ export function ordenarEventos(eventos, desc=false){
   const s=[...eventos].sort((a,b)=>tsOf(a)-tsOf(b) || (a.id||0)-(b.id||0));
   return desc?s.reverse():s;
 }
-export const claveNeumatico=e=>e.neumatico_id!=null?`n${e.neumatico_id}`:(e.idneumatico?`i${e.idneumatico}`:null);
-
-// Km recorridos por neumático a partir de los eventos: un montaje abre un tramo con el odómetro del vehículo;
-// desmontaje o baja lo cierran; la rotación no corta el tramo. Un tramo abierto cuenta hasta `odometroActual`.
-// Tramos sin odómetro en algún extremo (o con fin < inicio) no suman km y se cuentan en `incompletos`.
-// Devuelve { [clave]: {km, tramos, abierto, incompletos} }.
-export function kmPorNeumatico(eventos, odometroActual=null){
-  const res={}, abierto={};
-  const get=k=>res[k]||(res[k]={km:0, tramos:0, abierto:false, incompletos:0});
-  for(const e of ordenarEventos(eventos)){
-    const k=claveNeumatico(e); if(!k) continue;
-    const r=get(k), odo=Number.isInteger(e.odometro_km)?e.odometro_km:null;
-    if(e.tipo==='montaje'){
-      if(!(k in abierto)) abierto[k]=odo;
-    } else if(e.tipo==='desmontaje' || e.tipo==='baja'){
-      if(k in abierto){
-        const ini=abierto[k]; delete abierto[k];
-        if(ini!=null && odo!=null && odo>=ini){ r.km+=odo-ini; r.tramos++; } else r.incompletos++;
-      }
-    }
-  }
-  for(const k of Object.keys(abierto)){
-    const r=get(k), ini=abierto[k];
-    r.abierto=true;
-    if(ini!=null && Number.isInteger(odometroActual) && odometroActual>=ini){ r.km+=odometroActual-ini; r.tramos++; }
-    else r.incompletos++;
-  }
-  return res;
-}
