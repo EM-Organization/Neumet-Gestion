@@ -12,7 +12,7 @@
 - Consulta 9: informativa.
 
 ## Pruebas manuales por rol
-Placeholders: `PROJECT_URL` (https://dqgrlflrjcarxlfetvoj.supabase.co), `ANON_KEY` (clave publica anon). Obtener los `JWT_*` con login por `/auth/v1/token?grant_type=password`. No guardar claves reales en el repo.
+Placeholders: `PROJECT_URL` (https://kootszosdejmawanfxug.supabase.co), `ANON_KEY` (clave publica anon). Obtener los `JWT_*` con login por `/auth/v1/token?grant_type=password`. No guardar claves reales en el repo.
 
 ```bash
 # anon: debe devolver [] o 401/403 en tablas privadas

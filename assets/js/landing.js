@@ -106,7 +106,7 @@ async function submitForm(){
   btn.disabled = true; btn.textContent = 'Enviando...';
 
   try {
-    const res = await fetch('https://dqgrlflrjcarxlfetvoj.supabase.co/functions/v1/contacto', {
+    const res = await fetch(`${window.NEUMET_CONFIG.SUPABASE_URL}/functions/v1/contacto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, empresa, email, telefono, mensaje, website })

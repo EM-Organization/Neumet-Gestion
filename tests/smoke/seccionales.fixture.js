@@ -6,6 +6,7 @@
   var parentSearch = window.parent.location.search;
   var asCliente = /[?&](cliente|secuser)=1/.test(parentSearch);
   var secUser = /[?&]secuser=1/.test(parentSearch);
+  var sinPerfil = /[?&]sinperfil=1/.test(parentSearch), rolApi = /[?&]api=1/.test(parentSearch);
   var fx = window.__secFx = { inserts: [], updates: [], deletes: [], fetches: [], vehEqs: [] };
   var seq = 100;
 
@@ -22,6 +23,9 @@
     { user_id: 'u-5', email: 'global@demo.test', sucursal_id: null, rol: 'cliente', cliente_id: 1 },
     { user_id: 'u-9', email: 'salto@demo.test', sucursal_id: 2, rol: 'cliente', cliente_id: 1 }
   ];
+  // Perfil del usuario de la sesión simulada (u-1): admin, cliente, rol api o ninguno (?sinperfil=1).
+  if (rolApi) perfiles.push({ user_id: 'u-1', email: 'api@demo.test', sucursal_id: null, rol: 'api', cliente_id: 1 });
+  else if (!asCliente && !sinPerfil) perfiles.push({ user_id: 'u-1', email: 'admin@test.local', sucursal_id: null, rol: 'admin', cliente_id: null });
   if (asCliente) perfiles.push({ user_id: 'u-1', email: 'yo@demo.test', sucursal_id: secUser ? 2 : null, rol: 'cliente', cliente_id: 1 });
 
   // Vehículos que lee la vista Sucursales (select 'id,nombre,numero,patente,sucursal_id,activo') y que mueven las RPC simuladas.

@@ -16,6 +16,7 @@ export const USERS = {
   global: { sub: 'e2e00000-0000-0000-0000-000000000002', email: 'demo-global@e2e.test' },
   salto: { sub: 'e2e00000-0000-0000-0000-000000000003', email: 'demo-salto@e2e.test' },
   sinperfil: { sub: 'e2e00000-0000-0000-0000-000000000006', email: 'sin-perfil@e2e.test' },
+  api: { sub: 'e2e00000-0000-0000-0000-000000000007', email: 'api@e2e.test' },
   otra: { sub: 'e2e00000-0000-0000-0000-000000000005', email: 'otra@e2e.test' },
   montevideo: { sub: 'e2e00000-0000-0000-0000-000000000004', email: 'demo-montevideo@e2e.test' }
 };

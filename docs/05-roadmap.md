@@ -1,6 +1,6 @@
 # 05 · Roadmap de cambios
 
-> Orden por riesgo/retorno. Ningún ítem está implementado. Esfuerzos orientativos para una persona.
+> Plan original (2026-11-06) ordenado por riesgo/retorno; varios ítems ya se hicieron (ver las notas de avance y [10-tablero.md](10-tablero.md), que es la fuente de verdad del estado). Esfuerzos orientativos para una persona.
 
 ## Fase 0 · Línea base y seguridad (bloquea el go-live) — ~1 semana
 | ID | Tarea | Doc | Esfuerzo |
