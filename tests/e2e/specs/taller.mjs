@@ -115,7 +115,7 @@ export function registrar(env) {
       const o = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: 1 });
       assert.equal(o.error && o.error.code, '42501');
       assert.equal(await p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.from('vehiculos').select('id')).then(r => r.data.length)`), 0);
-    }, { http: [{ ruta: /rpc\/(neumatico_rotar|neumatico_cambiar|vehiculo_registrar_odometro|get_unregistered_devices)/, status: 403 }] });
+    }, { http: [{ ruta: /rpc\/(neumatico_rotar|neumatico_cambiar|vehiculo_registrar_odometro|get_unregistered_devices)/, status: 403 }], sinAcceso: true });
     assert.equal(foto(env, id), antes);
   });
 

@@ -1,6 +1,6 @@
 # 03 · Plan de despliegue: Vercel + Supabase
 
-> Estado: propuesta (2026-11-06). Sin cambios de código ni de infraestructura ejecutados.
+> Estado: plan original (2026-11-06), conservado como registro de decisiones. La plataforma ya está desplegada en Vercel + Supabase (proyecto `kootszosdejmawanfxug`); el estado actual está en [10-tablero.md](10-tablero.md) y los procedimientos en [11-runbook-operacion.md](11-runbook-operacion.md). Las secciones 1 a 3 describen el diagnóstico de entonces (por ejemplo, la definición de despliegue ya existe como `vercel.json`).
 
 ## 1. Veredicto
 
@@ -109,6 +109,6 @@ Se añadirá un `.env.example` documentado en la fase de implementación (no se 
 - **`script-src` ya NO lleva `'unsafe-inline'`** (landing y panel sin `<script>` ni handlers inline; PR #5 y #7). `style-src` **conserva** `'unsafe-inline'` a propósito: hay ~100 atributos `style=""` (y los generados desde JS) y el riesgo de inyección por estilos es mucho menor; endurecerlo exigiría pasar todo a clases CSS. Si se carga un script nuevo, debe ir en archivo propio y su origen listarse en `script-src`.
 - Como endurecer: (1) mover scripts y estilos en linea a archivos en `assets/`; (2) sustituir handlers `onclick=` por `addEventListener`; (3) quitar `'unsafe-inline'` de `script-src` y probar antes con `Content-Security-Policy-Report-Only`; (4) para estilos, usar clases en lugar de `style=`; (5) si hiciera falta algun inline, usar nonces o hashes.
 - `https://cdn.jsdelivr.net` se permite para librerias (p. ej. supabase-js); idealmente fijar version y anadir SRI, o servirlas desde `/assets`.
-- `connect-src` limita las llamadas al proyecto Supabase `dqgrlflrjcarxlfetvoj` (REST, Auth, Functions, Realtime por wss).
+- `connect-src` limita las llamadas al proyecto Supabase vigente `kootszosdejmawanfxug` (REST, Auth, Functions, Realtime por wss). El proyecto anterior se retiró tras el cutover; `tests/unit/despliegue.test.mjs` verifica que no vuelva a aparecer.
 - `frame-ancestors 'none'` y `X-Frame-Options: DENY` evitan clickjacking.
 - Cache: imagenes y fuentes en `/assets` son `immutable` (1 ano); CSS/JS sin hash usan `max-age=0, must-revalidate` (se revalidan con ETag en cada carga: los módulos ES se piden por separado y con `max-age` el navegador mezclaba archivos viejos con el HTML nuevo tras un despliegue). Si se cambia una imagen, cambiar tambien su nombre de archivo.

@@ -4,7 +4,9 @@ useDefault = true
 
 [allowlist]
 description = "Clave pública (anon) de Supabase: va en el frontend por diseño; su seguridad es RLS. Ver docs/02-auditoria-seguridad.md §1."
-# Payload JWT del proyecto dqgrlflrjcarxlfetvoj con role=anon (NO cubre service_role ni otras claves).
+# Payload JWT del proyecto anterior (dqgrlflrjcarxlfetvoj, ya sin uso) con role=anon (NO cubre service_role ni otras claves).
+# Se conserva a propósito: gitleaks escanea todo el historial de git y el valor sigue en commits anteriores;
+# solo podría retirarse reescribiendo el historial.
 # También la clave publishable (pública por diseño) del proyecto nuevo kootszosdejmawanfxug:
 # valor exacto; NO cubre sb_secret_ ni service_role.
 regexes = [

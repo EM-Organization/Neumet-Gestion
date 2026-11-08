@@ -13,6 +13,8 @@ Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = flota ] && Q="?flota=1"
 [ "$MODE" = detalle ] && Q="?cliente=1&detalle=1"
 [ "$MODE" = secuser ] && Q="?cliente=1&secuser=1"
+[ "$MODE" = sinperfil ] && Q="?sinperfil=1"
+[ "$MODE" = api ] && Q="?api=1"
 OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-90000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
 echo "$OUT" | grep -o '<title>[^<]*</title>' | head -1
 echo "$OUT" | awk '/<pre id="smoke-log">/{f=1} f{print} /<\/pre>/{f=0}' | sed 's/<[^>]*>//g'

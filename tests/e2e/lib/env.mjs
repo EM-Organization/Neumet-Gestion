@@ -31,10 +31,11 @@ export async function iniciarEntorno() {
     sql: q => query(pg.url, q),
     peticiones: web.peticiones,
     // Abre el panel autenticado como `rol` y espera a que salga del login y pinte Inicio.
-    async abrirPanel(rol, { ruta = '/adminpanel/index.html' } = {}) {
+    async abrirPanel(rol, { ruta = '/adminpanel/index.html', sinAcceso = false } = {}) {
       const p = await Pagina.abrir(browser, { origin: web.origin, sesion: sesion(rol), capturas });
       await p.ir(ruta);
-      await p.esperar(`!document.querySelector('#app').classList.contains('hidden')`, { que: 'el panel sale del login' });
+      if (sinAcceso) await p.esperar(`!document.querySelector('#sin-acceso-screen').classList.contains('hidden')`, { que: 'la pantalla Sin acceso' });
+      else await p.esperar(`!document.querySelector('#app').classList.contains('hidden')`, { que: 'el panel sale del login' });
       return p;
     },
     async cerrar() {

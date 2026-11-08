@@ -35,6 +35,18 @@
   </div>
 </div>
 
+<!-- SIN ACCESO: sesión válida sin perfil admin/cliente. No carga vistas ni datos. -->
+<div class="login-screen hidden" id="sin-acceso-screen">
+  <div class="login-box" role="alert">
+    <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
+      <img class="login-logo" src="../assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="220" height="24"/>
+    </div>
+    <div class="login-title">Sin acceso</div>
+    <div class="login-sub">Esta cuenta aún no tiene un perfil asignado. Contactar a la administración.</div>
+    <button type="button" class="login-btn" id="sin-acceso-cerrar">Cerrar sesión</button>
+  </div>
+</div>
+
 <!-- APP ADMIN -->
 <div class="app hidden" id="app">
   <aside class="sidebar" id="sidebar">
@@ -96,7 +108,7 @@
       <div class="user-avatar" id="user-avatar">A</div>
       <div class="user-info">
         <div class="user-name" id="user-email">—</div>
-        <div class="user-role" id="user-role">Administrador</div>
+        <div class="user-role" id="user-role">—</div>
       </div>
       <button type="button" class="logout-btn" id="logout-btn" title="Cerrar sesión" aria-label="Cerrar sesión">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>

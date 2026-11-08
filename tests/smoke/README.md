@@ -14,12 +14,14 @@ tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, veh
 tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, mediciones, selector de sucursal, vista Sucursales; Dispositivos no existe para el cliente)
 tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin selector; sucursales.fixture.js)
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
+tests/smoke/run.sh sinperfil  # sesión sin perfil: solo «Sin acceso», sin menú ni consultas de datos (sinacceso.flow.js)
+tests/smoke/run.sh api        # perfil de rol 'api': igual que sinperfil
 tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)
 ```
 
 Todos los modos (admin y cliente) arrancan con `inicio.flow.js`: página de Inicio (contadores de atención y enlaces; con vehículos pero sin
 neumáticos medidos NO muestra «sin datos»), aviso de conexión oculto salvo problema real, menú por rol
-(el cliente ve solo Inicio, Vehículos, Alertas, Reportes y Dispositivos, sin elementos `data-admin-only`; Dispositivos y Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
+(el cliente ve Inicio, Vehículos, Alertas, Stock y Reportes, y Sucursales si es global; sin elementos `data-admin-only` ni Dispositivos; Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
 
 Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:
 

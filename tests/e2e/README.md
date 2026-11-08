@@ -12,7 +12,8 @@ ejercen el **panel real** en Chrome headless contra una base real.
   registrando cada petición. En `adminpanel/index.html` sustituye solo: el CDN de supabase-js (la misma versión,
   desde `node_modules`), `assets/config.js` y añade `browser/auth-shim.js`, que reemplaza únicamente la autenticación
   (`getSession`, login, logout) por un JWT HS256 de prueba. Todas las consultas `from`/`rpc` van por HTTP a PostgREST.
-- **Sesiones**: `admin`, `global` (Demo), `salto`, `montevideo` (perfiles de sucursal), `otra` (otro cliente), `sinperfil`.
+- **Sesiones**: `admin`, `global` (Demo), `salto`, `montevideo` (perfiles de sucursal), `otra` (otro cliente), `sinperfil`, `api` (perfil de rol `api`).
+- **sin-acceso**: `sinperfil` y `api` ven «Sin acceso» (sin panel ni menú), la API real les devuelve 0 filas y navegar por código no consulta datos.
 
 ## Correrlo en local
 Requisitos: Node 22, `psql` y binarios de Postgres (`initdb`, `pg_ctl`; p. ej. `brew install postgresql@17`) o una base
