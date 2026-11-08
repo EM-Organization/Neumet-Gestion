@@ -27,3 +27,6 @@ servidor.ps1
 tests/e2e/.cache/
 tests/e2e/capturas/
 tests/visual/out/
+
+# Material de referencia privado (no versionar)
+referencias/
