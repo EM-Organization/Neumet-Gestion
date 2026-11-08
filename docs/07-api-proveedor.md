@@ -1,8 +1,8 @@
 # 07 · API de proveedor para la app de medición (cliente DAC)
 
-> Estado: **análisis y diseño** (2026-11-06). Sin código ni despliegue. Fuente: `API_PROVEEDOR.pdf` (4 págs., "Especificación de API requerida").
+> Estado: el análisis (§1 a §8) es de 2026-11-06 y se conserva como registro de decisiones. La API **está implementada** como Edge Function `api-proveedor` en el proyecto `kootszosdejmawanfxug` (base `https://kootszosdejmawanfxug.supabase.co/functions/v1/api-proveedor`); lo construido y decidido está en el Apéndice A. Fuente: `API_PROVEEDOR.pdf` (4 págs., "Especificación de API requerida").
 > Contrato formal en [`api/openapi.yaml`](api/openapi.yaml).
-> **Convención:** lo marcado **[verificar]** son hipótesis que no se pueden comprobar desde el repo (la función `guardar-montaje-mm`, el esquema y la RLS no están versionados). Lo demás sale del PDF o del código del panel.
+> **Convención:** lo marcado **[verificar]** son hipótesis del momento del análisis, anteriores a que el esquema y la RLS se versionaran en `supabase/migrations/`. La función `guardar-montaje-mm` heredada nunca estuvo en este repositorio y no se migró. Lo demás sale del PDF o del código del panel.
 
 ## 1. Qué pide el documento
 

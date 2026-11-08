@@ -1,221 +1,198 @@
 # NEUMET · Sistema de Gestión
 
-Panel de administración web para la gestión de clientes, vehículos, dispositivos y mediciones de neumáticos.
+NEUMET mide la profundidad de dibujo de los neumáticos de una flota con un calibre digital y muestra el estado de cada vehículo en un panel web. Este repositorio contiene el sitio público, el panel, la base de datos (migraciones y pruebas) y las Edge Functions.
 
----
+Estilo de la documentación: impersonal, en infinitivo, sin segunda persona (ver [`docs/14-guia-de-textos.md`](docs/14-guia-de-textos.md)). El código manda: si algo de este texto no coincide con el comportamiento real, corregir el texto.
 
-> 📚 Revisión de arquitectura, auditoría de seguridad y plan de despliegue: ver [`docs/`](docs/README.md).
+## Contenido
 
-## Flujo de onboarding
+1. [Qué es NEUMET](#1-qué-es-neumet)
+2. [Arquitectura](#2-arquitectura)
+3. [Roles y permisos](#3-roles-y-permisos)
+4. [Mapa de funcionalidades del panel](#4-mapa-de-funcionalidades-del-panel)
+5. [Modelo de datos y aislamiento por cliente](#5-modelo-de-datos-y-aislamiento-por-cliente)
+6. [API de proveedor](#6-api-de-proveedor)
+7. [Puesta en marcha local y pruebas](#7-puesta-en-marcha-local-y-pruebas)
+8. [Despliegue](#8-despliegue)
+9. [Procesos del equipo](#9-procesos-del-equipo)
+10. [Estructura del repositorio](#10-estructura-del-repositorio)
+11. [Pendientes y decisiones](#11-pendientes-y-decisiones)
+12. [Índice de documentación](#12-índice-de-documentación)
 
-![Flujo de onboarding de clientes y dispositivos](assets/img/onboarding-flow.svg)
+## 1. Qué es NEUMET
 
-El flujo está diseñado para que **el dispositivo llegue primero**: el cliente lo recibe y empieza a medir sin necesidad de configuración previa. El admin asigna el cliente desde el panel cuando ve llegar las primeras mediciones.
+Un taller o gestor de flota mide cada neumático con el calibre; el desgaste queda registrado por neumático y por vehículo, y el panel indica qué requiere atención y cuándo conviene cambiar o rotar.
 
-### Fase 1 — Dispositivo llega y empieza a medir
+Cada medición guarda tres lecturas en milímetros, una por huella de la banda: `mm1` interno, `mm2` centro y `mm3` externo; `promedio` es la media de las tres. Los umbrales por defecto son: OK desde 8 mm, desgaste bajo entre 5 y 8 mm, crítico por debajo de 5 mm, y retiro en 3 mm. Cada cliente puede ajustar sus umbrales (columnas `umbral_*_mm` de `clientes`, editables desde la ficha del cliente). El estado se comunica siempre con texto y símbolo, nunca solo con color.
 
-1. El dispositivo IoT se enciende y envía mediciones vía POST a `guardar-montaje-mm` con su MAC, patente/número del vehículo y las lecturas de mm.
-2. La Edge Function busca el vehículo por patente o número:
-   - Si el dispositivo **ya está registrado**: busca el vehículo **bajo el cliente asignado** a ese dispositivo.
-   - Si el dispositivo **no está registrado**: busca el vehículo en cualquier cliente y almacena la medición igual. El dispositivo aparece con un badge en la sección **"Sin cliente asignado"** del panel admin.
-
-### Fase 2 — Admin asigna el cliente
-
-Cuando el admin ve el badge de dispositivos sin registrar:
-
-1. Hace clic en **Registrar** junto al dispositivo (la MAC ya viene pre-cargada).
-2. Selecciona el cliente al que pertenece ese dispositivo y confirma.
-3. El panel llama al RPC **`asignar_dispositivo_a_cliente`** que en una sola transacción:
-   - Registra el dispositivo bajo el cliente seleccionado.
-   - Recorre todas las mediciones históricas del dispositivo y, por cada vehículo (patente/número) referenciado:
-     - Si el cliente **ya tiene** ese vehículo → vincula las mediciones a él.
-     - Si **no lo tiene** → crea el vehículo automáticamente bajo ese cliente y vincula las mediciones.
-4. El toast confirma cuántos vehículos se crearon y cuántas mediciones se vincularon.
-
-A partir de ese momento, las nuevas mediciones del dispositivo se enrutan directamente al cliente y sus vehículos.
-
----
-
-## Arquitectura general
+## 2. Arquitectura
 
 ```
-┌─────────────────────┐        POST /guardar-montaje-mm        ┌──────────────────────┐
-│  Dispositivo físico │ ─────────────────────────────────────► │  Supabase Edge Fn    │
-│  (medidor de mm)    │                                         │  guardar-montaje-mm  │
-└─────────────────────┘                                         └──────────┬───────────┘
-                                                                           │ INSERT
-                                                                           ▼
-┌─────────────────────┐         consulta bajo demanda          ┌──────────────────────┐
-│  Panel Admin (web)  │ ◄────────────────────────────────────── │  Supabase (Postgres) │
-│  neumet-admin       │         Supabase JS SDK                 │  Base de datos       │
-└─────────────────────┘                                         └──────────────────────┘
+Calibre digital ──Bluetooth──► App de medición (DAC) ──HTTPS──► API de proveedor ──► Postgres ──► Panel web
+                                                                (Edge Function        (Supabase,      (Vercel,
+                                                                 api-proveedor)        RLS)            módulos ES)
 ```
 
----
-
-## Flujo de datos
-
-### 1. Dispositivo físico → Supabase
-
-El dispositivo mide el desgaste de los neumáticos y envía los datos en un único POST al finalizar la sesión de medición.
-
-**Endpoint:**
-```
-POST https://dqgrlflrjcarxlfetvoj.supabase.co/functions/v1/guardar-montaje-mm
-Content-Type: application/json
-```
-
-**Body:**
-```json
-{
-  "device_id": "AA:BB:CC:DD:EE:FF",
-  "patente":   "MAJ2429",
-  "numero":    "",
-  "montajes": [
-    { "posicion": 1, "mm1": 12, "mm2": 11, "mm3": 10 },
-    { "posicion": 2, "mm1": 13, "mm2": 12, "mm3": 11 }
-  ]
-}
-```
-
-| Campo | Requerido | Descripción |
+| Pieza | Qué hace | Dónde vive |
 |---|---|---|
-| `device_id` | ✓ | MAC address del dispositivo físico (ej: `AA:BB:CC:DD:EE:FF`) |
-| `patente` | ✓ (o `numero`) | Matrícula del vehículo (se normaliza: mayúsculas, sin espacios) |
-| `numero` | ✓ (o `patente`) | Número interno de 3 dígitos del vehículo (alternativa a patente) |
-| `montajes` | ✓ | Array con una entrada por rueda medida |
-| `posicion` | ✓ | Número de rueda (1 a 10 en camiones de 10 ruedas, 1 a 16 en los de 16) |
-| `mm1`–`mm3` | ✓ | Las 3 lecturas de profundidad en milímetros (huellas interno, centro y externo, en ese orden: mm1=interno, mm2=centro, mm3=externo) |
+| Calibre y app de medición | Toma las lecturas por posición y las envía autenticada con una cuenta de API del cliente | Fuera de este repositorio |
+| API de proveedor | Login, consulta del montaje de un vehículo y guardado de mediciones (ver [sección 6](#6-api-de-proveedor)) | `supabase/functions/api-proveedor/` |
+| Base de datos | PostgreSQL con RLS, RPC, vistas y auditoría | `supabase/migrations/` |
+| Panel (`/adminpanel`) | SPA en módulos ES nativos, sin bundler; usa `supabase-js` y consulta bajo demanda (sin Realtime) | `adminpanel/index.html`, `assets/js/` |
+| Sitio público (`/`) | Landing estática con formulario de contacto | `index.html`, `assets/js/landing.js` |
+| Edge Functions auxiliares | Alta de clientes, usuarios de sucursal y cuentas de API (solo administrador); formulario de contacto | `supabase/functions/` |
+| Hosting | Vercel sirve el sitio estático con CSP y cabeceras de seguridad | `vercel.json` |
 
-> Se puede identificar el vehículo por `patente` **o** por `numero`. Si ambos vienen, se usa `patente`.
+Proyecto Supabase vigente: `kootszosdejmawanfxug`. El proyecto anterior (`dqgrlflrjcarxlfetvoj`) quedó fuera de uso tras el cutover y ya no figura en el código ni en la CSP; solo se menciona de forma histórica en la documentación.
 
-**Lo que hace la Edge Function:**
-1. Valida que venga `patente` o `numero` y al menos un montaje
-2. Busca el vehículo en la tabla `vehiculos` (por `patente_norm` o `numero`)
-3. Obtiene el `vehiculo_id` y `cliente_id`
-4. Calcula el `promedio` de las tres lecturas mm1–mm3 por rueda
-5. Inserta todas las ruedas de una vez en la tabla `mediciones`
-6. Responde `{ ok: true, vehiculo_id, ruedas_guardadas }` o un error descriptivo
+La URL y la clave publicable de Supabase están en [`assets/config.js`](assets/config.js) (`window.NEUMET_CONFIG`). Cambiar de proyecto implica editar ese archivo y la directiva `connect-src` de `vercel.json`. La landing toma de esa misma constante la base del endpoint `contacto`.
 
----
+## 3. Roles y permisos
 
-### 2. Supabase → Panel Admin
+El rol se guarda en `perfiles.rol` (`admin`, `cliente` o `api`); la autorización la decide la base de datos (RLS y RPC), no el panel.
 
-El panel web se conecta directamente a Supabase mediante el SDK de JavaScript. Lee y escribe mediante consultas bajo demanda (sin suscripción Realtime) y sin servidor intermedio.
+| Rol | Alcance | Puede |
+|---|---|---|
+| Administrador (`admin`) | Todos los clientes | Todo el panel: clientes, ficha, dispositivos, balance, mediciones, vehículos, stock, sucursales y cuentas de API |
+| Cliente global (`cliente`, `sucursal_id` nulo) | Todo su cliente | Ver su flota completa, gestionar sucursales y mover vehículos, cambiar y rotar neumáticos, registrar odómetro, ver stock |
+| Cliente de sucursal (`cliente`, `sucursal_id` = X) | Solo los vehículos, neumáticos, mediciones y dispositivos de la sucursal X | Ver su flota, cambiar y rotar neumáticos de sus vehículos, registrar odómetro. No ve stock, otras sucursales ni gestión de sucursales |
+| Cuenta de API (`api`) | Un cliente, solo a través de `api-proveedor` | Login, `obtener_montaje` y `guardar_montaje_mm`. Sin acceso a las tablas por PostgREST |
 
-**Tablas utilizadas:**
+Las operaciones de escritura del cliente (cambio de neumático, rotación, odómetro, sucursales) pasan por RPC acotadas; el cliente no escribe tablas directamente. Detalle del modelo de autorización en [`docs/08-esquema-datos.md`](docs/08-esquema-datos.md) (apéndices B a E).
 
-| Tabla | Descripción |
+## 4. Mapa de funcionalidades del panel
+
+Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil global, Sucursales. El administrador añade Dispositivos y la sección Administración (Estado de la flota, Mediciones, Clientes, Balance). Flujos y destinos de cada click en [`docs/12-mapa-navegacion.md`](docs/12-mapa-navegacion.md).
+
+| Pantalla | Qué ofrece |
 |---|---|
-| `clientes` | Empresas registradas. Tienen usuario de acceso (Supabase Auth) y precio mensual |
-| `vehiculos` | Vehículos de cada cliente. Campos: `nombre`, `patente`, `numero`, `tipo_ruedas` (10 o 16), `activo` |
-| `dispositivos` | Medidores físicos identificados por MAC Address, asignados a un cliente |
-| `mediciones` | Lecturas de desgaste. Una fila por rueda por sesión. Campos: `vehiculo_id`, `cliente_id`, `device_id`, `posicion`, `mm1`–`mm3`, `promedio`, `created_at` |
-| `gastos` | Gastos mensuales de la empresa (para el módulo de Balance) |
+| Inicio | Buscador de «Matrícula, número de coche o quema» (atajo `/`), proporciones de la flota, «Requieren atención», «Próximos cambios» y «Últimas mediciones» (los 8 vehículos medidos más recientemente, con la diferencia de mm por neumático respecto de la visita anterior). El administrador ve además «Clientes con más urgencias» |
+| Vehículos | Lista ordenada por urgencia, filtro por matrícula o número de coche; alta, edición y baja solo para el administrador |
+| Detalle de vehículo | Diagrama de ruedas con el estado de cada posición, panel de la rueda con mediciones y gráfico de desgaste, odómetro y ciclo de vida. Desde la rueda: cambio de neumático, rotación y número de quema |
+| Cambio de neumático | Destino del neumático retirado (baja, reencauche, reparación o almacén), neumático nuevo desde el stock o ingresado a mano, número de quema, km que ya traía el neumático y odómetro opcional del vehículo |
+| Rotación | Intercambio de dos posiciones del mismo vehículo; el historial y las alertas siguen al neumático |
+| Número de quema | Identifica al neumático físico; único por cliente. El buscador lo resuelve y abre el vehículo donde está montado |
+| Km previos | Km que el neumático ya traía al montarlo; junto con los recorridos en el vehículo dan los km totales |
+| Sucursales (cliente global) | Crear, renombrar y eliminar sucursales vacías; agregar vehículos; mover un vehículo entre sucursales o a «Sin sucursal», con confirmación. Mover solo cambia `vehiculos.sucursal_id`: el historial queda intacto y el movimiento queda en la auditoría |
+| Stock | Inventario de neumáticos por cliente; solo lectura para el cliente global, alta y edición para el administrador. No visible para el perfil de sucursal |
+| Alertas | Lista de problemas activos, filtrable por severidad y tipo (`critico`, `bajo`, `cruza_critico_pronto`, `desgaste_irregular`, `sin_medir`) |
+| Reportes | Informes exportables en CSV o versión imprimible |
+| Dispositivos (solo administrador) | Alta, edición y asignación de medidores a clientes; estado de actividad y dispositivos con mediciones aún sin cliente asignado |
+| Clientes y ficha de cliente (administrador) | Alta con invitación o contraseña, baja lógica, umbrales de desgaste, sucursales y usuarios, cuenta de API |
+| Estado de la flota, Mediciones y Balance (administrador) | Vista de flota entre clientes, historial por vehículo o dispositivo, ingresos, gastos y valor del inventario |
 
-**Módulos del panel:**
+Con perfil global y sucursales, un selector «Sucursal» en la barra superior filtra las pantallas. Con perfil de sucursal el selector no aparece porque la base ya limita los datos.
 
-- **Clientes** — Alta, edición y eliminación de clientes con credenciales de acceso (Supabase Auth)
-- **Vehículos** — Gestión de vehículos por cliente. Se identifican por número de coche («Coche 106») y, opcionalmente, matrícula. Cada neumático puede llevar número de quema y los km que ya traía
-- **Dispositivos** — Registro de medidores por MAC Address. Muestra dispositivos no registrados que ya enviaron mediciones
-- **Balance** — Ingresos por cliente (precio mensual editable), gastos recurrentes y resultado neto mensual con gráfico de evolución
-- **Mediciones** — Visualización del estado de neumáticos por vehículo o por dispositivo. Muestra el dibujo del camión con colores por estado (verde ≥ 8mm, naranja 5–7.9mm, rojo < 5mm)
+## 5. Modelo de datos y aislamiento por cliente
 
----
+Tablas principales (todas con RLS): `clientes`, `perfiles`, `sucursales`, `vehiculos`, `neumaticos`, `mediciones`, `eventos_neumatico`, `dispositivos`, `stock_neumaticos`, `gastos`, `ingesta_log`, `audit_log`, `api_idempotencia` y `api_rate_limit`. Vistas (con `security_invoker`, heredan la RLS de quien consulta): `v_ultima_medicion`, `v_mediciones_neumatico`, `v_estado_neumaticos`, `v_alertas`, `v_resumen_flota_cliente` y `v_salud_dispositivos`.
 
-## Estados de desgaste
+Reglas centrales:
 
-| Color | Rango | Estado |
-|---|---|---|
-| 🟢 Verde | ≥ 8 mm | OK |
-| 🟠 Naranja | 5 – 7.9 mm | Bajo |
-| 🔴 Rojo | < 5 mm | Crítico |
-| ⚫ Gris | Sin datos | — |
+- Defecto: denegar. `anon` no tiene privilegios de tablas ni de funciones.
+- Las funciones `is_admin()`, `current_cliente_id()` y `current_sucursal_id()` leen `perfiles` con `auth.uid()`; ningún parámetro del llamador decide el alcance.
+- Un cliente solo lee filas de su `cliente_id`; un perfil de sucursal solo las de su sucursal. Claves foráneas compuestas impiden asignar una sucursal de otro cliente.
+- Las mediciones siguen al neumático (`idneumatico`): tras cambiar o rotar, cada posición muestra los datos del neumático montado ahí.
+- Las escrituras del cliente van por RPC `SECURITY DEFINER` con `search_path` vacío: `neumatico_cambiar`, `neumatico_rotar`, `vehiculo_registrar_odometro`, `vehiculo_crear`, `vehiculo_mover_sucursal`, `sucursal_crear`, `sucursal_renombrar` y `sucursal_eliminar`. Un vehículo inexistente y uno ajeno responden igual (`42501`).
+- `audit_log` es inmutable y solo lo lee el administrador.
+- La función `ultimas_mediciones` alimenta el bloque de Inicio y es `security invoker`.
 
----
+Esquema, decisiones y apéndices por migración: [`docs/08-esquema-datos.md`](docs/08-esquema-datos.md). Auditoría de RLS reutilizable: [`supabase/audit/`](supabase/audit/README.md).
 
-## Landing page (`/`)
+## 6. API de proveedor
 
-Página pública para potenciales clientes con formulario de contacto.
+Edge Function `api-proveedor` en el proyecto vigente. Contrato en [`docs/api/openapi.yaml`](docs/api/openapi.yaml) y decisiones en [`docs/07-api-proveedor.md`](docs/07-api-proveedor.md).
 
-- Archivo: `index.html` en la raíz — HTML/CSS/JS estático, sin dependencias de build
-- Formulario de contacto con CAPTCHA local (canvas, sin dependencias externas)
-- Al enviar, llama a la Edge Function `contacto` que despacha el email via **Resend**
+- **Base URL**: `https://kootszosdejmawanfxug.supabase.co/functions/v1/api-proveedor`. La función acepta las rutas con y sin ese prefijo; solo `POST`; sin CORS.
+- **Autenticación**: `POST /auth/login` con email y clave de una cuenta de API; devuelve `access_token` (sin `refresh_token`; la app vuelve a iniciar sesión ante 401). El resto de los endpoints exige `Authorization: Bearer <access_token>`.
+- **Endpoints**:
 
-### Edge Function: `contacto`
-
-```
-POST https://dqgrlflrjcarxlfetvoj.supabase.co/functions/v1/contacto
-Content-Type: application/json
-```
-
-**Body:**
-```json
-{
-  "nombre":   "Juan García",
-  "empresa":  "Transportes S.A.",
-  "email":    "juan@empresa.com",
-  "telefono": "+598 99 123 456",
-  "mensaje":  "Quiero más información."
-}
-```
-
----
-
-## Dependencias externas
-
-| Servicio | Rol | Dónde se configura |
-|---|---|---|
-| **Supabase** ([supabase.com](https://supabase.com)) | Base de datos PostgreSQL, autenticación, Edge Functions | [supabase.com/dashboard](https://supabase.com/dashboard) · Proyecto ID: `dqgrlflrjcarxlfetvoj` |
-| **Vercel** ([vercel.com](https://vercel.com)) | Hosting del frontend (landing + panel admin) | [vercel.com/dashboard](https://vercel.com/dashboard) |
-| **Resend** ([resend.com](https://resend.com)) | Envío de emails desde la Edge Function `contacto` | Secret `RESEND_API_KEY` en Supabase → Edge Functions → Secrets |
-
-### Secrets requeridos en Supabase
-
-Supabase Dashboard → Project Settings → Edge Functions → Secrets:
-
-| Secret | Descripción |
+| Endpoint | Uso |
 |---|---|
-| `RESEND_API_KEY` | API key de Resend. Necesaria para que la Edge Function `contacto` pueda enviar emails. |
+| `POST /auth/login` | Autenticar la cuenta de API |
+| `POST /emenube/neumaticos/obtener_montaje` | Neumáticos montados de un vehículo (por `matricula` o `numero`) y su última medición |
+| `POST /emenube/neumaticos/guardar_montaje_mm` | Guardar las mediciones por posición, con fallo parcial por neumático |
 
-> **Nota sobre Resend en free tier:** con el sender `onboarding@resend.dev` solo se puede enviar al email con el que se registró la cuenta. Para enviar a cualquier destinatario es necesario verificar un dominio propio en Resend → Domains y cambiar el sender a `contacto@tudominio.com`.
+- **Mapeo de lecturas**: el contrato usa `mm1` a `mm4` con `mm3 = mm2`. En la base: `mm1` interno, `mm2` centro y `mm3` externo (API `mm4`). El mapa único está en `supabase/functions/api-proveedor/mapping.ts` (`LECTURA_MAP`).
+- **Cuentas de API**: una por app, ligadas a un cliente (máximo 5 por cliente). El `cliente_id` sale siempre del perfil, nunca del cuerpo. Se crean desde la ficha del cliente (`crear-cuenta-api`); la contraseña la genera el servidor y se muestra una sola vez.
+- **Idempotencia y límites**: cabecera opcional `Idempotency-Key`; sin ella se deduplica por contenido en una ventana de 10 minutos. Límites por cuenta y por IP (429).
 
----
+## 7. Puesta en marcha local y pruebas
 
-## Documentación
+Requisitos: Node 22 y `npm ci`. El panel no requiere build: servir la raíz con `npm run serve` (equivale a `npx serve -p 3000 .`) y abrir `/adminpanel`. Abrir los archivos como `file://` falla por CORS.
 
-Revisión de arquitectura, auditoría de seguridad, observabilidad, despliegue e identidad visual: ver [`docs/`](docs/README.md).
+| Script | Qué hace |
+|---|---|
+| `npm run lint` | ESLint sobre `assets` y `tests` |
+| `npm run check` | Verifica la sintaxis de todos los módulos y scripts del panel |
+| `npm test` | Pruebas unitarias (`tests/unit/*.test.mjs`, `node:test`) de la lógica de dominio y de la configuración de despliegue |
+| `npm run e2e` | Panel real en Chrome headless contra Postgres y PostgREST locales (ver [`tests/e2e/README.md`](tests/e2e/README.md)) |
 
-## Identidad visual
+Otras pruebas, con sus propios lanzadores:
 
-Logos, isotipo, favicon y paleta viven en `assets/brand/`; guía de uso en [`assets/brand/README.md`](assets/brand/README.md) y criterios en [`docs/06-identidad-visual.md`](docs/06-identidad-visual.md).
+| Prueba | Comando | Cubre |
+|---|---|---|
+| Smoke | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
+| Visual | `tests/visual/run.sh` | Capturas de escritorio y móvil para revisión a ojo ([`README`](tests/visual/README.md)) |
+| SQL | `tests/sql/run.sh` | Todas las migraciones (aplicadas dos veces) y pruebas por rol en un Postgres desechable |
+| Edge Functions | `deno task --config supabase/functions/deno.json test` | Pruebas de las funciones con dobles; `check` y `lint` equivalentes |
 
-## Estructura del proyecto
+La integración continua (`.github/workflows/ci.yml`) ejecuta: `secrets` (gitleaks sobre todo el historial), `lint`, `static`, `deno`, `test`, `sql` y `e2e`.
+
+## 8. Despliegue
+
+**Vercel.** Sitio estático sin build, servido desde `main`. `vercel.json` define `cleanUrls`, la CSP, HSTS y demás cabeceras. `script-src` no admite scripts inline; `connect-src` solo admite el proyecto Supabase vigente. Los `.js` y `.css` de `/assets` se revalidan en cada carga; tras un despliegue conviene una recarga forzada si el panel muestra vistas vacías. Decisiones en [`docs/03-despliegue-vercel-supabase.md`](docs/03-despliegue-vercel-supabase.md).
+
+**Supabase.**
+
+- Migraciones: `supabase/migrations/`, idempotentes; se revisan en el PR, se aplican antes de fusionar el front que las usa (por MCP `apply_migration` o `supabase db push`) y se verifican con `get_advisors` y `supabase/audit/rls_audit.sql`.
+- Edge Functions: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto`; todas con `verify_jwt = false` en `supabase/config.toml` (cada handler valida el JWT y el rol por su cuenta).
+- Secretos necesarios (nombres, sin valores):
+
+| Función | Secretos |
+|---|---|
+| `contacto` | `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`, `ALLOWED_ORIGINS`; opcional `TURNSTILE_SECRET` |
+| `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` | `ALLOWED_ORIGINS` (sin él se deniega todo origen de navegador); opcional `INVITE_REDIRECT_TO` |
+| `api-proveedor` | `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, provistos por Supabase |
+
+Procedimientos paso a paso (crear el administrador, cuentas de API, migraciones, funciones, rotación de claves): [`docs/11-runbook-operacion.md`](docs/11-runbook-operacion.md). Política de seguridad y reporte de vulnerabilidades: [`SECURITY.md`](SECURITY.md).
+
+## 9. Procesos del equipo
+
+- **Ramas y PR**: cada cambio vive en una rama propia y entra a `main` por PR; nunca se empuja directo a `main`.
+- **Revisión**: todo PR lo revisa una persona o agente distinto del autor, con el checklist de [`docs/13-checklist-revision-prs.md`](docs/13-checklist-revision-prs.md): buscar bugs ejecutando los caminos nuevos, pruebas por rol, revisión visual si toca la interfaz, copy y despliegue. Un arreglo incluye un test que falla sin él.
+- **CI en verde**: no se fusiona con CI rojo ni se amplía el allowlist de secretos para acomodar un valor de ejemplo.
+- **Migraciones**: el revisor las lee enteras (permisos, `search_path`, RLS) y se aplican antes de fusionar el front que las usa.
+- **Textos**: según [`docs/14-guia-de-textos.md`](docs/14-guia-de-textos.md).
+- **Estado del trabajo**: [`docs/10-tablero.md`](docs/10-tablero.md).
+
+## 10. Estructura del repositorio
 
 ```
-Neumet-Gestion/
-├── index.html                        # Landing page pública (raíz)
-├── app-demo.mp4                      # Video del dispositivo para la landing
-├── adminpanel/
-│   └── index.html                    # Panel admin (SPA)
-├── assets/
-│   ├── css/styles.css                # Estilos globales del panel
-│   ├── config.js                     # window.NEUMET_CONFIG (URL y clave publishable de Supabase)
-│   ├── js/                           # Panel en módulos ES: main.js, core/, domain/, views/ (ver assets/js/README.md)
-│   ├── brand/                        # Identidad visual (logos, favicon, PNG)
-│   └── img/                          # Diagrama de onboarding
-├── supabase/
-│   ├── migrations/                   # Esquema, API de proveedor, vistas y ciclo de vida
-│   └── functions/
-│       ├── api-proveedor/            # API de la app (login, obtener/guardar montaje)
-│       ├── crear-cliente/            # Alta de clientes (solo admin)
-│       └── contacto/                 # Formulario de la landing vía Resend
-├── .gitignore
-└── README.md
+index.html, assets/js/landing.js   Sitio público
+adminpanel/index.html              Panel (SPA)
+assets/
+  config.js                        window.NEUMET_CONFIG (URL y clave publicable de Supabase)
+  css/, brand/, img/               Estilos, identidad visual e imágenes
+  js/                              main.js, core/, domain/, views/ (ver assets/js/README.md)
+supabase/
+  migrations/                      Esquema, RLS, RPC y vistas
+  functions/                       Edge Functions (Deno) y deno.json
+  seed/demo.sql                    Datos de demostración (a mano, idempotente)
+  audit/                           Auditoría de RLS
+tests/                             unit, smoke, visual, sql, e2e
+docs/                              Documentación técnica (ver índice)
+vercel.json, .gitleaks.toml        Despliegue y escaneo de secretos
 ```
 
-## Desarrollo local
+## 11. Pendientes y decisiones
 
-No requiere dependencias ni servidor de build. Abrí `index.html` o `adminpanel/index.html` directamente en el navegador, o usá `npx serve` desde la raíz del proyecto.
+- **Alertas personalizables**: hoy `v_alertas` genera cinco tipos sin estado. La propuesta es una sola alerta de «Neumático en estado crítico», con estados, histéresis y umbral por cliente, eje y posición. Diseño en [`docs/15-rotacion-alertas-rendimiento.md`](docs/15-rotacion-alertas-rendimiento.md) (sección B); implementación pendiente.
+- **Rotación**: la acción manual existe; la recomendación automática de qué rotar está diseñada (sección A del mismo documento) y pendiente.
+- **Optimización de vista**: auditoría de rendimiento del indicador de desgaste y reescritura de `v_estado_neumaticos` por neumático (sección C del mismo documento); se aplica según el tamaño de la flota.
+- **Decisiones abiertas** con el dueño del producto: un cliente con más de un usuario global, retención de `mediciones`, plan de Vercel y Supabase, región y política de datos. Lista en [`docs/05-roadmap.md`](docs/05-roadmap.md).
+- **Estado operativo**: prueba de punta a punta con sesión y datos reales, y sugerencias del revisor sin resolver, en [`docs/10-tablero.md`](docs/10-tablero.md).
 
-> **Nota:** el panel admin usa el SDK de Supabase cargado como UMD desde CDN. Si abrís el archivo directamente como `file://` en Chrome/Edge puede haber restricciones de CORS. Recomendado: usar la extensión **Live Server** de VS Code o `npx serve`.
+## 12. Índice de documentación
+
+El índice completo, con el estado de cada documento, está en [`docs/README.md`](docs/README.md). Identidad visual: [`assets/brand/README.md`](assets/brand/README.md).
