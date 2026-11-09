@@ -100,13 +100,13 @@ insert into _r select 'm1', public.neumatico_montar(871::bigint, 3::smallint, nu
   1500, ' prueba ');
 reset role;
 select test.eq('fila montada: datos normalizados',
-  (select marca || '|' || modelo || '|' || numero_quema || '|' || km_previos || '|' || fecha_compra || '|' || precio_unidad || '|' || vida || '|' || condicion
+  (select marca || '|' || modelo || '|' || numero_quema || '|' || km_previos || '|' || fecha_compra || '|' || test.pu(id) || '|' || vida || '|' || condicion
           || '|' || estado || '|' || posicion || '|' || auxilio || '|' || cliente_id
      from public.neumaticos where vehiculo_id = 871 and posicion = 3),
   'Bridgestone|R249|nq-1|4500|2026-01-10|450.56|1|recauchutado|montado|3|false|1');
 select test.eq('idneumatico generado con prefijo CN-', (select idneumatico ~ '^CN-871-3-[0-9a-f]{8}$' from public.neumaticos where vehiculo_id = 871 and posicion = 3), true);
 select test.eq('evento montaje con posición, odómetro, costo, autor y notas',
-  (select tipo || '|' || posicion_destino || '|' || odometro_km || '|' || costo || '|' || (created_by = test.u_cli_a()) || '|' || (notas like 'Montaje en posición libre%quema nq-1%4500 km previos%prueba')
+  (select tipo || '|' || posicion_destino || '|' || odometro_km || '|' || test.cu(id) || '|' || (created_by = test.u_cli_a()) || '|' || (notas like 'Montaje en posición libre%quema nq-1%4500 km previos%prueba')
      from public.eventos_neumatico where neumatico_id = (select id from public.neumaticos where vehiculo_id = 871 and posicion = 3)),
   'montaje|3|1500|450.56|true|true');
 select test.eq('el odómetro del vehículo sube a 1500', (select odometro_km from public.vehiculos where id = 871), 1500);
@@ -201,7 +201,7 @@ select test.eq('misma fila: quema y idneumatico conservados, montada, usado, sin
   'S87-A1|CB-87-a|montado|usado|true|871|4|false');
 select test.eq('no se duplicó la cubierta', (select count(*) from public.neumaticos where numero_quema = 'S87-A1'), 1::bigint);
 select test.eq('evento montaje: costo (primer montaje), sucursal de origen y odómetro',
-  (select tipo || '|' || costo || '|' || sucursal_origen_id || '|' || odometro_km || '|' || (notas like '%cubierta del stock (Norte87)%') from public.eventos_neumatico where neumatico_id = (select id from pg_temp._c where k = 'S87-A1')),
+  (select tipo || '|' || test.cu(id) || '|' || sucursal_origen_id || '|' || odometro_km || '|' || (notas like '%cubierta del stock (Norte87)%') from public.eventos_neumatico where neumatico_id = (select id from pg_temp._c where k = 'S87-A1')),
   'montaje|500.00|871|1100|true');
 select test.eq('el odómetro del vehículo sube', (select odometro_km from public.vehiculos where id = 871), 1100);
 select test.become('authenticated', test.u_cli_a());
@@ -214,7 +214,7 @@ select test.denied('cubierta en posición ocupada', format('select public.neumat
 select test.eq('cubierta reparada con km previos', (public.neumatico_montar(871::bigint, 5::smallint, (select id from pg_temp._c where k = 'S87-A2'))->>'km_previos'), '12000');
 reset role;
 select test.eq('la cubierta reparada conserva su condición y no imputa costo',
-  (select n.condicion || '|' || coalesce(e.costo::text, 'sin costo') from public.neumaticos n join public.eventos_neumatico e on e.neumatico_id = n.id and e.tipo = 'montaje' where n.numero_quema = 'S87-A2'), 'reparado|sin costo');
+  (select n.condicion || '|' || coalesce(test.cu(e.id)::text, 'sin costo') from public.neumaticos n join public.eventos_neumatico e on e.neumatico_id = n.id and e.tipo = 'montaje' where n.numero_quema = 'S87-A2'), 'reparado|sin costo');
 select test.eq('la cubierta de B no se tocó', (select estado || '|' || (vehiculo_id is null) from public.neumaticos where numero_quema = 'S87-B1'), 'almacenado|true');
 -- Admin: la cubierta debe ser del cliente del vehículo
 select test.become('authenticated', test.u_admin());

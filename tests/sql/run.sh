@@ -137,6 +137,10 @@ echo "== migración de calidad de datos (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116000000_calidad_datos.sql"
 echo "== migración de calidad de datos (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116000000_calidad_datos.sql"
+echo "== migración de privilegios de precios (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
+echo "== migración de privilegios de precios (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

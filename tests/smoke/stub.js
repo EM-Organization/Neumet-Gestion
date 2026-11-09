@@ -65,7 +65,9 @@
     {neumatico_id:2,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:1200,km_tramo_actual:null,km_totales:1200,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
     {neumatico_id:3,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false}
   ];
-  var T = {clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
+  // Un evento de montaje con costo (la columna sale al emular los privilegios por columna: privilegios.fixture.js).
+  var evs = [{id:2,cliente_id:1,vehiculo_id:10,neumatico_id:1,idneumatico:null,tipo:'montaje',posicion_origen:null,posicion_destino:1,odometro_km:100000,costo:230.5,notas:null,created_at:D(60)}];
+  var T = {eventos_neumatico:evs,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;

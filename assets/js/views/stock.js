@@ -6,6 +6,7 @@ import { ACTIONS } from '../core/actions.js';
 import { registerView, switchView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { traerPrecios, conValor } from '../core/precios.js';
 import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
 import {
   CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarCubierta, validarEdicion,
@@ -99,13 +100,17 @@ function renderCubiertas(){
 }
 
 async function traerCubiertas(){
-  return fetchAll((from,to)=>{
+  // precio_unidad no se pide por select (privilegios por columna): se incorpora desde neumaticos_precios (admin y perfil global).
+  const [r,p]=await Promise.all([fetchAll((from,to)=>{
     let q=db.from('neumaticos')
-      .select('id,cliente_id,numero_quema,marca,modelo,fecha_compra,precio_unidad,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
+      .select('id,cliente_id,numero_quema,marca,modelo,fecha_compra,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
       .is('vehiculo_id',null).order('id').range(from,to);
     if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
     return q;
-  },{pageSize:PAGE_SIZE,max:50000});
+  },{pageSize:PAGE_SIZE,max:50000}),traerPrecios({soloStock:true})]);
+  if(r.error) return r;
+  if(p.error) return {...r,rows:[],error:p.error};
+  return {...r,rows:conValor(r.rows,p.precios,'precio_unidad')};
 }
 
 export async function loadStock(){

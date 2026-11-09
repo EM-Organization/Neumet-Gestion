@@ -245,7 +245,7 @@ Admin ve todo; un cliente solo lo suyo; el perfil `api` y usuarios sin perfil, 0
 |---|---|---|
 | 1 | Panel de flota con prioridades | `v_estado_neumaticos` (contadores por `estado`; orden: `estado`, `promedio` asc); `v_resumen_flota_cliente` para los totales y el filtro por cliente |
 | 2 | Centro de alertas | `v_alertas order by severidad desc, ultima_medicion_at` (filtrar por `tipo`/`cliente_id`) |
-| 4 | Vista de cliente | `v_resumen_flota_cliente` (una fila), `v_estado_neumaticos where cliente_id=…` y `eventos_neumatico` para costos; el gasto en neumáticos sale de `neumaticos.precio_unidad`/`eventos_neumatico.costo` (no hay vista) |
+| 4 | Vista de cliente | `v_resumen_flota_cliente` (una fila), `v_estado_neumaticos where cliente_id=…` y `eventos_neumatico` para costos; el gasto en neumáticos sale de `neumaticos.precio_unidad`/`eventos_neumatico.costo`, que desde el apéndice K solo se leen con `neumaticos_precios()` / `eventos_costos()` |
 | 5 | Salud de dispositivos | `v_salud_dispositivos` (combinar con `get_unregistered_devices()` para MAC sin registrar) |
 | 8 | Predicción / vida remanente | `v_estado_neumaticos.tasa_mm_semana`, `semanas_hasta_critico`, `semanas_hasta_retiro`; alertas `cruza_critico_pronto` |
 | 9 | Desgaste irregular | `v_estado_neumaticos.desgaste_irregular`, `diferencia_huellas_mm`; alertas `desgaste_irregular` |
@@ -619,3 +619,36 @@ Detección: `medicion_evaluar_calidad` (función pura) y el trigger `AFTER INSER
 Acción manual: `medicion_invalidar(p_medicion_id, p_motivo)` (motivo obligatorio, 3 a 300 caracteres) y `medicion_revalidar(p_medicion_id)`; SECURITY DEFINER, `search_path = ''`; admin, perfil global (su cliente) o perfil de sucursal (su sucursal); resto 42501. Ambas registran en `audit_log` (`INVALIDAR_MEDICION`, `REVALIDAR_MEDICION`; los hallazgos del sistema, `CALIDAD_DETECTADA`).
 
 Límites: una medición etiquetada invalidada sigue impidiendo la atribución por posición (el neumático figura «sin datos»). Una medición antigua que llega tarde no se recomprueba contra las posteriores. No hay pantalla para editar `huella_absurda_mm`. Pruebas: `tests/sql/t_88_calidad_datos.sql`.
+
+# Apéndice K · Precios y costos solo para admin y perfil global (migración `20261116500000_privilegios_precios.sql`)
+
+## K.1 El fallo
+La RLS filtra **filas**, no columnas. `authenticated` tenía `SELECT` de tabla sobre `neumaticos` y `eventos_neumatico`, así que un perfil de **sucursal** (rol `cliente` con `sucursal_id`) leía por la API REST `neumaticos.precio_unidad` y `eventos_neumatico.costo` de los vehículos de su sucursal. La regla del producto es que ese perfil no ve costos ni precios (`stock_neumaticos` ya los esconde: su política es solo del perfil global).
+
+## K.2 Solución: privilegios por columna
+| Pieza | Qué hace |
+|---|---|
+| `REVOKE SELECT` de tabla a `authenticated` sobre `neumaticos` y `eventos_neumatico` | Se otorga de nuevo `SELECT (columna, …)` para todas **menos** `precio_unidad` y `costo`. Pedir esas columnas, o `*`, filtrarlas, ordenarlas o embeberlas (`vehiculos?select=neumaticos(precio_unidad)`) responde **403 / 42501** a todos los autenticados, admin incluido. `anon` sigue sin nada |
+| `precios_visibles()` | `SECURITY DEFINER`, `search_path=''`, `stable`; `true` para el admin y para el perfil **global** de un cliente (rol `cliente`, sin sucursal); `false` para sucursal, rol `api`, sin perfil. Solo `authenticated` ejecuta |
+| `neumaticos_precios(p_vehiculo bigint default null, p_solo_stock boolean default false)` → `(id, precio_unidad)` | Único camino de lectura del precio. Solo filas con precio, ordenadas por `id` (se pagina con `.order('id').range()`: PostgREST corta en 1.000). Alcance igual al de la RLS de `neumaticos`: admin todo; global los neumáticos de vehículos de su cliente y las cubiertas de stock de su cliente. Para los demás: cero filas (no error) |
+| `eventos_costos(p_vehiculo bigint default null)` → `(id, costo)` | Igual para el costo de los eventos (alcance de `eventos_cliente_select`: eventos del propio cliente) |
+
+Las escrituras no cambian: `INSERT`/`UPDATE` siguen siendo privilegios de tabla y solo el admin tiene política. Las RPC `SECURITY DEFINER` (`neumatico_cambiar`, `neumatico_montar`, `stock_cubierta_*`) leen y escriben como su dueño y no se ven afectadas; copian el precio al evento (`costo`) como antes.
+
+## K.3 Qué NO cambia y por qué sigue funcionando
+Las vistas `security_invoker` (`v_estado_neumaticos`, `v_alertas`, `v_mediciones_neumatico`, `v_ultima_medicion`, `v_km_cubierta`, `v_resumen_flota_cliente`) y las funciones `SECURITY INVOKER` (`ultimas_mediciones`, `odometro_anomalias`, `posiciones_medidas_sin_neumatico`) leen estas tablas con los privilegios del invocante, pero **ninguna lee `precio_unidad` ni `costo`**: se comprobó por rol. Los privilegios de columna no alteran el plan: `tests/perf/bench.sh` sobre 3 clientes × 300 vehículos (8.820 neumáticos) da los mismos tiempos antes y después (p. ej. `v_estado_neumaticos` 1.000 filas como cliente 21,4 → 21,8 ms; `v_km_cubierta` completa como admin 224 → 222 ms; `v_alertas` 29,9 → 29,8 ms). `neumaticos_precios()` cuesta unos 0,8 ms para un vehículo y 3 a 5 ms para toda la base de esa prueba.
+
+## K.4 Contrato para migraciones futuras
+- Una **columna nueva** de `neumaticos` o `eventos_neumatico` no es legible hasta que la migración haga `grant select (columna) on …`. `tests/sql/t_90_precios_solo_global.sql` falla si alguna columna (salvo `precio_unidad`/`costo`) no tiene el permiso.
+- **Ninguna vista `security_invoker` ni función `SECURITY INVOKER` puede leer `precio_unidad` o `costo`**: fallaría con 42501 para todos. Debe usar `neumaticos_precios()` / `eventos_costos()`, o ser `SECURITY DEFINER` con `precios_visibles()` en su condición y su propio filtro de alcance. **F4 (costos y CPK, `v_costo_cubierta`) debe reutilizar `precios_visibles()` como su `costos_visibles()`** (misma regla) y reescribir las lecturas de `n.precio_unidad` y `e.costo`.
+- `INSERT ... ON CONFLICT DO UPDATE SET precio_unidad = excluded.precio_unidad` también exige `SELECT` sobre la columna: no usar `upsert` con ella. El panel del admin (Neumáticos del vehículo) actualiza por `id` o inserta. Los `RETURNING`/`.select()` tras escribir no pueden pedir `precio_unidad` ni `costo`.
+- `select('*')` sobre `neumaticos` o `eventos_neumatico` ya no funciona para `authenticated`: usar listas de columnas.
+
+## K.5 Panel
+`core/precios.js` (`traerPrecios`, `traerCostos`) llama a las funciones solo si `puedeVerPrecios()` (admin o perfil global; espejo de `precios_visibles()` en `domain/rol.js`): el perfil de sucursal no hace la llamada. Se incorporan por `id` con `domain/precios.js` (`conValor`). Usan los precios: **Stock** (`views/stock.js`, cubiertas sin montar), **Ciclo de vida** (costo de cada evento) y **Neumáticos del vehículo** del admin (`views/neumaticos.js`, que ya no hace `upsert` y no guarda si no pudo cargar los precios, para no pisarlos con vacío). El reporte imprimible dejó de pedir `precio_unidad` (no lo mostraba).
+
+## K.6 Pruebas
+SQL `tests/sql/t_90_precios_solo_global.sql`: contrato de privilegios (tabla, columna, columnas nuevas, `anon`, `PUBLIC`), sucursal Norte y Sur (denegado por select directo, `select *`, `to_jsonb`, filtro, orden, agregado y subconsulta; sigue leyendo el resto con su RLS; funciones vacías; vistas y funciones existentes; `neumatico_cambiar` con precio), global, admin (incluidas escrituras: insert, update por id, `RETURNING`; el upsert con `excluded.precio_unidad` se documenta como denegado), otro cliente, rol `api`, sin perfil y `anon`. Los tests existentes que leían precio o costo como `authenticated` usan ahora `test.pu(id)` / `test.cu(id)` (`01_fixtures.sql`). Smoke: `privilegios.fixture.js` emula los privilegios (cualquier `select('*')` o con las columnas sensibles falla con 42501 y la sucursal no puede llamar a las funciones; `precios.flow.js`). Unit `tests/unit/precios.test.mjs`. E2E `tests/e2e/specs/precios-solo-global.mjs`: matriz por la API real (403/42501 en todas las formas de pedir, funciones por rol contra la verdad SQL, Otra Empresa SA aislada, `anon`), el panel de sucursal sin precios, Stock y Ciclo de vida con importes, y la edición del admin sin pisar los demás precios.
+
+## K.7 Aplicación y riesgos
+Aplicar con `supabase db push --remote` **antes** de fusionar el front. Orden de versión: entre `20261116000000` (calidad de datos) y `20261117000000` (costos y CPK). El front anterior (`select('*')` en `neumaticos` y `eventos_neumatico`, `upsert` del admin, `precio_unidad` en Stock) deja de funcionar al aplicar la migración, y el nuevo front no funciona sin ella (llama a las funciones). Cualquier integración externa que lea esas dos columnas con un usuario `authenticated` recibirá 42501; `service_role` (Edge Functions, API de proveedor) no cambia. La API de proveedor no devuelve precios. Si algún día se habilita Realtime sobre `neumaticos` o `eventos_neumatico`, tener en cuenta que Realtime filtra filas con la RLS pero no aplica privilegios de columna: las dos tablas no deben publicarse (hoy no hay ninguna publicación ni suscripción).
