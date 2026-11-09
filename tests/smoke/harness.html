@@ -8,6 +8,7 @@
 <script src="/tests/smoke/ciclo.flow.js"></script>
 <script src="/tests/smoke/cambio.flow.js"></script>
 <script src="/tests/smoke/stock.flow.js"></script>
+<script src="/tests/smoke/precios.flow.js"></script>
 <script src="/tests/smoke/montar.flow.js"></script>
 <script src="/tests/smoke/calidad.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
@@ -25,7 +26,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
@@ -176,6 +177,7 @@
     if(!cliMode) await window.cicloFlow(w,d,sleep,fail,log);
     await window.cambioFlow(w,d,sleep,fail,log); // admin y cliente: tests/smoke/cambio.flow.js
     await window.stockFlow(w,d,sleep,fail,log,cliMode,/[?&]secuser=1/.test(location.search)); // stock de cubiertas y buscador: tests/smoke/stock.flow.js
+    await window.preciosFlow(w,d,sleep,fail,log,cliMode,/[?&]secuser=1/.test(location.search)); // precios solo admin y perfil global: tests/smoke/precios.flow.js
     // --- fin clientes ---
     // --- salud de dispositivos y ficha de cliente: tests/smoke/salud.flow.js ---
     await window.saludFlow(w,d,sleep,fail,log,cliMode);
@@ -190,6 +192,8 @@
     log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
     log.push('xss(<Beta> crudo)='+(d.body.innerHTML.indexOf('<Beta>')===-1?'no':'SI'));
   }catch(e){ if(!(e&&e.message==='__done')) fail('harness: '+(e&&e.stack||e)); }
+  // Ningún modo puede pedir precio_unidad / costo por select (la base responde 42501): privilegios.fixture.js lo registra.
+  try{ var pfx=document.querySelector('iframe').contentWindow.__preciosFx; if(pfx&&pfx.violaciones.length) fail('select de columnas sin permiso: '+pfx.violaciones.join(' ; ')); }catch(e){ /* sin iframe: la carga ya falló */ }
   var out=document.createElement('pre'); out.id='smoke-log'; out.textContent='\n'+log.join('\n')+'\n'+errors.join('\n'); document.body.appendChild(out);
   document.title = errors.length ? 'SMOKE:FAIL:'+errors.slice(0,5).join(' | ').slice(0,400) : 'SMOKE:OK';
 })();

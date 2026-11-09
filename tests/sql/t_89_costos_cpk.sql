@@ -366,4 +366,38 @@ select test.denied('anon no lee la tabla', $$select count(*) from public.costos_
 select test.denied('anon no ejecuta cpk_por_grupo', $$select * from public.cpk_por_grupo('marca')$$);
 reset role;
 
+-- ---------------------------------------------------------------------------------------------
+-- G. Con privilegios por columna (20261116500000): la vista lee precio y costo solo por costo_cubierta_items
+-- ---------------------------------------------------------------------------------------------
+select test.become('authenticated', test.u_admin());
+select test.denied('admin: precio_unidad no se lee por la tabla (42501)', $$select precio_unidad from public.neumaticos limit 1$$);
+select test.denied('admin: costo de eventos no se lee por la tabla (42501)', $$select costo from public.eventos_neumatico limit 1$$);
+select test.eq('admin: aun así la vista da el costo (compra desde precio_unidad) y el CPK por km recorrido', test.c89('C89-P1'), '1200.00|0.120000|NULL|false|true');
+select test.eq('admin: cpk_por_grupo funciona', (select round(cpk, 6) from public.cpk_por_grupo('marca') where clave = 'Beta'), 0.1);
+select test.eq('admin: costo_cubierta_items de una cubierta', (select total from public.costo_cubierta_items((select id from _ids89 where idn = 'C89-P3'))), 900.00);
+reset role;
+select test.become('authenticated', test.u_cli_a());
+select test.denied('global: precio_unidad no se lee por la tabla (42501)', $$select precio_unidad from public.neumaticos limit 1$$);
+select test.eq('global: la vista da el costo de su cubierta', test.c89('C89-P3'), '900.00|0.090000|NULL|false|true');
+select test.eq('global: cpk_por_grupo funciona', (select round(cpk, 6) from public.cpk_por_grupo('marca') where clave = 'Beta'), 0.1);
+select test.eq('global: costo_cubierta_items de una cubierta ajena no devuelve filas',
+  (select count(*) from public.costo_cubierta_items((select id from _ids89 where idn = 'C89-X1'))), 0::bigint);
+reset role;
+select test.become('authenticated', test.u_c89n());
+select test.denied('sucursal: precio_unidad no se lee por la tabla (42501)', $$select precio_unidad from public.neumaticos limit 1$$);
+select test.denied('sucursal: costo de eventos no se lee por la tabla (42501)', $$select costo from public.eventos_neumatico limit 1$$);
+select test.eq('sucursal: la vista no da filas', (select count(*) from public.v_costo_cubierta), 0::bigint);
+select test.eq('sucursal: costo_cubierta_items no devuelve filas ni de su propia cubierta',
+  (select count(*) from public.costo_cubierta_items((select id from _ids89 where idn = 'C89-P1'))), 0::bigint);
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select test.eq('otro cliente: costo_cubierta_items de una cubierta de A no devuelve filas',
+  (select count(*) from public.costo_cubierta_items((select id from _ids89 where idn = 'C89-P1'))), 0::bigint);
+reset role;
+select test.become('anon', null);
+select test.denied('anon no ejecuta costo_cubierta_items', $$select * from public.costo_cubierta_items(1)$$);
+reset role;
+select test.eq('costo_cubierta_items: security definer con search_path vacío y sin acceso de anon',
+  (select prosecdef and proconfig = '{search_path=\"\"}' and not has_function_privilege('anon', oid, 'execute') from pg_proc where oid = 'public.costo_cubierta_items(bigint)'::regprocedure), true);
+
 rollback;

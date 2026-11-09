@@ -2,7 +2,8 @@
 -- NEUMET · Costos por cubierta y costo por km, CPK (hoja de ruta F4)
 -- =============================================================================
 -- Requiere 20261106000000 (init: neumaticos, audit_row), 20261106020000 (eventos_neumatico.costo),
--- 20261110010000 (sucursal_autorizar_gestion) y 20261115000000 (v_km_cubierta).
+-- 20261110010000 (sucursal_autorizar_gestion), 20261115000000 (v_km_cubierta) y 20261116500000 (precios_visibles,
+-- privilegios por columna de precio_unidad y costo).
 -- Sin begin/commit: la herramienta que aplica la migración ya la envuelve. Idempotente (reaplicable). No modifica
 -- datos existentes. Diseño y reglas: docs/08-esquema-datos.md (apéndice J).
 --
@@ -28,8 +29,8 @@
 -- cubierta están en monedas distintas, el total, el desglose y el CPK son NULL y moneda_mixta es true: nunca se suman
 -- monedas distintas.
 --
--- Costo de las consultas: sin CTE recursiva ni funciones por fila propias; la vista usa un LATERAL correlacionado por
--- neumatico_id que solo toca índices (eventos_neumatico_neum_idx, costos_neumatico_neum_idx). El costo de km por
+-- Costo de las consultas: sin CTE recursiva; el costo por cubierta lo calcula costo_cubierta_items(neumatico_id), una
+-- llamada por fila que solo toca índices (eventos_neumatico_neum_idx, costos_neumatico_neum_idx). El costo de km por
 -- cubierta lo aporta v_km_cubierta (una llamada a km_tramos_cubierta por fila).
 -- =============================================================================
 
@@ -86,29 +87,6 @@ drop policy if exists costos_cliente_select on public.costos_neumatico;
 create policy costos_cliente_select on public.costos_neumatico for select to authenticated
   using (cliente_id = (select public.current_cliente_id())
          and (select public.current_sucursal_id()) is null);
-
--- -----------------------------------------------------------------------------
--- 3. costos_visibles(): quién puede ver costos (interno de la vista)
--- -----------------------------------------------------------------------------
--- admin y perfil global de un cliente. El perfil de sucursal, api, sin perfil y anon: false. Un rol que ya omite la
--- RLS (service_role, dueño, superusuario) ve todo, como en las tablas.
-create or replace function public.costos_visibles()
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select case
-    when coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
-      exists (select 1 from public.perfiles p
-               where p.user_id = (select auth.uid())
-                 and (p.rol = 'admin' or (p.rol = 'cliente' and p.cliente_id is not null and p.sucursal_id is null)))
-    else true
-  end
-$$;
-revoke all on function public.costos_visibles() from public, anon;
-grant execute on function public.costos_visibles() to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 4. RPC costo_registrar y costo_eliminar
@@ -207,10 +185,134 @@ revoke all on function public.costo_eliminar(bigint) from public, anon;
 grant execute on function public.costo_eliminar(bigint) to authenticated;
 
 -- -----------------------------------------------------------------------------
+-- 5a. costo_cubierta_items(p_neumatico): agregado de costos de una cubierta (interno de la vista)
+-- -----------------------------------------------------------------------------
+-- 20261116500000 quitó a `authenticated` el SELECT de neumaticos.precio_unidad y eventos_neumatico.costo: una vista
+-- security_invoker que los leyera daría 42501 a todos. Por eso el agregado lo calcula esta función SECURITY DEFINER
+-- (search_path = ''), que solo responde por una cubierta que quien llama puede ver y SOLO si precios_visibles()
+-- (admin o perfil global; es el contrato de esa migración: no hay otra regla de visibilidad de costos). Devuelve
+-- agregados (sin fechas ni notas). Para sucursal, api, sin perfil, otro cliente y anon no devuelve filas. Un rol que ya
+-- omite la RLS (service_role, dueño, superusuario) ve todo, como en las tablas.
+-- Una fila con n_items = 0 si la cubierta no tiene ningún costo; también devuelve los datos de la cubierta que usa la
+-- vista (marca, modelo, vida, condición, fecha de alta y sucursal efectiva).
+-- La vista depende de la función: se elimina antes (y se recrea más abajo) para poder cambiar sus columnas al reaplicar.
+drop view if exists public.v_costo_cubierta;
+drop function if exists public.costo_cubierta_items(bigint);
+create or replace function public.costo_cubierta_items(p_neumatico bigint)
+returns table (
+  n_items       integer,
+  n_monedas     integer,
+  moneda        text,
+  monedas       text[],
+  total         numeric,
+  por_concepto  jsonb,
+  marca         text,
+  modelo        text,
+  vida          smallint,
+  condicion     text,
+  fecha_alta    date,
+  sucursal_id   bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+rows 1
+as $$
+declare
+  v_precio numeric;
+  v_marca  text;
+  v_modelo text;
+  v_vida   smallint;
+  v_cond   text;
+  v_alta   date;
+  v_suc    bigint;
+  v_rol    text;
+  v_cli    bigint;
+begin
+  if coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
+    if not public.precios_visibles() then
+      return;
+    end if;
+    select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();
+    if v_rol is distinct from 'admin' then
+      -- Perfil global: la cubierta debe estar en un vehículo de su cliente o en su stock.
+      perform 1 from public.neumaticos n
+        left join public.vehiculos v on v.id = n.vehiculo_id
+       where n.id = p_neumatico
+         and ((v.id is not null and v.cliente_id = v_cli) or (n.vehiculo_id is null and n.cliente_id = v_cli));
+      if not found then
+        return;
+      end if;
+    end if;
+  end if;
+
+  -- Datos de la cubierta (la vista no vuelve a unirse a neumaticos: evita repetir la RLS por fila).
+  select n.precio_unidad, n.marca, n.modelo, n.vida, n.condicion, coalesce(n.fecha_compra, n.created_at::date),
+         coalesce(v.sucursal_id, n.sucursal_id)
+    into v_precio, v_marca, v_modelo, v_vida, v_cond, v_alta, v_suc
+    from public.neumaticos n
+    left join public.vehiculos v on v.id = n.vehiculo_id
+   where n.id = p_neumatico;
+  if not found then
+    return;
+  end if;
+
+  return query
+  select a.n_items, a.n_monedas, a.moneda, a.monedas, a.total, a.por_concepto,
+         v_marca, v_modelo, v_vida, v_cond, v_alta, v_suc
+  from (
+  select
+    count(*)::int as n_items,
+    count(distinct g.moneda)::int as n_monedas,
+    min(g.moneda) as moneda,
+    array_agg(distinct g.moneda) as monedas,
+    sum(g.monto) as total,
+    jsonb_object_agg(g.concepto, g.monto) as por_concepto
+  from (
+    select i.concepto, i.moneda, sum(i.monto) as monto
+    from (
+      -- Entradas manuales
+      select m.concepto, m.moneda, m.monto
+        from public.costos_neumatico m
+       where m.neumatico_id = p_neumatico
+      union all
+      -- Eventos con costo que no son el montaje (el montaje repite el precio de compra)
+      select case e.tipo when 'reparacion' then 'reparacion' when 'reencauche' then 'recauchutado' else 'otro' end,
+             'UYU', e.costo
+        from public.eventos_neumatico e
+       where e.neumatico_id = p_neumatico and e.costo is not null and e.tipo <> 'montaje'
+      union all
+      -- Compra: precio_unidad, salvo que una entrada manual 'compra' la corrija
+      select 'compra', 'UYU', v_precio
+       where v_precio is not null
+         and not exists (select 1 from public.costos_neumatico m
+                          where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+      union all
+      -- Compra sin precio_unidad: el costo del evento de montaje (una sola vez)
+      select 'compra', 'UYU', max(e.costo)
+        from public.eventos_neumatico e
+       where v_precio is null and e.neumatico_id = p_neumatico
+         and e.tipo = 'montaje' and e.costo is not null
+         and not exists (select 1 from public.costos_neumatico m
+                          where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+      having max(e.costo) is not null
+    ) i
+    group by i.concepto, i.moneda
+  ) g
+  ) a;
+end
+$$;
+revoke all on function public.costo_cubierta_items(bigint) from public, anon;
+grant execute on function public.costo_cubierta_items(bigint) to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- 5. v_costo_cubierta
 -- -----------------------------------------------------------------------------
 -- Una fila por cubierta visible (la RLS de neumaticos decide cuáles) y solo para quien puede ver costos
--- (costos_visibles): un perfil de sucursal no recibe filas, aunque ya lea neumaticos.precio_unidad y los eventos.
+-- (precios_visibles, la regla de 20261116500000): un perfil de sucursal no recibe filas. Precio y costo de eventos se leen
+-- solo por costo_cubierta_items (SECURITY DEFINER), porque la vista security_invoker no tiene SELECT sobre esas columnas.
+-- Un rol que ya omite la RLS (service_role, dueño, superusuario) ve todo, como en las tablas.
 -- security_invoker: la RLS de neumaticos, costos_neumatico y eventos_neumatico es la de quien consulta.
 --
 -- Columnas de costo:
@@ -238,15 +340,15 @@ select
   k.neumatico_id,
   k.cliente_id,
   k.vehiculo_id,
-  coalesce(v.sucursal_id, n.sucursal_id)                                   as sucursal_id,
+  c.sucursal_id,
   k.idneumatico,
   k.numero_quema,
-  n.marca,
-  n.modelo,
-  n.vida,
-  n.condicion,
+  c.marca,
+  c.modelo,
+  c.vida,
+  c.condicion,
   k.estado,
-  coalesce(n.fecha_compra, n.created_at::date)                             as fecha_alta,
+  c.fecha_alta,
   (c.n_items > 0)                                                          as tiene_costo,
   case when c.n_monedas = 1 then c.moneda end                              as moneda,
   c.monedas,
@@ -263,49 +365,8 @@ select
   case when c.n_monedas = 1 and k.km_confiable and k.km_totales > 0
        then c.total / k.km_totales end                                     as cpk_carcasa
 from public.v_km_cubierta k
-join public.neumaticos n on n.id = k.neumatico_id
-left join public.vehiculos v on v.id = n.vehiculo_id
-left join lateral (
-  select
-    count(*)::int                  as n_items,
-    count(distinct g.moneda)::int  as n_monedas,
-    min(g.moneda)                  as moneda,
-    array_agg(distinct g.moneda)   as monedas,
-    sum(g.monto)                   as total,
-    jsonb_object_agg(g.concepto, g.monto) as por_concepto
-  from (
-    select i.concepto, i.moneda, sum(i.monto) as monto
-    from (
-      -- Entradas manuales
-      select m.concepto, m.moneda, m.monto
-        from public.costos_neumatico m
-       where m.neumatico_id = k.neumatico_id
-      union all
-      -- Eventos con costo que no son el montaje (el montaje repite el precio de compra)
-      select case e.tipo when 'reparacion' then 'reparacion' when 'reencauche' then 'recauchutado' else 'otro' end,
-             'UYU', e.costo
-        from public.eventos_neumatico e
-       where e.neumatico_id = k.neumatico_id and e.costo is not null and e.tipo <> 'montaje'
-      union all
-      -- Compra: precio_unidad, salvo que una entrada manual 'compra' la corrija
-      select 'compra', 'UYU', n.precio_unidad
-       where n.precio_unidad is not null
-         and not exists (select 1 from public.costos_neumatico m
-                          where m.neumatico_id = k.neumatico_id and m.concepto = 'compra')
-      union all
-      -- Compra sin precio_unidad: el costo del evento de montaje (una sola vez)
-      select 'compra', 'UYU', max(e.costo)
-        from public.eventos_neumatico e
-       where n.precio_unidad is null and e.neumatico_id = k.neumatico_id
-         and e.tipo = 'montaje' and e.costo is not null
-         and not exists (select 1 from public.costos_neumatico m
-                          where m.neumatico_id = k.neumatico_id and m.concepto = 'compra')
-      having max(e.costo) is not null
-    ) i
-    group by i.concepto, i.moneda
-  ) g
-) c on true
-where (select public.costos_visibles());
+join lateral public.costo_cubierta_items(k.neumatico_id) c on true
+where (coalesce(current_setting('role', true), 'none') not in ('authenticated', 'anon') or (select public.precios_visibles()));
 
 comment on view public.v_costo_cubierta is
   'Costo y CPK por cubierta (km recorridos; cpk_carcasa incluye km previos): compra + eventos con costo + costos_neumatico sin doble conteo; moneda mixta -> NULL; cpk solo con km confiables (docs/08 apéndice J).';

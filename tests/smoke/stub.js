@@ -76,7 +76,9 @@
     {grupo:'marca',clave:'Michelin',cliente_id:null,moneda:'UYU',n_neumaticos:6,n_sin_km:1,km_recorridos:60000,costo_total:'6000.00',cpk:'0.100000',muestra_baja:false},
     {grupo:'marca',clave:'Pirelli',cliente_id:null,moneda:'UYU',n_neumaticos:0,n_sin_km:2,km_recorridos:0,costo_total:null,cpk:null,muestra_baja:true}
   ];
-  var T = {v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
+  // Un evento de montaje con costo (la columna sale al emular los privilegios por columna: privilegios.fixture.js).
+  var evs = [{id:2,cliente_id:1,vehiculo_id:10,neumatico_id:1,idneumatico:null,tipo:'montaje',posicion_origen:null,posicion_destino:1,odometro_km:100000,costo:230.5,notas:null,created_at:D(60)}];
+  var T = {eventos_neumatico:evs,v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;

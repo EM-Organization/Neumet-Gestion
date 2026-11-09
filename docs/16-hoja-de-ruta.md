@@ -28,6 +28,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta, migración `20261115000000` pendiente de aplicar: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
+| Precios y costos solo para admin y perfil global | En curso (PR `fix/precios-solo-global`, migración `20261116500000` pendiente de aplicar: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). F4 debe leerlos con `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubiertas`.
@@ -55,10 +56,11 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 
 ### F4 · Costos y costo por km (CPK)
 - Entradas de costo por cubierta y vida: compra, reparación, recauchutado, montaje.
+- Visibilidad: solo admin y perfil global. `precio_unidad` y `costo` no tienen SELECT para `authenticated` (apéndice K de `docs/08`): las vistas y funciones de F4 los leen con `neumaticos_precios()` / `eventos_costos()` o como `SECURITY DEFINER` con `precios_visibles()` en la condición, y reutilizan esa función como regla de visibilidad.
 - **CPK observado** = costo acumulado / km acumulado, con carcasa, banda y tramo explícitos; sin dato cuando los km son cero.
 - **CPK final de carcasa** = costo neto total / suma de km de todas las vidas.
 - Reportes por marca, modelo, banda y sucursal, mostrando tamaño de muestra y km (no promediar CPK individuales sin ponderar).
-- Estado: implementado en el PR de costos (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; falta agrupar por banda, que llega con F5) y la interfaz. El CPK es por km recorridos (sin km previos). **Limitación temporal:** el perfil de sucursal aún puede leer `precio_unidad` y el costo de eventos por las tablas; se cierra en el PR de privilegios por columna. **Pendiente:** CPK por vida (F5), eliminar costos desde la interfaz, conversión de monedas.
+- Estado: implementado en el PR de costos (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; falta agrupar por banda, que llega con F5) y la interfaz. El CPK es por km recorridos (sin km previos). El perfil de sucursal no ve costos (privilegios por columna, apéndice K). **Pendiente:** CPK por vida (F5), eliminar costos desde la interfaz, conversión de monedas.
 
 ### F5 · Recauchutado por carcasa
 - Flujo: selección → envío al proveedor → dictamen → aceptación o rechazo → nueva banda.

@@ -1,5 +1,14 @@
 -- Datos de prueba (relativos a now() de esta transacción; las tasas dependen
 -- solo de diferencias entre fechas, por lo que son deterministas).
+-- Lectura de precio y costo en las aserciones: desde 20261116500000 `authenticated` no tiene SELECT sobre
+-- neumaticos.precio_unidad ni eventos_neumatico.costo. Estas funciones (dueño: superusuario) las leen sin
+-- privilegios de columna; las aserciones de permisos reales están en t_90.
+create or replace function test.pu(p_id bigint) returns numeric language sql stable security definer set search_path = ''
+  as $$ select precio_unidad from public.neumaticos where id = p_id $$;
+create or replace function test.cu(p_id bigint) returns numeric language sql stable security definer set search_path = ''
+  as $$ select costo from public.eventos_neumatico where id = p_id $$;
+grant execute on function test.pu(bigint), test.cu(bigint) to public;
+
 begin;
 insert into auth.users (id, email) values
   (test.u_admin(), 'admin@t'), (test.u_cli_a(), 'a@t'), (test.u_cli_b(), 'b@t'),

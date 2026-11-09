@@ -42,11 +42,11 @@ select test.eq('viejo en baja con motivo y fecha',
   (select estado || '|' || motivo_baja || '|' || (fecha_baja is not null) from public.neumaticos where idneumatico='T-1-1'), 'baja|Corte lateral|true');
 select test.eq('viejo fuera de la posición 1', (select posicion <> 1 from public.neumaticos where idneumatico='T-1-1'), true);
 select test.eq('nuevo montado en P1 con marca/modelo/precio del stock',
-  (select marca||'|'||modelo||'|'||precio_unidad||'|'||estado||'|'||vida||'|'||stock_id from public.neumaticos where vehiculo_id=1 and posicion=1), 'Marca X|Modelo Y|1500.50|montado|0|701');
+  (select marca||'|'||modelo||'|'||test.pu(id)||'|'||estado||'|'||vida||'|'||stock_id from public.neumaticos where vehiculo_id=1 and posicion=1), 'Marca X|Modelo Y|1500.50|montado|0|701');
 select test.eq('stock descontado', (select cantidad from public.stock_neumaticos where id=701), 1);
 select test.eq('eventos: baja + montaje con odómetro',
   (select string_agg(tipo || ':' || odometro_km, ',' order by id) from public.eventos_neumatico where created_by = test.u_admin()), 'baja:2000,montaje:2000');
-select test.eq('costo del montaje = precio', (select costo from public.eventos_neumatico where tipo='montaje' and created_by = test.u_admin()), 1500.50);
+select test.eq('costo del montaje = precio', (select test.cu(id) from public.eventos_neumatico where tipo='montaje' and created_by = test.u_admin()), 1500.50);
 select test.eq('odómetro del vehículo sube', (select odometro_km from public.vehiculos where id=1), 2000);
 select test.eq('idneumatico generado único', (select count(distinct idneumatico) from public.neumaticos where vehiculo_id=1), 10::bigint);
 reset role;
@@ -60,7 +60,7 @@ select test.eq('cliente global: cambio con neumático ingresado',
 select test.eq('viejo: reencauche suma vida y queda almacenado',
   (select vida||'|'||estado from public.neumaticos where idneumatico='T-1-2'), '1|almacenado');
 select test.eq('nuevo: datos ingresados',
-  (select marca||'|'||modelo||'|'||codigo||'|'||precio_unidad||'|'||vida from public.neumaticos where vehiculo_id=1 and posicion=2), 'Pirelli|FR85|AB-1|1200.00|1');
+  (select marca||'|'||modelo||'|'||codigo||'|'||test.pu(id)||'|'||vida from public.neumaticos where vehiculo_id=1 and posicion=2), 'Pirelli|FR85|AB-1|1200.00|1');
 select test.eq('eventos: desmontaje + reencauche + montaje',
   (select string_agg(tipo, ',' order by id) from public.eventos_neumatico where created_by = test.u_cli_a()), 'desmontaje,reencauche,montaje');
 select test.eq('odómetro repetido en el cambio deja el del vehículo igual', (select odometro_km from public.vehiculos where id=1), 1000);

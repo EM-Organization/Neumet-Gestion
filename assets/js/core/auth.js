@@ -1,6 +1,6 @@
 import { db } from './supabase.js';
 import { userError } from './ui.js';
-import { decidirRol, puedeUsarPanel, ROL_ADMIN, ROL_SIN_ACCESO } from '../domain/rol.js';
+import { decidirRol, puedeUsarPanel, puedeVerPrecios as rolVePrecios, ROL_ADMIN, ROL_SIN_ACCESO } from '../domain/rol.js';
 
 // ── MODO CLIENTE ─────────────────────────────────
 // null = admin (ve todo), número = cliente (ve solo lo suyo). Exportados como live bindings (solo auth.js los modifica).
@@ -15,6 +15,8 @@ export function isClienteMode(){ return currentClienteId!==null; }
 // Defensa en profundidad: nav.js y los loaders la consultan, sin confiar en que la pantalla correcta esté visible.
 export function panelHabilitado(){ return puedeUsarPanel(currentRol); }
 export function esAdmin(){ return currentRol===ROL_ADMIN; }
+// Admin o perfil global: los únicos que reciben precios y costos (el de sucursal no; la base lo niega con 42501).
+export function puedeVerPrecios(){ return rolVePrecios(currentRol,currentSucursalId); }
 
 // Hooks: las vistas se enganchan sin que auth.js las importe.
 //   onLogin(({cliente,user})=>...)  se ejecuta tras mostrar la app (en orden de registro)

@@ -48,6 +48,7 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
 - **km-cubierta**: `v_km_cubierta` por rol en la API real (cada perfil ve solo sus neumáticos; anon, sin perfil y rol `api` nada), el panel de la rueda
   muestra los km de la vista (tramo actual, «Sin dato», notas «Estimado») y `odometro_anomalias` respeta el alcance. Crea un vehículo propio y lo borra.
 - **costos-cpk**: `v_costo_cubierta` y `costos_neumatico` por rol en la API real (solo admin y perfil global; sucursal, otro cliente, sin perfil, rol `api` y anon nada), `costo_registrar` rechazada con 42501 para sucursal y otro cliente, el panel de la rueda muestra costo y CPK de la vista y «Registrar costo» escribe y recarga, con auditoría. Crea un vehículo propio y lo borra.
+- **precios-solo-global**: nadie lee `neumaticos.precio_unidad` ni `eventos_neumatico.costo` por select (403/42501 en todas las formas: directa, `*`, filtro, orden, embebida; `anon` también); `neumaticos_precios()` y `eventos_costos()` por rol contra la verdad SQL (admin todo, global lo suyo, sucursal/`api`/sin perfil nada, Otra Empresa SA aislada); vistas y RPC existentes intactas; el panel de sucursal no pide ni muestra importes; Stock y Ciclo de vida los muestran a global y admin; la edición de neumáticos del admin no pisa los demás precios.
 - **contrato**: ninguna petición real falló por columna/relación/función inexistente; cada `select()`/`rpc()` escrito
   en `assets/js` existe en la base.
 
