@@ -114,6 +114,8 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (cpkTxt.indexOf('Michelin') === -1 || cpkTxt.indexOf('UYU 0,100 por km') === -1 || cpkTxt.indexOf('60.000 km') === -1) fail('reportes: fila Michelin: ' + cpkTxt);
   if (cpkTxt.indexOf('Muestra baja') === -1 || cpkTxt.indexOf('Sin dato') === -1 || cpkTxt.indexOf('2 sin km confiables') === -1) fail('reportes: fila de muestra baja: ' + cpkTxt);
   if (d.querySelector('#view-reportes').textContent.indexOf('Comparar marcas sin ajustar por eje, carga y época puede engañar.') === -1) fail('reportes: falta el aviso de comparación');
+  if (cpkTxt.indexOf('no se filtra por la sucursal elegida') === -1) fail('reportes: sin la nota de sucursal elegida: ' + cpkTxt);
+  if (cpkTxt.indexOf('km recorridos (sin los km previos)') === -1) fail('reportes: sin la definición del costo por km');
   if (d.querySelector('#rep-cpk-csv').disabled) fail('reportes: CSV de costo por km deshabilitado con datos');
   setSel('#sec-select', ''); await sleep(300);
   log.push('selector-flow: ok, vehEqs=' + fx.vehEqs.join(','));

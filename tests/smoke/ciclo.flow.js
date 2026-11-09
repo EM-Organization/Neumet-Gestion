@@ -37,7 +37,7 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   if($('#ciclo-costo-wrap').hidden) fail('ciclo: sección de costos oculta para quien puede verlos');
   if(cT.querySelector('table')){
     var cTxt = cT.textContent.replace(/\s+/g, ' ');
-    if(cTxt.indexOf('UYU 1.900,00') === -1 || cTxt.indexOf('UYU 0,100 por km') === -1) fail('ciclo: costo y CPK confiables: ' + cTxt);
+    if(cTxt.indexOf('UYU 1.900,00') === -1 || cTxt.indexOf('UYU 0,475 por km') === -1) fail('ciclo: costo y CPK confiables: ' + cTxt);
     if(cTxt.indexOf('UYU 0,500 por km') === -1 || cTxt.indexOf('Estimado: faltan lecturas de odómetro') === -1) fail('ciclo: CPK estimado sin la nota: ' + cTxt);
     if(cTxt.indexOf('Sin costos registrados') === -1) fail('ciclo: neumático sin costos: ' + cTxt);
     if(!cT.querySelector('[data-action="cicloRegistrarCosto"]')) fail('ciclo: falta «Registrar costo»');

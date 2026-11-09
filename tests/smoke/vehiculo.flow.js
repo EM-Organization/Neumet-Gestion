@@ -74,8 +74,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(/Estimado|Sin dato/.test(panel)) fail('detalle: km confiables no deberían llevar nota: '+panel.replace(/\s+/g,' ').slice(0,300));
-  // Costo y costo por km (v_costo_cubierta): 1.500 / 23.456 km, sin nota; acción «Registrar costo» para el perfil global
-  ['Costo','UYU 1.500,00','Costo por km','UYU 0,064 por km','Registrar costo'].forEach(function(t){
+  // Costo y costo por km (v_costo_cubierta): 1.500 / 3.456 km recorridos, sin nota; acción «Registrar costo» para el perfil global
+  ['Costo','UYU 1.500,00','Costo por km','UYU 0,434 por km','Registrar costo'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'" (costo)');
   });
   if(d.body.innerHTML.indexOf('<programada>') !== -1) fail('detalle: evento sin escapar');

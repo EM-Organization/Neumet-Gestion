@@ -4,7 +4,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { isClienteMode, currentClienteId } from '../core/auth.js';
 import { puedeVerCostos } from './costos.js';
-import { filasCpk, cpkCsv, fmtMonto, MUESTRA_MINIMA, GRUPOS } from '../domain/costos.js';
+import { filasCpk, cpkCsv, fmtMonto, MUESTRA_MINIMA, GRUPOS, NOTA_CPK_BASE, NOTA_SUCURSAL_SELECTOR, ELEGIR_CLIENTE } from '../domain/costos.js';
 import { fmtNum } from '../domain/formato.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
@@ -72,8 +72,14 @@ async function cargarCpk() {
     setHtml(cont, html`<p class="rep-cpk-nota">La fecha «desde» debe ser anterior o igual a «hasta».</p>`);
     return;
   }
-  setHtml(cont, html`<p class="rep-cpk-nota">Cargando…</p>`);
   const cid = isClienteMode() ? null : ($('rep-cliente').value || null);
+  // El administrador sin cliente elegido no consulta: agregar toda la flota es lento y mezcla clientes.
+  if (!isClienteMode() && !cid) {
+    cpkRows = []; $('rep-cpk-csv').disabled = true;
+    setHtml(cont, html`<p class="rep-cpk-nota">${ELEGIR_CLIENTE}</p>`);
+    return;
+  }
+  setHtml(cont, html`<p class="rep-cpk-nota">Cargando…</p>`);
   const { data, error } = await db.rpc('cpk_por_grupo', { p_grupo: grupo, p_desde: desde, p_hasta: hasta, p_cliente_id: cid });
   if (error) {
     cpkRows = []; $('rep-cpk-csv').disabled = true;
@@ -103,7 +109,7 @@ function renderCpk() {
     <td class="mono-cell" data-label="Costo">${fmtMonto(f.costo, f.moneda)}</td>
     <td class="mono-cell" data-label="Costo por km">${f.textoCpk}</td></tr>`));
   setHtml(cont, html`<table class="ciclo-tabla rep-cpk-tabla"><thead><tr><th scope="col">${CPK_GRUPO_LABEL[cpkGrupo]}</th><th scope="col">Neumáticos</th><th scope="col">Km</th><th scope="col">Costo</th><th scope="col">Costo por km</th></tr></thead><tbody>${cuerpo}</tbody></table>
-    <p class="rep-cpk-nota">Costo por km = suma de costos / suma de km de los neumáticos con km confiables.</p>`);
+    <p class="rep-cpk-nota">${NOTA_CPK_BASE}</p>${hayFiltroSeccional() && cpkGrupo !== 'sucursal' ? html`<p class="rep-cpk-nota">${NOTA_SUCURSAL_SELECTOR}</p>` : ''}`);
 }
 
 function exportCpkCsv() {

@@ -5,7 +5,7 @@ import { fmtNum } from './formato.js';
 import { buildCsv } from './reportes.js';
 import { NOTA_FALTAN_LECTURAS, NOTA_SIN_DATO } from './km-cubierta.js';
 
-export const COLUMNAS_COSTO = 'neumatico_id,vehiculo_id,tiene_costo,moneda,monedas,moneda_mixta,costo_total,costo_por_concepto,km_totales,km_confiable,cpk,cpk_provisional';
+export const COLUMNAS_COSTO = 'neumatico_id,vehiculo_id,tiene_costo,moneda,monedas,moneda_mixta,costo_total,costo_por_concepto,km_totales,km_recorridos,km_confiable,cpk,cpk_provisional,cpk_carcasa';
 
 export const CONCEPTOS = [
   { id: 'compra', label: 'Compra' },
@@ -22,6 +22,9 @@ export const MAX_MONTO = 9999999999.99;
 export const MAX_NOTAS = 500;
 export const AVISO_COMPARAR = 'Comparar marcas sin ajustar por eje, carga y época puede engañar.';
 export const NOTA_SIN_KM = 'Sin dato: sin km recorridos';
+export const NOTA_CPK_BASE = 'Costo por km = costo total / km recorridos (sin los km previos) de los neumáticos con km confiables.';
+export const NOTA_SUCURSAL_SELECTOR = 'El costo por marca y modelo no se filtra por la sucursal elegida.';
+export const ELEGIR_CLIENTE = 'Elegir un cliente para ver el costo por km';
 export const SIN_COSTOS = 'Sin costos registrados';
 
 export const GRUPOS = [
@@ -44,13 +47,14 @@ export const fmtMonto = (monto, moneda = MONEDA_DEFECTO) => (num(monto) === null
 export const fmtCpk = (cpk, moneda = MONEDA_DEFECTO) => (num(cpk) === null ? '—' : `${moneda} ${fmtNum(cpk, 3)} por km`);
 
 // Fila de v_costo_cubierta -> datos para mostrar. null/undefined (vista no disponible, perfil sin acceso o sin fila)
-// -> {disponible:false}: la interfaz omite la sección en lugar de mostrar «0».
+// -> {disponible:false}: la interfaz omite la sección en lugar de mostrar «0». El costo por km usa los km RECORRIDOS
+// (sin los km previos que ya traía); el CPK de carcasa (con km previos) queda aparte en `cpkCarcasa`.
 //   total        costo total o null (sin costos o monedas mixtas)
 //   cpk          costo por km confiable (null si no hay)
 //   estimado     true si el CPK mostrado es provisional (km no confiables)
 //   nota         texto de confiabilidad o null
 export function resumenCosto(fila) {
-  const vacioR = { disponible: false, tieneCosto: false, total: null, moneda: null, mixta: false, cpk: null, estimado: false, nota: null, porConcepto: [], textoCosto: '—', textoCpk: '—' };
+  const vacioR = { disponible: false, cpkCarcasa: null, tieneCosto: false, total: null, moneda: null, mixta: false, cpk: null, estimado: false, nota: null, porConcepto: [], textoCosto: '—', textoCpk: '—' };
   if (!fila) return vacioR;
   const moneda = fila.moneda || MONEDA_DEFECTO;
   const tiene = fila.tiene_costo === true;
@@ -64,10 +68,12 @@ export function resumenCosto(fila) {
   const out = { ...base, total, porConcepto, textoCosto: fmtMonto(total, moneda) };
   const cpk = num(fila.cpk);
   const prov = num(fila.cpk_provisional);
-  const km = num(fila.km_totales);
-  if (cpk !== null) return { ...out, cpk, textoCpk: fmtCpk(cpk, moneda) };
+  const km = num(fila.km_recorridos);
+  const kmTot = num(fila.km_totales);
+  const carc = num(fila.cpk_carcasa);
+  if (cpk !== null) return { ...out, cpk, cpkCarcasa: carc, textoCpk: fmtCpk(cpk, moneda) };
   if (prov !== null) return { ...out, cpk: prov, estimado: true, textoCpk: fmtCpk(prov, moneda), nota: NOTA_FALTAN_LECTURAS };
-  if (km === null) return { ...out, textoCpk: 'Sin dato', nota: NOTA_SIN_DATO };
+  if (kmTot === null) return { ...out, textoCpk: 'Sin dato', nota: NOTA_SIN_DATO };
   return { ...out, textoCpk: 'Sin dato', nota: NOTA_SIN_KM };
 }
 
@@ -124,7 +130,7 @@ export function traducirErrorCosto(err) {
 
 // ---- Reporte «Costo por km» --------------------------------------------------------------------------------------
 
-export const COLUMNAS_GRUPO = ['grupo', 'clave', 'moneda', 'n_neumaticos', 'n_sin_km', 'km_totales', 'costo_total', 'cpk', 'muestra_baja'];
+export const COLUMNAS_GRUPO = ['grupo', 'clave', 'moneda', 'n_neumaticos', 'n_sin_km', 'km_recorridos', 'costo_total', 'cpk', 'muestra_baja'];
 
 // Filas de cpk_por_grupo -> filas para la tabla. El CPK ya viene ponderado de la base (suma de costos / suma de km);
 // aquí NUNCA se promedia. Sin km confiables en el grupo -> «Sin dato».
@@ -135,7 +141,7 @@ export function filasCpk(rows) {
     return {
       clave: r.clave ?? '—', moneda: r.moneda || MONEDA_DEFECTO, n,
       sinKm: num(r.n_sin_km) ?? 0,
-      km: num(r.km_totales) ?? 0,
+      km: num(r.km_recorridos) ?? 0,
       costo: num(r.costo_total),
       cpk,
       muestraBaja: r.muestra_baja === true || n < MUESTRA_MINIMA,
@@ -147,6 +153,6 @@ export function filasCpk(rows) {
 // CSV del reporte (misma celda y BOM que el resto de las exportaciones).
 export function cpkCsv(rows) {
   const filas = (rows || []).map(r => [r.grupo ?? '', r.clave ?? '', r.moneda ?? '', num(r.n_neumaticos), num(r.n_sin_km),
-    num(r.km_totales), num(r.costo_total), num(r.cpk), r.muestra_baja === true]);
+    num(r.km_recorridos), num(r.costo_total), num(r.cpk), r.muestra_baja === true]);
   return buildCsv(COLUMNAS_GRUPO, filas);
 }

@@ -11,7 +11,7 @@ import { NOTA_FALTAN_LECTURAS, NOTA_SIN_DATO } from '../../assets/js/domain/km-c
 const fila = (o = {}) => ({
   neumatico_id: 7, vehiculo_id: 1, tiene_costo: true, moneda: 'UYU', monedas: ['UYU'], moneda_mixta: false,
   costo_total: 1500, costo_por_concepto: { compra: 1000, reparacion: 200, recauchutado: 300 },
-  km_totales: 10000, km_confiable: true, cpk: 0.15, cpk_provisional: null, ...o,
+  km_totales: 10000, km_recorridos: 10000, km_confiable: true, cpk: 0.15, cpk_provisional: null, cpk_carcasa: 0.15, ...o,
 });
 
 describe('resumenCosto', () => {
@@ -57,13 +57,13 @@ describe('resumenCosto', () => {
     assert.equal(r.textoCpk, 'UYU 1,000 por km');
   });
   test('km NULL: «Sin dato» con la nota de odómetro', () => {
-    const r = resumenCosto(fila({ km_totales: null, km_confiable: false, cpk: null, cpk_provisional: null }));
+    const r = resumenCosto(fila({ km_totales: null, km_recorridos: null, km_confiable: false, cpk: null, cpk_provisional: null, cpk_carcasa: null }));
     assert.equal(r.cpk, null);
     assert.equal(r.textoCpk, 'Sin dato');
     assert.equal(r.nota, NOTA_SIN_DATO);
   });
   test('0 km confiables: sin CPK (no divide por cero) y nota propia', () => {
-    const r = resumenCosto(fila({ km_totales: 0, cpk: null }));
+    const r = resumenCosto(fila({ km_totales: 0, km_recorridos: 0, cpk: null, cpk_carcasa: null }));
     assert.equal(r.cpk, null);
     assert.equal(r.textoCpk, 'Sin dato');
     assert.equal(r.nota, NOTA_SIN_KM);
@@ -73,6 +73,13 @@ describe('resumenCosto', () => {
     assert.equal(r.cpk, 0);
     assert.equal(r.textoCpk, 'UYU 0,000 por km');
     assert.equal(r.nota, null);
+  });
+  test('el costo por km usa los km recorridos y el CPK de carcasa queda aparte', () => {
+    // 1.500 de costo, 15.000 km totales de los cuales 5.000 ya los traía: 0,15 por km recorrido, 0,10 de carcasa.
+    const r = resumenCosto(fila({ km_totales: 15000, km_recorridos: 10000, cpk: 0.15, cpk_carcasa: 0.1 }));
+    assert.equal(r.cpk, 0.15);
+    assert.equal(r.cpkCarcasa, 0.1);
+    assert.equal(r.textoCpk, 'UYU 0,150 por km');
   });
   test('números como texto (numeric de PostgREST) se interpretan', () => {
     const r = resumenCosto(fila({ costo_total: '1500.00', cpk: '0.150000', costo_por_concepto: { compra: '1500.00' } }));
@@ -167,7 +174,7 @@ describe('traducirErrorCosto', () => {
 });
 
 describe('filasCpk y cpkCsv', () => {
-  const g = (o = {}) => ({ grupo: 'marca', clave: 'Beta', cliente_id: null, moneda: 'UYU', n_neumaticos: 2, n_sin_km: 0, km_totales: 11000, costo_total: 1100, cpk: 0.1, muestra_baja: true, ...o });
+  const g = (o = {}) => ({ grupo: 'marca', clave: 'Beta', cliente_id: null, moneda: 'UYU', n_neumaticos: 2, n_sin_km: 0, km_recorridos: 11000, costo_total: 1100, cpk: 0.1, muestra_baja: true, ...o });
   test('usa el CPK ponderado de la base; no promedia', () => {
     // Dos neumáticos con CPK 1,0 y 0,01: el promedio sería 0,505; el ponderado es 1100 / 11000.
     const [r] = filasCpk([g()]);
@@ -183,7 +190,7 @@ describe('filasCpk y cpkCsv', () => {
     assert.equal(filasCpk([g({ n_neumaticos: 9, muestra_baja: true })])[0].muestraBaja, true);
   });
   test('grupo sin km confiables: «Sin dato» y 0 km (no un CPK inventado)', () => {
-    const [r] = filasCpk([g({ n_neumaticos: 0, n_sin_km: 3, km_totales: 0, costo_total: null, cpk: null })]);
+    const [r] = filasCpk([g({ n_neumaticos: 0, n_sin_km: 3, km_recorridos: 0, costo_total: null, cpk: null })]);
     assert.equal(r.cpk, null);
     assert.equal(r.textoCpk, 'Sin dato');
     assert.equal(r.costo, null);
@@ -197,7 +204,7 @@ describe('filasCpk y cpkCsv', () => {
     const csv = cpkCsv([g(), g({ clave: '=SUMA(A1)', moneda: 'USD', cpk: null, muestra_baja: false })]);
     const lineas = csv.replace('﻿', '').trim().split('\r\n');
     assert.equal(csv[0], '﻿');
-    assert.equal(lineas[0], 'grupo,clave,moneda,n_neumaticos,n_sin_km,km_totales,costo_total,cpk,muestra_baja');
+    assert.equal(lineas[0], 'grupo,clave,moneda,n_neumaticos,n_sin_km,km_recorridos,costo_total,cpk,muestra_baja');
     assert.equal(lineas[1], 'marca,Beta,UYU,2,0,11000,1100,0.1,true');
     assert.equal(lineas[2], "marca,'=SUMA(A1),USD,2,0,11000,1100,,false");
   });

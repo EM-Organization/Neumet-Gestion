@@ -90,6 +90,9 @@ select test.man89('C89-E2', 'compra', 100, 'USD');
 select test.neu89('C89-D1', 1, 893, 8::smallint, 'Delta', 'U', null);
 select test.ev89('C89-D1', 893, 'montaje', 1000, 30);
 select test.man89('C89-D1', 'compra', 200, 'USD');
+-- Zeta: 5.000 km previos + 1.000 recorridos (montaje a 1000, odómetro 2000 en el vehículo 893)
+select test.neu89('C89-Z1', 1, 893, 9::smallint, 'Zeta', 'T', 1500, 5000);
+select test.ev89('C89-Z1', 893, 'montaje', 1000, 30);
 -- Otro cliente
 select test.neu89('C89-X1', 2, 892, 1::smallint, 'Omega', 'O', 300);
 select test.ev89('C89-X1', 892, 'montaje', 1000, 30);
@@ -145,6 +148,13 @@ select test.eq('P3: la entrada manual de compra reemplaza al precio_unidad y al 
 select test.eq('P9: reencauche -> recauchutado, inspección -> otro, compra una vez',
   (select costo_por_concepto::text from public.v_costo_cubierta where idneumatico = 'C89-P9'),
   '{"otro": 10.00, "compra": 100.00, "recauchutado": 400.00}');
+-- CPK por km recorrido (no incluye km previos); el CPK de carcasa es otra columna
+select test.eq('Z1: 5.000 km previos + 1.000 recorridos: cpk sobre recorridos, cpk_carcasa sobre totales',
+  (select km_totales || '|' || km_recorridos || '|' || round(cpk, 6) || '|' || round(cpk_carcasa, 6) from public.v_costo_cubierta where idneumatico = 'C89-Z1'), '6000|1000|1.500000|0.250000');
+select test.eq('Z1: grupo Zeta pondera sobre km recorridos',
+  (select km_recorridos || '|' || round(cpk, 6) from (select * from public.cpk_por_grupo('marca', null, null, 1)) g where clave = 'Zeta'), '1000|1.500000');
+select test.eq('sin km confiables: cpk_carcasa también NULL', (select cpk_carcasa is null from public.v_costo_cubierta where idneumatico = 'C89-P6'), true);
+select test.eq('P1: sin km previos cpk = cpk_carcasa', (select cpk = cpk_carcasa from public.v_costo_cubierta where idneumatico = 'C89-P1'), true);
 select test.eq('P9: total', test.c89('C89-P9'), '510.00|0.051000|NULL|false|true');
 select test.eq('una entrada de costo repetida entra una vez por fila (no se deduplica lo manual)',
   (select count(*) from public.costos_neumatico where neumatico_id = (select id from _ids89 where idn = 'C89-P3')), 1::bigint);
@@ -160,8 +170,8 @@ select test.eq('P5: sin ningún costo -> tiene_costo false, total NULL (no 0)',
   (select not tiene_costo and costo_total is null and cpk is null and not moneda_mixta from public.v_costo_cubierta where idneumatico = 'C89-P5'), true);
 select test.eq('P6: km no confiables y NULL -> CPK y CPK provisional NULL', test.c89('C89-P6'), '600.00|NULL|NULL|false|false');
 select test.eq('P6: km_totales NULL', (select km_totales is null from public.v_costo_cubierta where idneumatico = 'C89-P6'), true);
-select test.eq('P7: km con un tramo sin dato -> sin CPK final, con CPK provisional explícito (1010 / 1010)',
-  test.c89('C89-P7'), '1010.00|NULL|1.000000|false|false');
+select test.eq('P7: km con un tramo sin dato -> sin CPK final, con CPK provisional sobre km recorridos (1010 / 1000)',
+  test.c89('C89-P7'), '1010.00|NULL|1.010000|false|false');
 select test.eq('P8: 0 km con dato real -> CPK NULL (nunca divide por cero)',
   (select km_totales = 0 and km_confiable and cpk is null and cpk_provisional is null and costo_total = 100 from public.v_costo_cubierta where idneumatico = 'C89-P8'), true);
 
@@ -175,11 +185,11 @@ select test.eq('Beta: CPK ponderado = suma de costos / suma de km',
 select test.eq('Beta: no es el promedio de CPK individuales',
   (select round(avg(cpk), 6) from public.v_costo_cubierta where marca = 'Beta'), 0.505);
 select test.eq('Beta: n, km, costo, muestra baja (n < 5)',
-  (select n_neumaticos || '|' || km_totales || '|' || costo_total || '|' || muestra_baja || '|' || moneda || '|' || n_sin_km
+  (select n_neumaticos || '|' || km_recorridos || '|' || costo_total || '|' || muestra_baja || '|' || moneda || '|' || n_sin_km
      from public.cpk_por_grupo('marca') where clave = 'Beta'), '2|11000|1100.00|true|UYU|0');
 -- Alfa: solo entran P1, P2, P3, P9 (km confiables y costo en una moneda): 3710 / 40000. P4 (mixta), P5 (sin costo) quedan fuera.
 select test.eq('Alfa: ponderado sobre cubiertas con km confiables',
-  (select n_neumaticos || '|' || km_totales || '|' || costo_total || '|' || round(cpk, 6) from public.cpk_por_grupo('marca') where clave = 'Alfa'),
+  (select n_neumaticos || '|' || km_recorridos || '|' || costo_total || '|' || round(cpk, 6) from public.cpk_por_grupo('marca') where clave = 'Alfa'),
   '4|40000|3710.00|0.092750');
 select test.eq('Alfa: las con costo pero sin km confiables o con 0 km se cuentan aparte (P6, P7, P8)',
   (select n_sin_km from public.cpk_por_grupo('marca') where clave = 'Alfa'), 3::bigint);
@@ -195,7 +205,7 @@ select test.eq('Alfa Y: sin km confiables -> n 0, CPK NULL, muestra baja',
   (select cpk is null and muestra_baja and n_neumaticos = 0 and n_sin_km = 2 from public.cpk_por_grupo('modelo') where clave = 'Alfa Y'), true);
 select test.eq('sucursal: Norte (Alfa X sin P4/P5 más Beta) y Sur, con cliente_id',
   (select string_agg(clave || ':' || cliente_id || ':' || n_neumaticos, ',' order by clave) from public.cpk_por_grupo('sucursal') where moneda = 'UYU' and cliente_id = 1),
-  'Costos Norte:1:6,Costos Sur:1:6,Sin sucursal:1:0');
+  'Costos Norte:1:6,Costos Sur:1:7,Sin sucursal:1:0');
 select test.eq('sucursal: otra empresa sin sucursal aparece como «Sin sucursal» de su cliente',
   (select n_neumaticos from public.cpk_por_grupo('sucursal') where cliente_id = 2), 1::bigint);
 -- Cohorte por fecha de alta (fecha de compra, o de creación si falta)
@@ -312,14 +322,14 @@ select test.eq('cascada: queda en audit_log', (select count(*) - (select n from 
 -- F. Matriz de roles y RLS (lectura)
 -- ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_admin());
-select test.eq('admin ve todas las cubiertas en la vista', (select count(*) from public.v_costo_cubierta where idneumatico like 'C89-%'), 19::bigint);
+select test.eq('admin ve todas las cubiertas en la vista', (select count(*) from public.v_costo_cubierta where idneumatico like 'C89-%'), 20::bigint);
 select test.eq('admin ve las entradas de costo de ambos clientes',
   (select count(distinct cliente_id) from public.costos_neumatico), 2::bigint);
 select test.eq('admin: cpk_por_grupo devuelve filas', (select count(*) > 0 from public.cpk_por_grupo('marca')), true);
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('global A ve las cubiertas de su cliente (montadas y en stock), no las de otro',
-  (select count(*) from public.v_costo_cubierta where idneumatico like 'C89-%'), 18::bigint);
+  (select count(*) from public.v_costo_cubierta where idneumatico like 'C89-%'), 19::bigint);
 select test.eq('global A no ve la cubierta de otro cliente', (select count(*) from public.v_costo_cubierta where idneumatico = 'C89-X1'), 0::bigint);
 select test.eq('global A ve sus costos y los números exactos', test.c89('C89-P1'), '1200.00|0.120000|NULL|false|true');
 select test.eq('global A solo ve entradas de costo de su cliente', (select count(distinct cliente_id) from public.costos_neumatico), 1::bigint);

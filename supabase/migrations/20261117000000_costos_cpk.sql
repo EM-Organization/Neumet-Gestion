@@ -219,12 +219,18 @@ grant execute on function public.costo_eliminar(bigint) to authenticated;
 --   moneda_mixta        hay más de una moneda: total, desglose y CPK son NULL.
 --   costo_total         suma de todas las entradas (sin doble conteo); NULL si no hay costos o la moneda es mixta.
 --   costo_por_concepto  jsonb {concepto: monto}; NULL en los mismos casos.
--- Columnas de km (de v_km_cubierta): km_totales y km_confiable.
---   cpk                 costo_total / km_totales SOLO con km_confiable y km_totales > 0; si no, NULL.
+-- Columnas de km (de v_km_cubierta): km_totales, km_recorridos y km_confiable.
+--   km_recorridos       km_totales - km_previos: lo recorrido en vehículos (tramos cerrados + tramo actual). Es la
+--                       base del CPK: los km_previos son de una vida anterior que este costo no financió.
+--   cpk                 costo_total / km_recorridos SOLO con km_confiable y km_recorridos > 0; si no, NULL.
 --   cpk_provisional     el mismo cociente cuando los km NO son confiables (faltan o decrecen odómetros) pero hay
---                       km_totales > 0: es una estimación y la interfaz la rotula como tal. NULL si no aplica.
+--                       km_recorridos > 0: es una estimación y la interfaz la rotula como tal. NULL si no aplica.
+--   cpk_carcasa         costo_total / km_totales (incluye km_previos), con km_confiable y km_totales > 0: CPK de la
+--                       carcasa a lo largo de su vida completa. Columna aparte para no confundirla con cpk.
 -- Vida: la identidad del neumático es la carcasa y la vista acumula costos y km de TODAS sus vidas (recauchutados
--- incluidos), así que cpk es el CPK de la carcasa: costo neto total / suma de km de todas las vidas. Ver docs/08 apéndice I.
+-- incluidos). Ver docs/08 apéndice I.
+-- Dependencia: los km salen de v_km_cubierta (que llama a km_tramos_cubierta por fila); un cambio en esa vista
+-- cambia el CPK.
 drop view if exists public.v_costo_cubierta;
 create view public.v_costo_cubierta
 with (security_invoker = true) as
@@ -248,11 +254,14 @@ select
   case when c.n_monedas = 1 then c.total end                               as costo_total,
   case when c.n_monedas = 1 then c.por_concepto end                        as costo_por_concepto,
   k.km_totales,
+  case when k.km_totales is not null then k.km_totales - k.km_previos end    as km_recorridos,
   k.km_confiable,
+  case when c.n_monedas = 1 and k.km_confiable and k.km_totales - k.km_previos > 0
+       then c.total / (k.km_totales - k.km_previos) end                    as cpk,
+  case when c.n_monedas = 1 and not k.km_confiable and k.km_totales - k.km_previos > 0
+       then c.total / (k.km_totales - k.km_previos) end                    as cpk_provisional,
   case when c.n_monedas = 1 and k.km_confiable and k.km_totales > 0
-       then c.total / k.km_totales end                                     as cpk,
-  case when c.n_monedas = 1 and not k.km_confiable and k.km_totales > 0
-       then c.total / k.km_totales end                                     as cpk_provisional
+       then c.total / k.km_totales end                                     as cpk_carcasa
 from public.v_km_cubierta k
 join public.neumaticos n on n.id = k.neumatico_id
 left join public.vehiculos v on v.id = n.vehiculo_id
@@ -299,7 +308,7 @@ left join lateral (
 where (select public.costos_visibles());
 
 comment on view public.v_costo_cubierta is
-  'Costo y CPK por cubierta (carcasa, todas las vidas): compra + eventos con costo + costos_neumatico sin doble conteo; moneda mixta -> NULL; cpk solo con km confiables (docs/08 apéndice I).';
+  'Costo y CPK por cubierta (km recorridos; cpk_carcasa incluye km previos): compra + eventos con costo + costos_neumatico sin doble conteo; moneda mixta -> NULL; cpk solo con km confiables (docs/08 apéndice I).';
 
 revoke all on public.v_costo_cubierta from public, anon;
 grant select on public.v_costo_cubierta to authenticated;
@@ -308,7 +317,7 @@ grant select on public.v_costo_cubierta to authenticated;
 -- 6. cpk_por_grupo(p_grupo, p_desde, p_hasta)
 -- -----------------------------------------------------------------------------
 -- CPK de un grupo = suma de costos / suma de km (ponderado), NUNCA el promedio de los CPK individuales. Solo entran
--- las cubiertas con costo en una única moneda, km confiables y km_totales > 0; las demás con costo se cuentan
+-- las cubiertas con costo en una única moneda, km confiables y km_recorridos > 0; las demás con costo se cuentan
 -- aparte (n_sin_km) y las de moneda mixta no entran. Una fila por grupo y moneda (no se suman monedas distintas).
 --   p_grupo        'marca' | 'modelo' (marca + modelo) | 'sucursal' (la del vehículo donde está montada o la de stock).
 --   p_desde/hasta  cohorte: cubiertas dadas de alta (fecha de compra, o de creación si no hay) en el rango, ambos
@@ -318,6 +327,7 @@ grant select on public.v_costo_cubierta to authenticated;
 --   muestra_baja   n_neumaticos < 5: el CPK de ese grupo es poco representativo.
 -- SECURITY INVOKER sobre v_costo_cubierta: respeta la RLS (un perfil de sucursal no recibe filas).
 drop function if exists public.cpk_por_grupo(text, date, date);
+drop function if exists public.cpk_por_grupo(text, date, date, bigint);
 create or replace function public.cpk_por_grupo(
   p_grupo      text,
   p_desde      date default null,
@@ -331,7 +341,7 @@ returns table (
   moneda        text,
   n_neumaticos  bigint,
   n_sin_km      bigint,
-  km_totales    numeric,
+  km_recorridos numeric,
   costo_total   numeric,
   cpk           numeric,
   muestra_baja  boolean
@@ -379,8 +389,8 @@ begin
       case when p_grupo = 'sucursal' then x.cliente_id end                         as cli,
       x.moneda,
       x.costo_total                                                                 as costo,
-      x.km_totales                                                                  as km,
-      (x.km_confiable and x.km_totales > 0)                                         as ok
+      x.km_recorridos                                                               as km,
+      (x.km_confiable and x.km_recorridos > 0)                                         as ok
     from public.v_costo_cubierta x
     left join public.sucursales su on p_grupo = 'sucursal' and su.id = x.sucursal_id
     where x.tiene_costo and x.costo_total is not null

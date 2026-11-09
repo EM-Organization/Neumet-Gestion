@@ -60,14 +60,14 @@
   ];
   // v_costo_cubierta: 1 con costo y CPK confiable, 2 con CPK provisional (estimado), 3 sin costos.
   var costoc = [
-    {neumatico_id:1,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1900.00',costo_por_concepto:{compra:'1900.00'},km_totales:19000,km_confiable:true,cpk:'0.100000',cpk_provisional:null},
-    {neumatico_id:2,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'600.00',costo_por_concepto:{compra:'600.00'},km_totales:1200,km_confiable:false,cpk:null,cpk_provisional:'0.500000'},
-    {neumatico_id:3,vehiculo_id:10,tiene_costo:false,moneda:null,monedas:null,moneda_mixta:false,costo_total:null,costo_por_concepto:null,km_totales:null,km_confiable:false,cpk:null,cpk_provisional:null}
+    {neumatico_id:1,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1900.00',costo_por_concepto:{compra:'1900.00'},km_totales:19000,km_recorridos:4000,km_confiable:true,cpk:'0.475000',cpk_provisional:null,cpk_carcasa:'0.100000'},
+    {neumatico_id:2,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'600.00',costo_por_concepto:{compra:'600.00'},km_totales:1200,km_recorridos:1200,km_confiable:false,cpk:null,cpk_provisional:'0.500000',cpk_carcasa:null},
+    {neumatico_id:3,vehiculo_id:10,tiene_costo:false,moneda:null,monedas:null,moneda_mixta:false,costo_total:null,costo_por_concepto:null,km_totales:null,km_recorridos:null,km_confiable:false,cpk:null,cpk_provisional:null,cpk_carcasa:null}
   ];
   // cpk_por_grupo: una marca con muestra suficiente y otra con muestra baja y sin km confiables.
   var cpkg = [
-    {grupo:'marca',clave:'Michelin',cliente_id:null,moneda:'UYU',n_neumaticos:6,n_sin_km:1,km_totales:60000,costo_total:'6000.00',cpk:'0.100000',muestra_baja:false},
-    {grupo:'marca',clave:'Pirelli',cliente_id:null,moneda:'UYU',n_neumaticos:0,n_sin_km:2,km_totales:0,costo_total:null,cpk:null,muestra_baja:true}
+    {grupo:'marca',clave:'Michelin',cliente_id:null,moneda:'UYU',n_neumaticos:6,n_sin_km:1,km_recorridos:60000,costo_total:'6000.00',cpk:'0.100000',muestra_baja:false},
+    {grupo:'marca',clave:'Pirelli',cliente_id:null,moneda:'UYU',n_neumaticos:0,n_sin_km:2,km_recorridos:0,costo_total:null,cpk:null,muestra_baja:true}
   ];
   var T = {v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
 

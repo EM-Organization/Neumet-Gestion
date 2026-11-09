@@ -3,7 +3,7 @@
 // el costo de la vista y «Registrar costo» escribe por la RPC y se refleja. Crea un vehículo propio y lo borra.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, abrirDetallePorMatricula } from '../lib/flujo.mjs';
+import { flujo, irA, dormir, abrirDetallePorMatricula } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
 
 const get = (p, tabla, query = '') => p.eval(`fetch('/rest/v1/${tabla}?${query}&limit=1000', { headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x' } })
@@ -26,8 +26,8 @@ export function registrar(env) {
         select n.cliente_id, n.id, 'reparacion', 200, 'UYU' from public.neumaticos n where n.idneumatico = 'E2E-CP-1'`);
       const nid = json(env, `select id from public.neumaticos where idneumatico = 'E2E-CP-1'`)[0].id;
       // Referencia independiente: compra una sola vez (precio y evento de montaje) + reparación = 1.200; 10.000 km
-      const ref = json(env, `select costo_total, km_totales, km_confiable, cpk from public.v_costo_cubierta where neumatico_id = ${nid}`)[0];
-      assert.deepEqual(ref, { costo_total: 1200, km_totales: 10000, km_confiable: true, cpk: 0.12 });
+      const ref = json(env, `select costo_total, km_recorridos, km_confiable, cpk from public.v_costo_cubierta where neumatico_id = ${nid}`)[0];
+      assert.deepEqual(ref, { costo_total: 1200, km_recorridos: 10000, km_confiable: true, cpk: 0.12 });
 
       for (const rol of ['admin', 'global']) {
         await flujo(env, 'costos-api', rol, async p => {
@@ -91,6 +91,18 @@ export function registrar(env) {
         const r = await rpc(p, 'cpk_por_grupo', { p_grupo: 'marca' });
         const m = (r.data || []).find(x => x.clave === 'Michelin');
         assert.ok(m, 'hay grupo Michelin');
+      });
+      // Reportes del admin: sin cliente elegido no consulta cpk_por_grupo; con cliente, sí
+      const desde = env.peticiones.length;
+      await flujo(env, 'costos-reporte-admin', 'admin', async p => {
+        await irA(p, 'reportes');
+        await p.esperar(`document.querySelector('#rep-cpk-tabla').textContent.includes('Elegir un cliente para ver el costo por km')`, { que: 'aviso de elegir cliente' });
+        await dormir(400);
+        assert.equal(env.peticiones.slice(desde).filter(x => /cpk_por_grupo/.test(x.path)).length, 0, 'sin cliente no consulta la flota completa');
+        await p.eval(`(() => { const s = document.querySelector('#rep-cliente'); s.value = '${cli}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        await p.esperar(`document.querySelector('#rep-cpk-tabla table')`, { que: 'tabla de costo por km del cliente' });
+        assert.ok(env.peticiones.slice(desde).some(x => /cpk_por_grupo/.test(x.path)));
+        assert.match(await p.eval(`document.querySelector('#rep-cpk-card').innerText`), /Comparar marcas sin ajustar por eje, carga y época puede engañar\./);
       });
     } finally {
       env.sql(`delete from public.eventos_neumatico where vehiculo_id = ${veh}`);

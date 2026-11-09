@@ -68,9 +68,9 @@
   ];
   // v_costo_cubierta: P3 con costo y CPK confiable; P6 con CPK provisional (km no confiables); P5 con monedas mixtas.
   var costocub = [
-    {neumatico_id:1003,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1500.00',costo_por_concepto:{compra:'1000.00',reparacion:'200.00',recauchutado:'300.00'},km_totales:23456,km_confiable:true,cpk:'0.063950',cpk_provisional:null},
-    {neumatico_id:1005,vehiculo_id:10,tiene_costo:true,moneda:null,monedas:['UYU','USD'],moneda_mixta:true,costo_total:null,costo_por_concepto:null,km_totales:null,km_confiable:false,cpk:null,cpk_provisional:null},
-    {neumatico_id:1006,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'900.00',costo_por_concepto:{compra:'900.00'},km_totales:9000,km_confiable:false,cpk:null,cpk_provisional:'0.100000'}
+    {neumatico_id:1003,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1500.00',costo_por_concepto:{compra:'1000.00',reparacion:'200.00',recauchutado:'300.00'},km_totales:23456,km_recorridos:3456,km_confiable:true,cpk:'0.434028',cpk_provisional:null,cpk_carcasa:'0.063950'},
+    {neumatico_id:1005,vehiculo_id:10,tiene_costo:true,moneda:null,monedas:['UYU','USD'],moneda_mixta:true,costo_total:null,costo_por_concepto:null,km_totales:null,km_recorridos:null,km_confiable:false,cpk:null,cpk_provisional:null,cpk_carcasa:null},
+    {neumatico_id:1006,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'900.00',costo_por_concepto:{compra:'900.00'},km_totales:9000,km_recorridos:9000,km_confiable:false,cpk:null,cpk_provisional:'0.100000',cpk_carcasa:null}
   ];
   var T = {vehiculos:veh, v_km_cubierta:kmcub, v_costo_cubierta:costocub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
