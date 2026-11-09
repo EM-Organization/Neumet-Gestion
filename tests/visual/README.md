@@ -14,7 +14,7 @@ imágenes (por ejemplo con la herramienta Read de Claude Code) y anotar defectos
 
 Tamaños: desktop (1440x900), mobile (390x844) y laptop (1280x720, opcional con SIZES).
 Escenas: `login`, `inicio`, `ultimas-mediciones`, `ciclo-vida` (solo admin), `vehiculos`, `vehiculos-busqueda`, `detalle`, `detalle-rueda`, `detalle-rueda-km` (km estimados con nota de confiabilidad), `cambio-neumatico`, `flota`,
-`alertas`, `stock`, `stock-alta`, `stock-mover` y `stock-busqueda` (cliente global; `stock-alta` también admin), `cambio-cubierta` y `cambio-almacenar` (cliente), `busqueda`, `dispositivos`, `reportes`, `mediciones`, `clientes`, `ficha` y `dispositivos` (solo admin), `selector-seccional` (cliente global).
+`alertas`, `stock`, `stock-alta`, `stock-mover` y `stock-busqueda` (cliente global; `stock-alta` también admin), `cambio-cubierta` y `cambio-almacenar` (cliente), `busqueda`, `dispositivos`, `reportes`, `mediciones`, `clientes`, `ficha` y `dispositivos` (solo admin), `selector-seccional` (cliente global), `confirmar-intercambio` (cliente) y `confirmar-eliminar` (admin): diálogo de confirmación no destructivo y destructivo.
 `calidad-lista` y `calidad-invalidar` (aviso de Inicio, lista «Mediciones a revisar» y modal de invalidación), `detalle-calidad` y `detalle-rueda-calidad` (cliente: indicador de mediciones con observaciones en el vehículo y en la rueda).
 `detalle-vacio`, `detalle-vacio-rueda`, `montar-neumatico`, `montar-nueva`, `montar-siguiente` y `retirar-neumatico` (cliente): coche sin neumáticos y montar/retirar (`?montar=1`, `tests/smoke/montar.fixture.js`).
 Las de detalle/búsqueda/cambio solo existen como cliente (las fixtures de `vehiculo.fixture.js` son de cliente).

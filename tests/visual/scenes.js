@@ -45,6 +45,8 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'cambio-cubierta': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); $('#cambio-confirmar').scrollIntoView(); },
     'cambio-almacenar': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); click('input[name="cambio-destino"][value="almacenado"]'); await sleep(300); $('#cambio-retorno-wrap').scrollIntoView(); },
     'stock-alta': async function(){ nav('stock'); await sleep(800); click('#btn-cubierta-nueva'); await sleep(500); },
+    'confirmar-intercambio': async function(){ await abrirDetalle(); rueda3(); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(500); },
+    'confirmar-eliminar': async function(){ nav('clientes'); await sleep(800); click('#tbody-clientes button[data-a="del"]'); await sleep(500); },
     'stock-mover': async function(){ nav('stock'); await sleep(800); click('[data-cubierta="31"] [data-action="cubiertaMover"]'); await sleep(500); },
     'stock-busqueda': async function(){ nav('inicio'); await sleep(600); var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 's-0'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
     'alertas': async function(){ nav('alertas'); await sleep(800); },

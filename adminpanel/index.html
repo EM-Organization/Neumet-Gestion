@@ -1322,12 +1322,14 @@
   </div>
 </div>
 
-<!-- Modal Confirmar eliminación -->
+<!-- Modal de confirmación (destructivo o no) -->
 <div class="modal-backdrop" id="modal-confirm">
-  <div class="modal confirm-modal">
+  <div class="modal confirm-modal" aria-describedby="confirm-msg">
     <div class="modal-body">
-      <div class="confirm-icon danger">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <div class="confirm-icon danger" id="confirm-icon" aria-hidden="true">
+        <svg data-icono="papelera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <svg data-icono="intercambio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" hidden><path d="M17 3l4 4-4 4"/><path d="M21 7H8"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13"/></svg>
+        <svg data-icono="info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" hidden><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       </div>
       <div class="modal-title" id="confirm-title">¿Eliminar?</div>
       <div class="modal-sub" id="confirm-msg" style="margin-top:6px">Esta acción no se puede deshacer.</div>

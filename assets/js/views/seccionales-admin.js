@@ -130,7 +130,7 @@ registerActions({
     await guardar(() => db.from('sucursales').update({ nombre: v.valor }).eq('id', id), 'Sucursal actualizada');
   },
   async seccionalEliminar(id) {
-    if (!await confirmDialog('Eliminar sucursal', `¿Eliminar la sucursal "${nombreDe(id)}"? Solo es posible si no tiene vehículos, dispositivos ni usuarios.`)) return;
+    if (!await confirmDialog('Eliminar sucursal', `¿Eliminar la sucursal "${nombreDe(id)}"? Solo es posible si no tiene vehículos, dispositivos ni usuarios.`, 'Eliminar', true)) return;
     await guardar(() => db.from('sucursales').delete().eq('id', id), 'Sucursal eliminada');
   },
   async seccionalAsignarVeh(id, valor) {
