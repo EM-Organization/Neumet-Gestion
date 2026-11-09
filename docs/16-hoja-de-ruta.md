@@ -60,12 +60,13 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 - **CPK observado** = costo acumulado / km acumulado, con carcasa, banda y tramo explícitos; sin dato cuando los km son cero.
 - **CPK final de carcasa** = costo neto total / suma de km de todas las vidas.
 - Reportes por marca, modelo, banda y sucursal, mostrando tamaño de muestra y km (no promediar CPK individuales sin ponderar).
-- Estado: implementado en el PR de costos (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; falta agrupar por banda, que llega con F5) y la interfaz. El CPK es por km recorridos (sin km previos). El perfil de sucursal no ve costos (privilegios por columna, apéndice K). **Pendiente:** CPK por vida (F5), eliminar costos desde la interfaz, conversión de monedas.
+- Estado: implementado en el PR de costos (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; también por vida y banda desde F5) y la interfaz. El CPK es por km recorridos (sin km previos). El perfil de sucursal no ve costos (privilegios por columna, apéndice K). **Pendiente:** eliminar costos desde la interfaz, conversión de monedas.
 
 ### F5 · Recauchutado por carcasa
 - Flujo: selección → envío al proveedor → dictamen → aceptación o rechazo → nueva banda.
 - Mismo identificador de carcasa; nueva vida con profundidad inicial y costo propios; los km de carcasa no se reinician.
 - Un rechazo no crea una vida ficticia.
+- Estado: implementado (apéndice L de `docs/08`): `recauchutados` y `neumatico_vidas`, RPC `recauchutado_enviar` / `_dictaminar` / `_aceptar` / `_rechazar`, guardia de la cubierta en proceso, costos por vida, `v_costo_vida` y `cpk_por_grupo` por `vida` y `banda`, y la vista Recauchutado. **Pendiente:** el destino «Recauchutado» de «Cambiar neumático» sigue sumando la vida sin proceso ni banda (flujo anterior).
 
 ### F6 · Indicadores de desgaste interpretables
 - mm útiles = max(0, mínimo − umbral), caucho útil %, tasa por 1.000 km (cuando hay km confiables), km restantes lineales y fecha estimada de retiro como **escenario** (no garantía).
