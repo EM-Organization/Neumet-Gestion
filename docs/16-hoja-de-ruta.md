@@ -57,6 +57,7 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 - **CPK observado** = costo acumulado / km acumulado, con carcasa, banda y tramo explícitos; sin dato cuando los km son cero.
 - **CPK final de carcasa** = costo neto total / suma de km de todas las vidas.
 - Reportes por marca, modelo, banda y sucursal, mostrando tamaño de muestra y km (no promediar CPK individuales sin ponderar).
+- Estado: implementado en el PR de costos (apéndice I de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; falta agrupar por banda, que llega con F5) y la interfaz. **Pendiente:** CPK por vida (F5), eliminar costos desde la interfaz, conversión de monedas.
 
 ### F5 · Recauchutado por carcasa
 - Flujo: selección → envío al proveedor → dictamen → aceptación o rechazo → nueva banda.

@@ -83,7 +83,7 @@ export function registrar(env) {
         await seleccionarRueda(p, 1);
         const t1 = await panel(p);
         for (const s of ['Km que ya traía 2.000 km', 'Km recorridos 10.000 km', 'En el tramo actual 10.000 km', 'Km totales 12.000 km']) assert.ok(t1.includes(s), `rueda 1: «${s}» en «${t1}»`);
-        assert.doesNotMatch(t1, /Estimado|\bSin dato\b/);
+        assert.doesNotMatch(t1.split('Costo')[0], /Estimado|\bSin dato\b/);
         await seleccionarRueda(p, 2);
         const t2 = await panel(p);
         assert.ok(t2.includes('Km recorridos Sin dato') && t2.includes('Km totales Sin dato'), `rueda 2: sin km inventados en «${t2}»`);

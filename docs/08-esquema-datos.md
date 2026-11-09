@@ -601,3 +601,53 @@ Columnas: `vehiculo_id, evento_id, neumatico_id, tipo_evento, fecha, odometro_km
 Panel: el detalle del vehículo (panel de la rueda) y Ciclo de vida muestran «Km que ya traía», «Km recorridos», «En el tramo actual» y «Km totales» desde `v_km_cubierta` (`domain/km-cubierta.js`), con la nota «Estimado: faltan lecturas de odómetro» (o «hay lecturas de odómetro decrecientes») cuando `km_confiable` es false y «Sin dato» cuando no hay ningún tramo con dato. Se retiraron `kmPorNeumatico` y `kmTotalesNeumatico`: el cálculo vive solo en la base.
 
 Pruebas: SQL `tests/sql/t_86_km_por_cubierta.sql` (tramos, rotación sin duplicar, cambio de vehículo por el stock, odómetros faltantes, decreciente, invariantes, matriz admin / global / sucursal Norte y Sur / otro cliente / api / sin perfil / anon, los km completos que ve Sur de una cubierta que pasó por Norte y `km_tramos_cubierta` sin filas para quien no ve la cubierta); `run.sh` aplica la migración dos veces. Unitarias: `km-cubierta.test.mjs`. Smoke: `vehiculo.flow.js` y `ciclo.flow.js`. Visual: `ciclo-vida` y `detalle-rueda-km`. E2E: `specs/km-cubierta.mjs`.
+
+---
+
+# Apéndice I · Costos por cubierta y costo por km, CPK (migración `20261117000000_costos_cpk.sql`, hoja de ruta F4)
+
+## I.1 Tabla `costos_neumatico`
+
+`id`, `cliente_id`, `neumatico_id`, `concepto` (`compra`, `reparacion`, `recauchutado`, `montaje`, `otro`), `monto numeric(12,2) >= 0`, `moneda` (3 letras mayúsculas, por omisión `UYU`), `fecha`, `notas` (hasta 500), `created_by`, `created_at`. FK compuesta `(neumatico_id, cliente_id)` a `neumaticos (id, cliente_id)` (se agrega `unique (id, cliente_id)`, trivial porque `id` ya es clave primaria), `on delete cascade`: borrar una cubierta borra sus costos y queda en `audit_log`. Auditoría con `audit_row`.
+
+RLS: lectura solo para el admin y el perfil **global** del cliente. El perfil de sucursal, `api`, anon y sin perfil no ven nada. Sin políticas ni privilegios de escritura: se escribe solo con `costo_registrar` y `costo_eliminar` (`SECURITY DEFINER`, `search_path = ''`, autorización con `sucursal_autorizar_gestion`: admin o global del cliente dueño; todo lo demás, incluida una cubierta o costo inexistente para un no admin, es `42501`; el admin recibe `P0002`). Validaciones: concepto, monto (>= 0, no NaN, hasta 9.999.999.999,99), moneda de 3 letras (se normaliza a mayúsculas), fecha no posterior a mañana ni anterior a 2000, notas.
+
+## I.2 Sin doble conteo
+
+El precio de compra ya existe en `neumaticos.precio_unidad` y `neumatico_cambiar` / `neumatico_montar` lo copian al evento de `montaje` (`eventos_neumatico.costo`, solo en el alta o primer montaje). Es la misma compra. La vista cuenta **una** compra, con esta precedencia: entradas `compra` de `costos_neumatico` (corrigen el dato original) > `precio_unidad` > costo del evento de montaje (cubiertas cargadas sin precio). Eventos con costo que no son montaje suman por tipo (`reparacion`, `reencauche` como `recauchutado`, el resto como `otro`). Las demás entradas manuales suman siempre. `precio_unidad` y los eventos sin moneda se toman como `UYU`.
+
+## I.3 Vista `v_costo_cubierta` (`security_invoker`, solo `authenticated`)
+
+Una fila por cubierta visible, solo para quien ve costos (`costos_visibles()`: admin y global): el perfil de sucursal no recibe filas aunque lea `precio_unidad` y los eventos de sus neumáticos. Columnas: identidad y `sucursal_id` efectiva, `marca`, `modelo`, `vida`, `condicion`, `fecha_alta` (compra o creación), `tiene_costo`, `moneda`, `monedas`, `moneda_mixta`, `costo_total`, `costo_por_concepto` (jsonb), `km_totales`, `km_confiable` (de `v_km_cubierta`), `cpk`, `cpk_provisional`.
+
+- Monedas distintas: `costo_total`, `costo_por_concepto`, `cpk` y `cpk_provisional` son NULL y `moneda_mixta` es true. Nunca se suman monedas.
+- `cpk = costo_total / km_totales` solo con `km_confiable` y `km_totales > 0`; si no, NULL (nunca divide por cero). `cpk_provisional` es el mismo cociente cuando los km no son confiables pero hay `km_totales > 0`: la interfaz lo rotula «Estimado».
+- **Vida y carcasa.** La identidad del neumático es la carcasa y la vista acumula costos y km de todas sus vidas: `cpk` es el CPK final de carcasa (costo neto total / suma de km de todas las vidas). Un CPK por vida requiere el flujo de F5 (vida con costo y km propios).
+
+## I.4 `cpk_por_grupo(p_grupo, p_desde, p_hasta, p_cliente_id)`
+
+`p_grupo` es `marca`, `modelo` (marca + modelo) o `sucursal` (la del vehículo donde está montada o la de stock). **CPK de grupo = suma de costos / suma de km**, nunca el promedio de CPK individuales (ejemplo de prueba: CPK 1,0 y 0,01 con km 1.000 y 10.000 dan 0,1, no 0,505). Entran solo cubiertas con costo en una moneda y km confiables > 0; las demás con costo se cuentan en `n_sin_km`; las de moneda mixta no entran. Una fila por grupo y moneda. `muestra_baja` si `n_neumaticos < 5`. `p_desde`/`p_hasta` definen una **cohorte** por fecha de alta (inclusivos, opcionales): los costos y km de cada cubierta son siempre los de toda su vida. `p_cliente_id` acota a un cliente (el admin, si no, agrega todos). `SECURITY INVOKER` sobre la vista: el perfil de sucursal no recibe filas.
+
+## I.5 Rendimiento
+
+`tests/perf/gen.sql` (ahora con marcas, precios, montajes con costo y costos manuales) y `tests/perf/bench.sh`; mediana de 3 `EXPLAIN ANALYZE`, como `authenticated` con RLS, en ms.
+
+| Consulta | PG17 `jit=off` 3.000 neum. | PG17 `jit=off` 29.400 | PG16 `jit=on` 3.000 | PG16 `jit=on` 29.400 |
+|---|---|---|---|---|
+| costo de un vehículo, cliente | 3,3 | 3,1 | 3,0 | 3,2 |
+| costo de un vehículo, admin | 3,0 | 2,8 | 2,9 | 2,7 |
+| costo de un neumático, cliente | 2,1 | 2,1 | 2,0 | 2,0 |
+| vista completa, cliente (3.000 de su cliente) | 110 | 114 | 110 | 115 |
+| vista completa, admin | 99 | 1.100 | 99 | 1.096 |
+| `cpk_por_grupo` marca, cliente | 104 | 110 | 105 | 108 |
+| `cpk_por_grupo` modelo, cliente | 110 | 109 | 107 | 109 |
+| `cpk_por_grupo` sucursal, cliente | 106 | 109 | 104 | 111 |
+| `cpk_por_grupo` marca, admin (todos los clientes) | 92 | 988 | 95 | 983 |
+
+Sin CTE recursiva ni funciones nuevas por fila: el costo dominante es `km_tramos_cubierta` (unos 30 µs por cubierta), igual que en `v_km_cubierta`; el costo y los grupos agregan poco. El reporte de toda la flota del admin (29.400 cubiertas) tarda cerca de 1 s: el panel pasa `p_cliente_id` cuando se elige un cliente.
+
+## I.6 Panel y pruebas
+
+Panel: panel de la rueda y Ciclo de vida muestran «Costo» y «Costo por km» (nota «Estimado: faltan lecturas de odómetro» cuando corresponde) y «Registrar costo» (modal: concepto, monto, moneda, fecha, notas) solo para admin y perfil global; Reportes agrega la tabla «Costo por km» por marca, modelo o sucursal con muestra y km, el aviso de comparación y exportación CSV. Dominio `domain/costos.js`. No hay interfaz para eliminar costos (la RPC `costo_eliminar` existe).
+
+Pruebas: SQL `t_89_costos_cpk.sql`; unitarias `costos.test.mjs`; smoke `vehiculo.flow.js`, `ciclo.flow.js`, `seccionales.flow.js`; visual `detalle-rueda-costo`, `reportes-cpk`; E2E `specs/costos-cpk.mjs`.

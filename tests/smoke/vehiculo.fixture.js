@@ -66,7 +66,13 @@
     {neumatico_id:1006,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:9000,km_tramo_actual:null,km_totales:9000,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
     {neumatico_id:1007,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:0,km_tramo_actual:100,km_totales:100,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:true}
   ];
-  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
+  // v_costo_cubierta: P3 con costo y CPK confiable; P6 con CPK provisional (km no confiables); P5 con monedas mixtas.
+  var costocub = [
+    {neumatico_id:1003,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1500.00',costo_por_concepto:{compra:'1000.00',reparacion:'200.00',recauchutado:'300.00'},km_totales:23456,km_confiable:true,cpk:'0.063950',cpk_provisional:null},
+    {neumatico_id:1005,vehiculo_id:10,tiene_costo:true,moneda:null,monedas:['UYU','USD'],moneda_mixta:true,costo_total:null,costo_por_concepto:null,km_totales:null,km_confiable:false,cpk:null,cpk_provisional:null},
+    {neumatico_id:1006,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'900.00',costo_por_concepto:{compra:'900.00'},km_totales:9000,km_confiable:false,cpk:null,cpk_provisional:'0.100000'}
+  ];
+  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_costo_cubierta:costocub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){

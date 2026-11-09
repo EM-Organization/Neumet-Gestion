@@ -107,6 +107,14 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   fx.vehEqs.length = 0;
   await nav('reportes'); await sleep(300);
   if (fx.vehEqs.indexOf('vehiculos:2') === -1) fail('selector: Reportes no filtró vehículos por sucursal_id');
+  // Costo por km (cpk_por_grupo): visible para el perfil global, con muestra baja y sin CPK inventado
+  var cpkT = d.querySelector('#rep-cpk-tabla');
+  if (d.querySelector('#rep-cpk-card').hidden || !cpkT.querySelector('table')) fail('reportes: sin la tabla Costo por km para el perfil global');
+  var cpkTxt = cpkT.textContent.replace(/\s+/g, ' ');
+  if (cpkTxt.indexOf('Michelin') === -1 || cpkTxt.indexOf('UYU 0,100 por km') === -1 || cpkTxt.indexOf('60.000 km') === -1) fail('reportes: fila Michelin: ' + cpkTxt);
+  if (cpkTxt.indexOf('Muestra baja') === -1 || cpkTxt.indexOf('Sin dato') === -1 || cpkTxt.indexOf('2 sin km confiables') === -1) fail('reportes: fila de muestra baja: ' + cpkTxt);
+  if (d.querySelector('#view-reportes').textContent.indexOf('Comparar marcas sin ajustar por eje, carga y época puede engañar.') === -1) fail('reportes: falta el aviso de comparación');
+  if (d.querySelector('#rep-cpk-csv').disabled) fail('reportes: CSV de costo por km deshabilitado con datos');
   setSel('#sec-select', ''); await sleep(300);
   log.push('selector-flow: ok, vehEqs=' + fx.vehEqs.join(','));
 };
@@ -117,6 +125,8 @@ window.seccionalesUsuarioFlow = async function(w, d, sleep, fail, log){
   var sel = d.querySelector('#sec-selector');
   if (sel && sel.style.display !== 'none') fail('sucursal: el selector no debe verse para un perfil de sucursal');
   if (d.querySelector('#user-role').textContent !== 'Sucursal') fail('sucursal: rol mostrado incorrecto: ' + d.querySelector('#user-role').textContent);
+  d.querySelector('.nav-item[data-view="reportes"]').click(); await sleep(400);
+  if (!d.querySelector('#rep-cpk-card').hidden) fail('sucursal: el perfil de sucursal no debe ver Costo por km');
   d.querySelector('.nav-item[data-view="flota"]').click(); await sleep(500);
   if (d.querySelectorAll('#flota-grid .flota-card').length < 1) fail('sucursal: Flota vacía');
   log.push('seccional-usuario-flow: ok');

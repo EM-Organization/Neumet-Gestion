@@ -74,6 +74,10 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(/Estimado|Sin dato/.test(panel)) fail('detalle: km confiables no deberían llevar nota: '+panel.replace(/\s+/g,' ').slice(0,300));
+  // Costo y costo por km (v_costo_cubierta): 1.500 / 23.456 km, sin nota; acción «Registrar costo» para el perfil global
+  ['Costo','UYU 1.500,00','Costo por km','UYU 0,064 por km','Registrar costo'].forEach(function(t){
+    if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'" (costo)');
+  });
   if(d.body.innerHTML.indexOf('<programada>') !== -1) fail('detalle: evento sin escapar');
   for(var t = 0; t < 40 && !$('#vd-chart-wrap svg'); t++) await sleep(50);
   var ch = $('#vd-chart-wrap svg');
@@ -143,6 +147,18 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   // Estimado (falta un tramo) y odómetro decreciente: nota sobria con el motivo, el valor conocido se muestra
   $('#vd-diagrama .vd-rueda[data-pos="6"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
   if($('#vd-panel').textContent.indexOf('Estimado: faltan lecturas de odómetro') === -1 || $('#vd-panel').textContent.indexOf('9.000 km') === -1) fail('detalle: rueda con un tramo sin odómetro deberia mostrar la nota Estimado y 9.000 km');
+  if($('#vd-panel').textContent.indexOf('UYU 0,100 por km') === -1) fail('detalle: CPK provisional sin valor');
+  // Monedas mixtas (rueda 5, sin km): sin total ni CPK inventados
+  $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
+  if($('#vd-panel').textContent.indexOf('Monedas mixtas') === -1 || /UYU 0,000/.test($('#vd-panel').textContent)) fail('detalle: monedas mixtas deberían mostrarse sin total');
+  // Registrar costo: abre el formulario, valida y guarda
+  $('#vd-panel [data-action="detalleRegistrarCosto"]').click(); await sleep(150);
+  if(!$('#modal-costo').classList.contains('show')) fail('detalle: «Registrar costo» no abrió el formulario');
+  $('#costo-guardar').click(); await sleep(100);
+  if($('#costo-error').textContent.indexOf('Elegir el concepto') === -1) fail('detalle: el formulario de costo no valida el concepto: '+$('#costo-error').textContent);
+  $('#costo-concepto').value = 'reparacion'; $('#costo-monto').value = '250.50';
+  $('#costo-guardar').click(); await sleep(300);
+  if($('#modal-costo').classList.contains('show')) fail('detalle: el formulario de costo no se cerró al guardar: '+$('#costo-error').textContent);
   $('#vd-diagrama .vd-rueda[data-pos="7"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
   if($('#vd-panel').textContent.indexOf('Estimado: hay lecturas de odómetro decrecientes') === -1) fail('detalle: odómetro decreciente deberia indicarse');
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);

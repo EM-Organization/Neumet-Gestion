@@ -18,6 +18,7 @@ import { registrar as tasa } from './specs/tasa.mjs';
 import { registrar as sinAcceso } from './specs/sin-acceso.mjs';
 import { registrar as apiSinNeumaticos } from './specs/api-sin-neumaticos.mjs';
 import { registrar as kmCubierta } from './specs/km-cubierta.mjs';
+import { registrar as costosCpk } from './specs/costos-cpk.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -37,4 +38,5 @@ tasa(env);
 sinAcceso(env);
 apiSinNeumaticos(env);
 kmCubierta(env);
+costosCpk(env);
 contrato(env);

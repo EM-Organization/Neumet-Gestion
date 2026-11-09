@@ -19,6 +19,8 @@ import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
 import { semaforoVehiculo } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
+import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
+import { abrirRegistroCosto, puedeVerCostos } from './costos.js';
 import {
   layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
@@ -239,7 +241,20 @@ function seccionNeumatico(fila) {
     ${k.disponible ? html`${dato('Km recorridos', km(k.recorridos))}
     ${dato('En el tramo actual', km(k.tramoActual))}
     ${dato('Km totales', km(k.totales))}` : ''}
-  </dl>${k.nota ? html`<p class="vd-p-nota">${k.nota}</p>` : ''}`;
+  </dl>${k.nota ? html`<p class="vd-p-nota">${k.nota}</p>` : ''}${seccionCosto(n)}`;
+}
+
+// Costo y costo por km del neumático (v_costo_cubierta). Sin fila (perfil de sucursal, vista no disponible): no se muestra.
+function seccionCosto(n) {
+  if (!puedeVerCostos()) return '';
+  const c = resumenCosto(datos.costo.get(n.id));
+  if (!c.disponible) return '';
+  const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
+  return html`<dl class="vd-datos vd-datos-neum vd-costo">
+    ${dato('Costo', c.textoCosto)}
+    ${dato('Costo por km', c.textoCpk)}
+  </dl>${c.nota ? html`<p class="vd-p-nota">${c.nota}</p>` : ''}
+  <button type="button" class="btn ghost vd-costo-btn" data-action="detalleRegistrarCosto" data-args="[${n.id}]">Registrar costo</button>`;
 }
 
 function quemaDe(fila) {
@@ -426,7 +441,7 @@ export async function load() {
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren();
   await contextoListo();
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
-  const [v, est, al, ev, nm, kc] = await Promise.all([
+  const [v, est, al, ev, nm, kc, cc] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_alertas').select('*').eq('vehiculo_id', vehiculoId).order('severidad', { ascending: false }),
@@ -435,6 +450,8 @@ export async function load() {
     db.from('neumaticos').select('id,posicion,estado,numero_quema,km_previos').eq('vehiculo_id', vehiculoId),
     // Km por cubierta (previos + tramos montados, incluidos los de otros vehículos). Si falla, el panel omite los km.
     db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id', vehiculoId),
+    // Costo y costo por km (v_costo_cubierta): solo administrador y perfil global; el de sucursal no ve costos.
+    puedeVerCostos() ? db.from('v_costo_cubierta').select(COLUMNAS_COSTO).eq('vehiculo_id', vehiculoId) : Promise.resolve({ data: [], error: null }),
   ]);
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
@@ -446,6 +463,7 @@ export async function load() {
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
     km: indexarKm(kc.error ? [] : kc.data),
+    costo: indexarCostos(cc.error ? [] : cc.data),
     layout, geo: geometriaDiagrama(layout), u: umbralesDe(filas[0]), porPos: new Map(filas.map(f => [Number(f.posicion), f])),
   };
   cabecera(); resumen(); leyenda(); dibujarDiagrama();
@@ -465,6 +483,12 @@ registerActions({
   verVehiculo: (id, pos) => abrirDetalle(Number(id), pos),
   detalleRueda: pos => seleccionarRueda(pos),
   detalleCerrarPanel: () => cerrarPanel(),
+  detalleRegistrarCosto: id => {
+    const n = datos && datos.neumPorId.get(Number(id));
+    const fila = datos && datos.filas.find(f => Number(f.neumatico_id) === Number(id));
+    const etiqueta = [fila && fila.marca, fila && fila.modelo].filter(Boolean).join(' ') || 'Neumático';
+    abrirRegistroCosto({ neumaticoId: Number(id), etiqueta: `${etiqueta}${n && n.numero_quema ? ` · quema ${n.numero_quema}` : ''}`, alGuardar: () => load() });
+  },
   recargarVehiculoDetalle: () => { cacheMediciones.clear(); return load(); },
 });
 

@@ -11,12 +11,14 @@ import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { getNeumVehiculoId } from './neumaticos.js';
 import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
+import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
+import { abrirRegistroCosto, puedeVerCostos } from './costos.js';
 import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, ordenarEventos } from '../domain/ciclo-vida.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
 import { miniVehiculo } from '../core/componentes.js';
 
-let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), filtroNeum='';
+let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), costoCub=new Map(), filtroNeum='';
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
@@ -25,20 +27,22 @@ const nomPos=p=>nombrePosicion(p, veh&&veh.tipo_ruedas);
 const neumLabel=n=>`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
 
 async function cargar(){
-  const [rv,rn,re,rs,rk]=await Promise.all([
+  const [rv,rn,re,rs,rk,rc]=await Promise.all([
     db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,fecha_baja,motivo_baja,numero_quema,km_previos').eq('vehiculo_id',vehId).order('posicion'),
     db.from('eventos_neumatico').select('*').eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
     // Solo colorea el mini vehículo: si falla, las ruedas salen sin datos.
     db.from('v_estado_neumaticos').select('*').eq('vehiculo_id',vehId).order('posicion'),
     // Km por cubierta (v_km_cubierta): si falla, la tabla de km muestra «Sin dato» en lugar de inventar valores.
-    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id',vehId)
+    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id',vehId),
+    // Costo y costo por km (v_costo_cubierta): solo administrador y perfil global; el de sucursal no ve costos.
+    puedeVerCostos()?db.from('v_costo_cubierta').select(COLUMNAS_COSTO).eq('vehiculo_id',vehId):Promise.resolve({data:[],error:null})
   ]);
   const err=rv.error||rn.error||re.error;
   if(err){ showToast(userError(err),true); return false; }
   const base=getVehiculos().find(x=>x.id===vehId)||{};
   veh={...base,...(rv.data||{})};
-  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data);
+  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data); costoCub=indexarCostos(rc.error?[]:rc.data);
   return true;
 }
 
@@ -126,6 +130,20 @@ function renderTimeline(){
     ${k.nota?html`<tr class="ciclo-km-nota"><td colspan="8">${k.nota}</td></tr>`:''}`; });
   setHtml($('ciclo-km'), kmRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>N.º de quema</th><th>Vida</th><th>Km previos</th><th>Km recorridos</th><th>En el tramo actual</th><th>Km totales</th></tr></thead><tbody>${kmRows}</tbody></table>`
     :html`<div class="ciclo-sub">Sin km registrados.</div>`);
+  // Costo y costo por km por neumático (v_costo_cubierta): sin fila (perfil de sucursal) la sección no se muestra.
+  const ver=puedeVerCostos();
+  $('ciclo-costo-wrap').hidden=!ver;
+  if(ver){
+    const cRows=neums.filter(n=>costoCub.has(n.id)).map(n=>{ const c=resumenCosto(costoCub.get(n.id)); return html`<tr>
+      <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td>
+      <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td>
+      <td class="mono-cell" data-label="Costo">${c.textoCosto}</td>
+      <td class="mono-cell" data-label="Costo por km">${c.textoCpk}</td>
+      <td data-label=""><button type="button" class="btn ghost ciclo-costo-btn" data-action="cicloRegistrarCosto" data-args="[${n.id}]" aria-label="Registrar costo, ${nomPos(n.posicion)}">Registrar costo</button></td></tr>
+      ${c.nota?html`<tr class="ciclo-km-nota"><td colspan="5">${c.nota}</td></tr>`:''}`; });
+    setHtml($('ciclo-costo'), cRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>Costo</th><th>Costo por km</th><th><span class="sr-only">Acción</span></th></tr></thead><tbody>${cRows}</tbody></table>`
+      :html`<div class="ciclo-sub">Sin neumáticos montados.</div>`);
+  }
   const lista=ordenarEventos(eventos,true).filter(e=>!filtroNeum||String(e.neumatico_id)===filtroNeum);
   setHtml($('ciclo-timeline'), lista.length?joinHtml(lista.map(e=>{
     const n=neums.find(x=>x.id===e.neumatico_id);
@@ -143,6 +161,11 @@ function renderTodo(){
   renderOdometro(); renderCambio(); renderForm(); renderTimeline();
 }
 
+ACTIONS.cicloRegistrarCosto=function(id){
+  const n=neums.find(x=>x.id===Number(id)); if(!n) return;
+  abrirRegistroCosto({neumaticoId:n.id, etiqueta:`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Neumático'}`,
+    alGuardar:async()=>{ if(await cargar()) renderTodo(); }});
+};
 ACTIONS.openCicloVida=async function(id){
   vehId=id; filtroNeum='';
   $('modal-ciclo').classList.add('show');

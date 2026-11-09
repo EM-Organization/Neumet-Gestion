@@ -410,6 +410,16 @@
   .rep-actions { display:flex; gap:10px; flex-wrap:wrap; }
   .rep-progress { margin-top:14px; font-size:13px; color:var(--text-secondary); min-height:18px; }
   .rep-progress.warn { color:var(--danger); font-weight:600; }
+  .rep-cpk { margin-top:16px; }
+  .rep-cpk-titulo { font-size:15px; font-weight:600; margin-bottom:12px; }
+  .rep-cpk-aviso { font-size:13px; color:var(--text-secondary); background:var(--surface-secondary); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin:0 0 12px; }
+  .rep-cpk-nota { font-size:12px; color:var(--text-secondary); margin:8px 0; }
+  .rep-cpk-muestra { font-size:12px; color:var(--text-secondary); margin-left:6px; }
+  .rep-cpk-celda { text-align:right; }
+  .rep-cpk-sub { display:block; font-size:12px; color:var(--text-secondary); }
+  #rep-cpk-tabla { overflow-x:auto; }
+  .vd-costo-btn, .ciclo-costo-btn { margin-top:8px; }
+  .ciclo-costo-btn { margin-top:0; padding:4px 10px; font-size:12px; }
 
   /* Flota con prioridades y centro de alertas */
   .badge.gray { background: var(--surface-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
