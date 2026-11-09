@@ -104,7 +104,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);
     br.click(); await sleep(400);
     if(!$('#modal-confirm').classList.contains('show')) fail('detalle: el handler real no pidio confirmar el intercambio');
-    else { $('#confirm-ok').click(); await sleep(400); }
+    else {
+      var cok = $('#confirm-ok');
+      if(cok.textContent !== 'Rotar' || cok.classList.contains('danger') || !cok.classList.contains('primary')) fail('detalle: el intercambio debe confirmarse con «Rotar» sin rojo: ' + cok.textContent + ' / ' + cok.className);
+      if($('#confirm-icon').classList.contains('danger') || $('#confirm-icon').querySelector('svg:not([hidden])').dataset.icono !== 'intercambio') fail('detalle: el intercambio muestra la papelera');
+      cok.click(); await sleep(400);
+    }
     var rot = rpcs('neumatico_rotar');
     if(rot.length !== 1) fail('detalle: la rotacion no llego a la RPC real ('+rot.length+')');
     else if(JSON.stringify([rot[0].args.p_vehiculo_id, rot[0].args.p_pos_a, rot[0].args.p_pos_b]) !== '[10,3,1]') fail('detalle: args de rotar: '+JSON.stringify(rot[0].args));

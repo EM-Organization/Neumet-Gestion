@@ -112,7 +112,7 @@ registerActions({
     const c = confirmacionEliminar(s.nombre, n);
     // Con vehículos asociados no hay nada que confirmar: se informa y no se llama a la base.
     if (n > 0) { err(c.mensaje); showToast(c.mensaje, true); return; }
-    if (!await confirmDialog(c.titulo, c.mensaje)) return;
+    if (!await confirmDialog(c.titulo, c.mensaje, 'Eliminar', true)) return;
     await rpc('sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
   },
   async sucursalVehiculoCrear() {

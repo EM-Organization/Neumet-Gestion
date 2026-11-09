@@ -160,7 +160,7 @@ ACTIONS.cicloGuardarOdometro=async function(){
   if(r.requiereConfirmacion){
     // El cliente no puede bajar el kilometraje (lo corrige el admin); el admin confirma, p. ej. por cambio de tablero.
     if(cliente){ showToast(`El kilometraje no puede ser menor al actual (${veh.odometro_km} km). La corrección la hace el administrador`,true); return; }
-    if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`))) return;
+    if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`,'Continuar',false))) return;
     r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value, true);
   }
   if(!r.ok){ showToast(r.error,true); return; }
@@ -195,7 +195,7 @@ ACTIONS.cicloRegistrarEvento=async function(){
     const rot=planRotacion(neums,n,p.posicionDestino);
     if(!rot.ok){ showToast(rot.error,true); return; }
     rotar=true;
-    if(rot.intercambio && !(await confirmDialog('Intercambiar neumáticos',`La posición ${nomPos(p.posicionDestino)} está ocupada: se intercambiarán los neumáticos de ${nomPos(n.posicion)} y ${nomPos(p.posicionDestino)}.`))) return;
+    if(rot.intercambio && !(await confirmDialog('Rotar neumáticos',`La posición ${nomPos(p.posicionDestino)} está ocupada: se intercambiarán los neumáticos de ${nomPos(n.posicion)} y ${nomPos(p.posicionDestino)}.`,'Rotar',false))) return;
   }
   const btn=$('ciclo-ev-save'); btn.disabled=true;
   try{
