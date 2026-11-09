@@ -141,6 +141,10 @@ echo "== migración de privilegios de precios (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
 echo "== migración de privilegios de precios (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
+echo "== migración de costos y CPK (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261117000000_costos_cpk.sql"
+echo "== migración de costos y CPK (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261117000000_costos_cpk.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

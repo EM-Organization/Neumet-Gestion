@@ -3,6 +3,9 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { isClienteMode, currentClienteId } from '../core/auth.js';
+import { puedeVerCostos } from './costos.js';
+import { filasCpk, cpkCsv, fmtMonto, MUESTRA_MINIMA, GRUPOS, NOTA_CPK_BASE, NOTA_SUCURSAL_SELECTOR, ELEGIR_CLIENTE } from '../domain/costos.js';
+import { fmtNum } from '../domain/formato.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { PAGE_SIZE, MAX_ROWS, medicionesCsv, resumenFlota, rangoFechas, safeFilename, fetchAll } from '../domain/reportes.js';
@@ -15,6 +18,9 @@ const $ = id => document.getElementById(id);
 const COLOR = { ok: '#1a7f37', bajo: '#b25000', critico: '#c0392b', null: '#8e8e93' };
 const LABEL = { ok: 'OK', bajo: 'BAJO', critico: 'CRÍTICO', null: 'Sin datos' };
 let busy = false;
+let cpkRows = [];            // última respuesta de cpk_por_grupo (para el CSV)
+let cpkGrupo = 'marca';
+let nombresClientes = new Map();
 
 function setProgress(msg, warn = false) {
   const el = $('rep-progress');
@@ -41,10 +47,75 @@ export async function load() {
   if (!isClienteMode()) {
     const { data, error } = await db.from('clientes').select('id,nombre').order('nombre');
     if (error) { showToast(userError(error), true); return; }
+    nombresClientes = new Map((data || []).map(c => [String(c.id), c.nombre]));
     fillSelect($('rep-cliente'), 'Todos los clientes', (data || []).map(c => ({ id: c.id, label: c.nombre })));
   }
   await loadVehiculos();
   $('rep-ver-vehiculo').hidden = true;
+  await cargarCpk();
+}
+
+// ---- Costo por km (cpk_por_grupo): solo administrador y perfil global; el perfil de sucursal no ve costos ----------
+const CPK_GRUPO_LABEL = Object.fromEntries(GRUPOS.map(g => [g.id, g.label]));
+
+async function cargarCpk() {
+  const card = $('rep-cpk-card');
+  const ver = puedeVerCostos();
+  card.hidden = !ver;
+  if (!ver) return;
+  const grupo = $('rep-cpk-grupo').value || 'marca';
+  const desde = $('rep-cpk-desde').value || null;
+  const hasta = $('rep-cpk-hasta').value || null;
+  const cont = $('rep-cpk-tabla');
+  if (desde && hasta && desde > hasta) {
+    cpkRows = []; $('rep-cpk-csv').disabled = true;
+    setHtml(cont, html`<p class="rep-cpk-nota">La fecha «desde» debe ser anterior o igual a «hasta».</p>`);
+    return;
+  }
+  const cid = isClienteMode() ? null : ($('rep-cliente').value || null);
+  // El administrador sin cliente elegido no consulta: agregar toda la flota es lento y mezcla clientes.
+  if (!isClienteMode() && !cid) {
+    cpkRows = []; $('rep-cpk-csv').disabled = true;
+    setHtml(cont, html`<p class="rep-cpk-nota">${ELEGIR_CLIENTE}</p>`);
+    return;
+  }
+  setHtml(cont, html`<p class="rep-cpk-nota">Cargando…</p>`);
+  const { data, error } = await db.rpc('cpk_por_grupo', { p_grupo: grupo, p_desde: desde, p_hasta: hasta, p_cliente_id: cid });
+  if (error) {
+    cpkRows = []; $('rep-cpk-csv').disabled = true;
+    setHtml(cont, html`<p class="rep-cpk-nota">No se pudo cargar el costo por km. Reintentar.</p>`);
+    showToast(userError(error), true);
+    return;
+  }
+  cpkRows = data || [];
+  cpkGrupo = grupo;
+  $('rep-cpk-csv').disabled = !cpkRows.length;
+  renderCpk();
+}
+
+function renderCpk() {
+  const filas = filasCpk(cpkRows);
+  const cont = $('rep-cpk-tabla');
+  if (!filas.length) {
+    setHtml(cont, html`<p class="rep-cpk-nota">Sin costos registrados. Usar «Registrar costo» en el panel de la rueda.</p>`);
+    return;
+  }
+  const etiqueta = (f, raw) => (cpkGrupo === 'sucursal' && !isClienteMode() && raw.cliente_id !== null && raw.cliente_id !== undefined
+    ? `${f.clave} · ${nombresClientes.get(String(raw.cliente_id)) || ''}` : f.clave);
+  const cuerpo = joinHtml(filas.map((f, i) => html`<tr>
+    <td data-label="${CPK_GRUPO_LABEL[cpkGrupo]}">${etiqueta(f, cpkRows[i])}</td>
+    <td data-label="Neumáticos"><span class="rep-cpk-celda"><span class="mono-cell">${fmtNum(f.n)}</span>${f.muestraBaja ? html` <span class="rep-cpk-muestra" title="Menos de ${MUESTRA_MINIMA} neumáticos">▲ Muestra baja</span>` : ''}${f.sinKm ? html`<span class="rep-cpk-sub">${fmtNum(f.sinKm)} sin km confiables</span>` : ''}</span></td>
+    <td class="mono-cell" data-label="Km">${fmtNum(f.km)} km</td>
+    <td class="mono-cell" data-label="Costo">${fmtMonto(f.costo, f.moneda)}</td>
+    <td class="mono-cell" data-label="Costo por km">${f.textoCpk}</td></tr>`));
+  setHtml(cont, html`<table class="ciclo-tabla rep-cpk-tabla"><thead><tr><th scope="col">${CPK_GRUPO_LABEL[cpkGrupo]}</th><th scope="col">Neumáticos</th><th scope="col">Km</th><th scope="col">Costo</th><th scope="col">Costo por km</th></tr></thead><tbody>${cuerpo}</tbody></table>
+    <p class="rep-cpk-nota">${NOTA_CPK_BASE}</p>${hayFiltroSeccional() && cpkGrupo !== 'sucursal' ? html`<p class="rep-cpk-nota">${NOTA_SUCURSAL_SELECTOR}</p>` : ''}`);
+}
+
+function exportCpkCsv() {
+  if (!cpkRows.length) return;
+  download(cpkCsv(cpkRows), safeFilename(['neumet-costo-por-km', cpkGrupo, new Date().toISOString().slice(0, 10)], 'csv'));
+  showToast(`CSV exportado (${cpkRows.length} filas)`);
 }
 
 // Lee TODAS las mediciones del alcance elegido por lotes de PAGE_SIZE con range(); tope MAX_ROWS con aviso.
@@ -162,7 +233,9 @@ function printReport() {
 
 ACTIONS.repExportCsv = exportCsv;
 ACTIONS.repPrint = printReport;
-ACTIONS.repClienteChange = async v => { await loadVehiculos(); ACTIONS.repVehiculoChange(''); };
+ACTIONS.repClienteChange = async v => { await loadVehiculos(); ACTIONS.repVehiculoChange(''); await cargarCpk(); };
+ACTIONS.repCpkCargar = () => cargarCpk();
+ACTIONS.repCpkCsv = exportCpkCsv;
 ACTIONS.repVehiculoChange = v => { $('rep-ver-vehiculo').hidden = !v; };
 ACTIONS.repVerVehiculo = () => { const v = $('rep-vehiculo').value; if (v) ACTIONS.verVehiculo(v); };
 registerView('reportes', 'Reportes', load);

@@ -51,6 +51,7 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | km que ya traía el neumático | km de fábrica, km iniciales |
 | Km recorridos (km en vehículos: tramos cerrados más el tramo actual); Km totales (km previos más recorridos); «Sin dato» cuando faltan odómetros | 0 km cuando el dato no existe; «km estimados» sin motivo |
 | Estimado: faltan lecturas de odómetro; Estimado: hay lecturas de odómetro decrecientes; Sin dato: faltan lecturas de odómetro (notas de confiabilidad, siempre en texto) | tono de alarma o color como único indicador |
+| Costo; Costo por km; Registrar costo; Muestra baja (menos de 5 neumáticos); «Comparar marcas sin ajustar por eje, carga y época puede engañar.»; «Sin costos registrados»; Monedas mixtas | gasto, precio por kilómetro, «CPK» en la interfaz |
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |

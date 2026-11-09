@@ -180,3 +180,9 @@ Sin cambios: coche existente sin neumáticos cargados responde `code 200`, `data
 ### Panel admin: siguiente paso
 
 El panel **no tiene hoy ninguna vista del log de ingesta** (`ingesta_log` solo la lee el admin por SQL/API), por lo que no se creó una. Siguiente paso: una lista de ingesta para el admin que muestre este motivo con la etiqueta «Coche sin neumáticos cargados» y la ayuda «Cargar las ruedas del coche en el panel para que se guarden las mediciones» (textos según `14-guia-de-textos.md`).
+
+---
+
+## Costos y CPK
+
+La cuenta `api` no tiene acceso a `costos_neumatico`, `v_costo_cubierta` ni `cpk_por_grupo` (devuelven vacío o `42501`), y desde los privilegios por columna (docs/08 apéndice K) tampoco lee `neumaticos.precio_unidad` ni `eventos_neumatico.costo`. La API de proveedor no expone costos.

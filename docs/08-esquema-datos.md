@@ -652,3 +652,56 @@ SQL `tests/sql/t_90_precios_solo_global.sql`: contrato de privilegios (tabla, co
 
 ## K.7 Aplicación y riesgos
 Aplicar con `supabase db push --remote` **antes** de fusionar el front. Orden de versión: entre `20261116000000` (calidad de datos) y `20261117000000` (costos y CPK). El front anterior (`select('*')` en `neumaticos` y `eventos_neumatico`, `upsert` del admin, `precio_unidad` en Stock) deja de funcionar al aplicar la migración, y el nuevo front no funciona sin ella (llama a las funciones). Cualquier integración externa que lea esas dos columnas con un usuario `authenticated` recibirá 42501; `service_role` (Edge Functions, API de proveedor) no cambia. La API de proveedor no devuelve precios. Si algún día se habilita Realtime sobre `neumaticos` o `eventos_neumatico`, tener en cuenta que Realtime filtra filas con la RLS pero no aplica privilegios de columna: las dos tablas no deben publicarse (hoy no hay ninguna publicación ni suscripción).
+
+---
+
+# Apéndice J · Costos por cubierta y costo por km, CPK (migración `20261117000000_costos_cpk.sql`, hoja de ruta F4)
+
+## J.1 Tabla `costos_neumatico`
+
+`id`, `cliente_id`, `neumatico_id`, `concepto` (`compra`, `reparacion`, `recauchutado`, `montaje`, `otro`), `monto numeric(12,2) >= 0`, `moneda` (3 letras mayúsculas, por omisión `UYU`), `fecha`, `notas` (hasta 500), `created_by`, `created_at`. FK compuesta `(neumatico_id, cliente_id)` a `neumaticos (id, cliente_id)` (se agrega `unique (id, cliente_id)`, trivial porque `id` ya es clave primaria), `on delete cascade`: borrar una cubierta borra sus costos y queda en `audit_log`. Auditoría con `audit_row`.
+
+RLS: lectura solo para el admin y el perfil **global** del cliente. El perfil de sucursal, `api`, anon y sin perfil no ven nada. Sin políticas ni privilegios de escritura: se escribe solo con `costo_registrar` y `costo_eliminar` (`SECURITY DEFINER`, `search_path = ''`, autorización con `sucursal_autorizar_gestion`: admin o global del cliente dueño; todo lo demás, incluida una cubierta o costo inexistente para un no admin, es `42501`; el admin recibe `P0002`). Validaciones: concepto, monto (>= 0, no NaN, hasta 9.999.999.999,99), moneda de 3 letras (se normaliza a mayúsculas), fecha no posterior a mañana ni anterior a 2000, notas.
+
+## J.2 Sin doble conteo
+
+El precio de compra ya existe en `neumaticos.precio_unidad` y `neumatico_cambiar` / `neumatico_montar` lo copian al evento de `montaje` (`eventos_neumatico.costo`, solo en el alta o primer montaje). Es la misma compra. La vista cuenta **una** compra, con esta precedencia: entradas `compra` de `costos_neumatico` (corrigen el dato original) > `precio_unidad` > costo del evento de montaje (cubiertas cargadas sin precio). Eventos con costo que no son montaje suman por tipo (`reparacion`, `reencauche` como `recauchutado`, el resto como `otro`). Las demás entradas manuales suman siempre. Un costo escrito a mano directamente en un evento de `montaje` se descarta si hay precio (`precio_unidad` o entrada `compra`): se toma como la compra repetida. `precio_unidad` y los eventos sin moneda se toman como `UYU`.
+
+## J.3 Vista `v_costo_cubierta` (`security_invoker`, solo `authenticated`)
+
+Una fila por cubierta visible, solo para quien ve costos (`precios_visibles()` de la migración 20261116500000: admin y global; un rol que omite la RLS ve todo): el perfil de sucursal no recibe filas. Columnas: identidad y `sucursal_id` efectiva, `marca`, `modelo`, `vida`, `condicion`, `fecha_alta` (compra o creación), `tiene_costo`, `moneda`, `monedas`, `moneda_mixta`, `costo_total`, `costo_por_concepto` (jsonb), `km_totales`, `km_recorridos`, `km_confiable` (de `v_km_cubierta`), `cpk`, `cpk_provisional`, `cpk_carcasa`.
+
+- Monedas distintas: `costo_total`, `costo_por_concepto`, `cpk` y `cpk_provisional` son NULL y `moneda_mixta` es true. Nunca se suman monedas.
+- **Costo por km recorrido.** `km_recorridos = km_totales - km_previos`: lo recorrido en vehículos (tramos cerrados más tramo actual). `cpk = costo_total / km_recorridos` solo con `km_confiable` y `km_recorridos > 0`; si no, NULL (nunca divide por cero ni inventa). El costo total (incluida la compra) se divide íntegro sobre los km recorridos desde que el cliente tiene la cubierta: los `km_previos` no entran en el divisor. `cpk_provisional` es el mismo cociente cuando los km no son confiables pero hay `km_recorridos > 0` (la interfaz lo rotula «Estimado»). `cpk_carcasa = costo_total / km_totales` (con los km previos) es una columna aparte, solo con km confiables.
+- **Dependencia de `v_km_cubierta`.** `v_costo_cubierta` se basa en `v_km_cubierta`: al cambiar o recrear esa vista (`drop view`) hay que recrear `v_costo_cubierta` (reaplicar la migración 20261117).
+- **Vida y carcasa.** La identidad del neumático es la carcasa y la vista acumula costos y km de todas sus vidas (`cpk_carcasa` es el CPK final de carcasa: costo neto total / suma de km de todas las vidas; `cpk` solo cuenta lo recorrido). Un CPK por vida requiere el flujo de F5 (vida con costo y km propios).
+
+## J.4 `cpk_por_grupo(p_grupo, p_desde, p_hasta, p_cliente_id)`
+
+`p_grupo` es `marca`, `modelo` (marca + modelo) o `sucursal` (la del vehículo donde está montada o la de stock). **CPK de grupo = suma de costos / suma de km**, nunca el promedio de CPK individuales (ejemplo de prueba: CPK 1,0 y 0,01 con km recorridos 1.000 y 10.000 dan 0,1, no 0,505). Entran solo cubiertas con costo en una moneda y km recorridos confiables > 0 (el grupo suma `km_recorridos`); las demás con costo se cuentan en `n_sin_km`; las de moneda mixta no entran. Una fila por grupo y moneda. `muestra_baja` si `n_neumaticos < 5`. `p_desde`/`p_hasta` definen una **cohorte** por fecha de alta (inclusivos, opcionales): los costos y km de cada cubierta son siempre los de toda su vida. `p_cliente_id` acota a un cliente (el admin, si no, agrega todos). `SECURITY INVOKER` sobre la vista: el perfil de sucursal no recibe filas.
+
+## J.5 Rendimiento
+
+`tests/perf/gen.sql` (ahora con marcas, precios, montajes con costo y costos manuales) y `tests/perf/bench.sh`; mediana de 3 `EXPLAIN ANALYZE`, como `authenticated` con RLS, en ms.
+
+| Consulta | PG17 `jit=off` 3.000 neum. | PG17 `jit=off` 29.400 | PG16 `jit=on` 29.400 |
+|---|---|---|---|
+| costo de un vehículo, cliente | 4,7 | 4,9 | 4,9 |
+| costo de un vehículo, admin | 4,0 | 4,1 | 4,4 |
+| costo de un neumático, cliente | 2,5 | 2,5 | 2,6 |
+| vista completa, cliente (3.000 de su cliente) | 183 | 185 | 191 |
+| vista completa, admin | 164 | 1.833 | 1.876 |
+| `cpk_por_grupo` marca, cliente | 184 | 188 | 198 |
+| `cpk_por_grupo` modelo, cliente | 184 | 192 | 195 |
+| `cpk_por_grupo` sucursal, cliente | 187 | 186 | 198 |
+| `cpk_por_grupo` marca, admin (todos los clientes) | 163 | 1.849 | 1.928 |
+
+Sin CTE recursiva. Tras los privilegios por columna (apéndice K), la vista `security_invoker` no puede leer `precio_unidad` ni `eventos_neumatico.costo`: el costo de cada cubierta lo calcula `costo_cubierta_items(neumatico_id)` (`SECURITY DEFINER`, `search_path = ''`, exige `precios_visibles()` y que la cubierta sea visible para quien llama; devuelve también marca, modelo, vida, condición, fecha de alta y sucursal efectiva, de modo que la vista no vuelve a unirse a `neumaticos`). Es una llamada por fila (unos 20 µs), igual que `km_tramos_cubierta`; frente a la versión que leía las tablas, la vista completa de un cliente pasó de unos 110 ms a unos 185 ms y el admin sobre 29.400 cubiertas de 1,1 s a 1,8 s. Se eligió una función por fila y no una vista `SECURITY DEFINER` para no disparar el aviso del linter de Supabase y conservar la RLS de `v_km_cubierta`. El reporte de toda la flota del admin se evita en el panel: exige elegir cliente (`p_cliente_id`).
+
+## J.6 Panel y pruebas
+
+Panel: panel de la rueda y Ciclo de vida muestran «Costo» y «Costo por km» (nota «Estimado: faltan lecturas de odómetro» cuando corresponde) y «Registrar costo» (modal: concepto, monto, moneda, fecha, notas) solo para admin y perfil global; Reportes agrega la tabla «Costo por km» por marca, modelo o sucursal con muestra y km, el aviso de comparación y exportación CSV. Dominio `domain/costos.js`. En Reportes, el administrador debe elegir un cliente (sin cliente no se consulta: «Elegir un cliente para ver el costo por km»); con una sucursal elegida en el selector del perfil global, el reporte por marca o modelo no se filtra por ella (la pantalla lo avisa).
+
+## J.7 Precios y costos con privilegios por columna
+
+Desde la migración 20261116500000 (apéndice K) `authenticated` no tiene `select` sobre `neumaticos.precio_unidad` ni `eventos_neumatico.costo`; el perfil de sucursal tampoco los lee por la API. Esta migración respeta ese contrato: `v_costo_cubierta` lee precio y costo solo por `costo_cubierta_items` (`SECURITY DEFINER`, con `precios_visibles()`), y `costos_neumatico`, la vista y `cpk_por_grupo` devuelven vacío al perfil de sucursal. No hay interfaz para eliminar costos (la RPC `costo_eliminar` existe).

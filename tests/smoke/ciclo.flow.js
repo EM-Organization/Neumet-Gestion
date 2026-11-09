@@ -36,6 +36,16 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
     var c2 = kmRows[2] ? Array.prototype.map.call(kmRows[2].querySelectorAll('td'), function(td){ return td.textContent.trim(); }) : [];
     if(c2[5] !== 'Sin dato' || c2[6] !== 'Sin dato' || c2[7] !== 'Sin dato' || notas.indexOf('Sin dato: faltan lecturas de odómetro') === -1) fail('ciclo: fila sin datos debe decir «Sin dato» (no 0 km): ' + JSON.stringify(c2));
   }
+  // Costo y costo por km (v_costo_cubierta): confiable, estimado y sin costos; acción «Registrar costo» por neumático
+  var cT = $('#ciclo-costo');
+  if($('#ciclo-costo-wrap').hidden) fail('ciclo: sección de costos oculta para quien puede verlos');
+  if(cT.querySelector('table')){
+    var cTxt = cT.textContent.replace(/\s+/g, ' ');
+    if(cTxt.indexOf('UYU 1.900,00') === -1 || cTxt.indexOf('UYU 0,475 por km') === -1) fail('ciclo: costo y CPK confiables: ' + cTxt);
+    if(cTxt.indexOf('UYU 0,500 por km') === -1 || cTxt.indexOf('Estimado: faltan lecturas de odómetro') === -1) fail('ciclo: CPK estimado sin la nota: ' + cTxt);
+    if(cTxt.indexOf('Sin costos registrados') === -1) fail('ciclo: neumático sin costos: ' + cTxt);
+    if(!cT.querySelector('[data-action="cicloRegistrarCosto"]')) fail('ciclo: falta «Registrar costo»');
+  }
   var dlg = function(tag, label, danger, icono){
     var ok = $('#confirm-ok'), ic = $('#confirm-icon');
     if(ok.textContent !== label) fail(tag + ': etiqueta del botón «' + ok.textContent + '», se esperaba «' + label + '»');
