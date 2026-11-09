@@ -73,6 +73,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
         Stock
       </button>
+      <button type="button" class="nav-item" data-view="recauchutado" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        Recauchutado
+      </button>
       <button type="button" class="nav-item" data-view="reportes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Reportes
@@ -364,6 +368,18 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- RECAUCHUTADO (admin y perfil global) -->
+      <div class="view" id="view-recauchutado">
+        <div class="page-header">
+          <div><div class="page-title">Recauchutado</div></div>
+          <button class="btn primary" id="btn-reca-enviar" style="display:none" data-action="recaEnviar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Enviar a recauchutar
+          </button>
+        </div>
+        <div id="reca-lista"></div>
       </div>
 
       <!-- SUCURSALES (cliente con perfil global) -->
@@ -865,6 +881,8 @@
                 <option value="marca">Marca</option>
                 <option value="modelo">Modelo</option>
                 <option value="sucursal">Sucursal</option>
+                <option value="vida">Vida</option>
+                <option value="banda">Banda</option>
               </select>
             </label>
             <label class="rep-field">Alta desde
@@ -1239,6 +1257,42 @@
     <div class="modal-footer">
       <button class="btn ghost" data-action="costoCerrar">Cancelar</button>
       <button class="btn primary" id="costo-guardar" data-action="costoGuardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Recauchutado (enviar, dictamen, aceptar, rechazar) -->
+<div class="modal-backdrop" id="modal-reca" data-backdrop-close="recaCerrar">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title" id="reca-title">Enviar a recauchutar</div>
+      <div class="modal-sub" id="reca-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field" id="reca-g-cubierta"><label for="reca-cubierta">Cubierta</label><select id="reca-cubierta"></select>
+        <div class="field-hint">Solo cubiertas del stock. Para una montada, usar «Retirar neumático» primero.</div></div>
+      <div class="field" id="reca-g-proveedor"><label for="reca-proveedor">Proveedor</label><input type="text" id="reca-proveedor" maxlength="80" autocomplete="off"/></div>
+      <div class="field" id="reca-g-dictamen"><label for="reca-dictamen">Dictamen</label>
+        <select id="reca-dictamen" data-change="recaDictamenCambio"><option value="apto">Apto</option><option value="no">No apto</option></select></div>
+      <div class="field" id="reca-g-motivo"><label for="reca-motivo">Motivo</label><input type="text" id="reca-motivo" maxlength="300" autocomplete="off"/></div>
+      <div id="reca-g-banda">
+        <div class="field-row">
+          <div class="field"><label for="reca-profundidad">Profundidad inicial (mm)</label><input type="number" id="reca-profundidad" min="0" max="30" step="0.1" inputmode="decimal"/></div>
+          <div class="field"><label for="reca-banda-marca">Marca de la banda <span class="label-opt">(opcional)</span></label><input type="text" id="reca-banda-marca" maxlength="60" autocomplete="off"/></div>
+          <div class="field"><label for="reca-banda-modelo">Modelo de la banda <span class="label-opt">(opcional)</span></label><input type="text" id="reca-banda-modelo" maxlength="60" autocomplete="off"/></div>
+        </div>
+      </div>
+      <div class="field-row" id="reca-g-costo">
+        <div class="field"><label for="reca-costo">Costo <span class="label-opt">(opcional)</span></label><input type="number" id="reca-costo" min="0" step="0.01" inputmode="decimal"/></div>
+        <div class="field"><label for="reca-moneda">Moneda</label><input type="text" id="reca-moneda" maxlength="3" value="UYU" autocomplete="off"/></div>
+      </div>
+      <div class="field" id="reca-g-sucursal"><label for="reca-sucursal">Sucursal donde queda la cubierta</label><select id="reca-sucursal"></select></div>
+      <div class="field"><label for="reca-fecha">Fecha</label><input type="date" id="reca-fecha"/></div>
+      <div id="reca-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="recaCerrar">Cancelar</button>
+      <button class="btn primary" id="reca-guardar" data-action="recaGuardar">Guardar</button>
     </div>
   </div>
 </div>

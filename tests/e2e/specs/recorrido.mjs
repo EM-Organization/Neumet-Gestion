@@ -5,10 +5,12 @@ import assert from 'node:assert/strict';
 import { flujo, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json, ALCANCE } from '../lib/verdad.mjs';
 
-const CLIENTE = ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes'];  // Dispositivos es solo de administración
+const CLIENTE = ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes'];
+// Recauchutado: admin y perfil global (el de sucursal no gestiona stock).
+const GLOBAL = ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes'];  // Dispositivos es solo de administración
 const VISTAS = {
-  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
-  global: [...CLIENTE, 'sucursales'], salto: CLIENTE, montevideo: CLIENTE, otra: [...CLIENTE, 'sucursales']
+  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
+  global: [...GLOBAL, 'sucursales'], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales']
 };
 
 // Intercepta las descargas y ventanas de impresión del panel para poder leer el CSV generado.

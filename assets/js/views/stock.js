@@ -34,7 +34,7 @@ export async function loadStockAssignments(){
 // Cada cubierta es una fila de `neumaticos` sin vehículo. La escritura pasa solo por las RPC stock_cubierta_*: la
 // autorización (admin o perfil global del propio cliente) se verifica en la base. El perfil de sucursal no ve el stock.
 const $=id=>document.getElementById(id);
-let cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0;
+let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0;
 
 const puedeGestionar=()=>esAdmin()||(isClienteMode()&&currentSucursalId===null);
 const sucDe=cid=>sucursales.filter(x=>String(x.cliente_id)===String(cid));
@@ -82,18 +82,19 @@ function renderCubiertas(){
   setHtml($('stk-lista'), html`<ul class="stk-lista" aria-label="Cubiertas en stock">
     <li class="stk-cab" aria-hidden="true"><span>Quema</span><span>Cubierta</span><span>Condición</span><span>Ubicación</span><span>Compra</span><span></span></li>
     ${lista.map(c=>{
-      const loc=nombreUbicacion(c.sucursal_id,sucursales);
+      const reca=enReca.has(c.id);
+      const loc=reca?'En recauchutado':nombreUbicacion(c.sucursal_id,sucursales);
       const cli=admin?(c.clientes&&c.clientes.nombre)||nombreCliente(c.cliente_id):'';
       const etq=c.numero_quema||'sin quema';
       return html`<li class="stk-fila" data-cubierta="${c.id}">
         <span class="stk-quema">${c.numero_quema||'—'}${cli?html`<span class="stk-sub">${cli}</span>`:''}</span>
         <span class="stk-desc">${c.marca||'Sin marca'}${c.modelo?html` <span class="stk-sub">${c.modelo}</span>`:''}</span>
         <span class="stk-cond"><span class="badge ${claseCondicion(c.condicion)}">${etiquetaCondicion(c.condicion)}</span></span>
-        <span class="stk-loc${c.sucursal_id===null?' stk-sin':''}">${loc}</span>
+        <span class="stk-loc${c.sucursal_id===null&&!reca?' stk-sin':''}">${loc}</span>
         <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
         <span class="stk-acc">${alta?html`
           <button type="button" class="btn ghost stk-btn" data-action="cubiertaEditar" data-args="[${c.id}]" aria-label="Editar la cubierta ${etq}">Editar</button>
-          <button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Mover la cubierta ${etq}">Mover</button>
+          ${reca?'':html`<button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Mover la cubierta ${etq}">Mover</button>`}
           <button type="button" class="btn ghost stk-btn stk-del" data-action="cubiertaEliminar" data-args="[${c.id}]" aria-label="Eliminar la cubierta ${etq}">Eliminar</button>`:''}</span>
       </li>`;
     })}</ul>`);
@@ -123,12 +124,14 @@ export async function loadStock(){
   if(isClienteMode()) sq=sq.eq('cliente_id',currentClienteId);
   let sucQ=db.from('sucursales').select('id,nombre,cliente_id').order('nombre');
   if(isClienteMode()) sucQ=sucQ.eq('cliente_id',currentClienteId);
-  const [rl,rc,rs,rcl]=await Promise.all([sq,traerCubiertas(),sucQ,
-    esAdmin()?db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre'):Promise.resolve({data:[]})]);
+  const [rl,rc,rs,rcl,rr]=await Promise.all([sq,traerCubiertas(),sucQ,
+    esAdmin()?db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre'):Promise.resolve({data:[]}),
+    db.from('recauchutados').select('neumatico_id').in('estado',['enviado','apto'])]);
   if(mio!==cargaN) return; // llegó una carga más nueva
   if(rl.error||rc.error){ showToast(userError(rl.error||rc.error),true); return; }
   stockItems=rl.data||[];
   cubiertas=rc.rows||[];
+  enReca=new Set(rr.error?[]:(rr.data||[]).map(x=>x.neumatico_id));
   sucursales=rs.error?[]:(rs.data||[]);
   clientes=rcl.error?[]:(rcl.data||[]);
   opcionesFiltros();

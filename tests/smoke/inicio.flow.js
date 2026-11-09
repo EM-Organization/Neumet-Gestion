@@ -157,7 +157,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
     // Sucursales solo para el perfil global; el de sucursal no lo ve.
-    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,reportes,sucursales';
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,recauchutado,reportes,sucursales';
     if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
     // Defensa en el router: aunque se fuerce la vista Dispositivos (botón de menú oculto o acción), el cliente sigue en Inicio
     $('.nav-item[data-view="dispositivos"]').click(); await sleep(400);
