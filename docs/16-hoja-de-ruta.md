@@ -23,6 +23,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Tasa de desgaste robusta y vista rápida | Hecho (migración `20261111000000`; `MIN_MUESTRAS` = 5; ver `docs/15`, C.6 y C.7) |
 | Stock individual con condición y sucursal | Hecho (migración `20261113000000`: cubierta = neumático sin montar, condición, sucursal, traslados, devolución desde el cambio; ver `docs/08` apéndice F) |
 | Montar neumáticos en un vehículo sin ellos y retirar sin reemplazo | Hecho (migración `20261114500000`: `neumatico_montar` y `neumatico_desmontar`; ver `docs/08` apéndice G) |
+| Calidad de datos de las mediciones: control al ingresar, invalidar con motivo, valor original y unidad | Hecho (migración `20261116000000`; ver `docs/08` apéndice I). Pendiente: indicador por cubierta de pocas mediciones o mediciones viejas |
 | Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
