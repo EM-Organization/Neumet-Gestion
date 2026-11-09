@@ -4,7 +4,7 @@
 -- Requiere 20261106000000 (init: neumaticos, audit_row), 20261106020000 (eventos_neumatico.costo),
 -- 20261110010000 (sucursal_autorizar_gestion) y 20261115000000 (v_km_cubierta).
 -- Sin begin/commit: la herramienta que aplica la migración ya la envuelve. Idempotente (reaplicable). No modifica
--- datos existentes. Diseño y reglas: docs/08-esquema-datos.md (apéndice I).
+-- datos existentes. Diseño y reglas: docs/08-esquema-datos.md (apéndice J).
 --
 -- Qué agrega:
 --   * costos_neumatico: entradas de costo por cubierta (compra, reparación, recauchutado, montaje, otro). Lectura por
@@ -228,7 +228,7 @@ grant execute on function public.costo_eliminar(bigint) to authenticated;
 --   cpk_carcasa         costo_total / km_totales (incluye km_previos), con km_confiable y km_totales > 0: CPK de la
 --                       carcasa a lo largo de su vida completa. Columna aparte para no confundirla con cpk.
 -- Vida: la identidad del neumático es la carcasa y la vista acumula costos y km de TODAS sus vidas (recauchutados
--- incluidos). Ver docs/08 apéndice I.
+-- incluidos). Ver docs/08 apéndice J.
 -- Dependencia: los km salen de v_km_cubierta (que llama a km_tramos_cubierta por fila); un cambio en esa vista
 -- cambia el CPK.
 drop view if exists public.v_costo_cubierta;
@@ -308,7 +308,7 @@ left join lateral (
 where (select public.costos_visibles());
 
 comment on view public.v_costo_cubierta is
-  'Costo y CPK por cubierta (km recorridos; cpk_carcasa incluye km previos): compra + eventos con costo + costos_neumatico sin doble conteo; moneda mixta -> NULL; cpk solo con km confiables (docs/08 apéndice I).';
+  'Costo y CPK por cubierta (km recorridos; cpk_carcasa incluye km previos): compra + eventos con costo + costos_neumatico sin doble conteo; moneda mixta -> NULL; cpk solo con km confiables (docs/08 apéndice J).';
 
 revoke all on public.v_costo_cubierta from public, anon;
 grant select on public.v_costo_cubierta to authenticated;

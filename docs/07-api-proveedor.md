@@ -183,6 +183,6 @@ El panel **no tiene hoy ninguna vista del log de ingesta** (`ingesta_log` solo l
 
 ---
 
-## Limitación temporal: precio y costo por la tabla (costos y CPK, docs/08 apéndice I)
+## Limitación temporal: precio y costo por la tabla (costos y CPK, docs/08 apéndice J)
 
 La cuenta `api` no tiene acceso a `costos_neumatico`, `v_costo_cubierta` ni `cpk_por_grupo` (devuelven vacío o `42501`). El **perfil de sucursal del panel aún puede leer `neumaticos.precio_unidad` y `eventos_neumatico.costo` por las tablas**; se cierra en el PR de privilegios por columna. La API de proveedor no expone costos.

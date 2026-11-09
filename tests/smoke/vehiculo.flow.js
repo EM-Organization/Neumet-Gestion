@@ -198,6 +198,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   await buscarGlobal('112', 'Unidad', 'número de coche');
   await buscarGlobal('q-0103', 'Camión 01', 'quema');
 
+  await window.calidadDetalleFlow(w,d,sleep,fail,log); // indicador de confiabilidad, invalidar y marcar como válida
   var q = w.__vehFx.queries.join(',');
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
   // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.

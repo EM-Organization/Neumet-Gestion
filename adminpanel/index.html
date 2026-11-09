@@ -674,12 +674,28 @@
             <div id="vd-resumen" class="vd-resumen"></div>
             <div id="vd-diagrama" class="vd-diagrama"></div>
             <div id="vd-leyenda" class="vd-leyenda"></div>
+            <div id="vd-calidad" class="vd-calidad"></div>
           </section>
           <div class="vd-panel-backdrop" id="vd-backdrop" data-backdrop-close="detalleCerrarPanel"></div>
           <aside class="vd-panel" id="vd-panel" aria-label="Detalle del neumático seleccionado">
             <div id="vd-panel-body"></div>
           </aside>
         </div>
+      </div>
+
+      <!-- MEDICIONES A REVISAR (calidad de datos; se llega desde el aviso de Inicio) -->
+      <div class="view" id="view-calidad">
+        <div class="page-header">
+          <div>
+            <h2 class="page-title">Mediciones a revisar</h2>
+          </div>
+          <button type="button" class="btn ghost" data-action="calidad-recargar">Actualizar</button>
+        </div>
+        <div class="toolbar">
+          <label class="sr-only" for="cal-filtro">Estado de la medición</label>
+          <select id="cal-filtro" class="select-filter" data-change="calidad-filtro"></select>
+        </div>
+        <div id="cal-contenido"></div>
       </div>
 
       <!-- FLOTA CON PRIORIDADES -->
@@ -1117,6 +1133,26 @@
     <div class="modal-footer">
       <button class="btn ghost" id="mont-cerrar" data-action="neumatico-montar-cerrar">Cancelar</button>
       <button class="btn primary" id="mont-confirmar" data-action="neumatico-montar-confirmar">Montar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Invalidar medición (motivo obligatorio) -->
+<div class="modal-backdrop" id="modal-calidad" data-backdrop-close="calidad-cerrar">
+  <div class="modal cambio-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="cal-title">Invalidar medición</div>
+      <div class="modal-sub" id="cal-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="cal-motivo">Motivo</label>
+        <input id="cal-motivo" type="text" maxlength="300" autocomplete="off"/>
+        <div class="field-hint">Obligatorio. Queda registrado. La medición se conserva y deja de contar en estados, tasas y alertas.</div></div>
+      <div id="cal-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="calidad-cerrar">Cancelar</button>
+      <button class="btn primary" id="cal-confirmar" data-action="calidad-confirmar">Invalidar</button>
     </div>
   </div>
 </div>

@@ -602,21 +602,39 @@ Panel: el detalle del vehículo (panel de la rueda) y Ciclo de vida muestran «K
 
 Pruebas: SQL `tests/sql/t_86_km_por_cubierta.sql` (tramos, rotación sin duplicar, cambio de vehículo por el stock, odómetros faltantes, decreciente, invariantes, matriz admin / global / sucursal Norte y Sur / otro cliente / api / sin perfil / anon, los km completos que ve Sur de una cubierta que pasó por Norte y `km_tramos_cubierta` sin filas para quien no ve la cubierta); `run.sh` aplica la migración dos veces. Unitarias: `km-cubierta.test.mjs`. Smoke: `vehiculo.flow.js` y `ciclo.flow.js`. Visual: `ciclo-vida` y `detalle-rueda-km`. E2E: `specs/km-cubierta.mjs`.
 
+## I. Calidad de datos de las mediciones (migración `20261116000000`)
+
+Decisión: columnas en `mediciones` (no una tabla aparte), para que cada sonda por índice de las vistas filtre sobre la fila que ya lee, sin anti-join. El historial de cambios vive en `audit_log` (inmutable).
+
+| Columna | Significado |
+|---|---|
+| `calidad` | `valida` (defecto) / `sospechosa` / `invalidada`. Solo `invalidada` se excluye de `v_mediciones_neumatico`, `v_ultima_medicion`, `v_estado_neumaticos`, `v_alertas`, `ultimas_mediciones`, `api_obtener_montaje` y de los reportes del panel. |
+| `calidad_motivo`, `calidad_at`, `calidad_por` | Hallazgo o motivo, momento y autor (`sistema` o uuid del usuario). |
+| `unidad_origen` | `mm` (defecto) o `32avos`. `mm1..mm3` siempre normalizados a mm (1/32" = 0,79375 mm; `convertir_32avos_a_mm`, espejo de `convertir32avos` en `mapping.ts`). |
+| `valor_original` | jsonb opcional con el valor crudo en la unidad de origen. La API de proveedor sigue recibiendo mm. |
+| `clientes.huella_absurda_mm` | Umbral por cliente (defecto 10 mm) de la regla de huellas. |
+
+Detección: `medicion_evaluar_calidad` (función pura) y el trigger `AFTER INSERT` `mediciones_registrar_calidad`, que nunca rechaza la inserción (un fallo interno queda como aviso). Reglas, todas hacia `sospechosa`: medición incompleta o no numérica (nulo, nunca cero; la tabla exige las tres huellas), huella fuera de 0..30 mm, diferencia entre huellas mayor al umbral, aumento mayor a 1,0 mm del promedio sin evento de recauchutado, reparación o montaje entre ambas («Aumento sin recauchutado»), lectura duplicada (±2 min) y odómetro menor al anterior del vehículo. Una medición invalidada que era la previa se ignora al comparar.
+
+Acción manual: `medicion_invalidar(p_medicion_id, p_motivo)` (motivo obligatorio, 3 a 300 caracteres) y `medicion_revalidar(p_medicion_id)`; SECURITY DEFINER, `search_path = ''`; admin, perfil global (su cliente) o perfil de sucursal (su sucursal); resto 42501. Ambas registran en `audit_log` (`INVALIDAR_MEDICION`, `REVALIDAR_MEDICION`; los hallazgos del sistema, `CALIDAD_DETECTADA`).
+
+Límites: una medición etiquetada invalidada sigue impidiendo la atribución por posición (el neumático figura «sin datos»). Una medición antigua que llega tarde no se recomprueba contra las posteriores. No hay pantalla para editar `huella_absurda_mm`. Pruebas: `tests/sql/t_88_calidad_datos.sql`.
+
 ---
 
-# Apéndice I · Costos por cubierta y costo por km, CPK (migración `20261117000000_costos_cpk.sql`, hoja de ruta F4)
+# Apéndice J · Costos por cubierta y costo por km, CPK (migración `20261117000000_costos_cpk.sql`, hoja de ruta F4)
 
-## I.1 Tabla `costos_neumatico`
+## J.1 Tabla `costos_neumatico`
 
 `id`, `cliente_id`, `neumatico_id`, `concepto` (`compra`, `reparacion`, `recauchutado`, `montaje`, `otro`), `monto numeric(12,2) >= 0`, `moneda` (3 letras mayúsculas, por omisión `UYU`), `fecha`, `notas` (hasta 500), `created_by`, `created_at`. FK compuesta `(neumatico_id, cliente_id)` a `neumaticos (id, cliente_id)` (se agrega `unique (id, cliente_id)`, trivial porque `id` ya es clave primaria), `on delete cascade`: borrar una cubierta borra sus costos y queda en `audit_log`. Auditoría con `audit_row`.
 
 RLS: lectura solo para el admin y el perfil **global** del cliente. El perfil de sucursal, `api`, anon y sin perfil no ven nada. Sin políticas ni privilegios de escritura: se escribe solo con `costo_registrar` y `costo_eliminar` (`SECURITY DEFINER`, `search_path = ''`, autorización con `sucursal_autorizar_gestion`: admin o global del cliente dueño; todo lo demás, incluida una cubierta o costo inexistente para un no admin, es `42501`; el admin recibe `P0002`). Validaciones: concepto, monto (>= 0, no NaN, hasta 9.999.999.999,99), moneda de 3 letras (se normaliza a mayúsculas), fecha no posterior a mañana ni anterior a 2000, notas.
 
-## I.2 Sin doble conteo
+## J.2 Sin doble conteo
 
 El precio de compra ya existe en `neumaticos.precio_unidad` y `neumatico_cambiar` / `neumatico_montar` lo copian al evento de `montaje` (`eventos_neumatico.costo`, solo en el alta o primer montaje). Es la misma compra. La vista cuenta **una** compra, con esta precedencia: entradas `compra` de `costos_neumatico` (corrigen el dato original) > `precio_unidad` > costo del evento de montaje (cubiertas cargadas sin precio). Eventos con costo que no son montaje suman por tipo (`reparacion`, `reencauche` como `recauchutado`, el resto como `otro`). Las demás entradas manuales suman siempre. Un costo escrito a mano directamente en un evento de `montaje` se descarta si hay precio (`precio_unidad` o entrada `compra`): se toma como la compra repetida. `precio_unidad` y los eventos sin moneda se toman como `UYU`.
 
-## I.3 Vista `v_costo_cubierta` (`security_invoker`, solo `authenticated`)
+## J.3 Vista `v_costo_cubierta` (`security_invoker`, solo `authenticated`)
 
 Una fila por cubierta visible, solo para quien ve costos (`costos_visibles()`: admin y global): el perfil de sucursal no recibe filas aunque lea `precio_unidad` y los eventos de sus neumáticos. Columnas: identidad y `sucursal_id` efectiva, `marca`, `modelo`, `vida`, `condicion`, `fecha_alta` (compra o creación), `tiene_costo`, `moneda`, `monedas`, `moneda_mixta`, `costo_total`, `costo_por_concepto` (jsonb), `km_totales`, `km_recorridos`, `km_confiable` (de `v_km_cubierta`), `cpk`, `cpk_provisional`, `cpk_carcasa`.
 
@@ -625,11 +643,11 @@ Una fila por cubierta visible, solo para quien ve costos (`costos_visibles()`: a
 - **Dependencia de `v_km_cubierta`.** `v_costo_cubierta` se basa en `v_km_cubierta`: al cambiar o recrear esa vista (`drop view`) hay que recrear `v_costo_cubierta` (reaplicar la migración 20261117).
 - **Vida y carcasa.** La identidad del neumático es la carcasa y la vista acumula costos y km de todas sus vidas (`cpk_carcasa` es el CPK final de carcasa: costo neto total / suma de km de todas las vidas; `cpk` solo cuenta lo recorrido). Un CPK por vida requiere el flujo de F5 (vida con costo y km propios).
 
-## I.4 `cpk_por_grupo(p_grupo, p_desde, p_hasta, p_cliente_id)`
+## J.4 `cpk_por_grupo(p_grupo, p_desde, p_hasta, p_cliente_id)`
 
 `p_grupo` es `marca`, `modelo` (marca + modelo) o `sucursal` (la del vehículo donde está montada o la de stock). **CPK de grupo = suma de costos / suma de km**, nunca el promedio de CPK individuales (ejemplo de prueba: CPK 1,0 y 0,01 con km recorridos 1.000 y 10.000 dan 0,1, no 0,505). Entran solo cubiertas con costo en una moneda y km recorridos confiables > 0 (el grupo suma `km_recorridos`); las demás con costo se cuentan en `n_sin_km`; las de moneda mixta no entran. Una fila por grupo y moneda. `muestra_baja` si `n_neumaticos < 5`. `p_desde`/`p_hasta` definen una **cohorte** por fecha de alta (inclusivos, opcionales): los costos y km de cada cubierta son siempre los de toda su vida. `p_cliente_id` acota a un cliente (el admin, si no, agrega todos). `SECURITY INVOKER` sobre la vista: el perfil de sucursal no recibe filas.
 
-## I.5 Rendimiento
+## J.5 Rendimiento
 
 `tests/perf/gen.sql` (ahora con marcas, precios, montajes con costo y costos manuales) y `tests/perf/bench.sh`; mediana de 3 `EXPLAIN ANALYZE`, como `authenticated` con RLS, en ms.
 
@@ -647,11 +665,11 @@ Una fila por cubierta visible, solo para quien ve costos (`costos_visibles()`: a
 
 Sin CTE recursiva ni funciones nuevas por fila: el costo dominante es `km_tramos_cubierta` (unos 30 µs por cubierta), igual que en `v_km_cubierta`; el costo y los grupos agregan poco. El reporte de toda la flota del admin (29.400 cubiertas) tarda cerca de 1 s: el panel pasa `p_cliente_id` cuando se elige un cliente.
 
-## I.6 Panel y pruebas
+## J.6 Panel y pruebas
 
 Panel: panel de la rueda y Ciclo de vida muestran «Costo» y «Costo por km» (nota «Estimado: faltan lecturas de odómetro» cuando corresponde) y «Registrar costo» (modal: concepto, monto, moneda, fecha, notas) solo para admin y perfil global; Reportes agrega la tabla «Costo por km» por marca, modelo o sucursal con muestra y km, el aviso de comparación y exportación CSV. Dominio `domain/costos.js`. En Reportes, el administrador debe elegir un cliente (sin cliente no se consulta: «Elegir un cliente para ver el costo por km»); con una sucursal elegida en el selector del perfil global, el reporte por marca o modelo no se filtra por ella (la pantalla lo avisa).
 
-## I.7 Limitación temporal: lectura de precio y costo de eventos por el perfil de sucursal
+## J.7 Limitación temporal: lectura de precio y costo de eventos por el perfil de sucursal
 
 **El perfil de sucursal aún puede leer `neumaticos.precio_unidad` y `eventos_neumatico.costo` por las tablas** (la RLS le da sus neumáticos y eventos completos); `costos_neumatico`, `v_costo_cubierta` y `cpk_por_grupo` sí le devuelven vacío. La fuga es anterior a esta migración. Se cierra en un PR posterior de privilegios por columna (revocar el `select` de tabla y otorgarlo por columna sin esas dos, con un helper filtrado por `costos_visibles()`), que obliga a cambiar los `select('*')` del front. Hasta entonces no debe afirmarse que el perfil de sucursal no accede a esos datos por la API. No hay interfaz para eliminar costos (la RPC `costo_eliminar` existe).
 

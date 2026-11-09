@@ -17,6 +17,7 @@ export async function exportMedicionesCSV(){
   const {data,error}=await db.from('mediciones')
     .select('posicion,mm1,mm2,mm3,promedio,created_at')
     .eq('vehiculo_id',vid)
+    .neq('calidad','invalidada') // las invalidadas se conservan en la base pero no se exportan
     .order('created_at',{ascending:false});
 
   btn.disabled=false;

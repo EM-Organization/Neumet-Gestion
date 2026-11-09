@@ -131,6 +131,8 @@ async function fetchMediciones() {
       .select(porSeccional
         ? 'id,created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,vehiculos!inner(nombre,patente,sucursal_id)'
         : 'id,created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,vehiculos(nombre,patente)');
+    // Las mediciones invalidadas se conservan en la base pero no entran en el reporte (igual que en estados y alertas).
+    q = q.neq('calidad', 'invalidada');
     if (porSeccional) q = q.eq('vehiculos.sucursal_id', sucursalSeleccionada());
     if (cid) q = q.eq('cliente_id', cid);
     if (vid) q = q.eq('vehiculo_id', vid);

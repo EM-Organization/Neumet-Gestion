@@ -1,5 +1,5 @@
 // Costos por cubierta y costo por km, CPK (lógica pura, sin DOM ni red). Los costos y el CPK se calculan en la base
-// (v_costo_cubierta y cpk_por_grupo, docs/08 apéndice I); aquí solo se decide qué mostrar, con qué nota de confiabilidad
+// (v_costo_cubierta y cpk_por_grupo, docs/08 apéndice J); aquí solo se decide qué mostrar, con qué nota de confiabilidad
 // y se valida el formulario de «Registrar costo». Tests: tests/unit/costos.test.mjs
 import { fmtNum } from './formato.js';
 import { buildCsv } from './reportes.js';

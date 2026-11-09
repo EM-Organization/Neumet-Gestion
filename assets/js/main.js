@@ -26,6 +26,7 @@ import * as cicloVida from './views/ciclo-vida.js';
 import * as cambioNeumatico from './views/cambio-neumatico.js';
 import * as montarNeumatico from './views/montar-neumatico.js';
 import * as costos from './views/costos.js';
+import * as calidad from './views/calidad.js';
 
 initActions();
 initAuth();
@@ -33,5 +34,5 @@ initNav();
 initModales();
 initConexion();
 initBuscador();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,costos,flota,alertas,ficha,seccionalesAdmin,sucursalesView].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,flota,alertas,ficha,seccionalesAdmin,sucursalesView].forEach(v=>v.init());
 checkAuth();

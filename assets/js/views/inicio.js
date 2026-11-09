@@ -18,6 +18,7 @@ import {
 import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, resumenPosiciones, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
+import { textoAvisoInicio } from '../domain/calidad.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -140,7 +141,17 @@ function bloqueUltimas(ultimas, porVeh) {
   </section>`;
 }
 
-export function render({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map() }) {
+// Aviso sobrio y solo si hay mediciones sospechosas por resolver; lleva a la lista de revisión.
+function avisoRevision(n) {
+  const t = textoAvisoInicio(n);
+  return t ? html`<p class="inicio-aviso" role="status">${t}. <button type="button" class="inicio-enlace" data-action="irA" data-args='["calidad"]'>Revisar ›</button></p>` : '';
+}
+
+export function render(datos) {
+  return html`${avisoRevision(datos.revision)}${renderContenido(datos)}`;
+}
+
+function renderContenido({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map() }) {
   tipos = tiposRuedas;
   const cliente = isClienteMode();
   const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
@@ -174,7 +185,7 @@ export async function load() {
   $('inicio-subtitle').textContent = [isClienteMode() ? currentClienteNombre : '', fmtFechaLarga(new Date()), sel ? nombreSucursal(sel) : ''].filter(Boolean).join(' · ');
   cont.setAttribute('aria-busy', 'true');
   setHtml(cont, estadoCarga('Cargando…'));
-  const [est, al, sa, res, veh, dis, ult, vtp] = await Promise.all([
+  const [est, al, sa, res, veh, dis, ult, vtp, rev] = await Promise.all([
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').order('tipo').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_salud_dispositivos').select('dispositivo_id,cliente_id,estado'),
@@ -186,6 +197,8 @@ export async function load() {
     db.rpc('ultimas_mediciones', { p_limite: MAX_ULTIMAS, p_sucursal: sel ? Number(sel) : null }),
     // Solo para dibujar el chasis correcto; si falla, se deduce de las posiciones.
     fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas').eq('activo', true)).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
+    // Mediciones sospechosas por resolver (la RLS limita el alcance). Si falla, solo se omite el aviso.
+    db.from('mediciones').select('id,vehiculo_id,calidad').eq('calidad', 'sospechosa').limit(1000),
   ]);
   cont.setAttribute('aria-busy', 'false');
   const err = est.error || al.error || sa.error || res.error || veh.error || dis.error;
@@ -196,6 +209,7 @@ export async function load() {
   setHtml(cont, render({
     estadoRows: filtrarFilas(est.rows), alertas: filtrarFilas(al.rows), salud, resumen: res.data || [],
     vehiculosTotal: veh.count ?? 0, ultimas: ult.error ? null : (ult.data || []),
+    revision: rev.error ? 0 : filtrarFilas((rev.data || []).filter(r => r.calidad === 'sospechosa')).length,
     tiposRuedas: vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas])),
   }));
 }

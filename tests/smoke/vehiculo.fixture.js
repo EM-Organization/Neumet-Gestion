@@ -59,6 +59,15 @@
     {id:3101,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X Multi Z',condicion:'nuevo',sucursal_id:1,estado:'almacenado'},
     {id:3102,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,estado:'almacenado'},
     {id:3103,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,estado:'almacenado'});
+  // Calidad de datos (F3): mediciones con observaciones. La tabla `mediciones` las incluye; la vista v_mediciones_neumatico NO
+  // (las invalidadas no cuentan y las sospechosas ya figuran en la serie). P3: una en revisión y una invalidada; P2: una duplicada.
+  var vd = function(v){ return {nombre:v.nombre, patente:v.patente, tipo_ruedas:v.tipo_ruedas}; };
+  var observadas = [
+    {id:9001,vehiculo_id:10,cliente_id:1,posicion:3,idneumatico:'N10-3',mm1:11,mm2:10.8,mm3:11.2,promedio:11,created_at:D(5),calidad:'sospechosa',calidad_motivo:'Aumento sin recauchutado',calidad_at:D(5),calidad_por:'sistema',vehiculos:vd(veh[0])},
+    {id:9002,vehiculo_id:10,cliente_id:1,posicion:3,idneumatico:'N10-3',mm1:3,mm2:3,mm3:3,promedio:3,created_at:D(1),calidad:'invalidada',calidad_motivo:'Lectura <errónea> del medidor',calidad_at:D(1),calidad_por:'u-1',vehiculos:vd(veh[0])},
+    {id:9003,vehiculo_id:10,cliente_id:1,posicion:2,idneumatico:'N10-2',mm1:8,mm2:8,mm3:8,promedio:8,created_at:D(9),calidad:'sospechosa',calidad_motivo:'Lectura duplicada',calidad_at:D(9),calidad_por:'sistema',vehiculos:vd(veh[0])},
+    {id:9004,vehiculo_id:12,cliente_id:1,posicion:1,idneumatico:'N12-1',mm1:35,mm2:35,mm3:35,promedio:35,created_at:D(2),calidad:'sospechosa',calidad_motivo:'Valor fuera del rango físico (0 a 30 mm)',calidad_at:D(2),calidad_por:'sistema',vehiculos:vd(veh[1])}
+  ];
   // v_km_cubierta: P3 con datos completos (20.000 previos + 3.456 del tramo actual); P5 sin lecturas; P6 estimado.
   var kmcub = [
     {neumatico_id:1003,cliente_id:1,vehiculo_id:10,km_previos:20000,km_en_vehiculos:0,km_tramo_actual:3456,km_totales:23456,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
@@ -72,29 +81,44 @@
     {neumatico_id:1005,vehiculo_id:10,tiene_costo:true,moneda:null,monedas:['UYU','USD'],moneda_mixta:true,costo_total:null,costo_por_concepto:null,km_totales:null,km_recorridos:null,km_confiable:false,cpk:null,cpk_provisional:null,cpk_carcasa:null},
     {neumatico_id:1006,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'900.00',costo_por_concepto:{compra:'900.00'},km_totales:9000,km_recorridos:9000,km_confiable:false,cpk:null,cpk_provisional:'0.100000',cpk_carcasa:null}
   ];
-  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_costo_cubierta:costocub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones, v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
+  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_costo_cubierta:costocub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones.concat(observadas), v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){
-    var rows = T[table].slice(), rng = null, single = false;
+    var rows = T[table].slice(), rng = null, single = false, tag = '';
     var q = {
       select:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; }, not:function(){ return q; },
+      neq:function(){ return q; },
+      // in(calidad, [...]) se registra aparte: la lectura de observaciones no es el historial de la rueda.
+      in:function(c,vs){ if(c === 'calidad'){ tag = '#calidad'; rows = rows.filter(function(r){ return vs.indexOf(r.calidad) !== -1; }); } return q; },
       is:function(c,v){ rows = rows.filter(function(r){ return v===null ? (r[c]===null||r[c]===undefined) : r[c]===v; }); return q; },
-      eq:function(c,v){ rows = rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
+      eq:function(c,v){ if(c === 'calidad') tag = '#calidad'; rows = rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
       range:function(a,b){ rng=[a,b]; return q; },
       single:function(){ single=true; return q; }, maybeSingle:function(){ single=true; return q; },
       then:function(res,rej){
-        fx.queries.push(table);
+        fx.queries.push(table + tag);
         if(rng) rows = rows.slice(rng[0], rng[1]+1);
         return Promise.resolve({data: single ? (rows[0]||null) : rows, error:null}).then(res,rej);
       }
     };
     return q;
   }
+  // medicion_invalidar / medicion_revalidar cambian la calidad de la fila (como la base) para que el detalle recargado la refleje.
+  fx.calRpcs = []; fx.calError = null;
   var base = window.supabase.createClient;
   window.supabase.createClient = function(){
-    var c = base.apply(this, arguments), from = c.from;
+    var c = base.apply(this, arguments), from = c.from, rpc = c.rpc;
     c.from = function(t){ return T[t] ? Q(t) : from(t); };
+    c.rpc = function(name, args){
+      if(name !== 'medicion_invalidar' && name !== 'medicion_revalidar') return rpc.apply(c, arguments);
+      fx.calRpcs.push({name: name, args: args});
+      if(fx.calError) return Promise.resolve({data: null, error: fx.calError});
+      var m = T.mediciones.filter(function(x){ return x.id === args.p_medicion_id; })[0];
+      if(!m) return Promise.resolve({data: null, error: {code: 'P0002', message: 'medición inexistente'}});
+      if(name === 'medicion_invalidar') Object.assign(m, {calidad:'invalidada', calidad_motivo:args.p_motivo, calidad_por:'u-1'});
+      else Object.assign(m, {calidad:'valida', calidad_motivo:null, calidad_por:'u-1'});
+      return Promise.resolve({data: {id: m.id, calidad: m.calidad, cambiado: true}, error: null});
+    };
     return c;
   };
 })();
