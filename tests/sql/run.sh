@@ -129,6 +129,10 @@ echo "== migración de montar neumáticos (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114500000_montar_neumaticos.sql"
 echo "== migración de montar neumáticos (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261114500000_montar_neumaticos.sql"
+echo "== migración de calidad de datos (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116000000_calidad_datos.sql"
+echo "== migración de calidad de datos (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116000000_calidad_datos.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

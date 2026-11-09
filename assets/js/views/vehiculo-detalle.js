@@ -25,6 +25,8 @@ import {
 import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { agruparPorNeumatico, soloObservadas, textoObservaciones, detalleObservaciones } from '../domain/calidad.js';
+import { listaCalidad, SEL_CALIDAD } from './calidad.js';
 
 const $ = id => document.getElementById(id);
 const nulo = v => v === null || v === undefined;
@@ -33,7 +35,8 @@ const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,suc
 const NIVEL_CLS = { ok: 'green', bajo: 'orange', critico: 'red', retiro: 'red', sin_datos: 'gray' };
 
 let vehiculoId = null;
-let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, porPos }
+let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, porPos, obs, calPorPos }
+let calAbierto = false; // detalle de «mediciones con observaciones» desplegado (se conserva al recargar tras una acción)
 let seleccion = null;
 let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace desde Inicio)
 let ultimoFoco = null;
@@ -252,6 +255,24 @@ function seccionAlertas(pos) {
   return html`<ul class="vd-alertas">${al.map(a => html`<li>${chip(cls[a.severidad] || 'gray', lbl[a.severidad] || 'Aviso', sim[a.severidad] || 'i')} ${a.mensaje}</li>`)}</ul>`;
 }
 
+// Mediciones con observaciones del neumático montado ahí (sospechosas e invalidadas) y acciones para resolverlas.
+function seccionCalidad(pos) {
+  const rows = datos.calPorPos.get(pos) || [];
+  if (!rows.length) return '';
+  return html`<h4>Calidad de las mediciones</h4>
+    <p class="vd-p-nota">${textoObservaciones(rows.length)} · ${detalleObservaciones(rows)}</p>${listaCalidad(rows, { tipos: datos.tipos })}`;
+}
+
+// Indicador del vehículo: cuántas mediciones tienen observaciones, con el detalle desplegable.
+function calidadVehiculo() {
+  const el = $('vd-calidad');
+  const obs = datos.obs;
+  if (!obs.length) { el.replaceChildren(); return; }
+  setHtml(el, html`<details class="cal-detalle"${calAbierto ? ' open' : ''}>
+    <summary><strong>${textoObservaciones(obs.length)}</strong> <span class="cal-resumen">${detalleObservaciones(obs)}</span></summary>
+    ${listaCalidad(obs, { tipos: datos.tipos })}</details>`);
+}
+
 // Eventos del neumático montado ahí (por id o idneumatico), no de quien ocupó antes la posición.
 // Sin fila de neumático (posición solo medida) se cae a la posición.
 function eventosDe(pos, fila) {
@@ -321,6 +342,7 @@ function renderPanel() {
     <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
     <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
     <h4>Alertas</h4>${seccionAlertas(pos)}
+    ${seccionCalidad(pos)}
     <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
     </div>
     ${acciones(pos)}`);
@@ -421,16 +443,19 @@ function cerrarPanel() {
 export async function load() {
   if (nulo(vehiculoId)) { switchView('vehiculos'); return; }
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
-  $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren();
+  $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren(); $('vd-calidad').replaceChildren();
   await contextoListo();
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
-  const [v, est, al, ev, nm] = await Promise.all([
+  const [v, est, al, ev, nm, cal] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_alertas').select('*').eq('vehiculo_id', vehiculoId).order('severidad', { ascending: false }),
     db.from('eventos_neumatico').select('id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_at')
       .eq('vehiculo_id', vehiculoId).order('created_at', { ascending: false }).limit(100),
     db.from('neumaticos').select('id,posicion,estado,numero_quema,km_previos').eq('vehiculo_id', vehiculoId),
+    // Si falla (p. ej. migración de calidad sin aplicar) el detalle sigue sin el indicador.
+    db.from('mediciones').select(SEL_CALIDAD).eq('vehiculo_id', vehiculoId).in('calidad', ['sospechosa', 'invalidada'])
+      .order('created_at', { ascending: false }).limit(200),
   ]);
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
@@ -438,13 +463,15 @@ export async function load() {
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
   const layout = layoutRuedas(posiciones, v.data.tipo_ruedas);
+  const obs = cal.error ? [] : soloObservadas(cal.data || []);
   datos = {
+    obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, v.data.tipo_ruedas]]),
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
     km: kmPorNeumatico(ev.error ? [] : (ev.data || []), nulo(v.data.odometro_km) ? null : v.data.odometro_km),
     layout, geo: geometriaDiagrama(layout), u: umbralesDe(filas[0]), porPos: new Map(filas.map(f => [Number(f.posicion), f])),
   };
-  cabecera(); resumen(); leyenda(); dibujarDiagrama();
+  cabecera(); resumen(); leyenda(); dibujarDiagrama(); calidadVehiculo();
   if (!nulo(seleccion) && !datos.porPos.has(seleccion)) {
     // La posición quedó vacía (retiro) o ya no existe: se cierra el panel (en móvil también la hoja inferior).
     seleccion = null;
@@ -465,6 +492,8 @@ registerActions({
 });
 
 export function init() {
+  // El evento «toggle» no burbujea: se escucha en captura para recordar si el detalle está desplegado.
+  $('vd-calidad').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('cal-detalle')) calAbierto = e.target.open; }, true);
   const dia = $('vd-diagrama');
   dia.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;

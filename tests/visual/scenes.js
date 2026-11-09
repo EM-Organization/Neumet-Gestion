@@ -30,6 +30,10 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    'detalle-calidad': async function(){ await abrirDetalle(); var sm = $('#vd-calidad summary'); if(sm) sm.click(); else fail('escena '+name+': sin indicador de calidad'); await sleep(300); var c = $('#vd-calidad'); if(c) c.scrollIntoView(); await sleep(200); },
+    'detalle-rueda-calidad': async function(){ await abrirDetalle(); rueda3(); await sleep(800); var h = Array.prototype.filter.call(d.querySelectorAll('#vd-panel h4'), function(x){ return /Calidad/.test(x.textContent); })[0]; if(h) h.scrollIntoView(); else fail('escena '+name+': sin sección de calidad'); await sleep(300); },
+    'calidad-lista': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); },
+    'calidad-invalidar': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); click('#cal-contenido [data-action="calidad-invalidar"]'); await sleep(600); },
     'detalle-vacio': async function(){ await abrirVacio(); },
     'detalle-vacio-rueda': async function(){ await abrirVacio(); var r = $('#vd-diagrama .vd-rueda[data-pos="4"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 4'); await sleep(700); },
     'montar-neumatico': async function(){ await abrirMontar(); },
@@ -58,6 +62,6 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   await sleep(300);
   var nv = $('.nav-item.active'), vw = $('.view.active');
   log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
-  var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes'};
+  var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes','view-calidad':'inicio'};
   if(nv && vw && (colgadas[vw.id] ? colgadas[vw.id] !== nv.dataset.view : vw.id !== 'view-'+nv.dataset.view)) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
 };

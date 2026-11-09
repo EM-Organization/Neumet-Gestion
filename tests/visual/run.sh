@@ -14,7 +14,7 @@ fi
 [ -n "$CHROME" ] || { echo "No se encontró Chrome (definí CHROME=...)"; exit 2; }
 SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
 # escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
-ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both ciclo-vida:admin vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both stock-alta:both stock-mover:cliente stock-busqueda:cliente busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente cambio-neumatico:cliente cambio-cubierta:cliente cambio-almacenar:cliente detalle-vacio:cliente detalle-vacio-rueda:cliente montar-neumatico:cliente montar-nueva:cliente montar-siguiente:cliente retirar-neumatico:cliente selector-seccional:cliente"
+ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both ciclo-vida:admin vehiculos:both flota:both alertas:both dispositivos:admin reportes:both mediciones:both clientes:admin ficha:admin stock:both stock-alta:both stock-mover:cliente stock-busqueda:cliente busqueda:both vehiculos-busqueda:cliente detalle:cliente detalle-rueda:cliente detalle-calidad:cliente detalle-rueda-calidad:cliente calidad-lista:both calidad-invalidar:both cambio-neumatico:cliente cambio-cubierta:cliente cambio-almacenar:cliente detalle-vacio:cliente detalle-vacio-rueda:cliente montar-neumatico:cliente montar-nueva:cliente montar-siguiente:cliente retirar-neumatico:cliente selector-seccional:cliente"
 mkdir -p "$OUT_DIR"
 python3 -m http.server "$PORT" >/dev/null 2>&1 &
 SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
