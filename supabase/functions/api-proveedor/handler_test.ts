@@ -467,7 +467,10 @@ Deno.test('coche sin neumáticos: DAC recibe guardado:false por posición (forma
   const antes = e.mediciones.length;
   const r = await e.handler(post(
     R_GUA,
-    montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }, { posicion: 2, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], 'SINN01'),
+    montaje(
+      [{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }, { posicion: 2, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }],
+      'SINN01',
+    ),
     { token: T },
   ));
   assertEquals(r.status, 200);
@@ -538,4 +541,38 @@ Deno.test('obtener en coche sin neumáticos: contrato intacto (code 200, data []
   // Coche con neumáticos: sin motivo
   await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T }));
   assertEquals(e.logs.at(-1)!.motivo, null);
+});
+
+// F3 (calidad de datos): el control de calidad nunca rechaza ni cambia lo que la API acepta y responde.
+Deno.test('la API acepta todo lo de siempre: 0, 30,01 y 40 mm se guardan y la respuesta conserva el contrato', async () => {
+  const e = crearEntorno();
+  const antes = e.mediciones.length;
+  const r = await e.handler(post(
+    R_GUA,
+    montaje([
+      { posicion: 1, mm1: 0, mm2: 0, mm3: 0, mm4: 0 }, // cero medido (no «sin dato»)
+      { posicion: 2, mm1: 30.01, mm2: 30.01, mm3: 30.01, mm4: 30.01 }, // fuera del rango físico: la base lo marca, la API no lo rechaza
+      { posicion: 99, mm1: 40, mm2: 12, mm3: 12, mm4: 3 }, // huellas muy distintas
+    ]),
+    { token: T },
+  ));
+  assertEquals(r.status, 200);
+  assertEquals(await j(r), {
+    code: 200,
+    data: {
+      guardados: [{ posicion: 1, guardado: true }, { posicion: 2, guardado: true }, { posicion: 99, guardado: true }],
+    },
+  });
+  assertEquals(e.mediciones.length, antes + 3);
+  assertEquals(e.mediciones.at(-3)!.mm1, 0); // 0 se conserva como 0
+});
+
+Deno.test('dato no medido sigue siendo nulo: una lectura parcial no se convierte en 0 ni se guarda', async () => {
+  const e = crearEntorno();
+  const antes = e.mediciones.length;
+  const r = await j(
+    await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 9, mm2: null, mm3: null, mm4: 7 }]), { token: T })),
+  );
+  assertEquals(r.data.guardados, [{ posicion: 1, guardado: false }]);
+  assertEquals(e.mediciones.length, antes);
 });

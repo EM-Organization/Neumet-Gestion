@@ -399,3 +399,7 @@ Efecto en flotas chicas: si una posición tiene menos de 5 neumáticos con tasa,
 | Alertas | Un solo tipo «Neumático en estado crítico» con tabla `alertas` de estados, histéresis y umbral por cliente, eje y posición | Etapa 1 en un PR; destinatarios y reglas finas: TODO |
 | Rendimiento | Reescribir `v_estado_neumaticos` por neumático con ventana de 90 días en el origen; luego referencia en el servidor y tabla de estado | Medida 1 hecha (`20261111000000`); medidas 2 a 4 por tamaño |
 | Robustez de la tasa | Exigir 3 mediciones y 14 días, reiniciar en eventos, no extrapolar de dos puntos | Hecho (`20261111000000`, `desgaste-flota.js`); falta el tamaño del grupo en la frase |
+
+## C.8 Costo del filtro de calidad (migración `20261116000000`)
+
+Las vistas añaden `calidad <> 'invalidada'` a sus sondas existentes (sin joins ni CTE recursivas nuevas). Medido con `tests/perf` (1 cliente, 300 vehículos, 3.000 neumáticos, 180.000 mediciones; PG16 local, jit=off, mediana de 3, en ms), antes → después: estado p1 17,8 → 19,0; estado p3 108,6 → 111,5; alertas p1 25,6 → 27,2; estado de 1 vehículo 1,86 → 1,94; estado de un cliente (superusuario) 71,1 → 72,3. Costo estimado del plan: v_estado_neumaticos 276.985 → 278.113; v_alertas 55.836 → 56.063; v_mediciones_neumatico de un vehículo 8.840 → 9.667. La carga de 180.000 mediciones con el trigger pasó de 3 a 5 s (unos 11 µs por fila).

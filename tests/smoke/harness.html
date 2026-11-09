@@ -10,6 +10,7 @@
 <script src="/tests/smoke/stock.flow.js"></script>
 <script src="/tests/smoke/precios.flow.js"></script>
 <script src="/tests/smoke/montar.flow.js"></script>
+<script src="/tests/smoke/calidad.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
 <script src="/tests/smoke/sinacceso.flow.js"></script>
@@ -112,6 +113,7 @@
       throw new Error('__done');
     }
     await window.inicioFlow(w,d,sleep,fail,log,cliMode);
+    await window.calidadListaFlow(w,d,sleep,fail,log,cliMode); // aviso de Inicio y lista de revisión: tests/smoke/calidad.flow.js
     var views=cliMode?['vehiculos','mediciones']:['clientes','balance','vehiculos','dispositivos','mediciones'];
     for(var i=0;i<views.length;i++){
       nav(views[i]); await sleep(500);

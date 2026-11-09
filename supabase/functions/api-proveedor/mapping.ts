@@ -58,3 +58,40 @@ export function aColumnasBd(v: LecturaApi): EscrituraResultado {
   }
   return { ok: true, cols };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Unidades (F3, docs/16): la API de proveedor hoy informa milímetros y no cambia. El modelo (mediciones.unidad_origen y
+// mediciones.valor_original, migración 20261116000000) ya admite un origen que informe en 32avos de pulgada; estas
+// funciones puras dejan lista la conversión para cuando exista. mm1..mm3 siempre se guardan normalizados a mm.
+// ---------------------------------------------------------------------------------------------
+
+/** 1/32 de pulgada en milímetros (25,4 / 32). Misma constante que public.convertir_32avos_a_mm. */
+export const MM_POR_32AVO = 0.79375;
+export type UnidadOrigen = 'mm' | '32avos';
+
+/**
+ * 32avos de pulgada -> mm, redondeado a `decimales` (2, como numeric(5,2) de la columna; mitades hacia arriba).
+ * Un dato ausente o no numérico da `null`: dato no medido es nulo, nunca cero.
+ */
+export function convertir32avos(valor: number | null | undefined, decimales = 2): number | null {
+  if (typeof valor !== 'number' || !Number.isFinite(valor)) return null;
+  const f = 10 ** decimales;
+  return Math.round((valor * 79375 * f) / 100000) / f;
+}
+
+export interface LecturaNormalizada {
+  cols: FilaBd;
+  unidad_origen: UnidadOrigen;
+  /** Valor crudo tal como lo informó el origen; solo si no vino en mm (en mm el valor ya es el original). */
+  valor_original: Record<string, number | null> | null;
+}
+
+/** Normaliza una lectura en la unidad del origen a las columnas en mm, conservando el valor crudo. */
+export function normalizarUnidad(crudo: FilaBd, unidad: UnidadOrigen): LecturaNormalizada {
+  if (unidad === 'mm') return { cols: { ...crudo }, unidad_origen: 'mm', valor_original: null };
+  return {
+    cols: { mm1: convertir32avos(crudo.mm1), mm2: convertir32avos(crudo.mm2), mm3: convertir32avos(crudo.mm3) },
+    unidad_origen: '32avos',
+    valor_original: { mm1: crudo.mm1, mm2: crudo.mm2, mm3: crudo.mm3 },
+  };
+}

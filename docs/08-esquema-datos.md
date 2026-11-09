@@ -602,6 +602,24 @@ Panel: el detalle del vehículo (panel de la rueda) y Ciclo de vida muestran «K
 
 Pruebas: SQL `tests/sql/t_86_km_por_cubierta.sql` (tramos, rotación sin duplicar, cambio de vehículo por el stock, odómetros faltantes, decreciente, invariantes, matriz admin / global / sucursal Norte y Sur / otro cliente / api / sin perfil / anon, los km completos que ve Sur de una cubierta que pasó por Norte y `km_tramos_cubierta` sin filas para quien no ve la cubierta); `run.sh` aplica la migración dos veces. Unitarias: `km-cubierta.test.mjs`. Smoke: `vehiculo.flow.js` y `ciclo.flow.js`. Visual: `ciclo-vida` y `detalle-rueda-km`. E2E: `specs/km-cubierta.mjs`.
 
+## I. Calidad de datos de las mediciones (migración `20261116000000`)
+
+Decisión: columnas en `mediciones` (no una tabla aparte), para que cada sonda por índice de las vistas filtre sobre la fila que ya lee, sin anti-join. El historial de cambios vive en `audit_log` (inmutable).
+
+| Columna | Significado |
+|---|---|
+| `calidad` | `valida` (defecto) / `sospechosa` / `invalidada`. Solo `invalidada` se excluye de `v_mediciones_neumatico`, `v_ultima_medicion`, `v_estado_neumaticos`, `v_alertas`, `ultimas_mediciones`, `api_obtener_montaje` y de los reportes del panel. |
+| `calidad_motivo`, `calidad_at`, `calidad_por` | Hallazgo o motivo, momento y autor (`sistema` o uuid del usuario). |
+| `unidad_origen` | `mm` (defecto) o `32avos`. `mm1..mm3` siempre normalizados a mm (1/32" = 0,79375 mm; `convertir_32avos_a_mm`, espejo de `convertir32avos` en `mapping.ts`). |
+| `valor_original` | jsonb opcional con el valor crudo en la unidad de origen. La API de proveedor sigue recibiendo mm. |
+| `clientes.huella_absurda_mm` | Umbral por cliente (defecto 10 mm) de la regla de huellas. |
+
+Detección: `medicion_evaluar_calidad` (función pura) y el trigger `AFTER INSERT` `mediciones_registrar_calidad`, que nunca rechaza la inserción (un fallo interno queda como aviso). Reglas, todas hacia `sospechosa`: medición incompleta o no numérica (nulo, nunca cero; la tabla exige las tres huellas), huella fuera de 0..30 mm, diferencia entre huellas mayor al umbral, aumento mayor a 1,0 mm del promedio sin evento de recauchutado, reparación o montaje entre ambas («Aumento sin recauchutado»), lectura duplicada (±2 min) y odómetro menor al anterior del vehículo. Una medición invalidada que era la previa se ignora al comparar.
+
+Acción manual: `medicion_invalidar(p_medicion_id, p_motivo)` (motivo obligatorio, 3 a 300 caracteres) y `medicion_revalidar(p_medicion_id)`; SECURITY DEFINER, `search_path = ''`; admin, perfil global (su cliente) o perfil de sucursal (su sucursal); resto 42501. Ambas registran en `audit_log` (`INVALIDAR_MEDICION`, `REVALIDAR_MEDICION`; los hallazgos del sistema, `CALIDAD_DETECTADA`).
+
+Límites: una medición etiquetada invalidada sigue impidiendo la atribución por posición (el neumático figura «sin datos»). Una medición antigua que llega tarde no se recomprueba contra las posteriores. No hay pantalla para editar `huella_absurda_mm`. Pruebas: `tests/sql/t_88_calidad_datos.sql`.
+
 # Apéndice K · Precios y costos solo para admin y perfil global (migración `20261116500000_privilegios_precios.sql`)
 
 ## K.1 El fallo
