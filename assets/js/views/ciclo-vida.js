@@ -15,7 +15,11 @@ import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, or
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
 import { miniVehiculo } from '../core/componentes.js';
+import { traerCostos } from '../core/precios.js';
+import { conValor, textoCosto } from '../domain/precios.js';
 
+// Columnas de eventos_neumatico sin costo (la base no lo entrega por select: se pide con traerCostos, solo admin y perfil global).
+const EVENTO_COLS='id,cliente_id,vehiculo_id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_by,created_at,sucursal_origen_id,sucursal_destino_id';
 let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), filtroNeum='';
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
@@ -25,20 +29,22 @@ const nomPos=p=>nombrePosicion(p, veh&&veh.tipo_ruedas);
 const neumLabel=n=>`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
 
 async function cargar(){
-  const [rv,rn,re,rs,rk]=await Promise.all([
+  const [rv,rn,re,rs,rk,rc]=await Promise.all([
     db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,fecha_baja,motivo_baja,numero_quema,km_previos').eq('vehiculo_id',vehId).order('posicion'),
-    db.from('eventos_neumatico').select('*').eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
+    db.from('eventos_neumatico').select(EVENTO_COLS).eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
     // Solo colorea el mini vehículo: si falla, las ruedas salen sin datos.
     db.from('v_estado_neumaticos').select('*').eq('vehiculo_id',vehId).order('posicion'),
     // Km por cubierta (v_km_cubierta): si falla, la tabla de km muestra «Sin dato» en lugar de inventar valores.
-    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id',vehId)
+    db.from('v_km_cubierta').select(COLUMNAS_KM).eq('vehiculo_id',vehId),
+    // Costos de los eventos: vacío para el perfil de sucursal (no se consulta); si falla, la línea de tiempo sale sin costo.
+    traerCostos({vehiculoId:vehId})
   ]);
   const err=rv.error||rn.error||re.error;
   if(err){ showToast(userError(err),true); return false; }
   const base=getVehiculos().find(x=>x.id===vehId)||{};
   veh={...base,...(rv.data||{})};
-  neums=rn.data||[]; eventos=re.data||[]; estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data);
+  neums=rn.data||[]; eventos=conValor(re.data,rc.costos,'costo'); estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data);
   return true;
 }
 
@@ -132,7 +138,7 @@ function renderTimeline(){
     const pos=e.tipo==='rotacion'?`${e.posicion_origen!=null?nomPos(e.posicion_origen):'?'} → ${e.posicion_destino!=null?nomPos(e.posicion_destino):'?'}`:(e.posicion_origen!=null?nomPos(e.posicion_origen):'');
     return html`<div class="ciclo-ev ciclo-ev-${safeCls(e.tipo)}">
       <div class="ciclo-ev-head"><strong>${TIPO_LABEL[e.tipo]||e.tipo}</strong> <span class="ciclo-sub">${pos}${n?' · '+(n.marca||''):(e.idneumatico?' · '+e.idneumatico:'')}</span></div>
-      <div class="ciclo-sub">${fmtFecha(e.created_at)}${e.odometro_km!=null?' · '+fmtKm(e.odometro_km):''}${e.costo!=null?' · costo '+e.costo:''}</div>
+      <div class="ciclo-sub">${fmtFecha(e.created_at)}${e.odometro_km!=null?' · '+fmtKm(e.odometro_km):''}${textoCosto(e.costo)}</div>
       ${e.notas?html`<div class="ciclo-ev-notas">${e.notas}</div>`:''}</div>`;
   })):html`<div class="ciclo-sub">Sin eventos registrados.</div>`);
 }

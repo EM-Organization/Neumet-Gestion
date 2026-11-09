@@ -133,6 +133,10 @@ echo "== migración de km por cubierta (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261115000000_km_por_cubierta.sql"
 echo "== migración de km por cubierta (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261115000000_km_por_cubierta.sql"
+echo "== migración de privilegios de precios (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
+echo "== migración de privilegios de precios (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261116500000_privilegios_precios.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

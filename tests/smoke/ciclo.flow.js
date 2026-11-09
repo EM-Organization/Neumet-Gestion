@@ -14,6 +14,10 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   var cb = $('#modal-ciclo [data-action="neumatico-cambiar"]');
   if(!cb || cb.getAttribute('data-vehiculo-id') !== '10' || !cb.getAttribute('data-posicion')) fail('ciclo: falta el botón Cambiar neumático (punto de entrada temporal)');
 
+  // El costo del evento llega de eventos_costos (la base no entrega la columna por select): se muestra al admin
+  if($('#ciclo-timeline').textContent.indexOf('costo 230.5') === -1) fail('ciclo: la línea de tiempo no muestra el costo del montaje: ' + $('#ciclo-timeline').textContent.slice(0, 200));
+  if(!w.__preciosFx.rpcs.some(function(r){ return r.name === 'eventos_costos' && r.args.p_vehiculo === 10; })) fail('ciclo: no pidió los costos del vehículo');
+
   // Sin etiquetas «P<n>»: las posiciones salen con nombre y, en la tabla de km, con mini vehículo
   var opts = Array.prototype.map.call(d.querySelectorAll('#modal-ciclo select option'), function(o){ return o.textContent; }).join(' | ');
   if(/(^|[ |])P\d/.test(opts)) fail('ciclo: opciones con etiqueta «P<n>»: ' + opts);

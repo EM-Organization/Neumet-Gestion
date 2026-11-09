@@ -7,9 +7,12 @@ import { ACTIONS } from '../core/actions.js';
 import { MED_CFG } from '../domain/camion.js';
 import { getVehiculos } from './vehiculos.js';
 import { invalidarCatalogo } from '../core/buscador.js';
+import { traerPrecios, conValor } from '../core/precios.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { normalizarQuema, parseKmPrevios } from '../domain/quema.js';
 
+// Columnas de neumaticos (sin precio_unidad: la base no lo entrega por select; ver core/precios.js).
+const NEUM_COLS='id,vehiculo_id,cliente_id,posicion,stock_id,marca,modelo,fecha_compra,notas,idneumatico,numero_quema,km_previos,vida,estado,condicion';
 let neumVehiculoId=null, neumSelPos=null, neumAssignments={}, neumStockCache=[];
 
 // ── Dibujo del vehículo en modo asignación ──
@@ -239,11 +242,14 @@ ACTIONS.openNeumaticosModal=async function(vehiculoId){
   setHtml(document.getElementById('neum-detail-panel'), html`<div class="neum-no-sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;color:var(--text-tertiary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><span>Elegir una rueda</span></div>`);
 
   // Carga paralela: registros existentes + stock del cliente
-  const [{data:nData},{data:sData}]=await Promise.all([
-    db.from('neumaticos').select('*').eq('vehiculo_id',vehiculoId),
-    db.from('stock_neumaticos').select('*').eq('cliente_id',v.cliente_id).order('marca')
+  const [{data:nData,error:nErr},{data:sData},{precios,error:pErr}]=await Promise.all([
+    db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id',vehiculoId),
+    db.from('stock_neumaticos').select('*').eq('cliente_id',v.cliente_id).order('marca'),
+    traerPrecios({vehiculoId})
   ]);
-  (nData||[]).forEach(n=>{ neumAssignments[n.posicion]=n; });
+  // Sin los precios no se puede guardar sin pisarlos con vacío: se cierra en lugar de editar a ciegas.
+  if(nErr||pErr){ showToast(userError(nErr||pErr),true); ACTIONS.closeNeumaticosModal(); return; }
+  conValor(nData,precios,'precio_unidad').forEach(n=>{ neumAssignments[n.posicion]=n; });
   neumStockCache=sData||[];
   neumDrawTruck();
 };
@@ -270,8 +276,11 @@ ACTIONS.saveNeumaticos=async function(){
       numero_quema:n.numero_quema||null,
       km_previos:n.km_previos||0
     }));
-    if(rows.length){
-      const {error}=await db.from('neumaticos').upsert(rows,{onConflict:'vehiculo_id,posicion'});
+    // Sin upsert: ON CONFLICT DO UPDATE leería excluded.precio_unidad y la base no da SELECT sobre esa columna.
+    // Lo que ya existe en la posición se actualiza por id y lo nuevo se inserta.
+    for(const r of rows){
+      const id=neumAssignments[r.posicion]&&neumAssignments[r.posicion].id;
+      const {error}=id?await db.from('neumaticos').update(r).eq('id',id):await db.from('neumaticos').insert(r);
       if(error) throw error;
     }
     invalidarCatalogo(); // las quemas del buscador

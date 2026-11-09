@@ -94,7 +94,7 @@ select test.eq('global agrega: condición nuevo y sin montar',
 reset role;
 select test.eq('fila: quema recortada, estado almacenado, sin vehículo ni posición, sucursal, precio redondeado',
   (select numero_quema || '|' || estado || '|' || (vehiculo_id is null) || '|' || (posicion is null) || '|' || sucursal_id || '|'
-          || condicion || '|' || marca || '|' || modelo || '|' || precio_unidad || '|' || cliente_id || '|' || vida || '|' || km_previos
+          || condicion || '|' || marca || '|' || modelo || '|' || test.pu(id) || '|' || cliente_id || '|' || vida || '|' || km_previos
      from public.neumaticos where lower(numero_quema) = 's-100'),
   's-100|almacenado|true|true|401|nuevo|Bridgestone|R249|450.56|1|0|0');
 select test.eq('idneumatico generado con prefijo CB-', (select idneumatico ~ '^CB-1-[0-9a-f]{8}$' from public.neumaticos where numero_quema = 's-100'), true);
@@ -184,7 +184,7 @@ select test.eq('editar datos',
      '{"marca":" Goodyear ","modelo":null,"fecha_compra":"2026-01-15","precio":812.5}'::jsonb)->>'condicion'), 'nuevo');
 reset role;
 select test.eq('datos guardados',
-  (select marca || '|' || coalesce(modelo, '-') || '|' || fecha_compra || '|' || precio_unidad || '|' || condicion || '|' || numero_quema from public.neumaticos where idneumatico = 'CB-t-a'),
+  (select marca || '|' || coalesce(modelo, '-') || '|' || fecha_compra || '|' || test.pu(id) || '|' || condicion || '|' || numero_quema from public.neumaticos where idneumatico = 'CB-t-a'),
   'Goodyear|-|2026-01-15|812.50|nuevo|S-A1');
 select test.eq('editar sin cambiar condición no crea evento', (select count(*) from public.eventos_neumatico where tipo = 'cambio_condicion'), 0::bigint);
 select test.become('authenticated', test.u_cli_a());
@@ -278,7 +278,7 @@ select test.eq('Nuevo pasó automáticamente a Usado', (select condicion from pu
 select test.eq('ya no figura en el stock del cliente', (select count(*) from public.neumaticos where cliente_id = 1 and vehiculo_id is null), 1::bigint);
 select test.eq('no se creó una fila nueva (sin duplicar unidades)', (select count(*) from public.neumaticos where numero_quema = 'S-A1'), 1::bigint);
 select test.eq('evento de montaje: costo = precio de compra, origen = sucursal de la cubierta',
-  (select costo || '|' || sucursal_origen_id || '|' || vehiculo_id || '|' || posicion_destino from public.eventos_neumatico where tipo = 'montaje' and idneumatico = 'CB-t-a'), '500.00|401|1|1');
+  (select test.cu(id) || '|' || sucursal_origen_id || '|' || vehiculo_id || '|' || posicion_destino from public.eventos_neumatico where tipo = 'montaje' and idneumatico = 'CB-t-a'), '500.00|401|1|1');
 select test.eq('viejo dado de baja', (select estado from public.neumaticos where idneumatico = 'T-1-1'), 'baja');
 select test.eq('la cubierta montada aparece en v_estado_neumaticos sin datos (no hereda mediciones del viejo)',
   (select estado from public.v_estado_neumaticos where idneumatico = 'CB-t-a'), 'sin_datos');
@@ -342,7 +342,7 @@ select test.eq('la misma cubierta ahora está en el vehículo 2',
 select test.eq('historial completo de la cubierta: desmontaje y montaje, en orden',
   (select string_agg(tipo || '@' || vehiculo_id, ',' order by id) from public.eventos_neumatico where idneumatico = 'T-1-2' and tipo in ('desmontaje', 'montaje')), 'desmontaje@1,montaje@2');
 select test.eq('el montaje de una cubierta usada no imputa costo otra vez',
-  (select costo is null from public.eventos_neumatico where tipo = 'montaje' and idneumatico = 'T-1-2'), true);
+  (select test.cu(id) is null from public.eventos_neumatico where tipo = 'montaje' and idneumatico = 'T-1-2'), true);
 select test.eq('la medición histórica sigue con la cubierta en su nuevo vehículo (mediciones por neumático)',
   (select count(*) from public.v_mediciones_neumatico where idneumatico = 'T-1-2' and estado_montaje = 'montado' and vehiculo_id = 2), 1::bigint);
 rollback to s0;

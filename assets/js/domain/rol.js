@@ -7,6 +7,11 @@ export const ROL_SIN_ACCESO = 'sin_acceso';
 
 export const puedeUsarPanel = rol => rol === ROL_ADMIN || rol === ROL_CLIENTE;
 
+// Precios y costos (neumaticos.precio_unidad, eventos_neumatico.costo): solo admin y perfil global (cliente sin sucursal).
+// Espejo de public.precios_visibles(); la base lo hace cumplir con privilegios por columna, esto evita pedir lo que se va a negar.
+export const puedeVerPrecios = (rol, sucursalId = null) =>
+  rol === ROL_ADMIN || (rol === ROL_CLIENTE && (sucursalId === null || sucursalId === undefined));
+
 /**
  * @param perfil           fila de perfiles del usuario ({rol, cliente_id, sucursal_id}) o null
  * @param clientePerfil    fila de clientes {id, nombre} a la que apunta perfil.cliente_id, o null

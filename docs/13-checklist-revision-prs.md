@@ -9,6 +9,7 @@ El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - Pensar qué cambia respecto a producción: caché del navegador, orden de carga de módulos, datos reales vs datos de prueba.
 - Buscar el caso negativo: qué pasa si la consulta falla, si el campo no existe, si el usuario no tiene permiso.
 - Un PR que arregla un bug incluye un test que **falla sin el arreglo**.
+- Una regla de visibilidad de datos («la sucursal no ve precios») se hace cumplir en la base, no solo en la interfaz: la RLS filtra filas, no columnas. Se prueba con la API real y el JWT de cada rol, pidiendo la columna directa, con `select=*`, con filtro/orden y embebida.
 
 ## 2. Pruebas completas
 - Toda lógica nueva tiene pruebas unitarias con casos límite, no solo el camino feliz.
