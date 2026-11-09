@@ -778,3 +778,25 @@
 .cambio-modal .field-row { margin-bottom: 12px; }
 .cambio-modal .field-row > .field { margin-bottom: 0; }
 .cambio-modal .modal-body > .field { margin-bottom: 12px; }
+
+/* Calidad de las mediciones (F3): aviso de Inicio, indicador del detalle y lista de revisión. */
+.inicio-aviso { font-size: 14px; margin: 0 2px 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border-strong); border-left: 3px solid var(--text-secondary); border-radius: 8px; color: var(--text-primary); }
+.inicio-aviso .inicio-enlace { padding: 0; margin-left: 4px; }
+.vd-calidad { margin-top: 14px; }
+.vd-calidad:empty { display: none; }
+.cal-detalle { border-top: 1px solid var(--border); padding-top: 12px; font-size: 14px; }
+.cal-detalle > summary { cursor: pointer; min-height: 32px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.cal-detalle > summary:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.cal-resumen { color: var(--text-secondary); font-size: 13px; }
+.cal-lista { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cal-fila { border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; background: var(--surface); font-size: 13px; min-width: 0; }
+.cal-fila.cal-invalidada { background: var(--surface-2); color: var(--text-secondary); }
+.cal-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; }
+.cal-donde { font-weight: 600; overflow-wrap: anywhere; }
+.cal-valores { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cal-valores.tachado { text-decoration: line-through; }
+.cal-fecha { color: var(--text-secondary); }
+.cal-motivo { margin-top: 4px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.cal-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cal-acciones .btn { min-height: 36px; }
+#view-calidad .cal-lista { max-width: 760px; }

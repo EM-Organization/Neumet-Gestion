@@ -253,7 +253,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     var txt = $('#inicio-contenido').textContent;
     if(/Sin vehículos registrados/.test(txt)) fail('inicio('+rol+'): "sin datos" con vehículos registrados: '+txt.slice(0,80));
     if(!/vehículos registrados, sin mediciones/.test(txt)) fail('inicio('+rol+'): falta el estado "vehículos sin mediciones": '+txt.slice(0,80));
-    if(cliMode && $('#inicio-contenido [data-action="irA"]')) fail('inicio(cliente): el estado sin mediciones ofrece ir a Dispositivos');
+    if(cliMode && $('#inicio-contenido [data-action="irA"]:not([data-args=\'["calidad"]\'])')) fail('inicio(cliente): el estado sin mediciones ofrece ir a Dispositivos');
     if(!cliMode && !$('#inicio-contenido [data-action="irA"]')) fail('inicio(admin): el estado sin mediciones no ofrece acción');
     fxv.vacio = false;
   }

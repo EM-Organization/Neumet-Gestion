@@ -50,6 +50,13 @@
         vehiculos:{nombre:'=Camión 01',patente:veh[0].patente,tipo_ruedas:10},patente_raw:null,numero_raw:null});
     }
   }
+  // Calidad de datos (F3): mediciones con observaciones del cliente 1 (dos en revisión y una invalidada). Sin las 2.300 del modo reportes.
+  if(!repMode){
+    [[9001,'sospechosa','Aumento sin recauchutado',9.8,3,5],[9002,'sospechosa','Lectura duplicada',12,4,2],[9003,'invalidada','Lectura errónea del medidor',2,5,1]].forEach(function(o){
+      med.push({id:o[0],vehiculo_id:10,cliente_id:1,device_id:dev[0].mac_address,posicion:o[4],mm1:o[3],mm2:o[3],mm3:o[3],promedio:o[3],created_at:D(o[5]),idneumatico:null,
+        calidad:o[1],calidad_motivo:o[2],calidad_at:D(o[5]),calidad_por:'sistema',vehiculos:{nombre:veh[0].nombre,patente:veh[0].patente,tipo_ruedas:10},patente_raw:null,numero_raw:null});
+    });
+  }
   // v_mediciones_neumatico: las mismas mediciones atribuidas al neumático montado en esa posición.
   var medNeu = med.map(function(m){ return Object.assign({}, m, {posicion_actual:m.posicion, estado_montaje:'montado', medicion_id:m.id}); });
   // v_km_cubierta: neumático 1 con datos completos, 2 con un tramo sin odómetro (estimado) y 3 sin ningún dato.
@@ -70,7 +77,9 @@
       eq:function(c,v){ rows=rows.filter(function(r){ return !(c in r) || String(r[c])===String(v); }); return q; },
       // is(col, null): filas sin valor en la columna (una columna ausente cuenta como nula)
       is:function(c,v){ rows=rows.filter(function(r){ return v===null ? (r[c]===null||r[c]===undefined) : r[c]===v; }); return q; },
-      not:function(){ return q; }, in:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; },
+      not:function(){ return q; },
+      // in(calidad, [...]): filtra de verdad (las filas sin columna calidad quedan fuera); el resto de columnas no se filtra.
+      in:function(c,vs){ if(c==='calidad') rows=rows.filter(function(r){ return vs.indexOf(r.calidad)!==-1; }); return q; }, order:function(){ return q; }, limit:function(){ return q; },
       ilike:function(){ return q; }, neq:function(){ return q; }, gte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]>=v; }); return q; },
       lte:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]<=v; }); return q; },
       lt:function(c,v){ if(repMode) rows=rows.filter(function(r){ return r[c]<v; }); return q; },
