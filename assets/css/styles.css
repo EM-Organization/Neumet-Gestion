@@ -698,6 +698,17 @@
 .busq-resultados[hidden] { display: none; }
 .ficha-card[hidden] { display: none; }
 .alert-acciones { display:flex; gap:6px; flex-wrap:wrap; }
+@media (max-width: 640px) {
+  .table-wrap .alert-tabla { min-width: 0; }
+  .alert-tabla thead { display: none; }
+  .alert-tabla, .alert-tabla tbody { display: block; }
+  .alert-tabla tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .alert-tabla td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 4px 0; text-align: right; }
+  .alert-tabla td::before { content: attr(data-label); font-size: 12px; color: var(--text-secondary); text-align: left; flex: none; }
+  .alert-tabla td:last-child { flex-direction: column; align-items: stretch; text-align: left; }
+  .alert-tabla td:last-child::before { display: none; }
+  .alert-acciones { justify-content: flex-end; }
+}
 .busq-op { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: 0; padding: 9px 10px; border-radius: 7px; font: inherit; color: var(--text-primary); cursor: pointer; }
 .busq-op:hover, .busq-op:focus-visible { background: var(--surface-2); outline: none; }
 .busq-nom { font-weight: 600; font-size: 14px; }

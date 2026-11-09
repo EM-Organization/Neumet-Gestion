@@ -531,7 +531,8 @@ create or replace view public.v_alertas
 with (security_invoker = true) as
 select a.cliente_id, a.vehiculo_id, v.nombre as vehiculo_nombre, v.patente, a.posicion, a.neumatico_id, a.idneumatico,
        a.tipo, 3 as severidad, a.mm_actual::numeric as valor,
-       format('Neumático crítico: %s mm (límite %s mm)', a.mm_actual, a.umbral_mm) as mensaje,
+       format('Neumático crítico: %s mm (límite %s mm)', replace(trim_scale(a.mm_actual)::text, '.', ','),
+              replace(trim_scale(a.umbral_mm)::text, '.', ',')) as mensaje,
        a.ultima_medicion_at,
        a.id as alerta_id, a.estado, a.umbral_mm, a.mm_apertura, a.mm_minimo, a.abierta_at, a.reconocida_at,
        a.silenciada_hasta, a.veces_reabierta

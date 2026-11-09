@@ -61,12 +61,12 @@ function fila(a, mostrarCliente) {
   const estado = estadoAlerta(a);
   const silencio = estado === 'silenciada' ? html`<div class="flota-cliente">Hasta ${fmtFecha(a.silenciada_hasta)}</div>` : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}" data-estado="${estado}">
-    <td>${chipEstado(estado)}${silencio}</td>
-    <td>${a.mensaje}</td>
-    <td>${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
-    <td>${celdaPosicion(a)}</td>
-    <td>${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
-    <td>${acciones(a, estado)}</td>
+    <td data-label="Estado">${chipEstado(estado)}${silencio}</td>
+    <td data-label="Mensaje">${a.mensaje}</td>
+    <td data-label="Vehículo">${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
+    <td data-label="Posición">${celdaPosicion(a)}</td>
+    <td data-label="Última medición">${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
+    <td data-label="Acciones">${acciones(a, estado)}</td>
   </tr>`;
 }
 

@@ -15,7 +15,7 @@
     {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:1,n_neumaticos_con_datos:0,n_ok:0,n_bajo:0,n_critico:0,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:0,n_alertas_sev3:0,ultima_medicion_at:null}
   ];
   var umbrales = {};
-  var DEF = {umbral_bajo_mm:8,umbral_critico_mm:5,umbral_retiro_mm:3,dias_sin_medir_alerta:30,irregularidad_mm:2};
+  var DEF = {umbral_bajo_mm:8,umbral_critico_mm:5,umbral_retiro_mm:3,alerta_histeresis_mm:0.5,dias_sin_medir_alerta:30,irregularidad_mm:2};
   function umb(id){ return umbrales[id] || (umbrales[id] = Object.assign({}, DEF)); }
 
   function simple(rows){
