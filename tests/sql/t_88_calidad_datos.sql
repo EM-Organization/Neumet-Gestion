@@ -288,8 +288,10 @@ select test.eq('C1: la tasa se calcula sin la lectura invalidada (1,000 mm/seman
   (select tasa_mm_semana from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 1.000::numeric);
 select test.eq('C1: 4 mediciones en la ventana (no 5)',
   (select n_mediciones_90d from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 4::bigint);
-select test.eq('C1: sin alerta crítica; queda la de cruce próximo (4 semanas al crítico)',
-  (select string_agg(tipo, ',' order by tipo) from public.v_alertas where vehiculo_id = 884 and posicion = 1), 'cruza_critico_pronto');
+select test.eq('C1: sin alerta crítica (la invalidación la resolvió como recuperada); queda el indicador de cruce próximo (4 semanas al crítico)',
+  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 1)
+  || '|' || (select resuelta_motivo from public.alertas where vehiculo_id = 884 and posicion = 1)
+  || '|' || (select semanas_hasta_critico from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), '0|recuperada|4.00');
 select test.eq('C1: la fila se conserva con sus mm y la marca',
   (select mm1 || '|' || calidad || '|' || calidad_motivo from public.mediciones where id = :c1e), '3.00|invalidada|Lectura errónea del medidor');
 select test.eq('C1: calidad_por es el usuario',
@@ -306,8 +308,8 @@ reset role;
 select test.eq('C1: revalidar responde cambiado', (:'rev1'::jsonb ->> 'cambiado'), 'true');
 select test.eq('C1: tras revalidar vuelve a contar (crítico)',
   (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'critico');
-select test.eq('C1: tras revalidar vuelve la alerta crítica',
-  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'critico'), 1::bigint);
+select test.eq('C1: tras revalidar vuelve la alerta crítica (misma fila reabierta)',
+  (select count(*) || '|' || max(veces_reabierta) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'critico'), '1|1');
 select test.eq('C1: revalidada: válida, sin motivo, con autor',
   (select calidad || '|' || coalesce(calidad_motivo, 'NULL') || '|' || (calidad_por = test.u_cli_a()::text)::text from public.mediciones where id = :c1e), 'valida|NULL|true');
 
@@ -329,9 +331,9 @@ select test.eq('C2: promedio NULL (no 0) y sin tasa',
 select test.eq('C2: no hereda la medición sin idneumatico de la posición',
   (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 884 and posicion_actual = 2), 0::bigint);
 select test.eq('C2: sin alerta crítica por falta de dato',
-  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 2 and tipo in ('critico', 'bajo')), 0::bigint);
+  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 2), 0::bigint);
 select test.eq('C2: la falta de dato se informa como «sin medir»',
-  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 2 and tipo = 'sin_medir'), 1::bigint);
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 2 and sin_medir), 1::bigint);
 
 -- C3. Atribución por posición (neumático sin lecturas etiquetadas, regla 2): 885 pos 1
 select pg_temp.med(885, 1, 1, null, 24 * 20, 10, 10, 10) as c3a \gset

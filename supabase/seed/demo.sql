@@ -291,5 +291,5 @@ commit;
 --   select s.nombre, count(*) from public.vehiculos v join public.sucursales s on s.id = v.sucursal_id
 --    where v.cliente_id = <id> group by 1;                                   -- Montevideo 9, Salto 5
 --   select estado, count(*) from public.v_estado_neumaticos where cliente_id = <id> group by 1;
---   select tipo, count(*) from public.v_alertas where cliente_id = <id> group by 1 order by 2 desc;
+--   select estado, count(*) from public.v_alertas where cliente_id = <id> group by 1;   -- solo críticas
 --   select estado, count(*) from public.v_salud_dispositivos where cliente_id = <id> group by 1;

@@ -145,6 +145,10 @@ echo "== migración de costos y CPK (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261117000000_costos_cpk.sql"
 echo "== migración de costos y CPK (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261117000000_costos_cpk.sql"
+echo "== migración de alerta crítica (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
+echo "== migración de alerta crítica (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
