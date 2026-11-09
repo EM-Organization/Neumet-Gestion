@@ -6,32 +6,83 @@ import { ALCANCE, json } from '../lib/verdad.mjs';
 
 export function registrar(env) {
   for (const rol of ['admin', 'global', 'salto', 'montevideo']) {
-    test(`Alertas (${rol}): conteos, tipos y vehículos coinciden con v_alertas`, async () => {
+    test(`Alertas (${rol}): conteos, estados y vehículos coinciden con v_alertas`, async () => {
       const a = ALCANCE[rol];
-      const filas = json(env, `select x.severidad, x.tipo, v.patente, x.posicion from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`);
-      assert.ok(filas.length > 5, 'el demo debe generar alertas');
-      const porSev = s => filas.filter(f => f.severidad === s).length;
+      const filas = json(env, `select x.estado, x.silenciada_hasta, x.tipo, v.patente, x.posicion from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`);
+      assert.ok(filas.length > 0, 'el demo debe generar alertas críticas');
+      assert.ok(filas.every(f => f.tipo === 'critico'), 'una sola categoría de alerta: crítico');
+      const porEstado = e => filas.filter(f => f.estado === e && !f.silenciada_hasta).length;
       await flujo(env, 'alertas', rol, async p => {
         await irA(p, 'alertas');
-        await p.esperar(`/${filas.length} alertas/.test(document.querySelector('#alert-count').textContent)`, { que: `${filas.length} alertas` });
+        await p.esperar(`/${filas.length} alertas?/.test(document.querySelector('#alert-count').textContent)`, { que: `${filas.length} alertas` });
         const chips = await p.eval(`[...document.querySelectorAll('#alert-chips > *')].map(c => c.innerText.replace(/\\s+/g, ' ').trim())`);
-        assert.deepEqual(chips.map(c => Number(c.replace(/\D/g, ''))), [porSev(3), porSev(2), porSev(1)], `chips de severidad: ${chips}`);
+        assert.deepEqual(chips.map(c => Number(c.replace(/\D/g, ''))), [porEstado('abierta'), porEstado('reconocida'), filas.filter(f => f.silenciada_hasta).length], `chips de estado: ${chips}`);
         const tabla = await p.eval(`[...document.querySelectorAll('#alert-tbody tr')].map(r => r.innerText.replace(/\\s+/g, ' ').trim())`);
         assert.equal(tabla.length, filas.length, 'una fila por alerta');
-        // Cada alerta aparece con su matrícula y posición; ninguna de otro alcance.
+        // Cada alerta aparece con su matrícula; ninguna de otro alcance.
         const vistas = tabla.join('\n');
         for (const f of filas) assert.ok(vistas.includes(f.patente), `falta una alerta de ${f.patente}`);
         for (const pat of new Set(json(env, `select patente from public.vehiculos`).map(v => v.patente).filter(Boolean))) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
-        // Filtro por severidad crítica
-        await p.eval(`(() => { const s = document.querySelector('#alert-severidad'); s.value = '3'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-        await dormir(150);
-        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr').length`), porSev(3), 'filtro de severidad crítica');
-        const criticas = await p.eval(`[...document.querySelectorAll('#alert-tbody tr')].map(r => r.innerText)`);
-        assert.ok(criticas.every(t => /Neumático crítico/.test(t)), 'solo críticas');
+        assert.ok(tabla.every(t => /Neumático crítico/.test(t)), 'solo críticas');
+        // Cada alerta lleva al vehículo (acción) y ofrece resolver.
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), filas.length);
+        // El bloque del nivel crítico solo lo ve el cliente global.
+        assert.equal(await p.eval(`!document.querySelector('#alert-config').hidden`), rol === 'global', 'nivel crítico editable solo para el cliente global');
       });
     });
+
+    if (rol === 'global' || rol === 'salto') {
+      test(`Alertas (${rol}): reconocer desde la tabla queda en la base con el usuario`, async () => {
+        const a = ALCANCE[rol];
+        const alerta = json(env, `select x.alerta_id as id, x.estado from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where x.estado = 'abierta' and ${a.veh} order by x.alerta_id limit 1`)[0];
+        assert.ok(alerta, 'el demo debe traer una alerta abierta');
+        try {
+          await flujo(env, 'alertas', rol, async p => {
+            await irA(p, 'alertas');
+            await p.esperar(`document.querySelector('[data-action="alertasReconocer"][data-args="[${alerta.id}]"]')`, { que: 'botón Reconocer' });
+            await p.click(`[data-action="alertasReconocer"][data-args="[${alerta.id}]"]`);
+            await p.esperar(`!document.querySelector('[data-action="alertasReconocer"][data-args="[${alerta.id}]"]')`, { que: 'alerta reconocida' });
+          });
+          assert.equal(env.sql(`select estado || '|' || (reconocida_por is not null)::text from public.alertas where id = ${alerta.id}`), 'reconocida|true');
+        } finally {
+          env.sql(`update public.alertas set estado = 'abierta', reconocida_at = null, reconocida_por = null, nota_reconocida = null where id = ${alerta.id}`);
+        }
+      });
+    }
+
+    if (rol === 'global') {
+      test('Alertas (global): editar el nivel crítico reevalúa las alertas del cliente', async () => {
+        const cli = env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`);
+        const orig = json(env, `select umbral_critico_mm, umbral_bajo_mm, umbral_retiro_mm from public.clientes where id = ${cli}`)[0];
+        const nuevo = Number(orig.umbral_bajo_mm) - 0.5;
+        try {
+          await flujo(env, 'alertas', rol, async p => {
+            await irA(p, 'alertas');
+            await p.esperar(`!document.querySelector('#alert-config').hidden && document.querySelector('#alert-umbral').value`, { que: 'nivel crítico cargado' });
+            await p.eval(`(() => { const i = document.querySelector('#alert-umbral'); i.value = '${String(nuevo).replace('.', ',')}'; })()`);
+            await p.click('#alert-config-guardar');
+            await p.esperar(`/${String(nuevo).replace('.', ',')}/.test(document.querySelector('#alert-umbral').value)`, { que: 'nivel guardado' });
+          });
+          assert.equal(Number(env.sql(`select umbral_critico_mm from public.clientes where id = ${cli}`)), nuevo);
+          assert.equal(
+            Number(env.sql(`select count(*) from public.v_estado_neumaticos e where e.cliente_id = ${cli} and e.estado = 'critico' and not exists (select 1 from public.alertas a where a.neumatico_id = e.neumatico_id and a.estado <> 'resuelta')`)), 0,
+            'todo neumático crítico con el nivel nuevo tiene su alerta');
+          // Valor inválido: el panel lo rechaza sin llamar a la base.
+          await flujo(env, 'alertas', rol, async p => {
+            await irA(p, 'alertas');
+            await p.esperar(`!document.querySelector('#alert-config').hidden && document.querySelector('#alert-umbral').value`);
+            await p.eval(`(() => { document.querySelector('#alert-umbral').value = '99'; })()`);
+            await p.click('#alert-config-guardar');
+            await p.esperar(`/debe quedar entre/.test(document.querySelector('#alert-config-error').textContent)`, { que: 'error de rango' });
+          });
+        } finally {
+          env.sql(`update public.clientes set umbral_critico_mm = ${orig.umbral_critico_mm} where id = ${cli}`);
+        }
+      });
+    }
 
     if (rol !== 'admin') continue;
     test(`Dispositivos (${rol}): estados y MAC coinciden con v_salud_dispositivos`, async () => {

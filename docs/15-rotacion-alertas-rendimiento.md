@@ -113,6 +113,8 @@ E2E (`tests/e2e/specs`): ficha de un vehículo del demo con ruedas desparejas mu
 
 ## B. Alerta única de estado crítico, personalizable
 
+> Estado: la etapa 1 está implementada en la migración `20261118500000` (ver `docs/08`, apéndice M). Quedó fuera de esa etapa la anulación por eje y posición, que sigue descrita abajo como diseño. Las tablas B.1 y B.6 describen el estado y el esbozo anteriores.
+
 ### B.1 Situación actual
 
 - `v_alertas` (`20261109000000_mediciones_por_neumatico.sql`) genera sobre la marcha cinco tipos: `critico` (severidad 3), `bajo`, `cruza_critico_pronto`, `desgaste_irregular` (2) y `sin_medir` (1), a partir de `v_estado_neumaticos`.

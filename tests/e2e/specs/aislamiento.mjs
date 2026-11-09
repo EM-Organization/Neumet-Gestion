@@ -90,7 +90,8 @@ export function registrar(env) {
         const miCliente = rol === 'otra' ? Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`)) : Number(env.sql(`select ${DEMO}`));
         for (const t of ['neumaticos', 'v_estado_neumaticos', 'v_alertas', 'eventos_neumatico']) {
           const f = await leer(t, 'vehiculo_id,cliente_id');
-          assert.ok(f.length > 0 || t === 'eventos_neumatico', `${t}: sin filas`);
+          // «Otra Empresa SA» no tiene neumáticos críticos: v_alertas (solo la alerta crítica) puede estar vacía.
+          assert.ok(f.length > 0 || t === 'eventos_neumatico' || (t === 'v_alertas' && rol === 'otra'), `${t}: sin filas`);
           for (const r of f) {
             if (r.vehiculo_id === null && (t === 'neumaticos' || t === 'eventos_neumatico')) {
               assert.ok(sinVehiculo, `${t}: el perfil de sucursal no debe ver filas sin vehículo (stock)`);

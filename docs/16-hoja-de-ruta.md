@@ -25,6 +25,7 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Montar neumáticos en un vehículo sin ellos y retirar sin reemplazo | Hecho (migración `20261114500000`: `neumatico_montar` y `neumatico_desmontar`; ver `docs/08` apéndice G) |
 | Calidad de datos de las mediciones: control al ingresar, invalidar con motivo, valor original y unidad | Hecho (migración `20261116000000`; ver `docs/08` apéndice I). Pendiente: indicador por cubierta de pocas mediciones o mediciones viejas |
 | Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
+| Alerta única «crítico» con estado, umbral por cliente y acciones | Hecho en el PR de alertas (migración `20261118500000` pendiente de aplicar; ver `docs/08` apéndice M) |
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta, migración `20261115000000` pendiente de aplicar: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
@@ -75,7 +76,8 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 
 ### F7 · Alertas accionables
 - Un solo tipo de alerta «crítico» personalizable por cliente, con histéresis, reconocimiento, silencio y cierre (etapa 1 de `docs/15`).
-- Etapas posteriores: destinatarios, correo, reglas por marca y modelo, inspección vencida.
+- Estado: implementado (apéndice M de `docs/08`, migración `20261118500000`): una sola alerta «crítico» con el umbral editable por el cliente, histéresis, reconocer, silenciar, resolver y enlace al coche; los demás avisos son indicadores. Pendiente de aplicar la migración.
+- Etapas posteriores: destinatarios, correo, reglas por marca y modelo, inspección vencida. Sin anulaciones por eje, posición ni marca en esta etapa.
 
 ### F8 · Rotación y reposición
 - Recomendación de rotación con umbral configurable (diseño en `docs/15`).

@@ -4,7 +4,7 @@
 (function(){
   if(!/[?&]detalle=1/.test(window.parent.location.search)) return;
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
-  var U = {umbral_bajo_mm:8, umbral_critico_mm:5, umbral_retiro_mm:3};
+  var U = {umbral_bajo_mm:8, umbral_critico_mm:5, umbral_retiro_mm:3, alerta_histeresis_mm:0.5};
 
   var veh = [
     {id:10,nombre:'Camión 01',patente:'AB123CD',numero:'07',tipo_ruedas:10,cliente_id:1,sucursal_id:null,activo:true,odometro_km:123456,odometro_actualizado_at:D(3),clientes:{nombre:'Transportes Alfa'}},

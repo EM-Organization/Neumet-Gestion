@@ -7,7 +7,9 @@ insert into _esperado values
   ('v_ultima_medicion',       14, 11, 3),
   ('v_mediciones_neumatico',  20, 17, 3),
   ('v_estado_neumaticos',     14, 11, 3),
-  ('v_alertas',               10,  7, 3),
+  -- v_alertas y alertas: solo la alerta crítica con estado (20261118500000).
+  ('v_alertas',                2,  1, 1),
+  ('alertas',                  2,  1, 1),
   ('v_resumen_flota_cliente',  2,  1, 1),
   ('v_salud_dispositivos',     5,  4, 1),
   ('eventos_neumatico',        3,  2, 1),

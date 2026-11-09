@@ -149,6 +149,10 @@ echo "== migración de recauchutado por carcasa (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118000000_recauchutado_carcasa.sql"
 echo "== migración de recauchutado por carcasa (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118000000_recauchutado_carcasa.sql"
+echo "== migración de alerta crítica (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
+echo "== migración de alerta crítica (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

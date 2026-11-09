@@ -89,7 +89,12 @@ create or replace function test.prom(p_veh bigint, p_pos smallint) returns numer
 create or replace function test.idn(p_veh bigint, p_pos smallint) returns text language sql stable as $$
   select idneumatico from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos $$;
 create or replace function test.n_alertas(p_veh bigint, p_pos smallint, p_tipo text) returns bigint language sql stable as $$
-  select count(*) from public.v_alertas where vehiculo_id = p_veh and posicion = p_pos and tipo = p_tipo $$;
+  -- Desde 20261118500000 v_alertas solo trae la crítica; «bajo» y «sin_medir» son indicadores de v_estado_neumaticos.
+  select case p_tipo
+           when 'critico' then (select count(*) from public.v_alertas where vehiculo_id = p_veh and posicion = p_pos and tipo = 'critico')
+           when 'bajo' then (select count(*) from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos and estado = 'bajo')
+           when 'sin_medir' then (select count(*) from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos and sin_medir)
+         end $$;
 grant execute on function test.est(bigint, smallint), test.prom(bigint, smallint), test.idn(bigint, smallint),
   test.n_alertas(bigint, smallint, text) to public;
 savepoint s0;
@@ -126,7 +131,8 @@ select test.eq('tras el cambio P1 figura el idneumatico del nuevo', test.idn(11,
 select test.eq('tras el cambio P1 sin_medir', (select sin_medir from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), true);
 select test.eq('tras el cambio desaparece la alerta crítica de P1', test.n_alertas(11, 1::smallint, 'critico'), 0::bigint);
 select test.eq('tras el cambio P1 sin alerta bajo ni cruza_critico_pronto',
-  (select count(*) from public.v_alertas where vehiculo_id=11 and posicion=1 and tipo in ('bajo','cruza_critico_pronto')), 0::bigint);
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1
+    and (estado = 'bajo' or (estado in ('ok','bajo') and semanas_hasta_critico <= 4))), 0::bigint);
 select test.eq('tras el cambio P1 queda la alerta de neumático montado sin ninguna medición',
   test.n_alertas(11, 1::smallint, 'sin_medir'), 1::bigint);
 select test.eq('tras el cambio P1 sin tasa ni historial del viejo',
@@ -160,7 +166,7 @@ select test.eq('una medición tardía del viejo no pisa al nuevo', test.prom(11,
 select test.eq('la tasa del nuevo no mezcla puntos del viejo (1 punto)',
   (select n_mediciones_90d || '|' || coalesce(tasa_mm_semana::text, 'null') from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), '1|null');
 select test.eq('ya no hay alertas de P1 de crítico ni de sin_medir',
-  (select count(*) from public.v_alertas where vehiculo_id=11 and posicion=1), 0::bigint);
+  (select count(*) from public.v_alertas where vehiculo_id=11 and posicion=1) + test.n_alertas(11, 1::smallint, 'sin_medir'), 0::bigint);
 reset role;
 -- Medición de posición (sin idneumatico) posterior al montaje, con otro nuevo neumático sin etiquetadas
 rollback to s0;
@@ -266,7 +272,7 @@ select test.become('authenticated', test.u_admin());
 select test.eq('V14: solo el montado figura en el estado', (select count(*) from public.v_estado_neumaticos where vehiculo_id=14), 1::bigint);
 select test.eq('V14: almacenado/baja/reparación no figuran en v_ultima_medicion',
   (select count(*) from public.v_ultima_medicion where vehiculo_id=14), 1::bigint);
-select test.eq('V14: no generan alertas (solo el montado, ok)', (select count(*) from public.v_alertas where vehiculo_id=14 and tipo in ('critico','bajo')), 0::bigint);
+select test.eq('V14: no generan alertas (solo el montado, ok)', (select count(*) from public.v_alertas where vehiculo_id=14) + (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado in ('critico','bajo')), 0::bigint);
 select test.eq('V14: sus 3 mm no cuentan como críticos del cliente',
   (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado='critico'), 0::bigint);
 select test.eq('V14: baja sin idneumatico con medición de posición: no se atribuye',
@@ -372,7 +378,7 @@ select test.eq('v_estado_neumaticos: columnas',
 select test.eq('v_alertas: columnas',
   (select string_agg(column_name || ':' || data_type, ',' order by ordinal_position) from information_schema.columns
     where table_schema='public' and table_name='v_alertas'),
-  'cliente_id:bigint,vehiculo_id:bigint,vehiculo_nombre:text,patente:text,posicion:smallint,neumatico_id:bigint,idneumatico:text,tipo:text,severidad:integer,valor:numeric,mensaje:text,ultima_medicion_at:timestamp with time zone');
+  'cliente_id:bigint,vehiculo_id:bigint,vehiculo_nombre:text,patente:text,posicion:smallint,neumatico_id:bigint,idneumatico:text,tipo:text,severidad:integer,valor:numeric,mensaje:text,ultima_medicion_at:timestamp with time zone,alerta_id:bigint,estado:text,umbral_mm:numeric,mm_apertura:numeric,mm_minimo:numeric,abierta_at:timestamp with time zone,reconocida_at:timestamp with time zone,silenciada_hasta:timestamp with time zone,veces_reabierta:integer');
 select test.eq('v_resumen_flota_cliente: columnas',
   (select string_agg(column_name || ':' || data_type, ',' order by ordinal_position) from information_schema.columns
     where table_schema='public' and table_name='v_resumen_flota_cliente'),

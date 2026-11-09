@@ -71,8 +71,8 @@ select pg_temp.ev(13, 'montaje', 1);
 
 select test.become('authenticated', test.u_admin());
 select test.eq('P1 dos mediciones a 24 h => sin tasa', pg_temp.tasa(1), 'null');
-select test.eq('P1 sin alerta cruza_critico_pronto',
-  (select count(*) from public.v_alertas where vehiculo_id = 581 and posicion = 1 and tipo = 'cruza_critico_pronto'), 0::bigint);
+select test.eq('P1 sin indicador de cruce próximo del crítico (cruza_critico_pronto ya no es alerta)',
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id = 581 and posicion = 1 and semanas_hasta_critico <= 4), 0::bigint);
 select test.eq('P1 sin semanas hasta crítico ni retiro',
   (select semanas_hasta_critico is null and semanas_hasta_retiro is null from public.v_estado_neumaticos where vehiculo_id = 581 and posicion = 1), true);
 select test.eq('P1 conserva promedio y n_mediciones_90d',
@@ -80,8 +80,8 @@ select test.eq('P1 conserva promedio y n_mediciones_90d',
 select test.eq('P2 dos mediciones a 2 h cruzando medianoche UTC => sin tasa', pg_temp.tasa(2), 'null');
 select test.eq('P2 son dos fechas UTC distintas',
   (select count(distinct (created_at at time zone 'UTC')::date) from public.mediciones where vehiculo_id = 581 and posicion = 2), 2::bigint);
-select test.eq('P2 sin alerta cruza_critico_pronto',
-  (select count(*) from public.v_alertas where vehiculo_id = 581 and posicion = 2 and tipo = 'cruza_critico_pronto'), 0::bigint);
+select test.eq('P2 sin indicador de cruce próximo del crítico (cruza_critico_pronto ya no es alerta)',
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id = 581 and posicion = 2 and semanas_hasta_critico <= 4), 0::bigint);
 select test.eq('P3 tres mediciones el mismo día => sin tasa', pg_temp.tasa(3), 'null');
 select test.eq('P4 3 mediciones y 14 días exactos => 1.000 mm/semana', pg_temp.tasa(4), '1.000');
 select test.eq('P4 semanas hasta crítico (10-5)/1',
@@ -99,9 +99,8 @@ select test.eq('P12 la medición de hace 120 días queda fuera: 0.500', pg_temp.
 select test.eq('P13 montaje posterior a todas las mediciones => sin tasa', pg_temp.tasa(13), 'null');
 select test.eq('ninguna tasa negativa en la vista',
   (select count(*) from public.v_estado_neumaticos where tasa_mm_semana < 0), 0::bigint);
-select test.eq('cruza_critico_pronto nunca sin tasa',
-  (select count(*) from public.v_alertas a join public.v_estado_neumaticos e using (vehiculo_id, posicion)
-    where a.vehiculo_id = 581 and a.tipo = 'cruza_critico_pronto' and e.tasa_mm_semana is null), 0::bigint);
+select test.eq('semanas_hasta_critico nunca sin tasa',
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id = 581 and semanas_hasta_critico is not null and tasa_mm_semana is null), 0::bigint);
 reset role;
 
 -- El cliente (RLS) ve las mismas tasas que el administrador
@@ -271,9 +270,8 @@ select test.eq('hay filas comparadas en la equivalencia de tasa',
     where r.n >= 3 and r.span >= 14 * 86400 and o.tasa_mm_semana > 0 and n.tasa_mm_semana = o.tasa_mm_semana), true);
 
 -- Las vistas derivadas siguen leyendo la nueva tasa y conservan su forma
-select test.eq('v_alertas coincide con las alertas esperadas por fila (cruza_critico_pronto solo con tasa positiva)',
-  (select count(*) from public.v_alertas a join public.v_estado_neumaticos e using (vehiculo_id, posicion)
-    where a.tipo = 'cruza_critico_pronto' and not (e.tasa_mm_semana > 0 and e.semanas_hasta_critico <= 4)), 0::bigint);
+select test.eq('semanas_hasta_critico solo existe con tasa positiva',
+  (select count(*) from public.v_estado_neumaticos e where e.semanas_hasta_critico is not null and not (e.tasa_mm_semana > 0)), 0::bigint);
 select test.eq('v_estado_neumaticos conserva security_invoker',
   (select reloptions::text from pg_class where oid = 'public.v_estado_neumaticos'::regclass), '{security_invoker=true}');
 select test.denied('anon no lee v_estado_neumaticos', 'set local role anon; select * from public.v_estado_neumaticos');
