@@ -32,13 +32,3 @@ export function validarOdometroVehiculo(texto, actual = null) {
   }
   return { ok: true, valor: v };
 }
-
-// Km del neumático: previos + recorridos. `infoKm` sale de kmPorNeumatico (odómetro del vehículo actual menos el que
-// tenía al montarlo, sumando tramos anteriores). Sin odómetro en el montaje no hay recorridos conocidos: el total
-// queda en los km previos y `completo` es false.
-export function kmTotalesNeumatico(neumatico, infoKm) {
-  const previos = Number.isInteger(neumatico && neumatico.km_previos) && neumatico.km_previos > 0 ? neumatico.km_previos : 0;
-  const recorridos = infoKm && Number.isFinite(infoKm.km) ? infoKm.km : 0;
-  const completo = !!infoKm && infoKm.tramos > 0 && !infoKm.incompletos;
-  return { previos, recorridos, total: previos + recorridos, completo };
-}

@@ -68,7 +68,14 @@
     {id:9003,vehiculo_id:10,cliente_id:1,posicion:2,idneumatico:'N10-2',mm1:8,mm2:8,mm3:8,promedio:8,created_at:D(9),calidad:'sospechosa',calidad_motivo:'Lectura duplicada',calidad_at:D(9),calidad_por:'sistema',vehiculos:vd(veh[0])},
     {id:9004,vehiculo_id:12,cliente_id:1,posicion:1,idneumatico:'N12-1',mm1:35,mm2:35,mm3:35,promedio:35,created_at:D(2),calidad:'sospechosa',calidad_motivo:'Valor fuera del rango físico (0 a 30 mm)',calidad_at:D(2),calidad_por:'sistema',vehiculos:vd(veh[1])}
   ];
-  var T = {vehiculos:veh, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones.concat(observadas), v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
+  // v_km_cubierta: P3 con datos completos (20.000 previos + 3.456 del tramo actual); P5 sin lecturas; P6 estimado.
+  var kmcub = [
+    {neumatico_id:1003,cliente_id:1,vehiculo_id:10,km_previos:20000,km_en_vehiculos:0,km_tramo_actual:3456,km_totales:23456,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
+    {neumatico_id:1005,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:1006,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:9000,km_tramo_actual:null,km_totales:9000,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:1007,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:0,km_tramo_actual:100,km_totales:100,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:true}
+  ];
+  var T = {vehiculos:veh, v_km_cubierta:kmcub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones.concat(observadas), v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
   function Q(table){
