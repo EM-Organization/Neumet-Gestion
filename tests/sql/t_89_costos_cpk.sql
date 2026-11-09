@@ -220,7 +220,7 @@ select test.eq('p_cliente_id acota al cliente (el admin no mezcla clientes)',
   (select string_agg(clave, ',' order by clave) from public.cpk_por_grupo('marca', null, null, 2) where clave in ('Alfa','Beta','Gama','Eps','Delta','Omega')), 'Omega');
 select test.eq('p_cliente_id = 1 deja fuera a Omega',
   (select count(*) from public.cpk_por_grupo('marca', null, null, 1) where clave = 'Omega'), 0::bigint);
-select test.denied('grupo inválido', $$select * from public.cpk_por_grupo('banda')$$, '22023');
+select test.denied('grupo inválido', $$select * from public.cpk_por_grupo('carcasa')$$, '22023');
 select test.denied('grupo null', $$select * from public.cpk_por_grupo(null)$$, '22023');
 select test.denied('rango invertido', $$select * from public.cpk_por_grupo('marca', date '2026-02-01', date '2026-01-01')$$, '22023');
 reset role;
