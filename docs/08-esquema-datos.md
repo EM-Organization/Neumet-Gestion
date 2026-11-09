@@ -705,3 +705,57 @@ Panel: panel de la rueda y Ciclo de vida muestran «Costo» y «Costo por km» (
 ## J.7 Precios y costos con privilegios por columna
 
 Desde la migración 20261116500000 (apéndice K) `authenticated` no tiene `select` sobre `neumaticos.precio_unidad` ni `eventos_neumatico.costo`; el perfil de sucursal tampoco los lee por la API. Esta migración respeta ese contrato: `v_costo_cubierta` lee precio y costo solo por `costo_cubierta_items` (`SECURITY DEFINER`, con `precios_visibles()`), y `costos_neumatico`, la vista y `cpk_por_grupo` devuelven vacío al perfil de sucursal. No hay interfaz para eliminar costos (la RPC `costo_eliminar` existe).
+
+
+---
+
+# Apéndice M · Alerta única «Neumático crítico» con estado (migración `20261118500000_alerta_critica.sql`, hoja de ruta F7)
+
+Implementa la etapa 1 de `docs/15` sección B. Sin ML. La migración está lista para aplicar; no se aplicó a Supabase desde el PR.
+
+## M.1 Regla de producto
+
+Un solo tipo de alerta: **crítico**. Un neumático montado genera una alerta cuando su promedio de mm es menor que el umbral crítico de su cliente (`clientes.umbral_critico_mm`), que el propio cliente edita. «Bajo», «cruza el crítico pronto», «desgaste irregular» y «sin medir» ya no son alertas: son indicadores de `v_estado_neumaticos` (`estado`, `semanas_hasta_critico`, `desgaste_irregular`, `sin_medir`), visibles en la ficha, el diagrama y «Requieren atención». Un dato no medido (promedio nulo) nunca abre alerta.
+
+## M.2 Esquema
+
+- `clientes.alerta_histeresis_mm numeric(3,1)` (0,5 por defecto, entre 0 y 3).
+- Tabla `alertas` (RLS activa; `authenticated` solo `select`): `estado` (`abierta`, `reconocida`, `resuelta`), `umbral_mm` vigente, `mm_apertura`, `mm_minimo`, `mm_actual`, `silenciada_hasta` con motivo y autor, `resuelta_motivo` (`recuperada`, `cambio`, `baja`, `manual`, `sin_datos`), `veces_reabierta`. Índice único parcial: a lo sumo una alerta no resuelta por neumático. Auditada con `audit_row` (`trg_audit_alertas`).
+- Política de lectura como `vehiculos`: admin todo; cliente lo de su cliente; el perfil de sucursal solo alertas de vehículos de su sucursal. Cliente eliminado: sin alertas en la vista.
+- `v_alertas` (`security_invoker`) lee la tabla y conserva sus columnas y tipos (`severidad` = 3, `tipo` = `critico`); agrega al final `alerta_id`, `estado`, `umbral_mm`, `mm_apertura`, `mm_minimo`, `abierta_at`, `reconocida_at`, `silenciada_hasta`, `veces_reabierta`. `v_resumen_flota_cliente` no cambia: `n_alertas_sev3` cuenta las críticas vivas y `sev1`/`sev2` quedan en 0.
+
+## M.3 Evaluación
+
+`alerta_sincronizar(cliente, neumáticos[])` (interna, sin `execute` para nadie fuera del dueño) es la única función de evaluación, una sola sentencia sobre `v_estado_neumaticos`:
+
+| Situación | Resultado |
+|---|---|
+| promedio < umbral y sin alerta no resuelta | abre; si el neumático tuvo una alerta resuelta por `recuperada` en los últimos 7 días, reabre esa fila (`veces_reabierta` + 1) |
+| alerta no resuelta y promedio < umbral + histéresis | sigue; actualiza mm actual, mínimo, umbral, vehículo y posición |
+| alerta no resuelta y promedio >= umbral + histéresis | resuelve `recuperada` |
+| alerta no resuelta y sin promedio válido (todas las mediciones invalidadas) | resuelve `sin_datos` |
+| neumático ya no montado | resuelve `cambio` o `baja` |
+
+La alerta sigue al neumático: rotar no crea otra y cambiarlo la resuelve. Disparadores: `mediciones` (insert y update, por sentencia con tabla de transición: un lote de la API es una evaluación), `neumaticos` (estado, posición, vehículo, idneumatico) y `clientes` (umbral crítico o histéresis: reevalúa toda la flota). Un fallo de la evaluación no bloquea la escritura de origen: queda como `WARNING`. El relleno inicial abre las alertas de los neumáticos críticos actuales.
+
+## M.4 RPC (`SECURITY DEFINER`, `search_path` vacío, autorización interna con `neumatico_autorizar_vehiculo`, 42501 uniforme)
+
+- `alerta_reconocer(id, nota)`: `abierta` a `reconocida`; idempotente.
+- `alerta_silenciar(id, hasta, motivo)`: hasta 90 días; `hasta` nulo quita el silencio. La alerta sigue abierta.
+- `alerta_resolver(id, nota)`: nota obligatoria; motivo `manual`. Con el neumático aún bajo el umbral, la siguiente medición abre una alerta nueva.
+- `alerta_configurar(cliente, umbral_critico_mm, histeresis_mm)`: solo admin o perfil de cliente global (el de sucursal recibe 42501). Mantiene retiro < crítico < bajo (23514), un decimal (22023); reevalúa la flota.
+- Resuelta o con estado incompatible: 55000. Alerta inexistente: 42501 para no admin (P0002 para admin). Rol `api`, sin perfil y `anon`: sin acceso.
+
+## M.5 Panel
+
+- Alertas: tabla con estado (Abierta, Reconocida, Silenciada, siempre con texto y símbolo), mensaje, vehículo, posición y acciones: Ver vehículo (abre el coche en la rueda), Reconocer, Silenciar 7 días o Quitar silencio, y Resolver (modal con nota obligatoria). Filtro y chips por estado.
+- Bloque «Nivel crítico» (nivel y histéresis) solo para el cliente global; el admin edita el umbral desde la ficha del cliente (el trigger reevalúa igual).
+- Inicio: «N alertas críticas sin reconocer» y enlace a Alertas.
+
+## M.6 Pruebas
+
+`tests/sql/t_92_alerta_critica.sql` (apertura sin duplicados, histéresis, reapertura, lote de la API, rotar, cambiar, baja, sin datos, umbral por cliente, matriz de roles, RLS por sucursal, sin escritura directa, auditoría con actor, consistencia con `v_estado_neumaticos`, privilegios de funciones y planes < 100000 para que PG16 no active el JIT); ajustes en t_10, t_20, t_55, t_58, t_60 y t_88; `tests/unit/alertas.test.mjs`; smoke de Flota y Alertas; e2e `alertas-dispositivos` (estados, reconocer, nivel crítico).
+
+## M.7 Límites
+
+Sin anulaciones por eje, posición ni marca/modelo, sin destinatarios, correo ni reevaluación nocturna (docs/15 B.5, etapas 2 y 3). La reapertura a 7 días no es configurable todavía.

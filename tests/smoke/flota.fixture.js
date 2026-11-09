@@ -12,11 +12,13 @@
     e(2,11,'Camión 02','XY987ZZ',1,'bajo',6), e(2,11,'Camión 02','XY987ZZ',2,'ok',9,{semanas_hasta_critico:6.4}),
     e(2,13,'Camión 03','NN0003',1,'sin_datos',null,{sin_medir:true})
   ];
+  // v_alertas desde la migración 20261118500000: solo la alerta crítica con estado (abierta, reconocida; silencio).
+  var futuro = new Date(Date.now() + 3 * 86400000).toISOString();
   var alertas = [
-    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:1,tipo:'critico',severidad:3,valor:3,mensaje:'Neumático crítico: 3 mm (límite 5 mm)',ultima_medicion_at:D(2)},
-    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:2,tipo:'bajo',severidad:2,valor:6,mensaje:'Desgaste bajo: 6 mm (límite 8 mm)',ultima_medicion_at:D(2)},
-    {cliente_id:2,vehiculo_id:11,vehiculo_nombre:'Camión 02',patente:'XY987ZZ',posicion:1,tipo:'bajo',severidad:2,valor:6,mensaje:'Desgaste bajo: 6 mm (límite 8 mm)',ultima_medicion_at:D(3)},
-    {cliente_id:2,vehiculo_id:13,vehiculo_nombre:'Camión 03',patente:'NN0003',posicion:1,tipo:'sin_medir',severidad:1,valor:null,mensaje:'Neumático montado sin ninguna medición',ultima_medicion_at:null}
+    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:1,tipo:'critico',severidad:3,valor:3,mensaje:'Neumático crítico: 3 mm (límite 5 mm)',ultima_medicion_at:D(5),alerta_id:101,estado:'abierta',silenciada_hasta:null},
+    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:2,tipo:'critico',severidad:3,valor:4,mensaje:'Neumático crítico: 4 mm (límite 5 mm)',ultima_medicion_at:D(2),alerta_id:102,estado:'abierta',silenciada_hasta:null},
+    {cliente_id:2,vehiculo_id:11,vehiculo_nombre:'Camión 02',patente:'XY987ZZ',posicion:1,tipo:'critico',severidad:3,valor:5,mensaje:'Neumático crítico: 5 mm (límite 6 mm)',ultima_medicion_at:D(3),alerta_id:103,estado:'reconocida',silenciada_hasta:null},
+    {cliente_id:2,vehiculo_id:13,vehiculo_nombre:'Camión 03',patente:'NN0003',posicion:1,tipo:'critico',severidad:3,valor:2,mensaje:'Neumático crítico: 2 mm (límite 6 mm)',ultima_medicion_at:D(1),alerta_id:104,estado:'abierta',silenciada_hasta:futuro}
   ];
   var resumen = [
     {cliente_id:1,nombre:'Transportes Alfa',n_vehiculos_activos:2,n_neumaticos_con_datos:4,n_ok:2,n_bajo:1,n_critico:1,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:1,n_alertas_sev3:1,ultima_medicion_at:D(2)},

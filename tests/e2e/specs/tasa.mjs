@@ -78,8 +78,8 @@ export function registrar(env) {
         assert.equal(f.tasa_mm_semana, null, `posición ${f.posicion}: sin tasa con 2 mediciones`);
         assert.equal(f.semanas_hasta_critico, null);
       }
-      const alertas = await (await fetch(`${env.rest.base}/v_alertas?vehiculo_id=eq.${vid}&tipo=eq.cruza_critico_pronto`, { headers: { Authorization: `Bearer ${env.sesion('global').jwt}` } })).json();
-      assert.deepEqual(alertas, [], 'sin alerta cruza_critico_pronto con mediciones insuficientes');
+      const alertas = await (await fetch(`${env.rest.base}/v_alertas?vehiculo_id=eq.${vid}`, { headers: { Authorization: `Bearer ${env.sesion('global').jwt}` } })).json();
+      assert.deepEqual(alertas, [], 'sin alerta crítica: 12 mm con mediciones insuficientes');
     } finally {
       env.sql(`with v as (select id from public.vehiculos where patente = '${patente}'),
                     m as (delete from public.mediciones where vehiculo_id in (select id from v)),

@@ -91,7 +91,8 @@ export function registrar(env) {
       assert.equal(await criticosInicio(p), criticos0 - 1, 'el contador de críticos de Inicio baja en uno');
       const al = await alertasUi(p, patente);
       assert.ok(!al.some(a => a.tipo === 'critico' && a.posicion === String(pos)), `ya no hay alerta crítica en P${pos}: ${JSON.stringify(al)}`);
-      assert.ok(al.some(a => a.tipo === 'sin_medir' && a.posicion === String(pos)), 'figura como montado sin medir');
+      // «Sin medir» ya no es alerta (docs/15 B.2): queda como indicador de la vista de estado.
+      assert.equal(fila(env, id, pos).sin_medir, true, 'figura como montado sin medir');
     });
 
     // El neumático nuevo se mide (como lo haría el proveedor): la posición toma SU valor
@@ -155,10 +156,8 @@ export function registrar(env) {
     assert.equal(dB.tasa_mm_semana, antesA.tasa_mm_semana, 'la tasa de desgaste acompaña al neumático');
     assert.equal(Number(env.sql(`select count(*) from public.eventos_neumatico where vehiculo_id = ${id} and tipo = 'rotacion'`)), rotaciones0 + 2);
 
-    await flujo(env, 'rotar-acompana-alertas', 'global', async p => {
-      const al = await alertasUi(p, patente);
-      assert.ok(al.some(x => x.tipo === 'bajo' && x.posicion === String(b)), `la alerta de desgaste bajo se movió a P${b}: ${JSON.stringify(al)}`);
-      assert.ok(!al.some(x => x.tipo === 'bajo' && x.posicion === String(a)), `P${a} ya no tiene la alerta`);
-    });
+    // «Bajo» ya no es alerta: el indicador acompaña al neumático en la vista de estado.
+    assert.equal(fila(env, id, b).estado, 'bajo', `el desgaste bajo se movió a P${b}`);
+    assert.notEqual(fila(env, id, a).estado, 'bajo', `P${a} ya no tiene el desgaste bajo`);
   });
 }

@@ -19,6 +19,7 @@ import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, resumenPosiciones, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 import { textoAvisoInicio } from '../domain/calidad.js';
+import { sinReconocer } from '../domain/alertas.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -80,12 +81,15 @@ function bloqueResumen(rs, ult) {
   </section>`;
 }
 
-function bloqueAtencion(at, nAlertas, porVeh) {
+function bloqueAtencion(at, alertas, porVeh) {
+  const nAlertas = alertas.length;
+  const nuevas = sinReconocer(alertas);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
+    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta crítica sin reconocer', 'alertas críticas sin reconocer')}.</p>` : ''}
     <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
   </section>`;
 }
@@ -170,7 +174,7 @@ function renderContenido({ estadoRows, alertas, salud, resumen, vehiculosTotal =
   const px = proximosCambios(estadoRows);
   const clientes = !cliente ? clientesConUrgencias(resumen) : [];
   const porVeh = agruparPorVehiculo(estadoRows);
-  return html`<div class="inicio-cols">${bloqueAtencion(at, alertas.length, porVeh)}${bloqueProximos(px, porVeh)}</div>
+  return html`<div class="inicio-cols">${bloqueAtencion(at, alertas, porVeh)}${bloqueProximos(px, porVeh)}</div>
     ${bloqueResumen(rs, ultimaMedicion(estadoRows))}
     ${bloqueUltimas(ultimas, porVeh)}
     ${clientes.length ? html`<section class="inicio-card" aria-labelledby="inicio-h-clientes"><h3 id="inicio-h-clientes" class="inicio-h">Clientes con más urgencias</h3><ul class="inicio-lista">${joinHtml(clientes.map(filaCliente))}</ul></section>` : ''}

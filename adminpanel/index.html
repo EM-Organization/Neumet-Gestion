@@ -730,22 +730,31 @@
           </div>
           <button class="btn ghost" data-action="loadAlertas">Actualizar</button>
         </div>
+        <div class="ficha-card" id="alert-config" hidden>
+          <div class="ficha-card-title">Nivel crítico</div>
+          <div class="ficha-sub">Un neumático genera una alerta cuando su promedio baja de este nivel. Se resuelve al superarlo más la histéresis.</div>
+          <div class="ficha-umbrales">
+            <div class="field"><label for="alert-umbral">Nivel crítico (mm)</label><input type="text" inputmode="decimal" id="alert-umbral"/></div>
+            <div class="field"><label for="alert-histeresis">Histéresis (mm)</label><input type="text" inputmode="decimal" id="alert-histeresis"/></div>
+          </div>
+          <div class="login-error" id="alert-config-error" role="alert"></div>
+          <div class="ficha-form-actions"><button class="btn primary" id="alert-config-guardar" data-action="alertasGuardarConfig">Guardar nivel</button></div>
+        </div>
         <div class="alert-chips" id="alert-chips"></div>
         <div class="toolbar">
-          <select id="alert-severidad" class="flota-select" aria-label="Severidad">
-            <option value="">Todas las severidades</option>
-            <option value="3">Crítica</option>
-            <option value="2">Media</option>
-            <option value="1">Informativa</option>
+          <select id="alert-estado" class="flota-select" aria-label="Estado">
+            <option value="">Todos los estados</option>
+            <option value="abierta">Abiertas</option>
+            <option value="reconocida">Reconocidas</option>
+            <option value="silenciada">Silenciadas</option>
           </select>
-          <select id="alert-tipo" class="flota-select" aria-label="Tipo"><option value="">Todos los tipos</option></select>
           <select id="alert-cliente" class="flota-select" data-admin-only aria-label="Cliente"><option value="">Todos los clientes</option></select>
           <span class="flota-meta" id="alert-count"></span>
         </div>
         <div class="rep-progress" id="alert-msg" role="status" aria-live="polite"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th scope="col">Severidad</th><th scope="col">Tipo</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Posición</th><th scope="col">Última medición</th><th scope="col"></th></tr></thead>
+            <thead><tr><th scope="col">Estado</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Posición</th><th scope="col">Última medición</th><th scope="col">Acciones</th></tr></thead>
             <tbody id="alert-tbody"></tbody>
           </table>
         </div>
@@ -1133,6 +1142,26 @@
     <div class="modal-footer">
       <button class="btn ghost" id="mont-cerrar" data-action="neumatico-montar-cerrar">Cancelar</button>
       <button class="btn primary" id="mont-confirmar" data-action="neumatico-montar-confirmar">Montar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Resolver alerta (nota obligatoria) -->
+<div class="modal-backdrop" id="modal-alerta" data-backdrop-close="alertasCerrarResolver">
+  <div class="modal cambio-modal">
+    <div class="modal-header">
+      <div class="modal-title">Resolver alerta</div>
+      <div class="modal-sub" id="alerta-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="alerta-nota">Nota</label>
+        <input id="alerta-nota" type="text" maxlength="200" autocomplete="off"/>
+        <div class="field-hint">Obligatoria. Queda registrada. Si el neumático sigue bajo el nivel crítico, la próxima medición abre una alerta nueva.</div></div>
+      <div id="alerta-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" data-action="alertasCerrarResolver">Cancelar</button>
+      <button class="btn primary" id="alerta-confirmar" data-action="alertasConfirmarResolver">Resolver</button>
     </div>
   </div>
 </div>

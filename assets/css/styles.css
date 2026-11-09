@@ -696,6 +696,8 @@
 @media (max-width: 760px) { .inicio-hero { padding: 18px 12px 20px; margin-bottom: 24px; } .busq-grande input { font-size: 15px; padding: 14px 10px 14px 40px; } .busq-grande > svg { left: 13px; width: 18px; height: 18px; } }
 .busq-resultados { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 50; list-style: none; margin: 0; padding: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(56,52,36,0.16); max-height: 360px; overflow-y: auto; }
 .busq-resultados[hidden] { display: none; }
+.ficha-card[hidden] { display: none; }
+.alert-acciones { display:flex; gap:6px; flex-wrap:wrap; }
 .busq-op { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: 0; padding: 9px 10px; border-radius: 7px; font: inherit; color: var(--text-primary); cursor: pointer; }
 .busq-op:hover, .busq-op:focus-visible { background: var(--surface-2); outline: none; }
 .busq-nom { font-weight: 600; font-size: 14px; }
