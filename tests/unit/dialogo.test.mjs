@@ -13,13 +13,20 @@ describe('configDialogo', () => {
     assert.equal(c.iconClass, 'danger');
     assert.equal(c.icono, 'papelera');
   });
-  test('no destructivo: botón primario, icono neutro y sin papelera', () => {
-    const c = configDialogo('Intercambiar neumáticos', 'msg', 'Intercambiar', false);
-    assert.equal(c.okLabel, 'Intercambiar');
+  test('rotación: botón primario, icono neutro de flechas y sin papelera', () => {
+    const c = configDialogo('Rotar neumáticos', 'msg', 'Rotar', false);
+    assert.equal(c.okLabel, 'Rotar');
     assert.equal(c.okClass, 'primary');
     assert.equal(c.iconClass, 'neutral');
     assert.equal(c.icono, 'intercambio');
   });
+  test('otras acciones no destructivas usan icono de información, no las flechas', () => {
+    for (const l of ['Continuar', 'Mover']) {
+      const c = configDialogo('t', 'm', l, false);
+      assert.equal(c.icono, 'info'); assert.equal(c.okClass, 'primary'); assert.equal(c.iconClass, 'neutral');
+    }
+  });
+  test('destructivo con la etiqueta «Rotar» sigue con papelera', () => assert.equal(configDialogo('t', 'm', 'Rotar', true).icono, 'papelera'));
   test('sin etiqueta o con etiqueta vacía falla (no hay default «Eliminar»)', () => {
     for (const l of [undefined, null, '', '   ', 5]) assert.throws(() => configDialogo('t', 'm', l, false), /etiqueta/);
   });
@@ -72,7 +79,7 @@ describe('llamadas a confirmDialog en el código fuente', () => {
   });
   test('los intercambios y movimientos no son destructivos', () => {
     for (const { f, args } of llamadas) {
-      if (/Intercambiar|Mover|Continuar|Retirar a stock/.test(args[2])) assert.equal(args[3], 'false', f);
+      if (/Rotar|Mover|Continuar|Retirar a stock/.test(args[2])) assert.equal(args[3], 'false', f);
       if (/^['"]Eliminar['"]$/.test(args[2])) assert.equal(args[3], 'true', f);
     }
   });

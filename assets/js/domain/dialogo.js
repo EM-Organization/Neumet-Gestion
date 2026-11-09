@@ -7,6 +7,7 @@ export function configDialogo(title, msg, okLabel, danger) {
     title: String(title ?? ''), msg: String(msg ?? ''), okLabel: okLabel.trim(), danger,
     okClass: danger ? 'danger' : 'primary',
     iconClass: danger ? 'danger' : 'neutral',
-    icono: danger ? 'papelera' : 'intercambio',
+    // Papelera solo si es destructivo; flechas solo en la rotación; el resto de las no destructivas, icono de información.
+    icono: danger ? 'papelera' : okLabel.trim() === 'Rotar' ? 'intercambio' : 'info',
   };
 }

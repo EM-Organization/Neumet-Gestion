@@ -195,7 +195,7 @@ ACTIONS.cicloRegistrarEvento=async function(){
     const rot=planRotacion(neums,n,p.posicionDestino);
     if(!rot.ok){ showToast(rot.error,true); return; }
     rotar=true;
-    if(rot.intercambio && !(await confirmDialog('Intercambiar neumáticos',`La posición ${nomPos(p.posicionDestino)} está ocupada: se intercambiarán los neumáticos de ${nomPos(n.posicion)} y ${nomPos(p.posicionDestino)}.`,'Intercambiar',false))) return;
+    if(rot.intercambio && !(await confirmDialog('Rotar neumáticos',`La posición ${nomPos(p.posicionDestino)} está ocupada: se intercambiarán los neumáticos de ${nomPos(n.posicion)} y ${nomPos(p.posicionDestino)}.`,'Rotar',false))) return;
   }
   const btn=$('ciclo-ev-save'); btn.disabled=true;
   try{

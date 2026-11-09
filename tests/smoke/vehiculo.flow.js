@@ -106,8 +106,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(!$('#modal-confirm').classList.contains('show')) fail('detalle: el handler real no pidio confirmar el intercambio');
     else {
       var cok = $('#confirm-ok');
-      if(cok.textContent !== 'Intercambiar' || cok.classList.contains('danger') || !cok.classList.contains('primary')) fail('detalle: el intercambio debe confirmarse con «Intercambiar» sin rojo: ' + cok.textContent + ' / ' + cok.className);
-      if($('#confirm-icon').classList.contains('danger') || !$('#confirm-icon').querySelector('[data-icono="papelera"]').hasAttribute('hidden')) fail('detalle: el intercambio muestra la papelera');
+      if(cok.textContent !== 'Rotar' || cok.classList.contains('danger') || !cok.classList.contains('primary')) fail('detalle: el intercambio debe confirmarse con «Rotar» sin rojo: ' + cok.textContent + ' / ' + cok.className);
+      if($('#confirm-icon').classList.contains('danger') || $('#confirm-icon').querySelector('svg:not([hidden])').dataset.icono !== 'intercambio') fail('detalle: el intercambio muestra la papelera');
       cok.click(); await sleep(400);
     }
     var rot = rpcs('neumatico_rotar');
