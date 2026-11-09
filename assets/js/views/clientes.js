@@ -161,7 +161,7 @@ ACTIONS.saveCliente=async function(){
 
 ACTIONS.removeClient=async function(id){
   const c=clients.find(c=>c.id===id);
-  const ok=await confirmDialog(`Eliminar cliente`,`¿Eliminar a "${c.nombre}"? Se desactivarán sus vehículos y dispositivos; los datos históricos se conservan.`);
+  const ok=await confirmDialog(`Eliminar cliente`,`¿Eliminar a "${c.nombre}"? Se desactivarán sus vehículos y dispositivos; los datos históricos se conservan.`,'Eliminar',true);
   if(!ok) return;
   try{ await deleteClient(id); clients=showDeleted?clients.map(x=>x.id===id?{...x,deleted_at:new Date().toISOString()}:x):clients.filter(c=>c.id!==id); showToast(`${c.nombre} eliminado`); renderClientes(); }
   catch(e){ showToast(userError(e),true); }

@@ -213,7 +213,7 @@ async function removeDispositivo(id){
   if(isClienteMode()) return;
   const d=filas.find(f=>f.dispositivo_id===id);
   if(!d) return;
-  const ok=await confirmDialog('Eliminar dispositivo',`¿Eliminar el dispositivo ${d.mac_address}?`);
+  const ok=await confirmDialog('Eliminar dispositivo',`¿Eliminar el dispositivo ${d.mac_address}?`,'Eliminar',true);
   if(!ok) return;
   const {error}=await db.from('dispositivos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }

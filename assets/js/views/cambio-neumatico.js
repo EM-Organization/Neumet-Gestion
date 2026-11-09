@@ -155,7 +155,7 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
   const r = validarRotacion(data || [], vid, posA, posB);
   if (!r.ok) { showToast(r.error, true); return; }
   if (r.intercambio && !(await confirmDialog('Intercambiar neumáticos',
-    `La posición P${r.params.p_pos_b} está ocupada: se intercambiarán los neumáticos de P${r.params.p_pos_a} y P${r.params.p_pos_b}.`))) return;
+    `La posición P${r.params.p_pos_b} está ocupada: se intercambiarán los neumáticos de P${r.params.p_pos_a} y P${r.params.p_pos_b}.`,'Intercambiar',false))) return;
   const { error: e2 } = await db.rpc('neumatico_rotar', { ...r.params, p_odometro_km: null });
   if (e2) {
     console.error(e2);

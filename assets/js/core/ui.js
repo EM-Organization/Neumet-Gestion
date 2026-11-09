@@ -1,5 +1,6 @@
 // Utilidades de UI compartidas: toast, aviso de problema de conexión, diálogo de confirmación, fechas relativas.
 import { fmtFecha } from '../domain/formato.js';
+import { configDialogo } from '../domain/dialogo.js';
 export const AVATARS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 export const avatarFor = id => AVATARS[Math.abs(id) % AVATARS.length];
 export function userError(e){ console.error(e); return 'No se pudo completar la operación'; }
@@ -33,19 +34,23 @@ export function showToast(msg,err=false){
 }
 
 // ── CONFIRM MODAL ──
-export function confirmDialog(title, msg, okLabel='Eliminar', danger=true){
+// okLabel y danger son obligatorios (ver domain/dialogo.js). danger=true: botón rojo e icono de papelera; si no, botón primario e icono neutro.
+export function confirmDialog(title, msg, okLabel, danger){
+  const cfg=configDialogo(title, msg, okLabel, danger);
   return new Promise(resolve=>{
-    document.getElementById('confirm-title').textContent=title;
-    document.getElementById('confirm-msg').textContent=msg;
+    document.getElementById('confirm-title').textContent=cfg.title;
+    document.getElementById('confirm-msg').textContent=cfg.msg;
     const backdrop=document.getElementById('modal-confirm');
+    const icon=document.getElementById('confirm-icon');
+    icon.classList.toggle('danger',cfg.danger); icon.classList.toggle('neutral',!cfg.danger);
+    icon.querySelectorAll('[data-icono]').forEach(sv=>{ sv.toggleAttribute('hidden',sv.dataset.icono!==cfg.icono); });
     backdrop.classList.add('show');
     const ok=document.getElementById('confirm-ok');
-    ok.textContent=okLabel; ok.classList.toggle('danger',danger); ok.classList.toggle('primary',!danger);
+    ok.textContent=cfg.okLabel; ok.classList.toggle('danger',cfg.danger); ok.classList.toggle('primary',!cfg.danger);
     const cancel=document.getElementById('confirm-cancel');
     const cleanup=(val)=>{
       backdrop.classList.remove('show');
       ok.replaceWith(ok.cloneNode(true));
-      const ok2=document.getElementById('confirm-ok'); ok2.textContent='Eliminar'; ok2.classList.add('danger'); ok2.classList.remove('primary');
       cancel.replaceWith(cancel.cloneNode(true));
       resolve(val);
     };

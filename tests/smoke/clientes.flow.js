@@ -49,6 +49,7 @@ window.clientesFlow = async function(w, d, sleep, fail, log){
   if(!del){ fail('clientes: sin botón eliminar'); return; }
   del.click(); await sleep(150);
   if($('#confirm-msg').textContent.indexOf('datos históricos se conservan') === -1) fail('clientes: texto de confirmación');
+  if($('#confirm-ok').textContent !== 'Eliminar' || !$('#confirm-ok').classList.contains('danger') || $('#confirm-icon').querySelector('[data-icono="papelera"]').hasAttribute('hidden')) fail('clientes: borrado sin botón rojo e icono de papelera');
   $('#confirm-ok').click(); await sleep(300);
   var r = fx.rpcs[fx.rpcs.length-1];
   if(!r || r.args.p_id == null) fail('clientes: no se llamó cliente_eliminar_suave');
