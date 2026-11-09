@@ -79,9 +79,9 @@
   // Un evento de montaje con costo (la columna sale al emular los privilegios por columna: privilegios.fixture.js).
   var evs = [{id:2,cliente_id:1,vehiculo_id:10,neumatico_id:1,idneumatico:null,tipo:'montaje',posicion_origen:null,posicion_destino:1,odometro_km:100000,costo:230.5,notas:null,created_at:D(60)}];
   var reca = [
-    {id:3,cliente_id:1,neumatico_id:31,idneumatico:'CB-1-0001',numero_quema:'S-001',marca:'Michelin',modelo:'X Multi Z',vida_origen:0,vida_nueva:null,proveedor:'Recauchutadora Sur',estado:'apto',fecha_envio:'2026-10-20',fecha_cierre:null,motivo:null},
-    {id:2,cliente_id:1,neumatico_id:32,idneumatico:'CB-1-0002',numero_quema:'S-002',marca:'Pirelli',modelo:null,vida_origen:1,vida_nueva:null,proveedor:'Recauchutadora Norte',estado:'enviado',fecha_envio:'2026-11-02',fecha_cierre:null,motivo:null},
-    {id:1,cliente_id:1,neumatico_id:33,idneumatico:'CB-1-0003',numero_quema:'S-010',marca:'Bridgestone',modelo:'R150',vida_origen:0,vida_nueva:1,proveedor:'Recauchutadora Sur',estado:'recibido',fecha_envio:'2026-09-01',fecha_cierre:'2026-09-20',motivo:null}
+    {id:3,cliente_id:1,neumatico_id:931,idneumatico:'CB-1-0001',numero_quema:'S-001',marca:'Michelin',modelo:'X Multi Z',vida_origen:0,vida_nueva:null,proveedor:'Recauchutadora Sur',estado:'apto',fecha_envio:'2026-10-20',fecha_cierre:null,motivo:null},
+    {id:2,cliente_id:1,neumatico_id:932,idneumatico:'CB-1-0002',numero_quema:'S-002',marca:'Pirelli',modelo:null,vida_origen:1,vida_nueva:null,proveedor:'Recauchutadora Norte',estado:'enviado',fecha_envio:'2026-11-02',fecha_cierre:null,motivo:null},
+    {id:1,cliente_id:1,neumatico_id:933,idneumatico:'CB-1-0003',numero_quema:'S-010',marca:'Bridgestone',modelo:'R150',vida_origen:0,vida_nueva:1,proveedor:'Recauchutadora Sur',estado:'recibido',fecha_envio:'2026-09-01',fecha_cierre:'2026-09-20',motivo:null}
   ];
   var T = {recauchutados:reca,eventos_neumatico:evs,v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
 
