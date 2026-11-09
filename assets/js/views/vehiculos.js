@@ -207,7 +207,7 @@ ACTIONS.saveVehiculo=async function(){
 
 async function removeVehiculo(id){
   const v=vehiculos.find(v=>v.id===id);
-  const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${etiquetaCoche(v.nombre)}"? Se perderán sus mediciones asociadas.`);
+  const ok=await confirmDialog('Eliminar vehículo',`¿Eliminar "${etiquetaCoche(v.nombre)}"? Se perderán sus mediciones asociadas.`,'Eliminar',true);
   if(!ok) return;
   const {error}=await db.from('vehiculos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }

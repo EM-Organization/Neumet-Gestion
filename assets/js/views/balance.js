@@ -181,7 +181,7 @@ ACTIONS.saveGasto=async function(){
 
 async function removeGasto(id){
   const g=gastos.find(g=>g.id===id);
-  const ok=await confirmDialog('Eliminar gasto',`¿Eliminar "${g.nombre}" de los gastos?`);
+  const ok=await confirmDialog('Eliminar gasto',`¿Eliminar "${g.nombre}" de los gastos?`,'Eliminar',true);
   if(!ok) return;
   const {error}=await db.from('gastos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }

@@ -42,6 +42,14 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
     if(cTxt.indexOf('Sin costos registrados') === -1) fail('ciclo: neumático sin costos: ' + cTxt);
     if(!cT.querySelector('[data-action="cicloRegistrarCosto"]')) fail('ciclo: falta «Registrar costo»');
   }
+  var dlg = function(tag, label, danger, icono){
+    var ok = $('#confirm-ok'), ic = $('#confirm-icon');
+    if(ok.textContent !== label) fail(tag + ': etiqueta del botón «' + ok.textContent + '», se esperaba «' + label + '»');
+    if(ok.classList.contains('danger') !== danger || ok.classList.contains('primary') === danger) fail(tag + ': clase del botón ' + ok.className);
+    if(ic.classList.contains('danger') !== danger) fail(tag + ': clase del icono ' + ic.className);
+    var vis = Array.prototype.filter.call(ic.querySelectorAll('svg'), function(s){ return !s.hasAttribute('hidden'); }).map(function(s){ return s.dataset.icono; });
+    if(vis.join() !== (danger ? 'papelera' : icono)) fail(tag + ': icono visible ' + vis.join());
+  };
   // Odómetro: inválido no escribe; válido actualiza vehiculos
   setv('#ciclo-odo-input', '-5'); $('#ciclo-odo-save').click(); await sleep(150);
   if(writes('vehiculos').length) fail('ciclo: odómetro negativo llegó a la BD');
@@ -54,6 +62,7 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   // Bajar el odómetro pide confirmación; cancelar no escribe
   setv('#ciclo-odo-input', '100'); $('#ciclo-odo-save').click(); await sleep(200);
   if(!$('#modal-confirm').classList.contains('show')) fail('ciclo: bajar odómetro no pidió confirmación');
+  dlg('ciclo odómetro', 'Continuar', false, 'info');
   $('#confirm-cancel').click(); await sleep(150);
   if(writes('vehiculos', 'update').length !== 1) fail('ciclo: odómetro bajó sin confirmar');
 
@@ -79,6 +88,7 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   var ce = w.console.error; w.console.error = function(){}; // el error esperado se registra en consola
   fx.rpcError = {code: 'P0002', message: 'no hay neumático'};
   $('#ciclo-ev-save').click(); await sleep(200);
+  dlg('ciclo rotación', 'Rotar', false, 'intercambio');
   $('#confirm-ok').click(); await sleep(300);
   if(fx.rpcs.length !== 1) fail('ciclo: la rotación no llamó a la RPC: ' + JSON.stringify(fx.rpcs));
   if($('#toast-msg').textContent.indexOf('registrado') !== -1) fail('ciclo: éxito mostrado pese al error de la RPC');

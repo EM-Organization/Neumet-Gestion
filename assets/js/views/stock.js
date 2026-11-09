@@ -298,7 +298,7 @@ ACTIONS.saveStock=async function(){
 async function removeStock(id){
   if(isClienteMode()) return;
   const s=stockItems.find(x=>x.id===id);
-  const ok=await confirmDialog('Eliminar','¿Eliminar esta entrada del stock?'); if(!ok) return;
+  const ok=await confirmDialog('Eliminar','¿Eliminar esta entrada del stock?','Eliminar',true); if(!ok) return;
   const {error}=await db.from('stock_neumaticos').delete().eq('id',id);
   if(error){ showToast(userError(error),true); return; }
   stockItems=stockItems.filter(x=>x.id!==id);
@@ -412,7 +412,7 @@ ACTIONS.cubiertaMoverGuardar=async function(){
 
 ACTIONS.cubiertaEliminar=async function(id){
   const c=cubiertas.find(x=>String(x.id)===String(id)); if(!c||!puedeGestionar()) return;
-  const ok=await confirmDialog('Eliminar cubierta',`¿Eliminar la cubierta ${c.numero_quema||''}? Solo se puede si nunca se usó.`);
+  const ok=await confirmDialog('Eliminar cubierta',`¿Eliminar la cubierta ${c.numero_quema||''}? Solo se puede si nunca se usó.`,'Eliminar',true);
   if(!ok) return;
   const {error}=await db.rpc('stock_cubierta_eliminar',{p_id:c.id});
   if(error){
