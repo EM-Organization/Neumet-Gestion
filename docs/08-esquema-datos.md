@@ -705,3 +705,57 @@ Panel: panel de la rueda y Ciclo de vida muestran «Costo» y «Costo por km» (
 ## J.7 Precios y costos con privilegios por columna
 
 Desde la migración 20261116500000 (apéndice K) `authenticated` no tiene `select` sobre `neumaticos.precio_unidad` ni `eventos_neumatico.costo`; el perfil de sucursal tampoco los lee por la API. Esta migración respeta ese contrato: `v_costo_cubierta` lee precio y costo solo por `costo_cubierta_items` (`SECURITY DEFINER`, con `precios_visibles()`), y `costos_neumatico`, la vista y `cpk_por_grupo` devuelven vacío al perfil de sucursal. No hay interfaz para eliminar costos (la RPC `costo_eliminar` existe).
+
+---
+
+# Apéndice L · Recauchutado por carcasa (migración `20261118000000_recauchutado_carcasa.sql`, hoja de ruta F5)
+
+## L.1 Modelo
+
+La carcasa es la fila de `neumaticos` (misma quema, mismo `idneumatico`). Un recauchutado exitoso suma una **vida** (`neumaticos.vida`, 0 a 3) a esa misma fila; los km no se reinician (`v_km_cubierta` sigue sumando todos los tramos). La vida 0 es la banda original.
+
+Flujo: `enviado` → `apto` (dictamen del proveedor) → `recibido` (aceptación, nueva banda). Un rechazo (dictamen no apto, o rechazo al recibir una cubierta apta) cierra el proceso como `rechazado` **sin** crear vida ni costo: la cubierta vuelve al stock con la vida y la condición que tenía.
+
+| Objeto | Detalle |
+|---|---|
+| `recauchutados` | Un proceso por envío: cubierta, copia de quema, marca y modelo, `vida_origen`, `vida_nueva` (solo si `recibido`), proveedor, fechas de envío, dictamen y cierre, motivo, notas. Un solo proceso abierto (`enviado` o `apto`) por cubierta (índice único parcial) |
+| `neumatico_vidas` | Una fila por banda aplicada (vida 1 a 3): profundidad inicial (mm, 0 a 30), marca y modelo de la banda. `unique (neumatico_id, vida)` |
+| `costos_neumatico.vida` | El costo pertenece a una vida. Los costos anteriores se asignaron a la vida actual de su cubierta (la compra, a la vida base) al crear la columna |
+| Eventos | `envio_recauchutado`, `dictamen_recauchutado`, `rechazo_recauchutado`; la aceptación deja un `reencauche` sin costo (el costo va en `costos_neumatico`, sin doble conteo). El `reencauche` justifica un aumento de profundidad en F3 y reinicia la ventana de la tasa |
+
+Lectura por RLS: admin y perfil global del cliente (como el stock); sucursal, otro cliente, api, sin perfil y anon no ven nada. Sin escritura directa.
+
+## L.2 RPC (`SECURITY DEFINER`, `search_path = ''`, autorización dentro)
+
+Autorización: `sucursal_autorizar_gestion` (admin, o perfil global del cliente dueño). Sucursal, api, sin perfil, anon, otro cliente e inexistente (para un no-admin) dan el mismo `42501`; el admin recibe `P0002` si no existe. Los procesos se bloquean `FOR UPDATE` (junto con la cubierta): dos operaciones concurrentes, una confirma y la otra recibe `55000`.
+
+| RPC | Regla |
+|---|---|
+| `recauchutado_enviar(p_neumatico_id, p_proveedor, p_fecha, p_notas)` | Cubierta no montada y no dada de baja, con vida < 3 y sin proceso abierto. Una cubierta aparcada en un vehículo sale de él. Queda sin vehículo ni sucursal («en el proveedor») |
+| `recauchutado_dictaminar(p_id, p_apto, p_motivo, p_fecha, p_sucursal_id)` | Desde `enviado`. Apto → `apto`. No apto exige motivo, cierra como `rechazado` y devuelve la cubierta a la sucursal indicada |
+| `recauchutado_aceptar(p_id, p_profundidad_mm, p_banda_marca, p_banda_modelo, p_costo, p_moneda, p_fecha, p_sucursal_id, p_notas)` | Desde `apto`. Profundidad obligatoria. Suma la vida, condición `recauchutado`, fila en `neumatico_vidas`, costo `recauchutado` de la vida nueva (opcional) y evento `reencauche`. Todo o nada |
+| `recauchutado_rechazar(p_id, p_motivo, p_fecha, p_sucursal_id)` | Desde `apto`, con motivo |
+
+**Guardia:** el trigger `neumaticos_guardia_recauchutado` impide, con `55000`, cambiar `vehiculo_id`, `sucursal_id`, `estado` o `vida` de una cubierta con proceso abierto (no se monta con `neumatico_montar` ni `neumatico_cambiar`, ni se mueve). Las RPC la omiten con una variable de transacción que apagan al terminar.
+
+`neumatico_cambiar` con destino «Recauchutado» sigue sumando la vida al retirar el neumático, sin proceso ni banda registrada (para un recauchutado hecho fuera de este flujo). Se consideran ambos caminos al repartir costos y km.
+
+## L.3 Costo y km por vida
+
+Vida vigente en un evento = `vida_base` + eventos `reencauche` hasta él, con `vida_base = neumaticos.vida` menos el total de eventos `reencauche` (cubiertas que entraron con vida > 0). `costo_vida_items(neumatico_id)` (`SECURITY DEFINER`, solo con `precios_visibles()`, mismo contrato que `costo_cubierta_items`) devuelve una fila por vida: costo (mismas fuentes y misma regla de no doble conteo; la suma de las vidas es el total de la carcasa; la compra va a la vida base), y km (tramos de montaje asignados a la vida vigente al montar; tramo sin dato → `km_confiable = false`; los `km_previos` no pertenecen a ninguna vida).
+
+- `v_costo_vida` (`security_invoker`): una fila por cubierta y vida con banda, profundidad inicial, costo, moneda mixta (→ NULL), km, `cpk` y `cpk_provisional`. La sucursal no recibe filas.
+- `cpk_por_grupo(p_grupo, …)` acepta `'vida'` («Banda original», «Recauchutado nº N») y `'banda'` (marca y modelo de la banda; «Sin dato de banda» si no se registró). Mismas reglas: ponderado, muestra baja (< 5), una fila por grupo y moneda, cohorte por fecha de alta de la cubierta.
+- Sin CTE recursiva en vistas; planes muy por debajo de 100.000 (probado en `t_91`).
+
+## L.4 Panel y pruebas
+
+Panel: vista **Recauchutado** (admin y perfil global; `views/recauchutado.js`, `domain/recauchutado.js`): lista de procesos con las acciones de cada estado y «Enviar a recauchutar» (solo cubiertas del stock); Stock marca «En recauchutado» y oculta «Mover»; Reportes suma los grupos «Vida» y «Banda» al costo por km. Textos según `docs/14`.
+
+Pruebas: SQL `tests/sql/t_91_recauchutado_carcasa.sql` (flujo completo, rechazos sin vida ficticia, guardia, matriz de roles, costos y km por vida, ponderación, planes), con doble pasada de la migración y PG16/PG17. Unitarias: `recauchutado.test.mjs`. Smoke: el menú de `inicio.flow.js`.
+
+## L.5 Límites
+
+- Un recauchutado hecho por «Cambiar neumático» no registra banda ni proceso.
+- El costo por vida usa los km recorridos en vehículos de esa vida; un recauchutado sin km aún no tiene costo por km.
+- Aplicación: la migración debe aplicarse **antes** de fusionar el front. Es aditiva e idempotente; la asignación de `vida` a los costos existentes se hace una sola vez, al crear la columna.

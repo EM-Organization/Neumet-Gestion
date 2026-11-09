@@ -31,6 +31,8 @@ export const GRUPOS = [
   { id: 'marca', label: 'Marca' },
   { id: 'modelo', label: 'Modelo' },
   { id: 'sucursal', label: 'Sucursal' },
+  { id: 'vida', label: 'Vida' },
+  { id: 'banda', label: 'Banda' },
 ];
 
 const vacio = v => v === null || v === undefined || String(v).trim() === '';
