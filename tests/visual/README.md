@@ -28,3 +28,8 @@ Requisitos: Google Chrome (se busca en la ruta de macOS y en `google-chrome`/`ch
 Las capturas desactivan transiciones y animaciones: con tiempo virtual, Chrome fotografiaba el menú a mitad de la transición y parecía resaltar el ítem anterior (por ejemplo Inicio con otra vista abierta). El estado real del DOM era correcto.
 Limitaciones: el stub no reproduce datos reales, RLS ni la caché de módulos del CDN; las fuentes se cargan de la red (sin
 red cae a la tipografía del sistema); las animaciones no se capturan. Cada captura tarda unos segundos (44 capturas ~ 5 min).
+
+## Navegación interactiva (auditoría de UX)
+`tests/visual/navegar.sh [admin|global|sucursal|sinperfil]` sirve el repo y imprime la URL del arnés con la sesión simulada de ese rol; el panel queda vivo (clics y formularios funcionan, datos del stub). Lo usa el agente `neumet-ux` (skill `neumet-auditoria-ux`). `VW`/`VH` fijan el tamaño (p. ej. `VW=390 VH=844`), `PORT` el puerto (8793). El servidor es **solo local** (`127.0.0.1`), responde 404 a rutas sensibles (`.`-segmentos, `referencias/`, `supabase/.temp`) y falla si el puerto está ocupado; no abrir el puerto a la red ni compartir la URL. Se detiene con SIGTERM (`kill -TERM`, `TaskStop`) o Ctrl+C en primer plano.
+El bloqueo compara sin distinguir mayúsculas (APFS no las distingue) y resuelve enlaces simbólicos: nada que salga del repo ni caiga en un prefijo sensible; `%00` da 400. `tests/visual/probar-navegar.sh` lo comprueba con `curl --path-as-is` en un puerto libre (crea y borra enlaces temporales; corre en el CI, job `test`).
+El arnés congela `Date` en 2026-06-15 (`tests/smoke/harness.html`): una fecha «vieja» o futura en pantalla no es un error de la interfaz.
