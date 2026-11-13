@@ -10,15 +10,15 @@ Principio: `docs/14` sección 5 «Simplicidad para el operario» (8 reglas verif
 
 ## 1. Preparar el entorno (nunca producción)
 1. Servidor local con datos simulados, un rol por vez:
-   `tests/visual/navegar.sh global` (también `admin`, `sucursal`, `sinperfil`; sin argumento lista las 4 URL). Corre en segundo plano (`run_in_background`) y deja el puerto 8793 (`PORT=` para cambiarlo).
+   `tests/visual/navegar.sh global` (también `admin`, `sucursal`, `sinperfil`; sin argumento lista las 4 URL). Escucha solo en `127.0.0.1` (puerto 8793; `PORT=` para cambiarlo), responde 404 a rutas sensibles y sale con error si el puerto está ocupado. Corre en segundo plano (`run_in_background`). **Al terminar, detenerlo**: `TaskStop` sobre esa tarea o `kill -TERM <pid>`; Ctrl+C no sirve si se lanzó con `&`.
    Roles: `admin` = Neumet interno; `global` = administrador de empresa (ve Sucursales y selector); `sucursal` = perfil de una sucursal (sin selector); `sinperfil` = solo «Sin acceso».
 2. Abrir la URL impresa en el navegador. El arnés muestra el panel en un iframe del mismo origen: los clics y formularios funcionan, los datos son del stub (`tests/smoke/stub.js`, fixtures) y se reinician al recargar. Con `VW=390 VH=844` se obtiene el ancho móvil.
 3. **Elegir cómo navegar**, en este orden:
-   a. **Herramientas MCP de navegador** (`mcp__claude-in-chrome__*`; cargar antes la skill `claude-in-chrome`). Exigen la extensión Claude in Chrome conectada (`/chrome`, https://claude.ai/chrome) y permiso por sitio para `localhost`. Si faltan en la sesión (se comprueba con `ToolSearch` por «chrome»), pasar a (b) y decirlo.
+   a. **Herramientas MCP de navegador** (`mcp__claude-in-chrome__*`; cargar antes la skill `claude-in-chrome`). Paso previo del director o el usuario: la extensión Claude in Chrome conectada (`/chrome` o `claude --chrome`; un proyecto no puede activarla por configuración), permiso por sitio para `127.0.0.1`/`localhost` y el subagente en primer plano (no hay confirmación oficial de que funcione en segundo plano). El nombre del grupo (`mcp__claude-in-chrome__*`) depende de la sesión. Usar un **perfil de Chrome separado**, sin sesiones de producción ni de Supabase. Si faltan en la sesión (se comprueba con `ToolSearch` por «chrome»), pasar a (b) y decirlo.
    b. **Chrome headless con capturas por pasos**: `tests/visual/run.sh <escena>` (`ROLES`, `SIZES=desktop mobile`) o `--screenshot` sobre la URL de `navegar.sh`; mirar cada PNG con Read. Sirve para ver pantallas, **no** para encadenar clics: los clics de un recorrido se cuentan leyendo `data-action` y flujos de `tests/smoke/*.flow.js` y quedan **no verificados visualmente**.
    c. Playwright no está en el repo (las pruebas usan Chrome headless directo: `tests/e2e/lib/chrome.mjs`); no instalarlo para una auditoría.
    Alternativa con datos reales de demo y PostgREST real: `npm run e2e` los levanta, pero solo durante la prueba y sin modo interactivo; un arranque manual queda como pendiente (no inventarlo en la auditoría).
-4. No iniciar sesión en producción, no pedir contraseñas, no tocar pestañas con sesión real.
+4. No iniciar sesión en producción, no pedir contraseñas, no tocar pestañas con sesión real. No abrir el puerto a la red ni compartir la URL del servidor.
 
 ## 2. Elegir las tareas
 Lista inicial (existen en `assets/js/views/`; confirmar que siguen ahí con `grep`):
@@ -39,7 +39,7 @@ Agregar las que pida el alcance. Escenarios del stub útiles: vehículo con neum
 ## 3. Recorrer y registrar
 Cada tarea, desde la pantalla de partida **como lo haría un operario** (sin atajos que solo conoce un desarrollador):
 - **Pasos y clics**: contar clics, escrituras y desplazamientos hasta terminar; anotar el camino.
-- **Campos obligatorios** y cuáles el sistema podría deducir (reglas 4 y 6 de `docs/14` §5).
+- **Campos obligatorios** y cuáles el sistema podría deducir (reglas 4 y 6 de `docs/14` §5). Dato no medido es nulo, nunca cero: no recomendar precompletar odómetro ni profundidades con valores anteriores (regla 4); el último odómetro puede mostrarse solo como referencia, con el campo vacío.
 - **Un camino principal** por pantalla: ¿se ve cuál es la acción primaria sin desplazarse? (regla 1).
 - **Teclado**: Enter envía, foco inicial, orden de tabulación (regla 3).
 - **Confirmaciones**: ¿hay alguna sobre algo reversible? (regla 5).
