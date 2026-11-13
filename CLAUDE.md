@@ -57,6 +57,7 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
 
 Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisor → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
+**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (revisor APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
 Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migración al mismo tiempo en producción. Los agentes en segundo plano no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`.
 
 ## Skills del proyecto (`.claude/skills/`)

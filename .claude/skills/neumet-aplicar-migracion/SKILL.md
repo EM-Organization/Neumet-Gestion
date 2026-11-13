@@ -1,18 +1,17 @@
 ---
 name: neumet-aplicar-migracion
-description: Aplicar a producción (Supabase kootszosdejmawanfxug) las migraciones pendientes de NEUMET con el CLI, con dry-run previo y verificación posterior. Solo cuando el usuario lo pida explícitamente; modifica la base de producción.
-disable-model-invocation: true
+description: Aplicar a producción (Supabase kootszosdejmawanfxug) las migraciones pendientes de NEUMET con el CLI, con dry-run previo y verificación posterior. Lo ejecuta el director (o `neumet-operativo`) en cuanto la compuerta de calidad está cumplida; modifica la base de producción.
 ---
 
 # Aplicar migraciones a producción
 
-Esto escribe en la única base de datos real. Pasos en orden; **detenerse y mostrar el resultado** antes de cada paso que modifica algo.
+Esto escribe en la única base de datos real. Pasos en orden; revisar el resultado de cada paso antes de seguir y detenerse solo si algo no es lo esperado.
 Usar el **CLI**, nunca el MCP `apply_migration`: registra la versión por fecha y desalinea el historial de migraciones.
 
 ## 0. Precondiciones
 - El PR de la migración fue **aprobado** por un revisor (`neumet-revisar-pr`) y el CI está en verde.
 - Repo principal en `main` limpio. `supabase` CLI logueado y linkeado a `kootszosdejmawanfxug`: `supabase migration list --remote` debe responder sin error.
-- El usuario confirmó que se aplica **ahora**. Un front viejo puede romperse entre la aplicación y la fusión si la migración no es compatible hacia atrás; en ese caso, fusionar de inmediato después.
+- Autorización duradera del dueño (no se pide confirmación por cada migración). Un front viejo puede romperse entre la aplicación y la fusión si la migración no es compatible hacia atrás; en ese caso, fusionar de inmediato después.
 
 ## 1. Estado actual
 ```

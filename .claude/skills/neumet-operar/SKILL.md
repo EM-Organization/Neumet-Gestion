@@ -1,13 +1,12 @@
 ---
 name: neumet-operar
-description: Tareas operativas de NEUMET sobre producción y el entorno local: desplegar Edge Functions, regenerar el demo, ver el estado de migraciones y limpiar worktrees y ramas ya fusionados. Solo cuando el usuario lo pida; afecta producción o borra ramas locales. Apto para un subagente haiku.
-disable-model-invocation: true
+description: Tareas operativas de NEUMET sobre producción y el entorno local: desplegar Edge Functions, regenerar el demo, ver el estado de migraciones y limpiar worktrees y ramas ya fusionados. Lo usa el director sin pedir confirmación cuando la compuerta de calidad está cumplida; afecta producción o borra ramas locales. Apto para un subagente haiku.
 ---
 
 # Operación
 
 Argumento: la tarea (`funcion <nombre>`, `demo`, `estado`, `limpiar`). Procedimientos de fondo en `docs/11-runbook-operacion.md`.
-Mostrar qué se va a tocar y esperar confirmación antes de cualquier paso que modifique producción.
+Mostrar qué se va a tocar (en el informe) y seguir; con la compuerta cumplida no se espera confirmación.
 
 ## `estado`: solo lectura
 ```
@@ -41,7 +40,7 @@ git worktree list
 git branch --merged origin/main
 gh pr list --state open --json headRefName
 ```
-Para cada worktree/rama candidata, mostrar la lista y esperar confirmación; luego:
+Para cada worktree/rama candidata, mostrar la lista y seguir (solo ramas con PR fusionado); luego:
 ```
 git worktree remove .claude/worktrees/<nombre>      # sin --force; si se queja, hay cambios sin guardar: parar y avisar
 git branch -d <rama>                                # -d, nunca -D

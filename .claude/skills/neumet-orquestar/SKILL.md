@@ -37,13 +37,13 @@ Tareas independientes se lanzan **en la misma respuesta** (varias llamadas `Agen
 ## 3. Compuerta de calidad (por PR, en este orden)
 1. **Revisor** (`subagent_type: "neumet-revisor"`, agente nuevo, distinto del autor, con worktree propio): skill `neumet-revisar-pr`. Devuelve veredicto; **no corrige ni fusiona** (no tiene herramientas de edición).
 2. Si hay bloqueantes → **Corrector** (`subagent_type: "neumet-corrector"`): skill `neumet-corregir-pr` sobre la rama del PR, con la lista de bloqueantes copiada tal cual. Luego **vuelve al paso 1** con un revisor nuevo que re-ejecute lo que falló.
-   Máximo **2 rondas**. Si en la segunda siguen los bloqueantes, parar y escalar al usuario con el resumen; no seguir iterando a ciegas.
+   Máximo **2 rondas**. Si en la segunda siguen los bloqueantes, parar y escalar al usuario con el resumen (es una de las pocas razones para consultarlo); no seguir iterando a ciegas.
 3. Aprobado con el CI verde y la rama al día con `main` → pasar a producción (sección 4).
 
 ## 4. Hacia producción (lo hace el director, uno a la vez)
 Nunca dos PR con migración a la vez: serializar.
-1. Si trae migración: `neumet-aplicar-migracion` (`neumet-operativo` para lo mecánico, o el director). Pedir confirmación al usuario antes de tocar producción
-   salvo que haya dado autorización duradera para ese tipo de acción (la del 2026-11-08 fue para ese momento; ante la duda, preguntar).
+1. Si trae migración: `neumet-aplicar-migracion` (`neumet-operativo` para lo mecánico, o el director). **Autorización duradera del dueño**: la compuerta cumplida basta, no se pide confirmación.
+   Solo se para y se consulta si la migración es destructiva (borra o reescribe datos), si hay datos de clientes reales en juego o si el dry-run lista algo inesperado. Preguntar por lógica de negocio, no por trámite de desarrollo.
 2. `gh pr merge <n> --merge --delete-branch`.
 3. Si hay Edge Function que depende de la migración: `neumet-operar funcion <nombre>` **después** de la migración.
 4. **Verificación posterior** sobre `main` actualizado: `git pull`, `neumet-verificar` nivel rápido, y humo en producción (recarga forzada, la vista tocada con datos reales del demo).
