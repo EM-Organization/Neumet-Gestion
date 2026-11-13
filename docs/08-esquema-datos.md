@@ -169,6 +169,30 @@ Estructura de docs/04 §2.1 y §2.2 más campos de docs/07 §4.5 (`endpoint, cue
 
 - **Defecto = denegar.** RLS activa en las 10 tablas; `anon` sin privilegios de tabla ni de función (y `alter default privileges ... revoke ... from anon`).
 - **Rol explícito:** `perfiles` + `is_admin()` / `current_cliente_id()` (`SECURITY DEFINER`, `STABLE`, `search_path=''`, execute solo para `authenticated`). Se acabó el "admin = sin fila en clientes" del lado servidor.
+
+### Matriz de roles vigente
+
+Un perfil por usuario (`perfiles.user_id`). Helpers `SECURITY DEFINER`: `is_admin()`, `current_cliente_id()`, `current_sucursal_id()` (apéndice B) y `precios_visibles()` (migración `20261116500000`). La figura «global» no tiene valor propio: es `rol = 'cliente'` con `sucursal_id` nulo. Las viñetas siguientes de esta sección son del diseño inicial y quedaron desactualizadas: el cliente ya escribe por RPC (apéndices B a G) y el stock, los precios y las sucursales los gestiona el perfil global. Esta matriz es la vigente.
+
+| Rol | Representación | Datos y operaciones |
+|---|---|---|
+| `admin` | `rol = 'admin'`, `cliente_id` nulo | Lectura y escritura entre todos los clientes. Exclusivas hoy: crear usuarios (Edge `crear-usuario-seccional`), editar umbrales por UPDATE directo sobre `clientes`, ficha de cliente, cuentas de API, dispositivos, Balance y precio mensual, lectura de `ingesta_log` y `audit_log` |
+| Cliente global | `rol = 'cliente'`, `sucursal_id` nulo | Todo su cliente: sucursales, stock, precios y costos, recauchutado, montaje y cambio de neumático, nivel crítico de alertas (`alerta_configurar`) |
+| Cliente de sucursal | `rol = 'cliente'` con `sucursal_id` | Solo su sucursal; sin stock, precios ni costos; sin umbrales |
+| `api` | `rol = 'api'` | Sin política ni acceso por PostgREST; solo vía `api-proveedor` con service role |
+| Sin perfil, `anon` | | Sin acceso |
+
+El primer usuario de cada cliente es global (trigger `clientes_sync_perfil`). Hoy no existe forma de quitar el acceso a un usuario.
+
+### Cambio planificado de roles (estado: planificado)
+
+El plan [docs/17](17-plan-roles-admin.md) separa el perfil `admin` (pasa a ser el **equipo Neumet**, sin renombrar el valor en la base) del **administrador de empresa** (el cliente global actual, con gestión de usuarios y umbrales). Nada de esto está implementado: la matriz anterior sigue vigente hasta que se fusione cada PR del plan.
+
+| Rol hoy | Rol planificado | Qué cambia |
+|---|---|---|
+| `admin` | Equipo Neumet | Gana «Uso» por cliente; con la migración C deja de operar dentro de las empresas si el dueño lo confirma (P1) |
+| Cliente global | Administrador de empresa | Gana Usuarios (crear, asignar sucursal, quitar acceso) y todos los umbrales; función nueva `admin_empresa_cliente_id()` |
+| Cliente de sucursal, `api` | Usuario de sucursal, Integración | Sin cambios |
 - **Cliente:** solo SELECT de sus filas (`vehiculos, dispositivos, mediciones, stock_neumaticos`, su fila de `clientes`; `neumaticos` a través del vehículo). El código revisado **no ejecuta ninguna escritura** en modo cliente (todas las mutaciones salen de pantallas `data-admin-only`, `app.js:89-91`), por eso no hay políticas de escritura para él. **No** ve `gastos`, `perfiles` de otros, `audit_log` ni `ingesta_log`.
 - **Rol `api`:** sin ninguna política (ni su propia fila de `perfiles`) ⇒ su JWT contra PostgREST ve 0 filas (docs/07 §4.1). Acceso solo vía Edge Function con service role, que debe filtrar por `cliente_id` del token.
 - **`mediciones`:** sin política INSERT/UPDATE/DELETE para usuarios; las inserta solo service_role; admin y cliente solo leen.

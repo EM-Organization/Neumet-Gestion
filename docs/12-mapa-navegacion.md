@@ -20,6 +20,8 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 ## 2. Rol cliente (gomero / gestor de flota)
 
+Nomenclatura planificada ([docs/17](17-plan-roles-admin.md)): el perfil global será el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal». Los nombres actuales de esta sección siguen vigentes.
+
 Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes**. El cliente con perfil global ve además **Sucursales** (después de Reportes); el perfil de sucursal no la ve. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
@@ -95,6 +97,8 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); agregar un vehículo (número de coche, matrícula, tipo de ruedas, sucursal opcional); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 
 ## 3. Rol administrador (NEUMET)
+
+> **Nomenclatura planificada** ([docs/17](17-plan-roles-admin.md), estado: planificado, nada implementado): este rol pasa a llamarse «Equipo Neumet» (el valor `admin` de la base no cambia) y el cliente con perfil global (sección 2) pasa a llamarse «Administrador de empresa»; el perfil de sucursal será «Usuario de sucursal». Hasta que se fusionen los PR del plan, el menú y las pantallas de esta sección son los vigentes.
 
 Menú lateral: lo del cliente, **Dispositivos** (solo administración) y la sección **Administración**: Estado de la flota · Mediciones · Clientes · Balance.
 
