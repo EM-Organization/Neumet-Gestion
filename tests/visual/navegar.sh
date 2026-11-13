@@ -2,7 +2,7 @@
 # Panel navegable con datos simulados (stub de tests/smoke), para recorrerlo a mano o con un navegador controlado por un agente.
 # Uso: tests/visual/navegar.sh [admin|global|sucursal|sinperfil]   (sin argumento: imprime las 4 URL)
 # Servidor SOLO local (127.0.0.1) que responde 404 a lo sensible (rutas con un segmento que empiece con «.», referencias/,
-# supabase/.temp). Se detiene con SIGTERM (kill -TERM <pid>, o TaskStop si se lanzó en segundo plano) o Ctrl+C en primer
+# supabase/.temp; sin distinguir mayúsculas), y a todo enlace simbólico que salga del repo. Se detiene con SIGTERM (kill -TERM <pid>, o TaskStop si se lanzó en segundo plano) o Ctrl+C en primer
 # plano. Nunca usa el sitio real, contraseñas ni producción.
 # El arnés muestra el panel dentro de un iframe del mismo origen: es interactivo (clics, formularios), pero los datos
 # son simulados y se reinician al recargar. Para datos reales de demo hace falta el e2e (ver .claude/skills/neumet-auditoria-ux).
@@ -29,7 +29,7 @@ echo "Servidor solo local en 127.0.0.1:$PORT. SIGTERM o Ctrl+C para terminar. No
 # exec en primer plano: SIGTERM llega directo a Python. SIGINT se restaura a su acción por defecto porque un shell no
 # interactivo lanza los procesos en segundo plano con SIGINT ignorado.
 exec python3 -I - "$PORT" <<'PY'
-import http.server, posixpath, signal, socket, sys, urllib.parse
+import http.server, os, posixpath, signal, socket, sys, urllib.parse
 
 port = int(sys.argv[1])
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -45,21 +45,39 @@ for fam, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
     except OSError:
         pass  # familia no disponible en esta máquina
 
-# Prefijos que no se sirven nunca; además, cualquier segmento que empiece con «.» (.claude, .temp, dotfiles del repo...).
+# Prefijos que no se sirven nunca (en minúsculas: se comparan con casefold porque APFS no distingue mayúsculas, así que
+# «/Referencias/x» abriría el mismo archivo); además, cualquier segmento que empiece con «.» (.claude, .temp, .cache...).
 BLOQUEADO = ("referencias", "supabase/.temp", "node_modules/.cache", ".claude")
+RAIZ = os.path.realpath(os.getcwd())
+
+def sensible(rel):
+    """rel: ruta relativa a la raíz, con «/». True si cae en un prefijo bloqueado o tiene un segmento oculto."""
+    partes = [p for p in rel.casefold().split("/") if p]
+    if any(p.startswith(".") for p in partes):
+        return True
+    r = "/".join(partes)
+    return any(r == b or r.startswith(b + "/") for b in BLOQUEADO)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    def _permitido(self):
-        ruta = posixpath.normpath(urllib.parse.unquote(urllib.parse.urlsplit(self.path).path))
-        partes = [p for p in ruta.split("/") if p]
-        if any(p.startswith(".") for p in partes):
-            return False
-        rel = "/".join(partes)
-        return not any(rel == b or rel.startswith(b + "/") for b in BLOQUEADO)
+    def _estado(self):
+        """200 si se puede servir, 400 si la ruta es inválida (%00), 404 si es sensible o sale del repo."""
+        bruta = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
+        if "\x00" in bruta:
+            return 400
+        if sensible(posixpath.normpath(bruta)):
+            return 404
+        # Los enlaces simbólicos se resuelven: no pueden sacar del repo ni llevar a una ruta sensible por otro nombre.
+        real = os.path.realpath(self.translate_path(self.path))
+        if real != RAIZ and not real.startswith(RAIZ + os.sep):
+            return 404
+        if sensible(os.path.relpath(real, RAIZ).replace(os.sep, "/")):
+            return 404
+        return 200
 
     def send_head(self):
-        if not self._permitido():
-            self.send_error(404)
+        estado = self._estado()
+        if estado != 200:
+            self.send_error(estado)
             return None
         return super().send_head()
 
