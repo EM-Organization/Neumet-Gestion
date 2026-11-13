@@ -28,7 +28,7 @@ Trabajar en ese worktree, en la rama del PR. `git merge origin/main` primero si 
 - Si la migración **ya se aplicó a producción**: no se edita. Se agrega una migración nueva que corrige, con timestamp posterior, y se avisa al director.
 
 ## 4. Entregar
-`git push` de la rama (nunca `--force` sobre una rama con PR sin avisar). Comentar en el PR, o responder al director, con esta forma:
+`git push` de la rama (nunca `--force`; si hiciera falta reescribir historia, parar y avisar al director). Comentar en el PR, o responder al director, con esta forma:
 ```
 Bloqueante 1: <resumen> → corregido en <commit>; test: <archivo>, falla sin el arreglo, pasa con él
 Bloqueante 2: ...  (o: no reproducible; intenté <X>)

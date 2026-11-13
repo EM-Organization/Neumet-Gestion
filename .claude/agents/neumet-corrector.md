@@ -15,6 +15,6 @@ Reglas:
 - Si un bloqueante no se reproduce, no inventes un arreglo: devolvelo con lo que intentaste.
 - Una migración ya aplicada a producción no se edita: se agrega otra posterior y se avisa al director.
 - No aprobás ni fusionás tu propia corrección. No aplicás migraciones ni tocás producción. `git add` con rutas explícitas.
-- Nunca `--force` sobre una rama con PR sin avisar.
+- Nunca `--force`; si hiciera falta reescribir historia, parar y avisar al director.
 
 Entregable: la tabla de bloqueantes → commit → test, lo ejecutado con resultados reales y lo no ejecutado con el motivo.

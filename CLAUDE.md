@@ -52,7 +52,7 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | Agente | Modelo | Herramientas | Qué hace |
 |---|---|---|---|
 | `neumet-autor` | `sonnet` | todas | Implementa un área en su rama, con pruebas, y abre el PR |
-| `neumet-revisor` | `opus` | solo lectura y Bash | Encuentra bloqueantes y emite veredicto; no puede editar ni fusionar |
+| `neumet-revisor` | `opus` | solo lectura y Bash | Encuentra bloqueantes y emite veredicto; sin herramientas de edición; no edita ni fusiona |
 | `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
 | `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
 
@@ -69,6 +69,6 @@ Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migr
 | `neumet-revisar-pr` | Flujo de revisor con el checklist de `docs/13` |
 | `neumet-corregir-pr` | Flujo de corrector: arreglar los bloqueantes del revisor, un test por cada uno |
 | `neumet-migracion` | Escribir y revisar una migración (no la aplica) |
-| `neumet-aplicar-migracion` | `db push` con dry-run y verificación; solo a pedido |
-| `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas; solo a pedido |
+| `neumet-aplicar-migracion` | `db push` con dry-run y verificación; con la compuerta cumplida (ver Autonomía) |
+| `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas; con la compuerta cumplida (`demo` solo a pedido) |
 | `neumet-docs-sync` | Detectar y corregir desfases entre docs y código |

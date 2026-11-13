@@ -11,7 +11,7 @@ Mostrar qué se va a tocar (en el informe) y seguir; con la compuerta cumplida n
 ## `estado`: solo lectura
 ```
 supabase migration list --remote
-supabase functions list --project-ref kootszosdejmawanfxug
+supabase functions list
 gh pr list --state open
 git worktree list && git branch -vv
 ```
@@ -20,12 +20,12 @@ git worktree list && git branch -vv
 Funciones: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `contacto`.
 1. La migración de la que depende (si la hay) ya está aplicada y verificada. Si no, parar.
 2. `deno task --config supabase/functions/deno.json check` y `... test` (o `deno test --config supabase/functions/deno.json supabase/functions/<nombre>`).
-3. `supabase functions deploy <nombre> --project-ref kootszosdejmawanfxug`. El `verify_jwt = false` sale de `supabase/config.toml`; no pasar `--verify-jwt`.
+3. `supabase functions deploy <nombre>` (proyecto enlazado). El `verify_jwt = false` sale de `supabase/config.toml`; si hiciera falta forzarlo, `--no-verify-jwt`.
    Desplegar con JWT activo rompe el preflight CORS y el login de la app de medición.
 4. Comprobar con `supabase functions list` y una llamada de humo (p. ej. sin token debe dar 401/405, no 500). Revisar logs si algo raro.
 5. Secretos: nunca pedirlos ni mostrarlos. Si faltan (`ALLOWED_ORIGINS`, `RESEND_API_KEY`...), indicar cuál y que lo carga el dueño (`supabase secrets set`).
 
-## `demo`: regenerar `supabase/seed/demo.sql`
+## `demo`: regenerar `supabase/seed/demo.sql` (solo a pedido del dueño)
 **Borra y regenera** todo lo regenerable de `Demo Transportes` (eventos, mediciones, neumáticos, stock), incluido lo hecho a mano en pruebas. No toca otros clientes.
 1. Todas las migraciones aplicadas y el cliente `Demo Transportes` existe (creado desde el panel).
 2. Ejecutar el archivo completo con un rol que no esté sujeto a RLS. El método con el CLI (`supabase db query --remote -f supabase/seed/demo.sql`) no está
