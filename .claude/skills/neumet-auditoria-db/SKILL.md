@@ -9,6 +9,8 @@ Lo ejecuta `neumet-dba`. **Los skills de producción (`neumet-aplicar-migracion`
 
 ## Reglas de ejecución
 - `execute_sql` solo `SELECT` / `EXPLAIN`; `EXPLAIN ANALYZE` solo sobre consultas sin efectos.
+- Única excepción, dentro de la misma llamada a `execute_sql` (en `begin; ... rollback;`): `set local role authenticated` y `select set_config('request.jwt.claims', '<json>', true)`. Cualquier otro `SET` está prohibido.
+- Bash solo lectura (`grep`, `ls`, `git diff/log`, `supabase migration list --remote`); prohibido `supabase db push`, `supabase functions deploy`, `psql` y `git`/`gh` de escritura.
 - Antes de cada recomendación, `mcp__supabase__search_docs` y se anota la fuente. Sin fuente, se marca "sin respaldo en docs".
 - Leer `CLAUDE.md` y `docs/08` antes de empezar. Volumen: el del demo; extrapolar explicitando el supuesto de crecimiento.
 
@@ -22,7 +24,7 @@ Lo ejecuta `neumet-dba`. **Los skills de producción (`neumet-aplicar-migracion`
 - Evitar subconsultas correlacionadas por fila; preferir `IN (select ...)` sobre un helper estable.
 - Roles explícitos en `TO` para no evaluar la política con roles que no aplican.
 
-**c) Planes de ejecución.** `EXPLAIN (ANALYZE, BUFFERS)` solo si no tiene efectos; si no, `EXPLAIN`. Cubrir las vistas y RPC más usadas del panel: `v_estado_neumaticos`, alertas (`v_alertas` / alerta crítica), `v_km_cubierta`, últimas mediciones por cubierta, reportes (`cpk_por_grupo`). Ejecutar bajo el rol real (`authenticated` con claims simulados vía `set local`, dentro de una consulta de solo lectura) para que RLS cuente en el plan. Buscar Seq Scan sobre tablas que crecen, Sort en disco, estimaciones de filas muy desviadas, funciones por fila. Extrapolar a 10x y 100x el volumen del demo.
+**c) Planes de ejecución.** `EXPLAIN (ANALYZE, BUFFERS)` solo si no tiene efectos; si no, `EXPLAIN`. Cubrir las vistas y RPC más usadas del panel: `v_estado_neumaticos`, alertas (`v_alertas` y las RPC `alerta_cargar` / `alerta_sincronizar`, de `20261118500000_alerta_critica.sql`), `v_km_cubierta`, últimas mediciones por cubierta, reportes (`cpk_por_grupo`). Ejecutar bajo el rol real (`set local role authenticated` y `select set_config('request.jwt.claims', '<json>', true)`, la única excepción a la regla de solo lectura, en la misma llamada a `execute_sql` que el `EXPLAIN`) para que RLS cuente en el plan. Buscar Seq Scan sobre tablas que crecen, Sort en disco, estimaciones de filas muy desviadas, funciones por fila. Extrapolar a 10x y 100x el volumen del demo.
 
 **d) Índices.** Faltantes (filtros, joins, orden frecuentes), duplicados o redundantes (prefijo de otro), sin uso (`pg_stat_user_indexes.idx_scan = 0`, con cautela si las estadísticas son recientes), **FK sin índice** (cruzar `pg_constraint` con `pg_index`). Considerar índices parciales y de cobertura donde aplique.
 
@@ -44,4 +46,4 @@ Más dos secciones:
 - **Qué NO se encontró**: lo revisado sin problemas, para que la ausencia sea verificable.
 - **No se pudo verificar**: lo que no se ejecutó o no hay datos para probar, con el motivo.
 
-Nunca incluir datos personales ni secretos en el informe.
+Nunca incluir datos personales ni secretos en el informe. Lo de `pg_stat_statements` y `query_logs` (literales, emails, IPs) va normalizado o redactado.
