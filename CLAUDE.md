@@ -56,7 +56,9 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
 | `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
 | `neumet-dba` | `opus` | solo lectura + MCP de lectura de Supabase | Consultor de BD: audita rendimiento, RLS e índices; no aplica nada |
+| `neumet-ux` | `opus` | todas menos edición (Edit/Write) | Auditor de UX/UI: navega el panel con datos simulados, cuenta clics y revisa visualmente PR de interfaz |
 
+El director lanza `neumet-ux` para la auditoría de clics (`docs/10`) o para revisar la interfaz de un PR; necesita la extensión de Chrome conectada (sin ella cae a capturas). Los agentes cargan al iniciar la sesión: reiniciar Claude Code tras agregarlo.
 El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
 
 Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisor → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
@@ -76,3 +78,4 @@ Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migr
 | `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas; con la compuerta cumplida (`demo` solo a pedido) |
 | `neumet-docs-sync` | Detectar y corregir desfases entre docs y código |
 | `neumet-auditoria-db` | Auditoría de BD solo lectura (advisors, RLS, planes, índices); la usa `neumet-dba`, nunca aplica |
+| `neumet-auditoria-ux` | Auditoría de UX/UI navegando el panel simulado (`tests/visual/navegar.sh`): clics, textos, móvil; la usa `neumet-ux` |
