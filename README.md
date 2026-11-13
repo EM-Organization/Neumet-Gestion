@@ -75,7 +75,9 @@ Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil gl
 | Km previos | Km que el neumático ya traía al montarlo; junto con los recorridos en el vehículo dan los km totales |
 | Sucursales (cliente global) | Crear, renombrar y eliminar sucursales vacías; agregar vehículos; mover un vehículo entre sucursales o a «Sin sucursal», con confirmación. Mover solo cambia `vehiculos.sucursal_id`: el historial queda intacto y el movimiento queda en la auditoría |
 | Stock | Cubiertas individuales del cliente (quema, marca, modelo, fecha de compra, precio opcional, condición Nuevo/Usado/Reparado/Recauchutado y sucursal), con filtros, búsqueda por quema y las acciones agregar, editar, mover y eliminar para el perfil global (y el administrador); los lotes anteriores con cantidad se conservan en solo lectura para el cliente. El buscador global encuentra una cubierta por quema. No visible para el perfil de sucursal |
-| Alertas | Lista de problemas activos, filtrable por severidad y tipo (`critico`, `bajo`, `cruza_critico_pronto`, `desgaste_irregular`, `sin_medir`) |
+| Alertas | Una sola alerta «Neumático crítico» con estado (abierta, reconocida, silenciada) y filtro por estado. Acciones: ver el vehículo en la rueda, reconocer, silenciar 7 días y resolver con nota. El cliente global edita el nivel crítico y la histéresis; el administrador, el umbral desde la ficha del cliente |
+| Mediciones a revisar | Lista (Inicio › Mediciones a revisar) de mediciones que la base marcó como sospechosas. Una persona las invalida con motivo o las marca como válidas; las invalidadas no cuentan en estados, tasas ni alertas, pero se conservan |
+| Recauchutado (administrador y perfil global) | Procesos de recauchutado por carcasa con las acciones de cada estado y «Enviar a recauchutar» (solo cubiertas del stock). Stock marca «En recauchutado»; Reportes suma los grupos «Vida» y «Banda» al costo por km |
 | Reportes | Informes exportables en CSV o versión imprimible |
 | Dispositivos (solo administrador) | Alta, edición y asignación de medidores a clientes; estado de actividad y dispositivos con mediciones aún sin cliente asignado |
 | Clientes y ficha de cliente (administrador) | Alta con invitación o contraseña, baja lógica, umbrales de desgaste, sucursales y usuarios, cuenta de API |
@@ -146,7 +148,7 @@ La integración continua (`.github/workflows/ci.yml`) ejecuta: `secrets` (gitlea
 
 **Supabase.**
 
-- Migraciones: `supabase/migrations/`, idempotentes; se revisan en el PR, se aplican antes de fusionar el front que las usa (por MCP `apply_migration` o `supabase db push`) y se verifican con `get_advisors` y `supabase/audit/rls_audit.sql`.
+- Migraciones: `supabase/migrations/`, idempotentes; se revisan en el PR, se aplican antes de fusionar el front que las usa, con `supabase db push --remote` (no con el MCP `apply_migration`: registra la versión por fecha y desalinea el historial) y se verifican con `get_advisors` y `supabase/audit/rls_audit.sql`.
 - Edge Functions: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto`; todas con `verify_jwt = false` en `supabase/config.toml` (cada handler valida el JWT y el rol por su cuenta).
 - Secretos necesarios (nombres, sin valores):
 
@@ -188,10 +190,10 @@ vercel.json, .gitleaks.toml        Despliegue y escaneo de secretos
 
 ## 11. Pendientes y decisiones
 
-- **Alertas personalizables**: hoy `v_alertas` genera cinco tipos sin estado. La propuesta es una sola alerta de «Neumático en estado crítico», con estados, histéresis y umbral por cliente, eje y posición. Diseño en [`docs/15-rotacion-alertas-rendimiento.md`](docs/15-rotacion-alertas-rendimiento.md) (sección B); implementación pendiente.
+- **Alertas (etapa 1 hecha)**: una sola alerta «Neumático crítico» con estado, histéresis y umbral por cliente (migración `20261118500000`; [`docs/08`](docs/08-esquema-datos.md) apéndice M). Los demás avisos quedan como indicadores sin estado. Las etapas siguientes del diseño (sección B de [`docs/15`](docs/15-rotacion-alertas-rendimiento.md)) siguen pendientes.
 - **Rotación**: la acción manual existe; la recomendación automática de qué rotar está diseñada (sección A del mismo documento) y pendiente.
 - **Rendimiento y tasa de desgaste (hecho en parte)**: la tasa robusta (al menos 3 mediciones y 14 días, ventana reiniciada por evento) y `v_estado_neumaticos` por neumático ya están aplicadas (migración `20261111000000`); la referencia de flota exige `MIN_MUESTRAS` = 5 neumáticos por posición. Siguen pendientes la referencia calculada en el servidor y la tabla de estado por neumático (sección C del mismo documento), según el tamaño de la flota.
-- **Estado de las migraciones**: 15 archivos en `supabase/migrations/`, aplicados en el proyecto vigente hasta `20261113000000_stock_cubiertas`.
+- **Estado de las migraciones**: todos los archivos de `supabase/migrations/` están aplicados en el proyecto vigente. Comprobarlo con `supabase migration list --remote` en lugar de confiar en un número escrito aquí.
 - **Decisiones abiertas** con el dueño del producto: un cliente con más de un usuario global, retención de `mediciones`, plan de Vercel y Supabase, región y política de datos. Lista en [`docs/05-roadmap.md`](docs/05-roadmap.md).
 - **Estado operativo**: prueba de punta a punta con sesión y datos reales, y sugerencias del revisor sin resolver, en [`docs/10-tablero.md`](docs/10-tablero.md).
 
