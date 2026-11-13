@@ -18,11 +18,11 @@ Tras una llamada con un cliente, el dueño confirmó tres decisiones que son el 
 
 1. **La sugerencia de rotación de neumáticos es prioridad fuerte.** La flota objetivo son vehículos pesados: camiones y buses de transporte de pasajeros. F8 sube en el orden de prioridad (ver F8 y «Orden de prioridad» más abajo).
 2. **Simplicidad para el operario** como principio transversal (principio 7).
-3. **El perfil `admin` pasa a ser interno de los desarrolladores de Neumet**, no un administrador de cliente. Cada cliente tendrá su propio administrador de empresa (ver F10).
+3. **El perfil `admin` pasa a ser interno del equipo Neumet**, no un administrador de cliente. Cada cliente tendrá su propio administrador de empresa (ver F10).
 
 ## Orden de prioridad
 
-Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sugerencia de rotación**, por decisión del 2026-11-13 confirmada con un cliente. Pasa por delante de lo pendiente de F1 a F7 (entre otros: destinos «reparación» y «recauchutado», indicador de confiabilidad de F3, eliminar costos desde la interfaz de F4, corrección auditada de odómetro, conversión de monedas, métricas de F6 aún sin construir, etapas posteriores de alertas) y de F9. F10 (separar el admin de plataforma del admin de empresa) requiere un plan previo antes de ordenarse. Lo pendiente de F1 a F7 sigue en pie y se retoma después de F8.
+Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sugerencia de rotación**, por decisión del 2026-11-13 confirmada con un cliente. Pasa por delante de lo pendiente de F1 a F7 (entre otros: destinos «reparación» y «recauchutado», indicador de confiabilidad de F3, eliminar costos desde la interfaz de F4, corrección auditada de odómetro, conversión de monedas, métricas de F6 aún sin construir, etapas posteriores de alertas) y de F9. F10 (separar el admin del equipo Neumet del admin de empresa) requiere un plan previo antes de ordenarse. Lo pendiente de F1 a F7 sigue en pie y se retoma después de F8.
 
 ## Estado actual frente al plan
 
@@ -44,7 +44,7 @@ Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sug
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | Hecho (migración `20261115000000`, aplicada: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; pendiente de investigar e implementar (F8) |
-| Separar admin de plataforma y admin de empresa | Planificación pendiente (F10; plan en docs/17) |
+| Separar admin del equipo Neumet y admin de empresa | Planificación pendiente (F10; plan en elaboración, docs/17) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
@@ -107,10 +107,10 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Baja técnica (retiro autorizado, causal, mm de retiro) separada de la disposición física (retiro del patio, destino, comprobante).
 - Sin resurrección desde «dispuesto» por simple edición.
 
-### F10 · Separar el admin de plataforma del admin de empresa
+### F10 · Separar el admin del equipo Neumet del admin de empresa
 - Estado: **planificación pendiente** (F10 es el siguiente número libre; no indica prioridad).
-- Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno de los desarrolladores de Neumet, no un administrador de cliente. Hoy mezcla ambos roles: `admin` ya es global (`cliente_id` nulo) y existe el perfil global de cliente (`rol = 'cliente'` sin sucursal), que se parece al futuro administrador de empresa. Cada cliente tendrá su propio administrador de empresa.
-- Objetivo del admin de plataforma: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
+- Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno del equipo Neumet, no un administrador de cliente. Hoy mezcla ambos roles: `admin` ya es global (`cliente_id` nulo) y existe el perfil global de cliente (`rol = 'cliente'` sin sucursal), que se parece al futuro administrador de empresa. Cada cliente tendrá su propio administrador de empresa.
+- Objetivo del admin del equipo Neumet: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
 - Es un cambio del modelo de roles: requiere un plan previo que cubra roles, RLS, vistas, interfaz, migración de los usuarios existentes y el riesgo de quedar sin acceso (lockout).
 - Plan: en elaboración (se documentará en docs/17).
 

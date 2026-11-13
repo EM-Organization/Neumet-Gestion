@@ -42,7 +42,7 @@ CI corre Postgres 16; producción es 17. Ambos deben pasar. Un PR no se fusiona 
   rojo solo para lo crítico, nunca solo color para comunicar estado. Comentarios de código: el porqué, no lo obvio.
 - **Simplicidad para el operario** (decisión del 2026-11-13, confirmada con un cliente): el operario tiene pocos conocimientos de tecnología; plataforma intuitiva, pocos clics y «enter», sin pasos innecesarios ni confusos.
   Todo cambio de interfaz se revisa contra este principio (reglas verificables en `docs/14`, sección 5); el PR declara los clics de las tareas frecuentes que toca y no los aumenta sin justificación (referencia: auditoría pendiente de `docs/10` o, sin ella, el conteo sobre `main`).
-- **Norte del producto**: la sugerencia de rotación para camiones y buses es la prioridad fuerte (F8); el perfil `admin` pasa a ser interno de Neumet y cada cliente tendrá su administrador de empresa (F10, plan pendiente). Ver `docs/16`.
+- **Norte del producto**: la sugerencia de rotación para camiones y buses es la prioridad fuerte (F8); el perfil `admin` pasa a ser interno del equipo Neumet y cada cliente tendrá su administrador de empresa (F10, plan pendiente). Ver `docs/16`.
 - **Docs**: el PR que cambia comportamiento actualiza en el mismo PR lo que corresponda (apéndice de `docs/08`, `docs/10`, README si cambian conteos). Skill `neumet-docs-sync`.
 - **Tras desplegar**: el navegador cachea módulos ES; ante vistas vacías, recarga forzada (Cmd+Shift+R) antes de investigar.
 
