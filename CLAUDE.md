@@ -58,6 +58,9 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | `neumet-revisor` | `opus` | solo lectura y Bash | Encuentra bloqueantes y emite veredicto; sin herramientas de edición; no edita ni fusiona |
 | `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
 | `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
+| `neumet-dba` | `opus` | solo lectura + MCP de lectura de Supabase | Consultor de BD: audita rendimiento, RLS e índices; no aplica nada |
+
+El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
 
 Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisor → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
 **Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (revisor APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
@@ -75,3 +78,4 @@ Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migr
 | `neumet-aplicar-migracion` | `db push` con dry-run y verificación; con la compuerta cumplida (ver Autonomía) |
 | `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas; con la compuerta cumplida (`demo` solo a pedido) |
 | `neumet-docs-sync` | Detectar y corregir desfases entre docs y código |
+| `neumet-auditoria-db` | Auditoría de BD solo lectura (advisors, RLS, planes, índices); la usa `neumet-dba`, nunca aplica |
