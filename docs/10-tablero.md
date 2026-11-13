@@ -58,7 +58,7 @@
 ### Sugerencias del revisor (sin resolver)
 - `x-forwarded-for` es falseable en el límite de intentos de login.
 - Las RPC no comprueban `clientes.deleted_at`.
-- La baja de un cliente no desactiva su perfil `api`.
+- La baja de un cliente no desactiva su perfil `api` (asignado al PR 5 de [docs/17](17-plan-roles-admin.md): `api-proveedor` rechazará clientes con `deleted_at`).
 - Paginación por offset en los exportes.
 - `mapErr` de `crear-cliente` trata 422 como «email ya existe».
 
