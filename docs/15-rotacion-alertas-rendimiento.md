@@ -8,7 +8,7 @@ Contenido: A) recomendación de rotación; B) alerta única de estado crítico, 
 
 ## A. Recomendación de rotación
 
-Para camiones y buses de pasajeros, la propuesta ampliada (rol de eje, duales, retiro por posición, reposición) está en [18](18-rotacion-vehiculos-pesados.md); esta sección queda como diseño base.
+Para camiones y buses de pasajeros, la propuesta ampliada (rol de eje, duales, retiro por posición, reposición) está en [18](18-rotacion-vehiculos-pesados.md); esta sección queda como diseño base, y donde ambos difieren manda [18](18-rotacion-vehiculos-pesados.md) según su tabla de decisiones reemplazadas (sección 2.2).
 
 ### A.1 Qué dicen las fuentes
 
