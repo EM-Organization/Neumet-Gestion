@@ -182,7 +182,7 @@ Un perfil por usuario (`perfiles.user_id`). Helpers `SECURITY DEFINER`: `is_admi
 | `api` | `rol = 'api'` | Sin política ni acceso por PostgREST; solo vía `api-proveedor` con service role |
 | Sin perfil, `anon` | | Sin acceso |
 
-Nota: `precio_mensual` **no** es exclusivo del admin. `clientes` tiene grant de tabla completa a `authenticated` (`init_schema.sql:448`) y `clientes_self_select` (`:458`) deja a cualquier usuario del cliente, global o de sucursal, leer esa columna de su fila; la interfaz no la muestra, pero la API la entrega. Lo cierra la migración C del plan (docs/17).
+Nota: `precio_mensual` **no** es exclusivo del admin. `clientes` tiene grant de tabla completa a `authenticated` (`init_schema.sql:448`) y `clientes_self_select` (`:458`) deja a cualquier usuario del cliente, global o de sucursal, leer esa columna de su fila; la interfaz no la muestra, pero la API la entrega. Lo cierra la migración C2 del plan (docs/17).
 
 El primer usuario de cada cliente es global (trigger `clientes_sync_perfil`). Hoy no existe forma de quitar el acceso a un usuario.
 
@@ -192,8 +192,8 @@ El plan [docs/17](17-plan-roles-admin.md) separa el perfil `admin` (pasa a ser e
 
 | Rol hoy | Rol planificado | Qué cambia |
 |---|---|---|
-| `admin` | Equipo Neumet | Gana «Uso» por cliente; con la migración C solo mira dentro de las empresas (decisión P1 del dueño) |
-| Cliente global | Administrador de empresa | Gana Usuarios (crear, asignar sucursal, quitar acceso) y todos los umbrales; función nueva `admin_empresa_cliente_id()`; deja de ver `precio_mensual` (migración C) |
+| `admin` | Equipo Neumet | Gana «Uso» por cliente; con la migración C2 solo mira dentro de las empresas (decisión P1 del dueño) |
+| Cliente global | Administrador de empresa | Gana Usuarios (crear, asignar sucursal, quitar acceso) y todos los umbrales; función nueva `admin_empresa_cliente_id()`; deja de ver `precio_mensual` (migración C2) |
 | Cliente de sucursal, `api` | Usuario de sucursal, Integración | Sin cambios |
 
 ### Diseño inicial (desactualizado)

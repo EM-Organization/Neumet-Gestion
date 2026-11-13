@@ -1,6 +1,6 @@
-# 14 · Guía de textos del panel
+# 14 · Guía de textos y de simplicidad del panel
 
-Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders, avisos (toasts), diálogos y tooltips. Complementa el apartado de copy de `docs/13-checklist-revision-prs.md`.
+Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders, avisos (toasts), diálogos y tooltips (secciones 1 a 4), y principio de simplicidad para el operario que rige toda decisión de UX/UI (sección 5). Complementa el apartado de copy de `docs/13-checklist-revision-prs.md`.
 
 ## 1. Reglas
 
@@ -76,3 +76,16 @@ En la interfaz nueva se usa **recauchutado** (la condición «Recauchutado» y e
 ## 4. Revisión
 
 El revisor busca en el diff: segunda persona («-á», «-és» en imperativos y «tu/tus»), exclamaciones, emojis, «Todavía», «acá», tres puntos en lugar de «…», placeholders con «Ej:» y comentarios que repiten el código. Un PR que añade un texto nuevo lo hace según esta guía.
+
+## 5. Simplicidad para el operario
+
+Decisión del 2026-11-13, confirmada con un cliente: el operario tiene pocos conocimientos de tecnología. La plataforma debe ser intuitiva, con flujos claros, pocos clics y «enter», sin pasos innecesarios ni confusos. Este principio rige cada decisión de UX/UI y se revisa en cada PR que toca la interfaz (casilla en `docs/13`). Reglas verificables:
+
+1. **Un camino principal por pantalla**: una sola acción primaria, visible sin desplazarse, con el botón primario claramente distinguible. Las acciones secundarias no compiten con ella.
+2. **Clics contados**: las tareas frecuentes (medir, cambiar, rotar, montar neumáticos) tienen un máximo de clics declarado en el PR. La referencia es el conteo de la auditoría pendiente (`docs/10`, Pendientes) y, mientras no exista, el conteo que declara el propio PR sobre `main`. Un cambio no puede aumentarlo sin justificarlo.
+3. **Teclado**: en un formulario, «Enter» envía; el foco empieza en el primer campo útil y el orden de tabulación sigue el orden de lectura.
+4. **Valores por defecto sensatos**: lo que casi siempre es igual viene completado (fecha de hoy, posición o vehículo en contexto). El operario corrige, no escribe desde cero. Ningún dato medido (odómetro, profundidades) se precompleta con un valor anterior: el último odómetro conocido puede mostrarse como referencia, pero el campo queda vacío hasta que el operario ingresa la lectura del día (dato no medido es nulo, nunca cero; `docs/16`, principio 5).
+5. **Sin confirmaciones redundantes**: se confirma solo lo destructivo o irreversible. Lo reversible se hace y se ofrece deshacer cuando exista.
+6. **Sin pasos ni campos que el sistema pueda deducir**: no se pide un dato que ya está en el contexto, y los campos opcionales no estorban el camino principal.
+7. **Lenguaje llano**: mensajes y etiquetas sin jerga técnica ni códigos internos; el error dice qué pasó y qué hacer (regla 5 de la sección 1).
+8. **Una pantalla, una tarea**: no se exige entender la estructura de datos (tablas, vidas, eventos) para completar una tarea.

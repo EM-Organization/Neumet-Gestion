@@ -11,10 +11,10 @@ Punto de partida: el [README](../README.md) de la raíz (qué es NEUMET, arquite
 | [11 · Runbook de operación](11-runbook-operacion.md) | Crear administrador y cuentas de API, migraciones y funciones, regenerar el demo, rotación de claves, cutover |
 | [12 · Mapa de navegación](12-mapa-navegacion.md) | Qué ve cada rol y a dónde lleva cada elemento |
 | [13 · Checklist de revisión de PR](13-checklist-revision-prs.md) | Criterio de pruebas y de revisión |
-| [14 · Guía de textos](14-guia-de-textos.md) | Reglas de redacción de la interfaz y de la documentación |
+| [14 · Guía de textos y de simplicidad del panel](14-guia-de-textos.md) | Reglas de redacción de la interfaz y de la documentación; sección 5, simplicidad para el operario |
 | [15 · Rotación, alertas y rendimiento](15-rotacion-alertas-rendimiento.md) | Diseño de la recomendación de rotación y de la alerta única de estado crítico (pendientes); rendimiento y robustez del indicador de desgaste (tasa robusta, vista rápida y `MIN_MUESTRAS` = 5 implementados) |
-| [16 · Hoja de ruta de producto](16-hoja-de-ruta.md) | Fases propuestas sin machine learning: stock individual, km por cubierta, calidad de datos, costo por km, recauchutado, alertas |
-| [17 · Plan de roles: equipo Neumet y administrador de empresa](17-plan-roles-admin.md) | Plan (estado: planificado) para separar el perfil `admin` interno de Neumet del administrador de cada empresa: modelo, cambios por capa, uso por cliente, riesgos, orden de PR y preguntas abiertas |
+| [16 · Hoja de ruta de producto](16-hoja-de-ruta.md) | Fases propuestas sin machine learning (stock individual, km por cubierta, calidad de datos, costo por km, recauchutado, alertas); decisiones del 2026-11-13: F8 (sugerencia de rotación) como siguiente fase y F10 (admin del equipo Neumet y admin de empresa) |
+| [17 · Plan de roles: equipo Neumet y administrador de empresa](17-plan-roles-admin.md) | Plan (estado: planificado) para separar el perfil `admin` interno de Neumet del administrador de cada empresa: modelo, cambios por capa, uso por cliente, riesgos, orden de PR y decisiones |
 | [03 · Despliegue Vercel + Supabase](03-despliegue-vercel-supabase.md) | Plan de despliegue y decisiones de la CSP (la sección final está al día) |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos y tipografía (assets en [`assets/brand/`](../assets/brand/README.md)) |
 
