@@ -25,14 +25,14 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Montar neumáticos en un vehículo sin ellos y retirar sin reemplazo | Hecho (migración `20261114500000`: `neumatico_montar` y `neumatico_desmontar`; ver `docs/08` apéndice G) |
 | Calidad de datos de las mediciones: control al ingresar, invalidar con motivo, valor original y unidad | Hecho (migración `20261116000000`; ver `docs/08` apéndice I). Pendiente: indicador por cubierta de pocas mediciones o mediciones viejas |
 | Motivo explícito `sin_neumaticos` en la API | Hecho (migración `20261112000000`) |
-| Alerta única «crítico» con estado, umbral por cliente y acciones | Hecho en el PR de alertas (migración `20261118500000` pendiente de aplicar; ver `docs/08` apéndice M) |
+| Alerta única «crítico» con estado, umbral por cliente y acciones | Hecho (migración `20261118500000`, aplicada; ver `docs/08` apéndice M) |
 | Mini vehículos y posiciones legibles | Hecho (Alertas y ciclo de vida del neumático) |
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
-| Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | En curso (PR de km por cubierta, migración `20261115000000` pendiente de aplicar: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
-| Precios y costos solo para admin y perfil global | En curso (PR `fix/precios-solo-global`, migración `20261116500000` pendiente de aplicar: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). F4 debe leerlos con `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
+| Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | Hecho (migración `20261115000000`, aplicada: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
+| Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
-Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubiertas`.
+Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
 
 ## Fases propuestas
 
@@ -47,7 +47,7 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 - Km de la cubierta = km previos + suma de los tramos montados (odómetro final − inicial de cada montaje). No comparar odómetros absolutos entre vehículos.
 - Invariantes: un solo montaje activo por cubierta y por posición, sin solapamientos, rotación múltiple atómica.
 - Detección de odómetro negativo o reiniciado, con corrección auditada.
-- Estado: en el PR de km por cubierta están la vista `v_km_cubierta` (tramos, `km_confiable`, NULL si faltan odómetros), `odometro_anomalias(p_vehiculo)`, la verificación de los invariantes de montaje (ya garantizados por `unique (vehiculo_id, posicion)`, el índice de auxilio y el CHECK de stock; rotación atómica en `neumatico_rotar`) y los km en el panel de la rueda y en Ciclo de vida. **Pendiente de F2:** corrección auditada de un odómetro (hoy solo se señala) (el perfil de sucursal ya ve el total de km aunque la cubierta haya pasado por otras sucursales, mediante `km_tramos_cubierta`).
+- Estado: implementado (migración `20261115000000`, aplicada). Están la vista `v_km_cubierta` (tramos, `km_confiable`, NULL si faltan odómetros), `odometro_anomalias(p_vehiculo)`, la verificación de los invariantes de montaje (ya garantizados por `unique (vehiculo_id, posicion)`, el índice de auxilio y el CHECK de stock; rotación atómica en `neumatico_rotar`) y los km en el panel de la rueda y en Ciclo de vida. **Pendiente de F2:** corrección auditada de un odómetro (hoy solo se señala) (el perfil de sucursal ya ve el total de km aunque la cubierta haya pasado por otras sucursales, mediante `km_tramos_cubierta`).
 
 ### F3 · Calidad de datos y unidades
 - Controles al ingresar: aumento de profundidad sin nueva banda, lectura repetida, rango fuera de lo físico, posición incorrecta.
@@ -61,7 +61,7 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 - **CPK observado** = costo acumulado / km acumulado, con carcasa, banda y tramo explícitos; sin dato cuando los km son cero.
 - **CPK final de carcasa** = costo neto total / suma de km de todas las vidas.
 - Reportes por marca, modelo, banda y sucursal, mostrando tamaño de muestra y km (no promediar CPK individuales sin ponderar).
-- Estado: implementado en el PR de costos (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; también por vida y banda desde F5) y la interfaz. El CPK es por km recorridos (sin km previos). El perfil de sucursal no ve costos (privilegios por columna, apéndice K). **Pendiente:** eliminar costos desde la interfaz, conversión de monedas.
+- Estado: implementado (apéndice J de `docs/08`): `costos_neumatico`, `costo_registrar` / `costo_eliminar`, `v_costo_cubierta` (CPK de carcasa, sin doble conteo, moneda mixta -> NULL) y `cpk_por_grupo` (marca, modelo, sucursal; también por vida y banda desde F5) y la interfaz. El CPK es por km recorridos (sin km previos). El perfil de sucursal no ve costos (privilegios por columna, apéndice K). **Pendiente:** eliminar costos desde la interfaz, conversión de monedas.
 
 ### F5 · Recauchutado por carcasa
 - Flujo: selección → envío al proveedor → dictamen → aceptación o rechazo → nueva banda.
@@ -76,7 +76,7 @@ Migraciones aplicadas en el proyecto vigente: hasta `20261113000000_stock_cubier
 
 ### F7 · Alertas accionables
 - Un solo tipo de alerta «crítico» personalizable por cliente, con histéresis, reconocimiento, silencio y cierre (etapa 1 de `docs/15`).
-- Estado: implementado (apéndice M de `docs/08`, migración `20261118500000`): una sola alerta «crítico» con el umbral editable por el cliente, histéresis, reconocer, silenciar, resolver y enlace al coche; los demás avisos son indicadores. Pendiente de aplicar la migración.
+- Estado: implementado (apéndice M de `docs/08`, migración `20261118500000`): una sola alerta «crítico» con el umbral editable por el cliente, histéresis, reconocer, silenciar, resolver y enlace al coche; los demás avisos son indicadores. Migración aplicada.
 - Etapas posteriores: destinatarios, correo, reglas por marca y modelo, inspección vencida. Sin anulaciones por eje, posición ni marca en esta etapa.
 
 ### F8 · Rotación y reposición
