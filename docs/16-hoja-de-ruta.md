@@ -10,6 +10,19 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 4. **Todo cambio deja rastro:** quién, cuándo (fecha efectiva y fecha de carga), origen y destino, y motivo. Los ajustes de stock llevan causal; no hay ediciones silenciosas.
 5. **Dato no medido es nulo, nunca cero.** No se oculta un surco bajo detrás de un promedio alto: se conserva el valor crudo y el mínimo de puntos.
 6. **Primero indicadores reproducibles e interpretables** (regresión lineal con confianza visible), después nada más complejo.
+7. **Simplicidad para el operario** (decisión del 2026-11-13, confirmada con un cliente). El operario tiene pocos conocimientos de tecnología: la plataforma debe ser intuitiva, con flujos claros, pocos clics y «enter», sin pasos innecesarios ni confusos. Se aplica a cada decisión de UX/UI y se revisa en cada PR que toca la interfaz (reglas verificables en `docs/14`, sección 5, y casilla en `docs/13`).
+
+## Decisiones de producto confirmadas con un cliente (2026-11-13)
+
+Tras una llamada con un cliente, el dueño confirmó tres decisiones que son el norte del proyecto:
+
+1. **La sugerencia de rotación de neumáticos es prioridad fuerte.** La flota objetivo son vehículos pesados: camiones y buses de transporte de pasajeros. F8 sube en el orden de prioridad (ver F8 y «Orden de prioridad» más abajo).
+2. **Simplicidad para el operario** como principio transversal (principio 7).
+3. **El perfil `admin` pasa a ser interno del equipo Neumet**, no un administrador de cliente. Cada cliente tendrá su propio administrador de empresa (ver F10).
+
+## Orden de prioridad
+
+Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sugerencia de rotación**, por decisión del 2026-11-13 confirmada con un cliente. Pasa por delante de lo pendiente de F1 a F7 (entre otros: destinos «reparación» y «recauchutado», indicador de confiabilidad de F3, eliminar costos desde la interfaz de F4, corrección auditada de odómetro, conversión de monedas, métricas de F6 aún sin construir, etapas posteriores de alertas) y de F9. F10 (separar el admin del equipo Neumet del admin de empresa) requiere un plan previo antes de ordenarse. Lo pendiente de F1 a F7 sigue en pie y se retoma después de F8.
 
 ## Estado actual frente al plan
 
@@ -30,6 +43,8 @@ Fuente de inspiración: análisis técnico público de una plataforma competidor
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | Hecho (migración `20261115000000`, aplicada: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
+| Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; pendiente de investigar e implementar (F8) |
+| Separar admin del equipo Neumet y admin de empresa | Planificación pendiente (F10; plan en elaboración, docs/17) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
@@ -80,6 +95,10 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Etapas posteriores: destinatarios, correo, reglas por marca y modelo, inspección vencida. Sin anulaciones por eje, posición ni marca en esta etapa.
 
 ### F8 · Rotación y reposición
+- **Prioridad fuerte** (decisión del 2026-11-13, confirmada con un cliente): es la siguiente fase de producto, tras lo ya implementado.
+- Flota objetivo: vehículos pesados, camiones y buses de transporte de pasajeros.
+- Trabajo: investigar la lógica real de rotación y cambio de neumáticos para esa flota (entre otros temas: patrones por eje y posición, direccional, tracción y arrastre, desgaste irregular, criterios de retiro, cruce de ejes y lados) y llevarla a **reglas interpretables en código, sin machine learning**. El diseño base existente está en `docs/15`, sección A ([15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md#a-recomendación-de-rotación)); la investigación lo amplía y corrige donde haga falta (hoy no cruza de lado en tracción y remolque, y no distingue tracción de arrastre).
+- Propuesta inicial de criterio de aceptación, a validar tras la investigación y con el dueño (no es diseño acordado): para un vehículo con mediciones suficientes, la sugerencia indica qué neumáticos mover, de qué posición a cuál y por qué (la regla aplicada, en una frase); respeta las reglas por eje (direccional, tracción, arrastre) y de mezcla de neumáticos; no sugiere con mediciones insuficientes ni vencidas (indica «medir primero»); reproduce el mismo resultado con los mismos datos; y se aplica en pocos clics (aceptar la sugerencia ejecuta la rotación, ver principio 7).
 - Recomendación de rotación con umbral configurable (diseño en `docs/15`).
 - Reposición: necesidad neta = demanda durante el plazo de entrega + seguridad − disponible apto; sugerencia revisable, nunca una compra automática.
 
@@ -87,6 +106,13 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Conteo por ubicación con diferencias (faltantes y sobrantes) y ajuste con causal y aprobación.
 - Baja técnica (retiro autorizado, causal, mm de retiro) separada de la disposición física (retiro del patio, destino, comprobante).
 - Sin resurrección desde «dispuesto» por simple edición.
+
+### F10 · Separar el admin del equipo Neumet del admin de empresa
+- Estado: **planificación pendiente** (F10 es el siguiente número libre; no indica prioridad).
+- Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno del equipo Neumet, no un administrador de cliente. Hoy mezcla ambos roles: `admin` ya es global (`cliente_id` nulo) y existe el perfil global de cliente (`rol = 'cliente'` sin sucursal), que se parece al futuro administrador de empresa. Cada cliente tendrá su propio administrador de empresa.
+- Objetivo del admin del equipo Neumet: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
+- Es un cambio del modelo de roles: requiere un plan previo que cubra roles, RLS, vistas, interfaz, migración de los usuarios existentes y el riesgo de quedar sin acceso (lockout).
+- Plan: en elaboración (se documentará en docs/17).
 
 ## Fuera de alcance por ahora
 
@@ -102,3 +128,4 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Dato no medido: nulo, sin falsa alerta crítica.
 - Usuario de otra empresa: sin acceso a cubiertas, fotos, costos ni exportaciones ajenas.
 - Predicción sin datos suficientes: se muestra «mediciones insuficientes», nunca una fecha inventada.
+- Tareas frecuentes del operario (medir, cambiar, rotar, montar): un camino principal por pantalla y sin pasos redundantes; un cambio de interfaz no aumenta los clics de esas tareas sin justificarlo (`docs/14`, sección 5).

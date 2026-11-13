@@ -22,6 +22,7 @@ El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - El revisor genera capturas con `tests/visual/run.sh` y las mira, en escritorio y en móvil.
 - Se rechaza si hay texto cortado, elementos superpuestos, tablas desbordadas, contraste insuficiente o dependencia exclusiva del color.
 - Estilo: minimalista, colores apagados, un solo énfasis por pantalla. El rojo solo para lo realmente crítico.
+- ¿El PR declara los clics de las tareas frecuentes que toca y no los aumenta sin justificación? (ver `docs/14-guia-de-textos.md`, sección 5)
 
 ## 4. Copy (textos de la interfaz)
 - Tono profesional y neutro, frases cortas, sin humor, exclamaciones, emojis ni diminutivos.
