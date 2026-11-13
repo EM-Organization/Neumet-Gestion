@@ -49,7 +49,7 @@
 | Confirmar con DAC el orden físico de `mm1..mm4` | Resuelto en el mapeo (mm1 interno, mm2 centro, mm3 externo); falta la prueba con la app real |
 | Prueba de punta a punta con sesión y datos reales | Los E2E cubren una base local con datos de demo; falta el entorno real |
 | **Sugerencia de rotación para camiones y buses (prioridad fuerte)** | Decisión del 2026-11-13, confirmada con un cliente: siguiente fase de producto (F8 de [16](16-hoja-de-ruta.md)). Investigar la lógica real de rotación y cambio para vehículos pesados (entre otros temas: patrones por eje y posición, direccional, tracción y arrastre, desgaste irregular, criterios de retiro, cruce de ejes y lados) y llevarla a reglas interpretables sin machine learning. Diseño base en [15](15-rotacion-alertas-rendimiento.md) sección A |
-| Separar el admin del equipo Neumet del admin de empresa (F10 de [16](16-hoja-de-ruta.md)) | Decisión del 2026-11-13, confirmada con un cliente: `admin` pasa a ser interno del equipo Neumet; cada cliente tendrá su administrador de empresa. Planificación pendiente: roles, RLS, vistas, interfaz, migración de usuarios y riesgo de lockout. Plan: en elaboración (se documentará en docs/17) |
+| Separar el admin del equipo Neumet del admin de empresa (F10 de [16](16-hoja-de-ruta.md)) | Decisión del 2026-11-13, confirmada con un cliente: `admin` pasa a ser interno del equipo Neumet; cada cliente tendrá su administrador de empresa. Estado: planificado. Plan en [17](17-plan-roles-admin.md): roles, RLS, vistas, interfaz, migración de usuarios y riesgo de lockout; sin migraciones ni código todavía |
 | Principio de simplicidad para el operario | Decisión del 2026-11-13: se revisa en cada cambio de interfaz (reglas en [14](14-guia-de-textos.md), sección 5). Auditar las tareas frecuentes actuales (medir, cambiar, rotar, montar) contra esas reglas |
 | Etapas posteriores de alertas | La alerta «crítico» (etapa 1) está hecha; faltan destinatarios, correo y reglas por marca y modelo. Diseño en [15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md) (sección B) |
 | Referencia de flota en el servidor y tabla de estado por neumático | Medidas 2 a 4 de la sección C de [15](15-rotacion-alertas-rendimiento.md); se aplican según el tamaño de la flota |
@@ -58,7 +58,7 @@
 ### Sugerencias del revisor (sin resolver)
 - `x-forwarded-for` es falseable en el límite de intentos de login.
 - Las RPC no comprueban `clientes.deleted_at`.
-- La baja de un cliente no desactiva su perfil `api`.
+- La baja de un cliente no desactiva su perfil `api` (asignado al PR 5 de [docs/17](17-plan-roles-admin.md): `api-proveedor` rechazará clientes con `deleted_at`).
 - Paginación por offset en los exportes.
 - `mapErr` de `crear-cliente` trata 422 como «email ya existe».
 
