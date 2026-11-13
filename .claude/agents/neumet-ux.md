@@ -5,7 +5,7 @@ model: opus
 # Lista explícita (mismo patrón que neumet-revisor/-dba): sin `tools` hereda TODO, incluido el MCP de Supabase con escritura
 # sobre producción. `disallowedTools` se aplica primero; es cinturón y tirantes. El grupo del navegador es el de la extensión
 # Claude in Chrome (servidor `claude-in-chrome`); un proyecto no puede activarla por configuración: usar `/chrome` o `claude --chrome`.
-tools: Read, Grep, Glob, Bash, mcp__claude-in-chrome__*
+tools: Read, Grep, Glob, Bash, Skill, ToolSearch, mcp__claude-in-chrome__*
 disallowedTools: mcp__supabase__*, Edit, Write, NotebookEdit
 ---
 

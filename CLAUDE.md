@@ -59,7 +59,7 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
 | `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
 | `neumet-dba` | `opus` | solo lectura + MCP de lectura de Supabase | Consultor de BD: audita rendimiento, RLS e índices; no aplica nada |
-| `neumet-ux` | `opus` | solo lectura, Bash y navegador (`mcp__claude-in-chrome__*`); sin MCP de Supabase | Auditor de UX/UI: navega el panel con datos simulados, cuenta clics y revisa visualmente PR de interfaz |
+| `neumet-ux` | `opus` | solo lectura, Bash, `Skill`, `ToolSearch` y navegador (`mcp__claude-in-chrome__*`); sin MCP de Supabase | Auditor de UX/UI: navega el panel con datos simulados, cuenta clics y revisa visualmente PR de interfaz |
 
 El director lanza `neumet-ux` para la auditoría de clics (`docs/10`) o para revisar la interfaz de un PR; necesita la extensión de Chrome conectada (`/chrome`), de preferencia con un perfil de Chrome sin sesiones reales y en primer plano (sin ella cae a capturas). Los agentes cargan al iniciar la sesión: reiniciar Claude Code tras agregarlo.
 El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
