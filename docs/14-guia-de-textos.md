@@ -82,10 +82,10 @@ El revisor busca en el diff: segunda persona («-á», «-és» en imperativos y
 Decisión del 2026-11-13, confirmada con un cliente: el operario tiene pocos conocimientos de tecnología. La plataforma debe ser intuitiva, con flujos claros, pocos clics y «enter», sin pasos innecesarios ni confusos. Este principio rige cada decisión de UX/UI y se revisa en cada PR que toca la interfaz (casilla en `docs/13`). Reglas verificables:
 
 1. **Un camino principal por pantalla**: una sola acción primaria, visible sin desplazarse, con el botón primario claramente distinguible. Las acciones secundarias no compiten con ella.
-2. **Clics contados**: las tareas frecuentes (medir, cambiar, rotar, montar neumáticos) tienen un máximo de clics declarado en el PR. Un cambio no puede aumentarlo sin justificarlo.
+2. **Clics contados**: las tareas frecuentes (medir, cambiar, rotar, montar neumáticos) tienen un máximo de clics declarado en el PR. La referencia es el conteo de la auditoría pendiente (`docs/10`, Pendientes) y, mientras no exista, el conteo que declara el propio PR sobre `main`. Un cambio no puede aumentarlo sin justificarlo.
 3. **Teclado**: en un formulario, «Enter» envía; el foco empieza en el primer campo útil y el orden de tabulación sigue el orden de lectura.
 4. **Valores por defecto sensatos**: lo que casi siempre es igual viene completado (fecha de hoy, posición o vehículo en contexto, último odómetro conocido). El operario corrige, no escribe desde cero.
-5. **Sin confirmaciones redundantes**: se confirma solo lo destructivo o irreversible. Lo reversible se hace y se ofrece deshacer.
+5. **Sin confirmaciones redundantes**: se confirma solo lo destructivo o irreversible. Lo reversible se hace y se ofrece deshacer cuando exista.
 6. **Sin pasos ni campos que el sistema pueda deducir**: no se pide un dato que ya está en el contexto, y los campos opcionales no estorban el camino principal.
 7. **Lenguaje llano**: mensajes y etiquetas sin jerga técnica ni códigos internos; el error dice qué pasó y qué hacer (regla 5 de la sección 1).
 8. **Una pantalla, una tarea**: no se exige entender la estructura de datos (tablas, vidas, eventos) para completar una tarea.

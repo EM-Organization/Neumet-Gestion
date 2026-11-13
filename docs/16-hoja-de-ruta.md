@@ -22,7 +22,7 @@ Tras una llamada con un cliente, el dueño confirmó tres decisiones que son el 
 
 ## Orden de prioridad
 
-Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sugerencia de rotación**, por decisión del 2026-11-13 confirmada con un cliente. Pasa por delante de lo pendiente de F1 a F7 (destinos «reparación» y «recauchutado», corrección auditada de odómetro, conversión de monedas, etapas posteriores de alertas) y de F9. F10 (separar el admin de plataforma del admin de empresa) requiere un plan previo antes de ordenarse. Lo pendiente de F1 a F7 sigue en pie y se retoma después de F8.
+Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sugerencia de rotación**, por decisión del 2026-11-13 confirmada con un cliente. Pasa por delante de lo pendiente de F1 a F7 (entre otros: destinos «reparación» y «recauchutado», indicador de confiabilidad de F3, eliminar costos desde la interfaz de F4, corrección auditada de odómetro, conversión de monedas, métricas de F6 aún sin construir, etapas posteriores de alertas) y de F9. F10 (separar el admin de plataforma del admin de empresa) requiere un plan previo antes de ordenarse. Lo pendiente de F1 a F7 sigue en pie y se retoma después de F8.
 
 ## Estado actual frente al plan
 
@@ -95,10 +95,10 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Etapas posteriores: destinatarios, correo, reglas por marca y modelo, inspección vencida. Sin anulaciones por eje, posición ni marca en esta etapa.
 
 ### F8 · Rotación y reposición
-- **Prioridad fuerte** (decisión del 2026-11-13, confirmada con un cliente): es la siguiente fase de producto junto con lo ya implementado.
+- **Prioridad fuerte** (decisión del 2026-11-13, confirmada con un cliente): es la siguiente fase de producto, tras lo ya implementado.
 - Flota objetivo: vehículos pesados, camiones y buses de transporte de pasajeros.
-- Trabajo: investigar la lógica real de rotación y cambio de neumáticos para esa flota (patrones por eje y posición, direccional, tracción y arrastre, desgaste irregular, criterios de retiro, cruce de ejes y lados) y llevarla a **reglas interpretables en código, sin machine learning**. El diseño base existente está en `docs/15`, sección A ([15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md#a-recomendación-de-rotación)); la investigación lo amplía y corrige donde haga falta (hoy no cruza de lado en tracción y remolque, y no distingue tracción de arrastre).
-- Criterio de aceptación de la sugerencia: para un vehículo con mediciones suficientes, la sugerencia indica qué neumáticos mover, de qué posición a cuál y por qué (la regla aplicada, en una frase); respeta las reglas por eje (direccional, tracción, arrastre) y de mezcla de neumáticos; no sugiere con mediciones insuficientes ni vencidas (indica «medir primero»); reproduce el mismo resultado con los mismos datos; y se aplica en pocos clics (aceptar la sugerencia ejecuta la rotación, ver principio 7).
+- Trabajo: investigar la lógica real de rotación y cambio de neumáticos para esa flota (entre otros temas: patrones por eje y posición, direccional, tracción y arrastre, desgaste irregular, criterios de retiro, cruce de ejes y lados) y llevarla a **reglas interpretables en código, sin machine learning**. El diseño base existente está en `docs/15`, sección A ([15-rotacion-alertas-rendimiento.md](15-rotacion-alertas-rendimiento.md#a-recomendación-de-rotación)); la investigación lo amplía y corrige donde haga falta (hoy no cruza de lado en tracción y remolque, y no distingue tracción de arrastre).
+- Propuesta inicial de criterio de aceptación, a validar tras la investigación y con el dueño (no es diseño acordado): para un vehículo con mediciones suficientes, la sugerencia indica qué neumáticos mover, de qué posición a cuál y por qué (la regla aplicada, en una frase); respeta las reglas por eje (direccional, tracción, arrastre) y de mezcla de neumáticos; no sugiere con mediciones insuficientes ni vencidas (indica «medir primero»); reproduce el mismo resultado con los mismos datos; y se aplica en pocos clics (aceptar la sugerencia ejecuta la rotación, ver principio 7).
 - Recomendación de rotación con umbral configurable (diseño en `docs/15`).
 - Reposición: necesidad neta = demanda durante el plazo de entrega + seguridad − disponible apto; sugerencia revisable, nunca una compra automática.
 
@@ -109,10 +109,10 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 
 ### F10 · Separar el admin de plataforma del admin de empresa
 - Estado: **planificación pendiente** (F10 es el siguiente número libre; no indica prioridad).
-- Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno de los desarrolladores de Neumet, no un administrador de cliente. Hoy mezcla ambos roles. Cada cliente tendrá su propio administrador de empresa.
+- Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno de los desarrolladores de Neumet, no un administrador de cliente. Hoy mezcla ambos roles: `admin` ya es global (`cliente_id` nulo) y existe el perfil global de cliente (`rol = 'cliente'` sin sucursal), que se parece al futuro administrador de empresa. Cada cliente tendrá su propio administrador de empresa.
 - Objetivo del admin de plataforma: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
 - Es un cambio del modelo de roles: requiere un plan previo que cubra roles, RLS, vistas, interfaz, migración de los usuarios existentes y el riesgo de quedar sin acceso (lockout).
-- Plan: pendiente (se documentará en docs/17).
+- Plan: en elaboración (se documentará en docs/17).
 
 ## Fuera de alcance por ahora
 
