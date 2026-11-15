@@ -10,12 +10,21 @@ const svelteParser = require('svelte-eslint-parser');
 
 // Un solo cliente de Supabase (docs/19 §5.2): el front nuevo recibe `ctx.db`, el mismo cliente del panel viejo.
 // Dos clientes dan «Multiple GoTrueClient» y se pisan los refrescos de sesión.
+const msgUno = 'src/ usa ctx.db; no crear un segundo cliente (docs/19 §5.2).';
 const sinClienteSupabase = {
-  'no-restricted-imports': ['error', { paths: [{ name: '@supabase/supabase-js', message: 'src/ usa ctx.db; no crear un segundo cliente (docs/19 §5.2).' }] }],
+  'no-restricted-imports': ['error', {
+    paths: [{ name: '@supabase/supabase-js', message: msgUno }],
+    patterns: [{ group: ['@supabase/*', '@supabase/**'], message: msgUno }],
+  }],
   'no-restricted-syntax': ['error',
     { selector: "CallExpression[callee.name='createClient']", message: 'Prohibido createClient en src/: usar ctx.db (docs/19 §5.2).' },
     { selector: "CallExpression[callee.property.name='createClient']", message: 'Prohibido supabase.createClient en src/: usar ctx.db (docs/19 §5.2).' },
-    { selector: "ImportExpression[source.value='@supabase/supabase-js']", message: 'Prohibido importar supabase-js en src/ (docs/19 §5.2).' }],
+    { selector: "CallExpression[callee.property.value='createClient']", message: 'Prohibido supabase["createClient"] en src/: usar ctx.db (docs/19 §5.2).' },
+    { selector: "ObjectPattern > Property[key.name='createClient']", message: 'Prohibido extraer createClient (ni con alias) en src/: usar ctx.db (docs/19 §5.2).' },
+    // El global UMD de supabase-js no se toca desde src/ (cubre window.supabase, globalThis.supabase y llamadas indirectas como (0, window.supabase.createClient)()).
+    { selector: "MemberExpression[object.name=/^(window|globalThis|self)$/][property.name='supabase']", message: 'Prohibido el global supabase en src/: usar ctx.db (docs/19 §5.2).' },
+    { selector: "NewExpression[callee.name='SupabaseClient'], NewExpression[callee.property.name='SupabaseClient']", message: 'Prohibido new SupabaseClient en src/: usar ctx.db (docs/19 §5.2).' },
+    { selector: "ImportExpression[source.value=/^@supabase\\//]", message: 'Prohibido importar @supabase/* en src/ (docs/19 §5.2).' }],
 };
 
 module.exports = [
@@ -45,7 +54,7 @@ module.exports = [
     languageOptions: { parser: svelteParser, globals: { ...globals.browser } },
   },
   {
-    files: ['src/**/*.test.js', 'src/vite.config.*'],
+    files: ['src/**/*.test.js'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
   {

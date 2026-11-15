@@ -17,6 +17,22 @@ test('src/ no puede crear un segundo cliente de supabase', async () => {
   assert.ok((await reglas("export const cargar = () => import('@supabase/supabase-js');\n", 'src/db.js')).includes('no-restricted-syntax'));
 });
 
+test('src/ no esquiva la regla con alias, acceso computado, SupabaseClient ni subrutas', async () => {
+  const casos = [
+    ["const { createClient: c } = window.supabase;\nexport const db = c('a', 'b');\n", 'alias por desestructuración'],
+    ["export const db = window.supabase['createClient']('a', 'b');\n", 'acceso computado'],
+    ["export const db = (0, window.supabase.createClient)('a', 'b');\n", 'llamada indirecta'],
+    ["export const db = globalThis.supabase.createClient('a', 'b');\n", 'globalThis'],
+    ["import { SupabaseClient } from '@supabase/supabase-js';\nexport const db = new SupabaseClient('a', 'b');\n", 'new SupabaseClient'],
+    ["import { createClient } from '@supabase/supabase-js/dist/module/index.js';\nexport { createClient };\n", 'subruta de supabase-js'],
+    ["import { x } from '@supabase/auth-js';\nexport { x };\n", 'otro paquete @supabase/*'],
+  ];
+  for (const [codigo, que] of casos) {
+    const r = await reglas(codigo, 'src/db.js');
+    assert.ok(r.includes('no-restricted-syntax') || r.includes('no-restricted-imports'), `debe fallar: ${que}`);
+  }
+});
+
 test('el mismo código fuera de src/ no dispara la regla (el panel viejo sigue con su singleton)', async () => {
   const r = await reglas("export const db = window.supabase.createClient('a', 'b');\n", 'assets/js/core/supabase.js');
   assert.ok(!r.includes('no-restricted-syntax'));
