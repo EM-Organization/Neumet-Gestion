@@ -33,6 +33,7 @@
 - Costos por cubierta y costo por km (migración `20261117000000`; apéndice J, F4).
 - Recauchutado por carcasa: vista Recauchutado, grupos Vida y Banda en el costo por km (migración `20261118000000`; apéndice L, F5).
 - Alerta única «crítico» con estado, histéresis y umbral por cliente (migración `20261118500000`; apéndice M, F7).
+- Administración de empresa, base de datos (F10 PR 2): `accesos_quitados`, RPC de usuarios, kilometraje y alerta ampliada; migración `20261119000000` **sin aplicar** (apéndice N).
 - Documentación del producto: README raíz, índice de `docs/` y guías de revisión y de textos.
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
 

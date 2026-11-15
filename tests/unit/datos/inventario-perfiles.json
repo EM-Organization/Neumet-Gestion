@@ -1,0 +1,457 @@
+[
+ {
+  "archivo": "assets/js/core/auth.js",
+  "linea": 42,
+  "texto": "const {data:perfil,error:ePerfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();"
+ },
+ {
+  "archivo": "assets/js/domain/rol.js",
+  "linea": 16,
+  "texto": "* @param perfil           fila de perfiles del usuario ({rol, cliente_id, sucursal_id}) o null"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 15,
+  "texto": "let secs = [], vehs = [], disps = [], perfiles = [];"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 32,
+  "texto": "<td>${perfiles.filter(p => String(p.sucursal_id) === String(s.id)).length}</td>"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 52,
+  "texto": "setHtml($('sec-usuarios'), perfiles.length ? html`<table class=\"sec-tabla\"><thead><tr><th>Usuario</th><th>Alcance</th></tr></thead><tbody>${"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 53,
+  "texto": "perfiles.map(p => html`<tr><td>${p.email || ('ID ' + String(p.user_id).slice(0, 8))}</td>"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 73,
+  "texto": "db.from('perfiles').select('user_id,email,sucursal_id').eq('cliente_id', id).eq('rol', 'cliente').order('created_at'),"
+ },
+ {
+  "archivo": "assets/js/views/seccionales-admin.js",
+  "linea": 78,
+  "texto": "secs = s.data || []; vehs = v.data || []; disps = d.data || []; perfiles = p.data || [];"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/sql_test.ts",
+  "linea": 105,
+  "texto": "insert into public.perfiles values ('${U1}','api',1),('${U2}','api',2),('${UCLI}','cliente',1);"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/sql_test.ts",
+  "linea": 289,
+  "texto": "// la cuenta 'api' (JWT de authenticated) no ve nada por PostgREST: ni perfiles ni datos"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/sql_test.ts",
+  "linea": 291,
+  "texto": "for (const tabla of ['perfiles', 'vehiculos', 'neumaticos', 'mediciones', 'clientes', 'ingesta_log']) {"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/supabase_deps.ts",
+  "linea": 81,
+  "texto": "const q = `${cfg.url}/rest/v1/perfiles?user_id=eq.${encodeURIComponent(userId)}&select=rol,cliente_id&limit=1`;"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/testkit.ts",
+  "linea": 42,
+  "texto": "const perfiles = new Map<string, PerfilApi>(["
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/testkit.ts",
+  "linea": 88,
+  "texto": "getPerfil: (id) => Promise.resolve(perfiles.get(id) ?? null),"
+ },
+ {
+  "archivo": "supabase/functions/crear-cliente/handler.ts",
+  "linea": 17,
+  "texto": "/** ¿perfiles.rol = 'admin' para ese usuario? (service role) */"
+ },
+ {
+  "archivo": "supabase/functions/crear-cliente/index.ts",
+  "linea": 35,
+  "texto": "const { data, error } = await admin.from('perfiles').select('rol').eq('user_id', userId).maybeSingle();"
+ },
+ {
+  "archivo": "supabase/functions/crear-cliente/README.md",
+  "linea": 20,
+  "texto": "- El JWT se verifica con `auth.getUser(token)` y el rol con `perfiles.rol = 'admin'` (service role)."
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler_test.ts",
+  "linea": 11,
+  "texto": "perfiles: [] as string[],"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler_test.ts",
+  "linea": 22,
+  "texto": "upsertPerfilApi: (u, c) => (calls.perfiles.push(`${u}:${c}`), Promise.resolve(true)),"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler_test.ts",
+  "linea": 113,
+  "texto": "assertEquals(calls.perfiles, ['new-1:7']);"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler_test.ts",
+  "linea": 137,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler.ts",
+  "linea": 13,
+  "texto": "/** Nº de perfiles rol 'api' del cliente. */"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/handler.ts",
+  "linea": 17,
+  "texto": "/** Inserta/upserta perfiles (rol 'api', cliente_id). */"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/index.ts",
+  "linea": 34,
+  "texto": "const { data, error } = await admin.from('perfiles').select('rol').eq('user_id', userId).maybeSingle();"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/index.ts",
+  "linea": 45,
+  "texto": "const { count, error } = await admin.from('perfiles').select('user_id', { count: 'exact', head: true })"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/index.ts",
+  "linea": 60,
+  "texto": "const { error } = await admin.from('perfiles').upsert({ user_id: userId, rol: 'api', cliente_id: clienteId }, {"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/README.md",
+  "linea": 3,
+  "texto": "Edge Function (Deno) que crea una **cuenta de API** para un cliente: usuario Auth + fila en `perfiles` con `rol='api'` y"
+ },
+ {
+  "archivo": "supabase/functions/crear-cuenta-api/README.md",
+  "linea": 14,
+  "texto": "- No hay trigger sobre `auth.users` (solo `clientes_sync_perfil`, que crea perfiles `cliente`); el perfil `api` se crea"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 11,
+  "texto": "perfiles: [] as Array<[string, number, number | null, string]>,"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 24,
+  "texto": "insertPerfil: (u, c, s, e) => (calls.perfiles.push([u, c, s, e]), Promise.resolve(true)),"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 57,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 97,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 109,
+  "texto": "assertEquals(calls.perfiles, [['new-1', 7, 70, 'salto@b.cl']]);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 122,
+  "texto": "assertEquals(calls.perfiles, [['new-2', 7, null, 'global@b.cl']]);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 139,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler.ts",
+  "linea": 19,
+  "texto": "/** ¿perfiles.rol = 'admin' para ese usuario? (service role) */"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
+  "linea": 35,
+  "texto": "const { data, error } = await admin.from('perfiles').select('rol').eq('user_id', userId).maybeSingle();"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
+  "linea": 63,
+  "texto": "const { error } = await admin.from('perfiles').insert({"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/README.md",
+  "linea": 21,
+  "texto": "- JWT verificado con `auth.getUser` y rol con `perfiles.rol = 'admin'` (service role)."
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/README.md",
+  "linea": 23,
+  "texto": "`perfiles(sucursal_id, cliente_id)`)."
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 73,
+  "texto": "create table if not exists public.perfiles ("
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 287,
+  "texto": "create index if not exists perfiles_cliente_id_idx    on public.perfiles (cliente_id);"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 305,
+  "texto": "select 1 from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 319,
+  "texto": "select p.cliente_id from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 356,
+  "texto": "select p.rol into v_rol from public.perfiles p where p.user_id = v_uid;"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 407,
+  "texto": "insert into public.perfiles (user_id, rol, cliente_id)"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 432,
+  "texto": "revoke all on table public.clientes, public.perfiles, public.vehiculos, public.dispositivos,"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 437,
+  "texto": "alter table public.perfiles         enable row level security;"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 449,
+  "texto": "public.stock_neumaticos, public.neumaticos, public.gastos, public.perfiles to authenticated;"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 462,
+  "texto": "drop policy if exists perfiles_admin_all on public.perfiles;"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 463,
+  "texto": "create policy perfiles_admin_all on public.perfiles for all to authenticated"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 465,
+  "texto": "drop policy if exists perfiles_self_select on public.perfiles;"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 466,
+  "texto": "create policy perfiles_self_select on public.perfiles for select to authenticated"
+ },
+ {
+  "archivo": "supabase/migrations/20261106000000_init_schema.sql",
+  "linea": 674,
+  "texto": "--      insert into public.perfiles (user_id, rol) values ('<uuid-del-admin>', 'admin');"
+ },
+ {
+  "archivo": "supabase/migrations/20261107010000_cuentas_api.sql",
+  "linea": 25,
+  "texto": "from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 58,
+  "texto": "alter table public.perfiles     add column if not exists sucursal_id bigint;"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 61,
+  "texto": "alter table public.perfiles     add column if not exists email text;"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 73,
+  "texto": "alter table public.perfiles drop constraint if exists perfiles_sucursal_fk;"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 74,
+  "texto": "alter table public.perfiles add constraint perfiles_sucursal_fk"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 79,
+  "texto": "alter table public.perfiles drop constraint if exists perfiles_sucursal_rol_ck;"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 80,
+  "texto": "alter table public.perfiles add constraint perfiles_sucursal_rol_ck"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 85,
+  "texto": "create index if not exists perfiles_sucursal_idx     on public.perfiles (sucursal_id)     where sucursal_id is not null;"
+ },
+ {
+  "archivo": "supabase/migrations/20261107020000_seccionales.sql",
+  "linea": 99,
+  "texto": "select p.sucursal_id from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261108000000_cambio_neumatico.sql",
+  "linea": 39,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261108000000_cambio_neumatico.sql",
+  "linea": 57,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261110010000_gestion_sucursales.sql",
+  "linea": 36,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261110010000_gestion_sucursales.sql",
+  "linea": 53,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261110010000_gestion_sucursales.sql",
+  "linea": 169,
+  "texto": "select count(*) into v_usu from public.perfiles     p where p.sucursal_id = p_sucursal_id;"
+ },
+ {
+  "archivo": "supabase/migrations/20261113000000_stock_cubiertas.sql",
+  "linea": 436,
+  "texto": "select count(*) into v_usu from public.perfiles     p where p.sucursal_id = p_sucursal_id;"
+ },
+ {
+  "archivo": "supabase/migrations/20261115000000_km_por_cubierta.sql",
+  "linea": 70,
+  "texto": "from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261116000000_calidad_datos.sql",
+  "linea": 294,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261116000000_calidad_datos.sql",
+  "linea": 309,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261116500000_privilegios_precios.sql",
+  "linea": 50,
+  "texto": "select 1 from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261117000000_costos_cpk.sql",
+  "linea": 237,
+  "texto": "select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261118000000_recauchutado_carcasa.sql",
+  "linea": 659,
+  "texto": "select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261118500000_alerta_critica.sql",
+  "linea": 466,
+  "texto": "v_perf    public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261118500000_alerta_critica.sql",
+  "linea": 480,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 41,
+  "texto": "select p.cliente_id from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 109,
+  "texto": "select exists (select 1 from public.perfiles p where p.user_id = v_user) into v_perfil;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 176,
+  "texto": "from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 189,
+  "texto": "and not exists (select 1 from public.perfiles p2 where p2.user_id = a.user_id)"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 224,
+  "texto": "v_t       public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 242,
+  "texto": "from (select p.user_id from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 253,
+  "texto": "select * into v_t from public.perfiles p where p.user_id = p_user_id and p.cliente_id = v_cli for update;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 257,
+  "texto": "if p_acceso_id is null or exists (select 1 from public.perfiles p where p.user_id = p_user_id) then"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 286,
+  "texto": "delete from public.perfiles p where p.user_id = p_user_id;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 319,
+  "texto": "v_perf   public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 333,
+  "texto": "perform 1 from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 345,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_user;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 362,
+  "texto": "insert into public.perfiles (user_id, rol, cliente_id, sucursal_id, email)"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 563,
+  "texto": "select p.rol, p.sucursal_id into v_rol, v_suc from public.perfiles p where p.user_id = v_uid;"
+ }
+]

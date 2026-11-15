@@ -21,6 +21,7 @@ import { registrar as kmCubierta } from './specs/km-cubierta.mjs';
 import { registrar as calidadDatos } from './specs/calidad-datos.mjs';
 import { registrar as costosCpk } from './specs/costos-cpk.mjs';
 import { registrar as preciosSoloGlobal } from './specs/precios-solo-global.mjs';
+import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -43,4 +44,5 @@ kmCubierta(env);
 calidadDatos(env);
 costosCpk(env);
 preciosSoloGlobal(env);
+adminEmpresa(env);
 contrato(env);

@@ -55,7 +55,7 @@ export function registrar(env) {
       const fila = filas(env, `select id, cliente_id from public.sucursales where nombre = 'Rivera E2E'`);
       assert.equal(fila.length, 1);
       assert.equal(Number(env.sql(`select ${DEMO}`)), fila[0].cliente_id, 'queda en el cliente del usuario');
-      assert.equal(Number(env.sql(`select count(*) from public.audit_log where entidad = 'sucursales' and entidad_id = '${fila[0].id}' and accion = 'INSERT' and actor_rol = 'cliente'`)), 1);
+      assert.equal(Number(env.sql(`select count(*) from public.audit_log where entidad = 'sucursales' and entidad_id = '${fila[0].id}' and accion = 'INSERT' and actor_rol = 'admin_empresa'`)), 1);
       // El selector de la barra superior se actualiza sin recargar
       await p.esperar(`[...document.querySelectorAll('#sec-select option')].some(o => o.textContent === 'Rivera E2E')`, { que: 'selector actualizado' });
 
