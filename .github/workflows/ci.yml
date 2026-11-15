@@ -69,6 +69,8 @@ jobs:
           node-version: 22
       # node:test integrado: sin dependencias, no necesita npm ci
       - run: npm test
+      # servidor de navegar.sh: 404 a lo sensible (mayúsculas, symlinks), 400 a %00; python3 y curl vienen en el runner
+      - run: tests/visual/probar-navegar.sh
 
   deno:
     runs-on: ubuntu-latest
