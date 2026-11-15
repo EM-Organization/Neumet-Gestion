@@ -6,13 +6,13 @@ Convenciones de este documento. Las afirmaciones sobre el repositorio llevan `ar
 
 ## 1. Resumen para el dueño
 
-1. **El problema de fondo es de diseño, no de framework.** La percepción de que el panel funciona mal en móvil tiene causas visibles en el CSS (tablas con ancho mínimo, botones pequeños, siete anchos de corte distintos, un modal de 960 px). Casi todas se arreglan con un sistema de diseño pensado primero para móvil, y eso se puede hacer **sin** cambiar de framework. Un framework no arregla nada por sí solo: ayuda a **sostener** ese sistema, porque permite componentes reutilizables (un solo botón, una sola tabla que pasa a tarjetas, un solo modal) en lugar de las seis variantes de botón de hoy. Conviene decirlo con franqueza: si solo se quisiera arreglar el móvil, bastaría la sección 3 sin la 5.
+1. **Objetivo (decisión del dueño, 2026-11-15): un front mantenible, consistente y con buen diseño**, basado en componentes y un sistema de diseño. La experiencia móvil **no es prioridad**: queda como mejora secundaria. El CSS actual muestra inconsistencias que sí justifican el sistema de diseño (siete anchos de corte, seis variantes de botón [S], 91 `style=` en línea, tablas con ancho mínimo). Un sistema de diseño se puede hacer **sin** cambiar de framework; el framework ayuda a **sostenerlo**, porque permite componentes reutilizables (un solo botón, una sola tabla, un solo modal). Conviene decirlo con franqueza: si solo se quisiera uniformar el CSS, bastaría la sección 3 sin la 5.
 2. **Recomendación de stack:** Svelte 5 con Vite (sin SvelteKit), Tailwind 4 y shadcn-svelte/bits-ui. Plan B: React 19 con Vite y shadcn/ui. La decisión **final** sale de una prueba de concepto (sección 6), no de este documento.
 3. **Estrategia:** migración gradual («strangler»): el panel actual sigue vivo y cada pantalla nueva se monta como una «isla» dentro de él, detrás de una bandera por rol. Nada se reescribe de una vez. La producción se mantiene idéntica hasta que una bandera se enciende.
 4. **Costo estimado:** 19 a 31 PR (central, unos 25; ±30 %, sin contar rondas de corrección), en seis olas (sección 7).
-5. **Competencia con F8 y F10.** Hay tres lugares de autor en paralelo (CLAUDE.md). Dedicar uno o dos a esta migración demora F8, que es la prioridad fuerte. Es la primera decisión que necesita del dueño (pregunta 1).
+5. **Competencia con F8 y F10.** Hay tres lugares de autor en paralelo (CLAUDE.md). El dueño aceptó dedicar a la migración los que haga falta, incluso demorando F8 (decisión del 2026-11-15). Regla de reparto: **hasta 2 autores en migración y al menos 1 en F8 y F10**; F8 sigue siendo la prioridad fuerte del cliente y nunca queda sin lugar.
 6. **Riesgo principal:** que dos sistemas convivan meses y que la migración quite capacidad a F8. Se mitiga con una regla escrita de «una pantalla, una sola pista a la vez» (sección 7.2).
-7. Hay siete preguntas para el dueño (sección 10); **tres bloquean** el arranque o la ola 4 (1, 3 y 4).
+7. Decisiones del dueño del 2026-11-15, ya incorporadas: sin proyecto de staging (no hay datos reales en la base); móvil secundario; lugares de autor según la regla anterior. Quedan tres preguntas abiertas, todas con valor por defecto razonable (sección 10). La prueba de concepto sigue decidiendo Svelte frente a React.
 
 ## 2. Situación actual
 
@@ -50,9 +50,9 @@ Convenciones de este documento. Las afirmaciones sobre el repositorio llevan `ar
 | E2E (`tests/e2e`; `lib/web.mjs` reescribe `adminpanel/index.html` y `auth-shim.js` intercepta `window.supabase`) | Sí, en la capa web | Se reescribe la capa web; `lib/postgres.mjs`, `lib/postgrest.mjs`, `tests/sql` y las pruebas Deno se conservan |
 | CSP | Ninguna prueba la comprueba: el servidor e2e no envía las cabeceras de `vercel.json` | Se corrige en el PR 1 (sección 5.5) |
 
-### 2.4 Qué falla en móvil (hipótesis, sin capturas)
+### 2.4 Inconsistencias del CSS y comportamiento en móvil (hipótesis, sin capturas)
 
-Es una **auditoría estática del CSS**. Todo lo visual es hipótesis [S] hasta que existan capturas a 360 y 390 px (sección 3, regla de verificación).
+Es una **auditoría estática del CSS**. Se conserva como diagnóstico de hechos; el móvil no es prioridad (sección 1). Todo lo visual es hipótesis [S] hasta que existan capturas.
 
 | Síntoma | Evidencia estática |
 |---|---|
@@ -65,14 +65,14 @@ Es una **auditoría estática del CSS**. Todo lo visual es hipótesis [S] hasta 
 | Estilos en línea | 91 atributos `style="` en `adminpanel/index.html` [V] |
 | Alto de pantalla | `min-height: 100vh` sin `dvh` (`styles.css:11`, `:15`, `:38`) [V]; la barra del navegador móvil lo desajusta [S] |
 
-## 3. Sistema de diseño mobile-first (independiente del framework)
+## 3. Sistema de diseño (independiente del framework)
 
-Esta sección es la parte que más cambia la experiencia móvil y **no depende** de la sección 4. Puede hacerse sobre el panel actual como PR de CSS y, si se migra, se porta a componentes.
+Esta sección define la consistencia visual y **no depende** de la sección 4. Puede hacerse sobre el panel actual como PR de CSS y, si se migra, se porta a componentes. Se diseña en pantalla de escritorio primero; lo móvil se añade como mejora secundaria.
 
 ### 3.1 Qué incluye
 
-- Tokens únicos (`assets/css/tokens.css` ya existe: se amplía con espaciado, radios, alturas táctiles y puntos de corte).
-- **Un solo punto de corte de ancho: 768 px.** Hoy son siete.
+- Tokens únicos (`assets/css/tokens.css` ya existe: se amplía con espaciado, radios, alturas de control y puntos de corte).
+- **Un solo punto de corte de ancho: 768 px**, cuando se aborde lo móvil. Hoy son siete.
 - Tabla que pasa a tarjeta bajo 768 px (un componente, no una variante por pantalla).
 - Modal que pasa a hoja inferior (bottom sheet) en móvil; apilado del flujo de montar.
 - Barra de navegación inferior en móvil y cabecera fija compacta.
@@ -80,9 +80,9 @@ Esta sección es la parte que más cambia la experiencia móvil y **no depende**
 - Un solo componente de botón, de badge con texto y de estado vacío.
 - `dvh` en lugar de `vh`; sin `style=` en el HTML.
 
-### 3.2 Reglas medibles propuestas
+### 3.2 Objetivos posteriores (móvil)
 
-Se verifican con una prueba automática a 360, 390, 768 y 1280 px de ancho (extensión de `tests/visual` o de e2e con CDP).
+Propuesta para cuando el móvil suba de prioridad. **No son criterio de salida de ninguna ola ni bloquean el CI**; las reglas 7 y 8 sí aplican desde ya porque no dependen del móvil. Una prueba automática a 360, 390, 768 y 1280 px (extensión de `tests/visual` o de e2e con CDP) se evalúa entonces.
 
 | N.º | Regla | Cómo se verifica |
 |---|---|---|
@@ -95,7 +95,7 @@ Se verifican con una prueba automática a 360, 390, 768 y 1280 px de ancho (exte
 | 7 | El PR declara los clics de cada tarea frecuente que toca y no los aumenta sin justificación | Revisión ([13](13-checklist-revision-prs.md), [14](14-guia-de-textos.md) §5) |
 | 8 | Sin `style=` nuevo en HTML ni en plantillas | `grep` en el lint |
 
-Las reglas 1 a 6 son **hipótesis de umbral**: se ajustan con la prueba de concepto. Propuesta aparte: añadir una **regla 9 a [14](14-guia-de-textos.md) §5** («táctil y punto de corte único»), como cambio de un PR posterior; este PR no toca `docs/14`.
+Las reglas 1 a 6 son **hipótesis de umbral**, ajustables. Propuesta aparte: añadir una **regla 9 a [14](14-guia-de-textos.md) §5** («táctil y punto de corte único»), como cambio de un PR posterior; este PR no toca `docs/14`.
 
 ## 4. Elección de stack
 
@@ -129,7 +129,7 @@ Versiones de npm consultadas el 2026-11-15 (**reconfirmar al fijar**): React 19.
 |---|---|
 | Los modelos derivan a la sintaxis de Svelte 4 | `runes: true` como error de compilación; ejemplos en el brief del autor; el experimento comparativo de la sección 6 lo mide |
 | El preflight de Tailwind 4 resetea estilos del panel viejo dentro de la isla | Importar Tailwind sin preflight o acotado al contenedor de la isla; mapear `tokens.css` a `@theme` |
-| Tailwind 4 exige navegadores modernos (Chrome 111+, Safari 16.4+, Firefox 128+) | Verificar el parque real de móviles de los operarios (pregunta 4) antes de fijar `build.target` [compatibilidad sin verificar] |
+| Tailwind 4 exige navegadores modernos (Chrome 111+, Safari 16.4+, Firefox 128+) | Se usan los valores modernos por defecto de escritorio. Si el móvil sube de prioridad, se revisa el parque real de dispositivos antes de fijar `build.target` [compatibilidad sin verificar] |
 | Ecosistema chico de bits-ui | shadcn copia el código al repositorio: no hay dependencia dura de un paquete de componentes |
 | Versión de supabase-js | Fijarla igual al UMD (2.118.0) |
 
@@ -173,7 +173,7 @@ El primer paso es introducir el build **sin cambiar lo que se sirve**.
 
 ### 5.4 Previews contra producción
 
-No hay staging: los previews de Vercel apuntan a producción (riesgo G4 de [03](03-despliegue-vercel-supabase.md)). Por eso los previews deben estar protegidos (pregunta 7) y usarse **solo lectura con perfil admin**; las escrituras se prueban únicamente en e2e local. Un proyecto Supabase de staging antes de la ola 4 resuelve el problema de raíz (pregunta 3).
+No hay staging: los previews de Vercel apuntan a producción (riesgo G4 de [03](03-despliegue-vercel-supabase.md)). Decisión del dueño (2026-11-15): **riesgo aceptado**, porque hoy no hay datos reales de clientes en la base; no se crea un proyecto de staging. Aun así, las escrituras se prueban en e2e local y los previews deben estar protegidos (pregunta 3). **Disparador de revisión:** si entran datos reales de clientes, reevaluar el staging antes de las olas de escritura (ola 4).
 
 ### 5.5 CI
 
@@ -222,7 +222,7 @@ La decisión final del stack **sale de esta prueba**, sobre una tarea frecuente 
 | 1 piloto | Pantalla «Uso» (F10 PR 7): nueva, solo lectura, solo equipo Neumet, construida directo en el stack nuevo | Migración B (F10 PR 6) aplicada | E2E por rol, capturas revisadas, una semana de uso interno sin errores | 0 a 1 |
 | 2 administración | Dispositivos, Mediciones, Balance, Clientes, Ficha. Balance, Clientes y Ficha solo tras F10 PR 9 a 11 | Ola 1 | Banderas encendidas por rol | 3 a 5 |
 | 3 lectura del cliente | Reportes, Calidad, Recauchutado, Costos, Flota, Alertas (tras F8 PR 2), Inicio con buscador | Ola 2 | Idem | 5 a 8 |
-| 4 escritura del operario | Vehículos y detalle (551 líneas, en 2 a 3 PR), cambio, montar, ciclo de vida, Stock, Sucursales | Solo tras F8 PR 4 y 6 y F10 PR 11 (C2); staging recomendado (pregunta 3) | Cada PR declara los clics de las tareas que toca y no los aumenta | 6 a 10 |
+| 4 escritura del operario | Vehículos y detalle (551 líneas, en 2 a 3 PR), cambio, montar, ciclo de vida, Stock, Sucursales | Solo tras F8 PR 4 y 6 y F10 PR 11 (C2); revisar el disparador de staging de 5.4 | Cada PR declara los clics de las tareas que toca y no los aumenta | 6 a 10 |
 | 5 cierre | Shell nuevo en `/panel` con rutas por URL; `/adminpanel` redirige; el panel viejo queda N semanas de reversa y luego se borra junto con el harness smoke, `check-modules` y el CDN de la CSP | Olas 1 a 4 | Un solo sistema | 2 a 3 |
 
 **Piloto.** La pantalla «Uso» depende de la migración B. Si B se atrasa, la alternativa es «Dispositivos de la empresa» en solo lectura (F10 PR 4). Un inventario previo propuso `alertas` como piloto por ser pequeña y de solo lectura; se descarta como primera opción porque F8 PR 2 la toca (`alertas.js` hospeda hoy la edición de `alerta_configurar`, ver [18](18-rotacion-vehiculos-pesados.md) §9.1) y regiría la regla de conflicto de 7.2.
@@ -246,7 +246,7 @@ La decisión final del stack **sale de esta prueba**, sobre una tarea frecuente 
 
 - **Archivos ajenos** (solo un PR de plataforma aparte): `src/compartido/**`, `package.json` y su lock, `vercel.json`, `eslint.config.js`, `vite.config.*`, `.github/workflows/ci.yml`.
 - **Conflictos seguros** (se esperan y se resuelven al fusionar): `islas.js`, `main.js`, `adminpanel/index.html`, `docs/10`, la lista `ALL` de `tests/visual/run.sh` y `harness.html`.
-- Nunca dos ramas sobre la misma pantalla; revisor distinto del autor; máximo tres autores a la vez (CLAUDE.md).
+- Reparto de lugares: hasta 2 autores en migración y al menos 1 en F8 y F10 (nunca F8 sin lugar); nunca dos ramas sobre la misma pantalla; revisor distinto del autor; máximo tres autores a la vez (CLAUDE.md).
 
 ### 7.4 Estimación
 
@@ -269,12 +269,12 @@ Lo que más la mueve: el tamaño de `vehiculo-detalle.js` y `mediciones-*`, el f
 | Desfase de caché entre el panel viejo y la isla | `API_ISLAS` versionado; la isla pide recargar |
 | Dos clientes GoTrue | El `ctx.db` es el cliente del panel viejo; chequeo 1 de la prueba de concepto |
 | CSP rota solo en Vercel | El e2e envía las cabeceras; chequeo 2 en un preview; `verificar-dist` |
-| Previews contra producción | Protegidos, solo lectura; staging antes de la ola 4 |
+| Previews contra producción | Riesgo aceptado mientras no haya datos reales; previews protegidos; reevaluar staging si entran clientes reales |
 | Regresión de clics del operario | Cada PR declara clics y se audita con `neumet-ux`; el principio de [14](14-guia-de-textos.md) §5 rige |
-| La migración quita capacidad a F8 | Regla de encaje 7.2; pregunta 1 |
+| La migración quita capacidad a F8 | Regla de encaje 7.2 y regla de reparto (F8 siempre con al menos un autor) |
 | Dos sistemas conviviendo meses | Regla escrita de cuál usar, banderas por rol y ola 5 con fecha de retiro |
 | Un build fallido en Vercel | Nunca se promueve; Instant Rollback |
-| Compatibilidad de Tailwind 4 con los móviles del operario | Pregunta 4, antes de fijar `build.target` |
+| Compatibilidad de Tailwind 4 con móviles antiguos | Aceptado por ahora (móvil secundario); se revisa si el móvil sube de prioridad |
 
 ## 9. Qué NO incluye este plan
 
@@ -284,22 +284,28 @@ Lo que más la mueve: el tamaño de `vehiculo-detalle.js` y `mediciones-*`, el f
 - Service worker y PWA (se evalúan después de la ola 5; `vite-plugin-pwa` queda como opción).
 - La regla 9 de [14](14-guia-de-textos.md): propuesta de un PR posterior.
 
-## 10. Preguntas abiertas para el dueño
+## 10. Decisiones del dueño y preguntas abiertas
 
-Cada una trae la recomendación del autor. Las marcadas **bloquea** impiden arrancar la fase o la ola indicada; las otras tienen un valor por defecto razonable.
+### 10.1 Resueltas (2026-11-15)
 
-| N.º | Pregunta | Recomendación | Tipo |
-|---|---|---|---|
-| 1 | ¿Se dedican uno o dos de los tres lugares de autor a esta migración, aun si demora F8? | Un lugar a partir de la ola 0 y solo cuando F10 PR 3 esté fusionado; F8 conserva los otros dos | **Bloquea** el arranque de la ola 0 |
-| 2 | ¿Se lanza primero como piloto interno (solo equipo Neumet)? | Sí: ola 1 solo para `admin` | Default razonable |
-| 3 | ¿Se crea un proyecto Supabase de staging antes de la ola 4? | Sí: los previews de Vercel hoy escriben en producción | **Bloquea** la ola 4 |
-| 4 | ¿Qué dispositivos y navegadores usan los operarios? | Relevar el parque real (versiones de Chrome y Safari) | **Bloquea** fijar `build.target` y Tailwind 4 (PR 1) |
-| 5 | ¿Se quieren enlaces por URL compartibles (por ejemplo a un vehículo)? | Sí, desde la ola 5; antes no hay rutas por URL | Default razonable |
-| 6 | ¿Se avisa a los clientes antes de cambiar pantallas de escritura? | Sí, un aviso breve antes de cada pantalla de la ola 4 | Default razonable |
-| 7 | ¿El plan de Vercel incluye protección de previews (Deployment Protection)? | Confirmar; si no, los previews no se usan con sesión real | Default razonable [confirmar] |
+| Tema | Decisión |
+|---|---|
+| Lugares de autor frente a F8 | Se dedican a la migración los que haga falta, incluso demorando F8; regla: hasta 2 en migración y al menos 1 en F8 y F10 |
+| Piloto interno | Ola 1 solo para el equipo Neumet (recomendación del autor, sin objeción) |
+| Staging de Supabase | No hace falta: no hay datos reales. Se reevalúa si entran (5.4) |
+| Dispositivos y navegadores del operario | Ya no bloquea: el móvil es secundario; valores modernos por defecto |
+| Stack | La prueba de concepto (sección 6) sigue decidiendo entre Svelte y React |
+
+### 10.2 Abiertas (todas con valor por defecto razonable; ninguna bloquea)
+
+| N.º | Pregunta | Recomendación |
+|---|---|---|
+| 1 | ¿Se quieren enlaces por URL compartibles (por ejemplo a un vehículo)? | Sí, desde la ola 5; antes no hay rutas por URL |
+| 2 | ¿Se avisa a los clientes antes de cambiar pantallas de escritura? | Sí, un aviso breve antes de cada pantalla de la ola 4 |
+| 3 | ¿El plan de Vercel incluye protección de previews (Deployment Protection)? | Confirmar; si no, los previews no se usan con sesión real **[confirmar]** |
 
 ## 11. Fuentes y límites de la verificación
 
 - Repositorio: archivos citados en cada sección, sobre `main` al 2026-11-15.
 - Versiones y puntajes de la sección 4: síntesis de una investigación por agentes; no se volvió a consultar el registro de npm al redactar este documento.
-- **No verificado:** capturas en móvil (todo lo visual es hipótesis), peso en KB y Lighthouse de cualquier stack, comportamiento de refresco de supabase-js con sesión precargada, compatibilidad de Tailwind 4 con los dispositivos reales, CSP de un build Vite en Vercel, el conteo de seis implementaciones de botón y los objetivos táctiles de `sub-tab` y `quick-amount`.
+- **No verificado:** capturas en móvil (todo lo visual es hipótesis), peso en KB y Lighthouse de cualquier stack, comportamiento de refresco de supabase-js con sesión precargada, CSP de un build Vite en Vercel, el conteo de seis implementaciones de botón y los objetivos táctiles de `sub-tab` y `quick-amount`.
