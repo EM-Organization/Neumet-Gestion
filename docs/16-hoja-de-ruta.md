@@ -45,6 +45,7 @@ Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sug
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; investigación y propuesta de reglas en [18](18-rotacion-vehiculos-pesados.md) (PR 74); pendiente de implementar (F8) |
 | Separar admin del equipo Neumet y admin de empresa | Planificado (F10; plan en [17](17-plan-roles-admin.md), sin implementar) |
+| Migración gradual del panel a un framework con build (y sistema de diseño) | Planificado (F11; plan en [19](19-migracion-framework.md), sin implementar; sin prioridad asignada, no altera el orden de F8 ni de F10) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
@@ -113,6 +114,12 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Objetivo del admin del equipo Neumet: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
 - Es un cambio del modelo de roles: requiere un plan previo que cubra roles, RLS, vistas, interfaz, migración de los usuarios existentes y el riesgo de quedar sin acceso (lockout).
 - Plan: [17 · Plan de roles](17-plan-roles-admin.md), estado **planificado** (sin migraciones ni código todavía).
+
+### F11 · Migración gradual del panel a un framework con build
+- Estado: **planificado**, ver el plan en [19](19-migracion-framework.md) (F11 es el siguiente número libre; no indica prioridad).
+- Contexto: el objetivo es un front mantenible, consistente y bien diseñado (componentes y sistema de diseño); lo móvil es una mejora secundaria. El sistema de diseño no depende del framework; el framework ayuda a sostenerlo con componentes reutilizables.
+- Propuesta: migración gradual por «islas» dentro del panel actual, detrás de banderas por rol, con Svelte 5 y Vite como recomendación (plan B: React 19 y Vite), a confirmar con una prueba de concepto. Estimación: 19 a 31 PR.
+- No cambia el orden de F8 ni de F10, pero sí quién construye la pantalla «Uso» (F10 PR 7): la entrega la pista de migración ([19](19-migracion-framework.md) §7.2.1), y F10 queda con la RPC y los datos. Una pantalla que toca un PR de F8 o F10 en curso se queda en el panel viejo. Ningún PR de migración de pantallas lleva migración SQL. Decisiones del dueño del 2026-11-15 en la sección 10 de [19](19-migracion-framework.md): objetivo = front mantenible y consistente (móvil secundario), sin staging mientras no haya datos reales, y un autor para F8 y F10 en serie más hasta 2 en migración.
 
 ## Fuera de alcance por ahora
 

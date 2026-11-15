@@ -16,6 +16,7 @@ Punto de partida: el [README](../README.md) de la raíz (qué es NEUMET, arquite
 | [16 · Hoja de ruta de producto](16-hoja-de-ruta.md) | Fases propuestas sin machine learning (stock individual, km por cubierta, calidad de datos, costo por km, recauchutado, alertas); decisiones del 2026-11-13: F8 (sugerencia de rotación) como siguiente fase y F10 (admin del equipo Neumet y admin de empresa) |
 | [17 · Plan de roles: equipo Neumet y administrador de empresa](17-plan-roles-admin.md) | Plan (estado: planificado) para separar el perfil `admin` interno de Neumet del administrador de cada empresa: modelo, cambios por capa, uso por cliente, riesgos, orden de PR y decisiones |
 | [18 · Rotación y reposición para vehículos pesados](18-rotacion-vehiculos-pesados.md) | Investigación y propuesta de diseño (F8): reglas por eje y posición para camiones y buses, datos que faltan, casos de prueba, plan en PR en serie y reposición; solo propuesta, sin código |
+| [19 · Migración gradual a un framework con build](19-migracion-framework.md) | Plan (estado: planificado, F11): sistema de diseño, evaluación de stack, estrategia de islas dentro del panel actual, prueba de concepto, olas, reparto de agentes, riesgos y preguntas al dueño; sin código |
 | [03 · Despliegue Vercel + Supabase](03-despliegue-vercel-supabase.md) | Plan de despliegue y decisiones de la CSP (la sección final está al día) |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos y tipografía (assets en [`assets/brand/`](../assets/brand/README.md)) |
 
