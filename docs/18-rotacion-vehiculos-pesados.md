@@ -140,7 +140,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 - **Parámetro:** el que ya existe, `dias_sin_medir_alerta` (30 por defecto; su definición y la de los demás umbrales por cliente están en `supabase/migrations/20261106020000_producto_vistas.sql:19-23`; la vista solo los expone, `supabase/migrations/20261116000000_calidad_datos.sql:477`). No se crea un parámetro nuevo: una sola definición de «medición vencida» en todo el producto.
 - **Texto:** «Medir primero Delantera izquierda: la última medición tiene 41 días.»
 - **Fuente y confianza:** criterio de seguridad propio, coherente con el principio de dato no medido nulo ([16](16-hoja-de-ruta.md)). Confianza alta como principio; el valor de 30 días es una elección (media).
-- **Efecto:** ninguna sugerencia de rotación ni de retiro **que dependa de la profundidad** (R2 a R8 y el retiro para recauchutar de R9) se emite sobre posiciones sin dato vigente; la salida es «Medir primero». Varias posiciones sin medir se agrupan en una sola tarjeta.
+- **Efecto:** ninguna sugerencia de rotación ni de retiro **que dependa de la profundidad** (R2 a R8 y el retiro para recauchutar de R9) se emite sobre posiciones sin dato vigente; la salida es «Medir primero». Varias posiciones sin medir se agrupan por eje 1 y resto (R11).
 - **Excepción: el retiro por norma de R9** (recauchutado o reranurado en dirección donde la norma lo prohíbe) no depende de la profundidad ni de la antigüedad de la medición, así que R0 no lo anula: se emite aunque la posición esté sin medir (`ultima_medicion_at` nula, p. ej. tras un `montaje` a mano, o `sin_medir` verdadero). En esa posición no se emite «Medir primero»: el neumático se cambia y medirlo no cambia la acción. La otra posición del eje 1, si está sin medir, sigue recibiendo su «Medir primero».
 
 ### R1 · Revisar la causa del desgaste irregular (aviso, no bloqueo)
@@ -151,7 +151,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
   - Bordes gastados: `mm2` mayor que ese promedio por más de `rotacion_presion_dif_mm`: subinflado o sobrecarga.
 - **Parámetro:** `rotacion_presion_dif_mm`, por defecto 2,0 mm (coherente con `irregularidad_mm`), rango 1,0 a 4,0.
 - **Texto:** «Revisar alineación del eje 1: Delantera izquierda tiene 3,1 mm de diferencia entre las huellas interna y externa.» / «Revisar presión de Eje 2 derecha interior: el centro está 2,4 mm más gastado que las huellas interna y externa.» / «Revisar presión de Eje 2 derecha interior: las huellas interna y externa están 2,6 mm más gastadas que el centro.»
-- **Efecto:** se muestra el aviso mientras la condición se cumpla, con la etiqueta «Desgaste». **No bloquea ninguna rotación.** Si R2, R4, R5 o R6 sugieren mover ese neumático, la sugerencia sale marcada «Revisar la causa antes de rotar» (la frase de [15](15-rotacion-alertas-rendimiento.md) A.3, paso 7).
+- **Efecto:** es un **aviso** (no una tarjeta; clasificación de R11): se muestra mientras la condición se cumpla, con la etiqueta «Desgaste». **No bloquea ninguna rotación.** Si R2, R4, R5 o R6 sugieren mover ese neumático, la sugerencia sale marcada «Revisar la causa antes de rotar» (la frase de [15](15-rotacion-alertas-rendimiento.md) A.3, paso 7).
 - **Por qué no bloquea (cambio respecto de la versión anterior de este documento):** un bloqueo «hasta una medición nueva posterior a la corrección» no tiene salida: corregir la alineación o la presión no devuelve la banda gastada, así que la medición siguiente repite la asimetría y el bloqueo volvería a activarse para siempre. Las fuentes dicen lo contrario de esperar: Goodyear Reino Unido (fuente 7): «Once the wear differential is about 3mm, you need to turn the tyre» y «Once irregular wear sets in – even if whatever causes that wear has been corrected – the wear will continue, if the difference is more than 3-4mm» (la continuidad vale cuando la diferencia supera 3 a 4 mm); Michelin Reino Unido (fuente 1): en ciertos casos hay que combinar la rotación de posición con girar el neumático en la llanta. Por eso R1 avisa y deja decidir. Girar el neumático en la llanta no existe como operación del sistema y queda fuera de F8.
 - **Registro de la corrección:** no hace falta para F8. Si más adelante se quisiera medir si una corrección frenó el desgaste, haría falta un evento de corrección; el tipo `inspeccion` ya lo admite el `check` de `eventos_neumatico`, pero ninguna RPC lo escribe (sección 2); crearla sería un PR aparte, fuera de este plan.
 - **Fuente y confianza:** alta como principio. Michelin (fuentes 1 y 5), Continental y Goodyear vía Transport Engineer (fuente 7) y heavyvehicleinspection (fuente 6) coinciden en que la rotación no corrige la causa. Los patrones (centro, bordes, un solo lado) coinciden entre Michelin y heavyvehicleinspection. El umbral numérico es propio (media).
@@ -159,7 +159,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 
 ### R2 · Direccionales: rotar de lado
 
-- **Condición:** eje 1 (dirección), ambas posiciones medidas (R0), misma `marca`, `modelo` y `vida` (y `medida`, cuando exista; si no, «Neumáticos distintos» y no se sugiere), y diferencia de `promedio` entre izquierda y derecha mayor o igual a `rotacion_direccion_dif_mm`.
+- **Condición:** eje 1 (dirección), ambas posiciones medidas (R0), misma `marca`, `modelo` y `vida` (y `medida`, cuando exista; si no, aviso «Neumáticos distintos», etiqueta «Datos», y no se sugiere), y diferencia de `promedio` entre izquierda y derecha mayor o igual a `rotacion_direccion_dif_mm`.
 - **Parámetro:** `rotacion_direccion_dif_mm`, por defecto 3,0 mm, rango 2,0 a 5,0.
 - **Texto:** «Rotar Delantera izquierda con Delantera derecha: 3,4 mm de diferencia entre lados (umbral 3,0 mm).»
 - **Fuente y confianza:** Goodyear (fuente 7) indica girar a unos 3 mm de diferencia, y de ahí sale el valor por defecto de 3,0 mm. Michelin Reino Unido (fuente 1) es más estricto: considera la rotación desde «3/32 or more» de diferencia, es decir 2,4 mm, y su página es general, no específica de dirección; el rango mínimo de 2,0 mm permite configurar un cliente al criterio de Michelin. Overdrive resume disparadores de 3/32 a 5/32 (fuente 12, no abierta). Confianza media: hay consenso en el orden de magnitud y variación de un par de milímetros. La rotación de dirección de lado a lado es práctica común, no reglamento.
@@ -181,7 +181,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 - **Texto:** «Emparejar duales del eje 3 izquierdo: 4,2 mm de diferencia. Cambiar el neumático más gastado por uno de profundidad cercana a la de su compañero.»
 - **Acción sugerida:** primero buscar, en el mismo eje, un intercambio con otro neumático que deje ambos pares dentro de tolerancia; si no existe, sugerir un cambio con una cubierta del stock apta y de profundidad cercana a la de la compañera. Rotar interior con exterior no cierra la diferencia de diámetro, solo equilibra el desgaste a largo plazo. No se ofrece mover un neumático con daño (R2, «Qué no hace»).
 - **Fuente y confianza:** FleetOwner/TIA (fuente 8): hasta 4/32 de pulgada de profundidad; cada 1/32 más allá reduce la vida de ambas. Transport Engineer (fuente 7): guía de la federación británica hasta 4 mm; Goodyear Reino Unido no más de 2 a 3 mm. School Bus Fleet (fuente 9) usa límites de diámetro (0,5 pulgadas) y circunferencia (0,75 pulgadas) que en profundidad no se traducen de forma directa. Confianza media: el rango entre fuentes (2 a 4 mm) es el rango del parámetro.
-- **Condiciones adicionales:** si ambos neumáticos tienen `medida` y son distintas, la regla da prioridad a «Revisar medida del par»; si la medida es nula se omite la comprobación y el texto avisa «medida sin registrar». Si `marca`, `modelo` o `vida` difieren, la equivalencia de 4/32 de pulgada con 1/4 de diámetro no vale (FleetOwner, fuente 8): se emite «Neumáticos distintos en el par: medir el diámetro» en lugar de la regla por profundidad.
+- **Condiciones adicionales:** si ambos neumáticos tienen `medida` y son distintas, la regla da prioridad a «Revisar medida del par»; si la medida es nula se omite la comprobación y el texto avisa «medida sin registrar». Si `marca`, `modelo` o `vida` difieren, la equivalencia de 4/32 de pulgada con 1/4 de diámetro no vale (FleetOwner, fuente 8): se emite el aviso «Neumáticos distintos en el par: medir el diámetro» (etiqueta «Datos») en lugar de la sugerencia por profundidad. «Revisar medida del par» también es un aviso «Datos».
 
 ### R5 · Tracción: rotar entre ejes y lados
 
@@ -234,13 +234,31 @@ Como Toyo opina (resumen de búsqueda, fuente 13) que fuera de casos específico
 ### R10 · Intervalo por kilómetros o tiempo
 
 - **Hallazgo:** no hay consenso. Michelin rota a media vida según la tasa de desgaste y no da intervalo en kilómetros (fuente 1); Goodyear menciona unas 125.000 millas para el tándem, cifra poco fiable; los intervalos comerciales van de 8.000 a 10.000 km (blog, fuente 15) y de 30.000 a 75.000 millas (resúmenes de búsqueda).
-- **Recomendación:** no usar los kilómetros como disparador. El disparador es la diferencia de desgaste (R2, R5, R6). Como recordatorio secundario, `rotacion_recordatorio_dias` (nulo por defecto, rango 30 a 365): si hay neumáticos sin rotar ni medir por más de ese plazo, avisar «Revisar rotación del vehículo: 120 días sin rotar». Los kilómetros solo se usarían con `km_confiable` verdadero.
+- **Recomendación:** no usar los kilómetros como disparador. El disparador es la diferencia de desgaste (R2, R5, R6). Como recordatorio secundario, `rotacion_recordatorio_dias` (nulo por defecto, rango 30 a 365): si hay neumáticos sin rotar ni medir por más de ese plazo, emitir el aviso (etiqueta «Desgaste», sin tarjeta) «Revisar rotación del vehículo: 120 días sin rotar». Los kilómetros solo se usarían con `km_confiable` verdadero.
 - **Buses de pasajeros:** el disparador es el mismo; sube la frecuencia de medición: School Bus Fleet (fuente 9) describe revisión diaria de neumáticos y presión semanal, profundidad mensual. El parámetro `dias_sin_medir_alerta` ya cubre la frecuencia de medición.
 - **Confianza:** alta en que no hay consenso; baja en cualquier cifra.
 
-### R11 · Alineación entre reglas
+### R11 · Clasificación y alineación entre reglas
 
-Orden de evaluación: R0 (precondición); luego retiro y seguridad (R3, R9, R7); luego R8 (suprime rotaciones), R1 (aviso y marca) y las rotaciones R2, R4, R5, R6. Una **sugerencia de retiro** es cualquiera de tipo `retiro`: R3, R7 y la prohibición de recauchutado o reranurado en dirección de un bus (R9); los demás avisos de R9 (reparado, política de camión) y R1 no lo son. Si un neumático recibe una sugerencia de retiro, no se le ofrece rotación en el mismo ciclo, y tampoco se rota su par de eje: un bus con P1 y P2 recauchutados emite solo dos «Cambiar neumático». Máximo 3 tarjetas por vehículo en pantalla, ordenadas por prioridad: «Seguridad» (retiro de dirección y avisos de dirección), «Desgaste», «Medir».
+**Clasificación única.** El dominio produce dos clases de salida, y las secciones 6, 7 y 8 y las reglas R0 a R10 usan esta tabla y no otra:
+
+- **Sugerencia** (se muestra como **tarjeta**, tiene acción y `tipo`): suprime otras sugerencias según este apartado y cuenta para el tope de tarjetas.
+- **Aviso** (se muestra en una lista aparte, bajo las tarjetas, sin acción): no suprime nada, no cuenta para el tope y no se limita. Lleva una etiqueta: «Seguridad», «Desgaste» o «Datos».
+
+| Salida | Clase | `tipo` o etiqueta |
+|---|---|---|
+| R0 «Medir primero» | Sugerencia | `medir` |
+| R3 retiro; R7; R9 retiro por norma (recauchutado o reranurado en dirección donde la norma lo prohíbe); R9 retiro para recauchutar | Sugerencia | `retiro`; etiqueta de la tarjeta «Seguridad» en el eje 1 y en los retiros por norma, «Desgaste» en las demás posiciones |
+| R2 rotar de lado; R4 emparejar duales; R5; R6 | Sugerencia | `rotacion`; etiqueta «Desgaste» |
+| R1 «Revisar la causa» (alineación o presión) | Aviso | «Desgaste» |
+| R10 «Revisar rotación del vehículo» (recordatorio) | Aviso | «Desgaste» |
+| R9 reparado en dirección; R9 recauchutado en dirección de un camión por política de la empresa | Aviso | «Seguridad» |
+| R9 «Reranurado sin registrar» en dirección; «Neumáticos distintos» (R2) y «Neumáticos distintos en el par: medir el diámetro» (R4); «Revisar medida del par»; «medida sin registrar»; «Posición sin neumático registrado»; «Eje sin soporte de rotación» | Aviso | «Datos» |
+| «Medición con observaciones» | Marca sobre la sugerencia que usa esa medición; no es una salida aparte | |
+
+**Supresión.** Orden de evaluación: R0 (precondición); luego retiro y seguridad (R3, R9, R7); luego R8 (suprime rotaciones), R1 (aviso) y las rotaciones R2, R4, R5, R6. Una **sugerencia de retiro** es cualquiera de tipo `retiro`: R3, R7, el retiro por norma de R9 (recauchutado o reranurado en dirección de un bus; reranurado en dirección de un camión) y el retiro para recauchutar de R9. Los avisos de R9 (reparado, política de camión, reranurado sin registrar) y R1 no lo son. Si un neumático recibe una sugerencia de retiro, no se le ofrece rotación en el mismo ciclo, y tampoco se rota su par de eje: un bus con P1 y P2 recauchutados emite solo dos «Cambiar neumático».
+
+**Tope y orden de las tarjetas.** Máximo 3 tarjetas por vehículo en pantalla, en este orden (desempate dentro de cada grupo: menor huella más baja, o mayor diferencia en las rotaciones, y luego número de posición): 1) retiros con etiqueta «Seguridad»; 2) «Medir primero» del eje 1; 3) los demás retiros; 4) rotaciones; 5) «Medir primero» del resto de las posiciones. «Medir primero» se agrupa en dos tarjetas como máximo: una para el eje 1 y otra para el resto. La de dirección ocupa el segundo lugar porque los retiros de dirección dependen de medir: como el eje 1 tiene dos posiciones, los retiros «Seguridad» y el «Medir primero» del eje 1 suman a lo más dos tarjetas (una posición sin medir no tiene retiro «Seguridad» por profundidad, y la prohibición por norma no pide medir), así que **«Medir primero» del eje 1 nunca queda fuera por el tope**. Lo que no cabe se cuenta en una línea sin acción («1 sugerencia más»), para que ninguna quede oculta sin aviso.
 
 ## 5. Reposición
 
@@ -273,9 +291,9 @@ Alcance: sugerir cuántas cubiertas comprar por medida y rol de eje. Es una suge
 | Eje sin rol configurado | Se emiten R0, R1, R2 y R3 (eje 1 siempre dirección), R4 (duales), R9 (eje 1) y R3 general; no se emiten R5 ni R6 |
 | Eje 1 con rol distinto de dirección en los datos | El dominio lo trata igual como dirección (R3 con `direccion_retiro_mm`, cubierta apta para dirección, R9); la base lo rechaza con un `check` (sección 3) |
 | Vehículo sin servicio (bus o camión) registrado | Se trata como bus: la sugerencia de retiro por recauchutado en dirección se emite (R9) y ningún recauchutado es apto para dirección |
-| Eje 1 con medidas distintas a izquierda y derecha | «Revisar medida del par»; no se sugiere rotar |
+| Eje 1 con medidas distintas a izquierda y derecha | Aviso «Revisar medida del par» (Datos); no se sugiere rotar |
 | Una sola posición medida del par | No se sugiere nada; R0 pide medir la otra |
-| Datos de ejes extra (17 a 98) | No se sugiere rotación; se muestra aviso «Eje sin soporte de rotación» hasta que el montaje los admita |
+| Datos de ejes extra (17 a 98) | No se sugiere rotación; se muestra el aviso «Eje sin soporte de rotación» (Datos) hasta que el montaje los admita |
 | Neumático con corte, telas expuestas, separación o fuga (393.75(a)) | No se mide ni se puede registrar hoy (sección 2). La sugerencia no reemplaza la inspección visual; toda tarjeta lo dice. R2 y R4 no pueden excluir un neumático dañado porque no existe el dato |
 | Neumático reranurado | No se detecta hasta que exista `reranurado` (sección 3); aviso de límite declarado |
 | Dos rotaciones simultáneas | La base serializa por posición; la vista recarga tras registrar |
@@ -299,11 +317,11 @@ Pautas:
 - **Sin confirmación cuando el destino está ocupado:** hoy se confirma el intercambio; en la tarjeta se quita porque la acción es reversible (rotar de nuevo restaura las posiciones) y [14](14-guia-de-textos.md) sección 5, regla 5, reserva la confirmación para lo destructivo o irreversible.
 - **«Ignorar hasta la próxima medición» necesita persistencia compartida**: si solo vive en el navegador, otro usuario o dispositivo vería la sugerencia de nuevo. Requiere la tabla de la sección 3 y una RPC; entra en el PR 5 (con migración). La primera versión de la tarjeta (PR 4) no ofrece «Ignorar». Pregunta 10: si debe pedir un motivo.
 - Quién puede pulsar «Registrar rotación» queda ligado a quién puede rotar hoy (`neumatico_autorizar_vehiculo`): administrador de empresa y usuario de sucursal para su sucursal; el equipo Neumet solo mira (docs/17 (PR 72, aún sin fusionar) P1, ver sección 9.1). Pregunta 7.
-- No se usa color como único indicador: cada tarjeta lleva un texto de prioridad («Seguridad», «Desgaste», «Medir»). Los textos usan el vocabulario de [14](14-guia-de-textos.md): «Rotar», «Cambiar neumático», «recauchutado», «posición vacía», «Sin dato», «Medición con observaciones».
+- No se usa color como único indicador: cada tarjeta lleva un texto de prioridad («Seguridad», «Desgaste», «Medir») y cada aviso una etiqueta («Seguridad», «Desgaste», «Datos»), según la clasificación única de R11. Los textos usan el vocabulario de [14](14-guia-de-textos.md): «Rotar», «Cambiar neumático», «recauchutado», «posición vacía», «Sin dato», «Medición con observaciones».
 
 ## 8. Criterio de prueba
 
-La función pura (propuesta: `recomendarRotacion(vehiculo, filas, opciones)` en `assets/js/domain/rotacion.js`, sin DOM ni supabase) devuelve una lista de sugerencias `{regla, tipo, posiciones, texto}` (con `tipo` `retiro`, `rotacion` o `medir`; son las tarjetas y las que cuentan para R11) y una lista aparte de avisos (R1, reparado, política de camión, límites declarados), que no suprimen nada. Una segunda función pura, `esAptaDireccion(cubierta, vehiculo, opciones)`, implementa la definición de la sección 4. Cada fila de la tabla siguiente se convierte en un test unitario en `tests/unit/rotacion.test.mjs`. Los valores usan los parámetros por defecto y neumáticos con igual `marca`, `modelo`, `vida` y `medida` nula salvo que la entrada diga otra cosa. Las posiciones: P1 Delantera izquierda, P2 Delantera derecha, P3 a P6 del eje 2, P7 y P8 eje 3 izquierdo, P9 y P10 eje 3 derecho. «Uniforme» significa las tres huellas iguales. Los casos T01 a T34 son los de la primera versión, ajustados; T35 a T63 son nuevos. T02, T08, T10, T27 y T44 cambiaron en la ronda 2 (T02 con otros valores: con P2 en 6,5 mm a 1,5 mm del retiro R8 suprime la rotación, como pide T53).
+La función pura (propuesta: `recomendarRotacion(vehiculo, filas, opciones)` en `assets/js/domain/rotacion.js`, sin DOM ni supabase) devuelve una lista de sugerencias `{regla, tipo, posiciones, texto}` (con `tipo` `retiro`, `rotacion` o `medir`; son las tarjetas y las que cuentan para R11) y una lista aparte de avisos `{regla, etiqueta, posiciones, texto}`, ambas según la clasificación única de R11 (los avisos no suprimen nada ni cuentan para el tope de tarjetas). Una segunda función pura, `esAptaDireccion(cubierta, vehiculo, opciones)`, implementa la definición de la sección 4. Cada fila de la tabla siguiente se convierte en un test unitario en `tests/unit/rotacion.test.mjs`. Los valores usan los parámetros por defecto y neumáticos con igual `marca`, `modelo`, `vida` y `medida` nula salvo que la entrada diga otra cosa. Las posiciones: P1 Delantera izquierda, P2 Delantera derecha, P3 a P6 del eje 2, P7 y P8 eje 3 izquierdo, P9 y P10 eje 3 derecho. «Uniforme» significa las tres huellas iguales. Los casos T01 a T34 son los de la primera versión, ajustados; T35 a T63 son nuevos. T02, T08, T10, T27 y T44 cambiaron en la ronda 2 (T02 con otros valores: con P2 en 6,5 mm a 1,5 mm del retiro R8 suprime la rotación, como pide T53).
 
 | ID | Regla | Entrada | Resultado esperado |
 |---|---|---|---|
@@ -322,7 +340,7 @@ La función pura (propuesta: `recomendarRotacion(vehiculo, filas, opciones)` en 
 | T13 | R3 | P2 uniforme con 4,6 mm y P1 uniforme con 10 mm | Solo retiro de Delantera derecha, sin rotación entre P1 y P2 |
 | T14 | R4 | P7 = 10 mm, P8 = 7,0 mm (uniformes) | «Emparejar duales del eje 3 izquierdo» (diferencia de 3,0 mm: sugiere, como R2) |
 | T15 | R4 | P7 = 10 mm, P8 = 7,1 mm (uniformes) | Sin sugerencia (2,9 mm) |
-| T16 | R4 | P7 y P8 con medidas distintas registradas | «Revisar medida del par» |
+| T16 | R4 | P7 y P8 con medidas distintas registradas | Aviso «Revisar medida del par» (Datos); sin sugerencia |
 | T17 | R4 | P7 y P8 con medida nula, 10 y 5,8 mm (4,2 mm) | Se evalúa por profundidad y el texto indica «medida sin registrar» |
 | T18 | R5 | Eje 2 con promedio 10 y eje 3 con promedio 6,4, con rol de eje configurado | «Rotar el eje 2 con el eje 3» (diferencia de 3,6 mm) |
 | T19 | R5 | Mismo caso sin rol de eje configurado | Sin sugerencia R5 |
@@ -335,12 +353,12 @@ La función pura (propuesta: `recomendarRotacion(vehiculo, filas, opciones)` en 
 | T26 | R3 y R9 | P5 `vida` 3 (carcasa agotada), uniforme con 4,8 mm, cliente que recauchuta | Sin sugerencia: 4,8 mm es mayor que el retiro general de 3,0 mm y la carcasa no admite otra vida |
 | T27 | R9 | P1 recauchutado (`vida` 1), uniforme con 10,0 mm y medición vigente, en el eje 1 de un vehículo con servicio `bus` | Sugerencia de retiro (`tipo` `retiro`) «Cambiar neumático en Delantera izquierda: recauchutado en dirección, no admitido en buses.», etiqueta «Seguridad» |
 | T28 | R10 | Cliente sin `rotacion_recordatorio_dias` | Sin recordatorio |
-| T29 | R10 | Recordatorio de 120 días, 121 días sin rotar | «Revisar rotación del vehículo: 121 días sin rotar» |
+| T29 | R10 | Recordatorio de 120 días, 121 días sin rotar | Aviso (sin tarjeta) «Revisar rotación del vehículo: 121 días sin rotar» |
 | T30 | Reposición | 5 neumáticos llegan al retiro de su posición en el plazo, 2 cubiertas aptas en stock, seguridad 1 | Necesidad neta = 4 (5 + 1 − 2) |
 | T31 | Reposición | 1 llega al retiro, 4 aptas en stock, seguridad 1 (1 + 1 − 4 = −2) | Cero; nunca se sugiere devolver |
 | T32 | Reposición | Cubiertas aptas en proceso de recauchutado | No se cuentan como disponibles |
 | T33 | Regresión de datos | Mm nulos | Nulo, nunca cero: sin dato, sin sugerencia |
-| T34 | Límite de pantalla | Cuatro sugerencias válidas en un vehículo | Se muestran 3, con el retiro de dirección primero |
+| T34 | Límite de pantalla y R11 | Camión con todos los neumáticos `nuevo`, con `reranurado` falso y con cubiertas aptas en stock: P2 uniforme con 4,6 mm (retiro de dirección) y medición vigente; P1 con la última medición hace 31 días; P5 uniforme con 2,9 mm; P7 uniforme con 10,0 mm y P8 uniforme con 6,5 mm (diferencia de 3,5 mm); las demás posiciones vacías. Cuatro sugerencias válidas y ningún aviso | Se muestran 3 tarjetas en este orden: 1) «Cambiar neumático en Delantera derecha» (retiro «Seguridad»), 2) «Medir primero Delantera izquierda» (el de dirección va antes que los demás retiros), 3) «Cambiar neumático en Eje 2 derecha interior» (retiro «Desgaste»); la rotación de P7 y P8 no cabe y sale como «1 sugerencia más»; «Medir primero» de dirección no queda fuera |
 | T35 | R3 | `direccion_retiro_mm` = 3,2; P1 con `mm1` = 2,8, `mm2` = 3,6, `mm3` = 3,5 (promedio 3,30) | «Cambiar neumático en Delantera izquierda»: la huella más baja (2,8) es menor o igual a 3,2 aunque el promedio no lo sea; con el promedio no habría retiro |
 | T36 | R3 | Valor por defecto 5,0; P2 con `mm1` = 4,0, `mm2` = 6,0, `mm3` = 5,5 (promedio 5,17) | «Cambiar neumático en Delantera derecha» (4,0 es menor o igual a 5,0); con el promedio no habría retiro |
 | T37 | R3 | P2 con `mm1` = 5,1, `mm2` = 5,6, `mm3` = 5,3 | Sin retiro (la huella más baja, 5,1, supera 5,0) |
