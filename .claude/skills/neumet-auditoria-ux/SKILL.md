@@ -10,7 +10,7 @@ Principio: `docs/14` sección 5 «Simplicidad para el operario» (8 reglas verif
 
 ## 1. Preparar el entorno (nunca producción)
 1. Servidor local con datos simulados, un rol por vez:
-   `tests/visual/navegar.sh global` (también `admin`, `sucursal`, `sinperfil`; sin argumento lista las 4 URL). Escucha solo en `127.0.0.1` (puerto 8793; `PORT=` para cambiarlo), responde 404 a rutas sensibles y sale con error si el puerto está ocupado. Corre en segundo plano (`run_in_background`). **Al terminar, detenerlo**: `TaskStop` sobre esa tarea o `kill -TERM <pid>`; Ctrl+C no sirve si se lanzó con `&`.
+   `tests/visual/navegar.sh global` (también `admin`, `sucursal`, `sinperfil`; sin argumento lista las 4 URL). Escucha solo en `127.0.0.1` (puerto 8793; `PORT=` para cambiarlo), responde 404 a rutas sensibles y sale con error si el puerto está ocupado. Corre en segundo plano (`run_in_background`). **Al terminar, detenerlo**: `kill -TERM <pid>`, con el pid de `lsof -tiTCP:<puerto> -sTCP:LISTEN` (el agente no tiene `TaskStop`); Ctrl+C no sirve si se lanzó con `&`.
    Roles: `admin` = Neumet interno; `global` = administrador de empresa (ve Sucursales y selector); `sucursal` = perfil de una sucursal (sin selector); `sinperfil` = solo «Sin acceso».
 2. Abrir la URL impresa en el navegador. El arnés muestra el panel en un iframe del mismo origen: los clics y formularios funcionan, los datos son del stub (`tests/smoke/stub.js`, fixtures) y se reinician al recargar. El arnés congela `Date` en 2026-06-15: no reportar las fechas como error. Con `VW=390 VH=844` se obtiene el ancho móvil.
 3. **Elegir cómo navegar**, en este orden:
