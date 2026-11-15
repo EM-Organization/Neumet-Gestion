@@ -9,10 +9,14 @@ PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print
 # REFERENCIAS/, para que la prueba de mayúsculas ejercite un archivo existente y no solo un 404 por ausencia.
 ARCH="probar-navegar-$(python3 -c 'import secrets;print(secrets.token_hex(4))').txt"
 ARCH_MAY=$(echo "$ARCH" | tr a-z A-Z)
+SUF=$(python3 -c 'import secrets;print(secrets.token_hex(4))')
+ENL_ETC="tests/visual/enlace_etc_$SUF"; ENL_REF="tests/visual/enlace_ref_$SUF"
+# En un worktree .git es un archivo y /.git/config daría 404 por ausencia: este archivo oculto propio ejercita el bloqueo de segmentos con «.».
+OCULTO=".probar-$SUF.txt"
 PID=""; CREO_REF=0; CREO_MAY=0
 limpiar() {
   if [ -n "$PID" ]; then kill -TERM "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; fi
-  rm -f tests/visual/enlace_etc_tmp tests/visual/enlace_ref_tmp "referencias/$ARCH" "REFERENCIAS/$ARCH"
+  rm -f "$ENL_ETC" "$ENL_REF" "$OCULTO" "referencias/$ARCH" "REFERENCIAS/$ARCH"
   if [ "$CREO_REF" = 1 ]; then rmdir referencias 2>/dev/null; fi
   if [ "$CREO_MAY" = 1 ]; then rmdir REFERENCIAS 2>/dev/null; fi
   return 0
@@ -24,9 +28,9 @@ echo secreto > "referencias/$ARCH"
 # En macOS REFERENCIAS ya es referencias: solo se crea si es otro directorio.
 if [ ! -d REFERENCIAS ]; then CREO_MAY=1; mkdir REFERENCIAS; fi
 echo secreto > "REFERENCIAS/$ARCH"
-rm -f tests/visual/enlace_etc_tmp tests/visual/enlace_ref_tmp
-ln -s /etc tests/visual/enlace_etc_tmp
-ln -s ../../referencias tests/visual/enlace_ref_tmp
+echo secreto > "$OCULTO"
+ln -s /etc "$ENL_ETC"
+ln -s ../../referencias "$ENL_REF"
 PORT=$PORT tests/visual/navegar.sh admin >/dev/null 2>&1 &
 PID=$!
 for _ in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.1; done
@@ -40,10 +44,11 @@ chk 404 /Referencias/$ARCH
 chk 404 /REFERENCIAS/$ARCH
 chk 404 /REFERENCIAS/$ARCH_MAY
 chk 404 /%52eferencias/$ARCH
-chk 404 /tests/visual/enlace_etc_tmp/passwd
-chk 404 /tests/visual/enlace_ref_tmp/$ARCH
-chk 404 /tests/visual/enlace_ref_tmp/$ARCH_MAY
+chk 404 /tests/visual/enlace_etc_$SUF/passwd
+chk 404 /tests/visual/enlace_ref_$SUF/$ARCH
+chk 404 /tests/visual/enlace_ref_$SUF/$ARCH_MAY
 chk 404 /.git/config
+chk 404 /$OCULTO
 chk 404 /.claude/agents/neumet-ux.md
 chk 404 /adminpanel/../.git/config
 chk 400 /tests/%00
