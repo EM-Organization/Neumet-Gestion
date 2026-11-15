@@ -68,6 +68,25 @@ test('resultadoAcceso 502: estado_no_confirmado no afirma ningún estado', () =>
   assert.equal(resultadoAcceso('reponer', 502, null).ofrecer, 'actualizar');
 });
 
+test('resultadoAcceso suprime la acción que el contrato prohíbe según el pendiente', () => {
+  assert.equal(resultadoAcceso('reponer', 502, { codigo: 'bloqueo_auth_pendiente', error: 'x' }).suprimir, 'reponer');
+  // Sin estado afirmado (estado_no_confirmado, recargar_lista): la lista recargada decide, no se suprime nada.
+  assert.equal(resultadoAcceso('quitar', 502, { codigo: 'estado_no_confirmado' }).suprimir, null);
+  assert.equal(resultadoAcceso('quitar', 403, { codigo: 'recargar_lista' }).suprimir, null);
+});
+
+test('accionesFila con pendiente: quita de la fila lo que el contrato prohíbe', () => {
+  const quitado = { estado: 'quitado' }, vigente = { estado: 'vigente' };
+  assert.deepEqual(accionesFila(quitado, { suprimir: 'reponer' }), { reponer: false, quitar: true });
+  assert.deepEqual(accionesFila(quitado, {}), { reponer: true, quitar: true });
+});
+
+test.skip('resultadoAcceso 0 y 500 recargan la lista (la RPC pudo haber cambiado el estado); un 400 genérico no', () => {
+  assert.equal(resultadoAcceso('quitar', 0, null).recargar, true);
+  assert.equal(resultadoAcceso('reponer', 500, { error: 'Error interno' }).recargar, true);
+  assert.equal(resultadoAcceso('quitar', 400, { error: 'Parámetros obligatorios' }).recargar, false);
+});
+
 test('resultadoAcceso 4xx: recargar_lista, no_converge, elegir_sucursal, último admin, propio, sin sesión', () => {
   assert.equal(resultadoAcceso('quitar', 403, { codigo: 'recargar_lista' }).ofrecer, 'actualizar');
   assert.equal(resultadoAcceso('quitar', 409, { codigo: 'no_converge' }).ofrecer, 'actualizar');

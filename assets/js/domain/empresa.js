@@ -19,9 +19,12 @@ export function ordenarUsuarios(lista) {
 }
 
 // Acciones que ofrece cada fila. `propio`: el usuario de la sesión no se quita a sí mismo (la base responde 22023).
-export function accionesFila(u, { propio = false } = {}) {
-  if (u.estado === ESTADO_QUITADO) return { reponer: true, quitar: true };
-  return { reponer: false, quitar: !propio };
+// `suprimir`: acción que el contrato de la función prohíbe mientras haya un pendiente ('reponer' | 'quitar' | null).
+export function accionesFila(u, { propio = false, suprimir = null } = {}) {
+  const a = u.estado === ESTADO_QUITADO ? { reponer: true, quitar: true } : { reponer: false, quitar: !propio };
+  if (suprimir === 'reponer') a.reponer = false;
+  if (suprimir === 'quitar') a.quitar = false;
+  return a;
 }
 
 // Cuerpo de quitar-acceso-usuario: `acceso_id` solo en el reintento de una baja ya hecha (fila «quitado»).
@@ -46,12 +49,13 @@ const ACTUALIZAR = 'Actualizar la lista y decidir desde la fila del usuario.';
 //   recargar   true: volver a leer la lista (siempre salvo error de validación sin cambios).
 //   ofrecer    null | 'reponer' | 'quitar' | 'sucursal' | 'actualizar': qué botón mostrar en la fila del usuario.
 //   accesoId   acceso_id con el que reintentar (el que devolvió el servidor).
+//   suprimir   null | 'reponer' | 'quitar': acción que la fila NO debe ofrecer mientras el pendiente siga (README de cada función).
 // Reglas de los 502 (README de cada función): el código sale del ÚLTIMO estado observado, no de lo pedido.
 export function resultadoAcceso(op, status, body) {
   const b = body && typeof body === 'object' ? body : {};
   const err = typeof b.error === 'string' && b.error ? b.error : '';
   const accesoId = b.acceso_id ?? null;
-  const base = { ok: false, mensaje: err, recargar: true, ofrecer: null, accesoId: null };
+  const base = { ok: false, mensaje: err, recargar: true, ofrecer: null, accesoId: null, suprimir: null };
 
   if (status === 200 && b.ok) {
     if (op === 'quitar') {
@@ -67,7 +71,7 @@ export function resultadoAcceso(op, status, body) {
     if (b.codigo === 'bloqueo_auth_pendiente') {
       // bloqueo_auth_pendiente: el usuario no tiene perfil y Auth no pudo bloquearlo. En «reponer» no trae acceso_id
       // (es de la baja anterior): no se ofrece reponer de nuevo, la fila «quitado» vigente ofrece Quitar.
-      return { ...base, mensaje: msg, ofrecer: op === 'quitar' && accesoId !== null ? 'quitar' : 'actualizar', accesoId: op === 'quitar' ? accesoId : null };
+      return { ...base, mensaje: msg, ofrecer: op === 'quitar' && accesoId !== null ? 'quitar' : 'actualizar', accesoId: op === 'quitar' ? accesoId : null, suprimir: op === 'reponer' ? 'reponer' : null };
     }
     if (b.codigo === 'desbloqueo_auth_pendiente') {
       // desbloqueo_auth_pendiente: el usuario tiene perfil y Auth no pudo desbloquearlo. Nunca «Quitar» (sería una baja nueva

@@ -115,6 +115,17 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
     if (btn('u-5', 'empresaActualizar')) fail('empresa: Actualizar lista no limpió la fila');
   }
 
+  // Bloqueante 1: reponer en fila quitada y otra persona quitó entretanto (502 bloqueo_auth_pendiente, sin acceso_id):
+  // no se ofrece Reponer (revertiría esa baja con un clic); sí Quitar y Actualizar lista
+  btn('u-20', 'empresaQuitar').click(); await confirmar();
+  if (fila('u-20').dataset.estado !== 'quitado') fail('empresa: u-20 no quedó quitado para el caso bloqueo pendiente');
+  fx.cola.push({ status: 502, body: { ok: false, codigo: 'bloqueo_auth_pendiente', acceso_cortado: true, acceso_repuesto: false, error: 'Falta bloquear en Auth' }, efecto: null });
+  btn('u-20', 'empresaReponer').click(); await sleep(400);
+  if (btn('u-20', 'empresaReponer')) fail('empresa: bloqueo_auth_pendiente al reponer vuelve a ofrecer Reponer acceso');
+  if (!btn('u-20', 'empresaQuitar') || !btn('u-20', 'empresaActualizar')) fail('empresa: bloqueo_auth_pendiente al reponer debe ofrecer Quitar y Actualizar lista');
+  btn('u-20', 'empresaActualizar').click(); await sleep(300);
+  if (!btn('u-20', 'empresaReponer')) fail('empresa: tras Actualizar lista la fila quitada vuelve a ofrecer Reponer');
+
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
   if (all('#emp-umb-campos [data-umbral]').length !== 5) fail('empresa: faltan campos de umbrales');

@@ -37,8 +37,8 @@ async function llamarFuncion(nombre, cuerpo) {
 const err = msg => { const el = $('emp-user-error'); el.textContent = msg || ''; el.classList.toggle('show', !!msg); };
 
 function botonesFila(u) {
-  const a = accionesFila(u, { propio: u.user_id === miId });
   const p = pendientes.get(u.user_id);
+  const a = accionesFila(u, { propio: u.user_id === miId, suprimir: p ? p.suprimir : null });
   const out = [];
   if (p && p.ofrecer === 'sucursal') {
     out.push(html`<select class="flota-select" id="emp-suc-${u.user_id}" aria-label="Sucursal donde reponer">${sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)}</select>
@@ -104,7 +104,7 @@ async function operar(op, userId, funcion, cuerpo) {
   try {
     const { status, body } = await llamarFuncion(funcion, cuerpo);
     const r = resultadoAcceso(op, status, body);
-    if (r.ofrecer) pendientes.set(userId, { ofrecer: r.ofrecer, accesoId: r.accesoId, mensaje: r.mensaje }); else pendientes.delete(userId);
+    if (r.ofrecer) pendientes.set(userId, { ofrecer: r.ofrecer, accesoId: r.accesoId, suprimir: r.suprimir, mensaje: r.mensaje }); else pendientes.delete(userId);
     showToast(r.mensaje, !r.ok);
     if (r.recargar) await loadEmpresaUsuarios(); else render();
   } finally { ocupado = false; }
