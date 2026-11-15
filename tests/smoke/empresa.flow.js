@@ -125,6 +125,16 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!btn('u-20', 'empresaQuitar') || !btn('u-20', 'empresaActualizar')) fail('empresa: bloqueo_auth_pendiente al reponer debe ofrecer Quitar y Actualizar lista');
   btn('u-20', 'empresaActualizar').click(); await sleep(300);
   if (!btn('u-20', 'empresaReponer')) fail('empresa: tras Actualizar lista la fila quitada vuelve a ofrecer Reponer');
+  // Bloqueante 2: quitar y otra persona repuso entretanto (502 desbloqueo_auth_pendiente, con acceso_id): nunca Quitar, sí Reponer
+  fx.cola.push({ status: 502, body: { ok: false, codigo: 'desbloqueo_auth_pendiente', acceso_repuesto: true, acceso_cortado: false, acceso_id: 55, error: 'Falta desbloquear en Auth' }, efecto: null });
+  btn('u-5', 'empresaQuitar').click(); await confirmar();
+  if (btn('u-5', 'empresaQuitar')) fail('empresa: desbloqueo_auth_pendiente al quitar sigue ofreciendo Quitar');
+  if (!btn('u-5', 'empresaReponer')) fail('empresa: desbloqueo_auth_pendiente al quitar sin Reponer acceso');
+  n0 = fx.llamadas.length;
+  btn('u-5', 'empresaReponer').click(); await sleep(400);
+  rp = fx.llamadas.slice(n0).pop();
+  if (!rp || rp.fn !== 'reponer-acceso-usuario' || rp.body.acceso_id !== 55) fail('empresa: reintento de reponer tras desbloqueo pendiente ' + JSON.stringify(rp));
+  if (!btn('u-5', 'empresaQuitar')) fail('empresa: resuelto el pendiente, la fila vigente debe volver a ofrecer Quitar');
 
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);

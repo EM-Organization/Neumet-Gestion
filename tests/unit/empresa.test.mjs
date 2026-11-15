@@ -70,6 +70,8 @@ test('resultadoAcceso 502: estado_no_confirmado no afirma ningún estado', () =>
 
 test('resultadoAcceso suprime la acción que el contrato prohíbe según el pendiente', () => {
   assert.equal(resultadoAcceso('reponer', 502, { codigo: 'bloqueo_auth_pendiente', error: 'x' }).suprimir, 'reponer');
+  assert.equal(resultadoAcceso('quitar', 502, { codigo: 'desbloqueo_auth_pendiente', acceso_id: 4, error: 'x' }).suprimir, 'quitar');
+  assert.equal(resultadoAcceso('reponer', 502, { codigo: 'desbloqueo_auth_pendiente', acceso_id: 4, error: 'x' }).suprimir, 'quitar');
   // Sin estado afirmado (estado_no_confirmado, recargar_lista): la lista recargada decide, no se suprime nada.
   assert.equal(resultadoAcceso('quitar', 502, { codigo: 'estado_no_confirmado' }).suprimir, null);
   assert.equal(resultadoAcceso('quitar', 403, { codigo: 'recargar_lista' }).suprimir, null);
@@ -78,6 +80,7 @@ test('resultadoAcceso suprime la acción que el contrato prohíbe según el pend
 test('accionesFila con pendiente: quita de la fila lo que el contrato prohíbe', () => {
   const quitado = { estado: 'quitado' }, vigente = { estado: 'vigente' };
   assert.deepEqual(accionesFila(quitado, { suprimir: 'reponer' }), { reponer: false, quitar: true });
+  assert.deepEqual(accionesFila(vigente, { suprimir: 'quitar' }), { reponer: false, quitar: false });
   assert.deepEqual(accionesFila(quitado, {}), { reponer: true, quitar: true });
 });
 

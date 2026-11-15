@@ -76,7 +76,7 @@ export function resultadoAcceso(op, status, body) {
     if (b.codigo === 'desbloqueo_auth_pendiente') {
       // desbloqueo_auth_pendiente: el usuario tiene perfil y Auth no pudo desbloquearlo. Nunca «Quitar» (sería una baja nueva
       // que nadie decidió): se ofrece «Reponer acceso» con ese acceso_id.
-      return { ...base, mensaje: msg, ofrecer: accesoId !== null ? 'reponer' : 'actualizar', accesoId };
+      return { ...base, mensaje: msg, ofrecer: accesoId !== null ? 'reponer' : 'actualizar', accesoId, suprimir: 'quitar' };
     }
     // estado_no_confirmado (o un 502 sin código reconocible): no se afirma ningún estado.
     return { ...base, mensaje: `${msg} ${ACTUALIZAR}`.trim(), ofrecer: 'actualizar' };
