@@ -218,23 +218,49 @@ La decisión final del stack **sale de esta prueba**, sobre una tarea frecuente 
 
 | Ola | Contenido | Entrada | Salida | PR |
 |---|---|---|---|---|
-| 0 (un solo autor, en serie) | **PR 0** build neutro; **PR 1** scaffold Vite y framework, CI, CSP en e2e, `dist` en e2e, auth sin shim; **PR 2** contratos: sistema de diseño base (botón, tabla a tarjeta, modal accesible equivalente a `modal-a11y.js`, toast, estado vacío, badge con texto), capa de datos sobre `ctx.db` con manejo uniforme de `userError` y 42501, contrato `ctx` y `navegar` | Framework decidido por la prueba de concepto y F10 PR 3 fusionado (nadie toca `package.json` en paralelo) | Producción idéntica; CI verde con los jobs nuevos; una isla «hola» oculta tras una bandera sin roles | 3 a 4 |
-| 1 piloto | Pantalla «Uso» (F10 PR 7): nueva, solo lectura, solo equipo Neumet, construida directo en el stack nuevo | Migración B (F10 PR 6) aplicada | E2E por rol, capturas revisadas, una semana de uso interno sin errores | 0 a 1 |
-| 2 administración | Dispositivos, Mediciones, Balance, Clientes, Ficha. Balance, Clientes y Ficha solo tras F10 PR 9 a 11 | Ola 1 | Banderas encendidas por rol | 3 a 5 |
-| 3 lectura del cliente | Reportes, Calidad, Recauchutado, Costos, Flota, Alertas (tras F8 PR 2), Inicio con buscador | Ola 2 | Idem | 5 a 8 |
-| 4 escritura del operario | Vehículos y detalle (551 líneas, en 2 a 3 PR), cambio, montar, ciclo de vida, Stock, Sucursales | Solo tras F8 PR 4 y 6 y F10 PR 11 (C2); revisar el disparador de staging de 5.4 | Cada PR declara los clics de las tareas que toca y no los aumenta | 6 a 10 |
+| 0 (un solo autor, en serie) | **PR 0** build neutro; **PR 1** scaffold Vite y framework, CI, CSP en e2e, `dist` en e2e, auth sin shim; **PR 2** contratos: sistema de diseño base (botón, tabla a tarjeta, modal accesible equivalente a `modal-a11y.js`, toast, estado vacío, badge con texto), capa de datos sobre `ctx.db` con manejo uniforme de `userError` y 42501, contrato `ctx` y `navegar` | Framework decidido por la prueba de concepto. No se exige F10 PR 3 fusionado: ese PR toca solo `supabase/functions/` ([17](17-plan-roles-admin.md) §9, PR 3), no el build ni `package.json` [V]; el solapamiento posible con F10 PR 4 en `main.js` y `adminpanel/index.html` se resuelve al fusionar (7.3) | Producción idéntica; CI verde con los jobs nuevos; una isla «hola» oculta tras una bandera sin roles | 3 a 4 |
+| 1 piloto | Pantalla «Uso»: nueva, solo lectura, solo equipo Neumet, construida directo en el stack nuevo por la pista de migración (regla 7.2.1; ya no es un PR de F10) | Ola 0 terminada y migración B (F10 PR 6) aplicada | E2E por rol, capturas revisadas, una semana de uso interno sin errores | 0 a 1 |
+| 2 administración | Mediciones (libre); Dispositivos (solo con F10 PR 4 fusionado: el router pasa a `soloAdmin` y nace Empresa con Dispositivos de solo lectura); Balance, Clientes y Ficha (solo con F10 PR 4 y F10 PR 9 a 11 fusionados: PR 4 cierra con `soloAdmin` la ficha, Balance y Clientes; PR 9 reescribe Balance y la ficha) | Ola 1 | Banderas encendidas por rol | 3 a 5 |
+| 3 lectura del cliente | Reportes, Calidad, Recauchutado, Costos, Flota, Inicio con buscador (libres); Alertas (solo con F8 PR 2 fusionado y, si F10 PR 4 ya está, con el formulario de parámetros trasladado a Empresa, [18](18-rotacion-vehiculos-pesados.md) §9.1) | Ola 2 | Idem | 5 a 8 |
+| 4 escritura del operario | Vehículos y detalle (551 líneas, en 2 a 3 PR), cambio, montar, ciclo de vida, Stock, Sucursales | Cada pantalla según la tabla de 7.2: detalle y cambio, tras F8 PR 3, 4, 6 y, si el dueño lo confirma, 5; Stock, tras F8 PR 7 si la sugerencia de compra se ubica ahí; vehículos, stock, ciclo de vida y sucursales, tras F10 PR 4, 9 y 11 (C2); revisar el disparador de staging de 5.4 | Cada PR declara los clics de las tareas que toca y no los aumenta | 6 a 10 |
 | 5 cierre | Shell nuevo en `/panel` con rutas por URL; `/adminpanel` redirige; el panel viejo queda N semanas de reversa y luego se borra junto con el harness smoke, `check-modules` y el CDN de la CSP | Olas 1 a 4 | Un solo sistema | 2 a 3 |
 
-**Piloto.** La pantalla «Uso» depende de la migración B. Si B se atrasa, la alternativa es «Dispositivos de la empresa» en solo lectura (F10 PR 4). Un inventario previo propuso `alertas` como piloto por ser pequeña y de solo lectura; se descarta como primera opción porque F8 PR 2 la toca (`alertas.js` hospeda hoy la edición de `alerta_configurar`, ver [18](18-rotacion-vehiculos-pesados.md) §9.1) y regiría la regla de conflicto de 7.2.
+**Piloto.** La pantalla «Uso» es el piloto (regla 7.2.1). Un inventario previo propuso `alertas` por ser pequeña y de solo lectura; se descarta porque F8 PR 2 la toca (`alertas.js` hospeda hoy la edición de `alerta_configurar`, ver [18](18-rotacion-vehiculos-pesados.md) §9.1) y regiría la regla de conflicto de 7.2.
 
 **Reversa por ola:** apagar la bandera o Instant Rollback. **Ningún PR de migración de pantallas lleva migración SQL.**
 
 ### 7.2 Regla de encaje con F8 y F10
 
 - Una pantalla está en **una sola pista a la vez**. Las que toca un PR de roadmap en curso se quedan en el panel viejo hasta que ese PR se fusione.
-- Pantallas nuevas de roadmap posteriores a la ola 0 nacen en el stack nuevo.
-- Tocadas por roadmap (contrastado con [17](17-plan-roles-admin.md) §9 y [18](18-rotacion-vehiculos-pesados.md) §9): F10 PR 4 (panel Empresa y Dispositivos); F10 PR 9 (ficha, `seccionales-admin`, vehículos, stock, neumáticos y ciclo de vida); F8 PR 2 (alertas); F8 PR 4 y 6 (detalle del vehículo).
-- Libres desde ya [S, contrastar al empezar cada ola]: reportes, calidad, recauchutado, costos, flota, mediciones, sucursales e inicio.
+- Pantallas nuevas de roadmap posteriores a la ola 0 nacen en el stack nuevo; las que la secuencia de F10 o F8 escribe antes de que termine la ola 0 (por ejemplo Empresa, F10 PR 4) nacen en el panel viejo y se migran como cualquier otra.
+- Tabla «pantalla → PR de roadmap que la toca», reconstruida de [17](17-plan-roles-admin.md) §4.3 y §9 y de [18](18-rotacion-vehiculos-pesados.md) §9 (a 2026-11-15). Cada pantalla de 7.1 entra solo cuando los PR de su fila están fusionados; al empezar cada ola se vuelve a contrastar con los planes vigentes.
+
+| Pantalla (archivo) | PR de roadmap que la toca | Fuente |
+|---|---|---|
+| Router y menú (`core/nav.js`, `main.js`) | F10 PR 4: `esAdminEmpresa()`, `soloEmpresa` y `soloAdmin` en la ficha, Balance y Clientes | 17 §4.3 y §9 (PR 4) |
+| Empresa (nueva: Usuarios, Umbrales, Dispositivos de solo lectura) | F10 PR 4 | 17 §4.3 y §9 (PR 4) |
+| Dispositivos (`dispositivos.js`) | Ningún PR edita el archivo; F10 PR 4 cambia el acceso en el router y añade aparte la vista de solo lectura; F10 PR 9 conserva la asignación de dispositivos en la tarjeta de sucursales | 17 §4.3 y §9 (PR 4 y 9) |
+| Uso (nueva) | F10 PR 7: los datos (RPC) llegan en la migración B (F10 PR 6); la pantalla la entrega la pista de migración (7.2.1) | 17 §9 (PR 6 y 7) |
+| Ficha de cliente (`ficha-cliente.js`), umbrales y tarjeta de sucursales y usuarios (`seccionales-admin.js`) | F10 PR 4 (`soloAdmin`; los umbrales de la empresa pasan a Empresa) y F10 PR 9 (solo lectura para Neumet) | 17 §4.3 y §9 (PR 4 y 9) |
+| Balance (`balance.js`) | F10 PR 4 (`soloAdmin`) y F10 PR 9 (front sobre la RPC de C1) | 17 §9 (PR 4 y 9) |
+| Clientes (`clientes.js`) | F10 PR 4 solo vía router; el archivo no figura en el plan [S] | 17 §9 (PR 4) |
+| Sucursales (`sucursales.js`) | F10 PR 9 (el plan dice «sucursales» sin precisar si es la vista o la tarjeta: se trata como tocada) | 17 §9 (PR 9) |
+| Vehículos (`vehiculos.js`), Stock (`stock.js`), neumáticos (`neumaticos.js`) | F10 PR 9 (retiro de formularios de escritura de Neumet) | 17 §9 (PR 9) |
+| Ciclo de vida (`ciclo-vida.js`) | F10 PR 4 (`vehiculo_corregir_odometro`) y F10 PR 9 (retiro de la escritura directa del odómetro) | 17 §9 (PR 4 y 9) |
+| Alertas (`alertas.js`) | F8 PR 2 (formulario «Parámetros de rotación»); el formulario se traslada a Empresa cuando exista F10 PR 4 | 18 §9 (PR 2) y §9.1 |
+| Detalle del vehículo (`vehiculo-detalle.js`) | F8 PR 3 (formulario de datos del vehículo), F8 PR 4 (tarjeta de sugerencias y «Registrar rotación»), F8 PR 5 (si el dueño lo confirma) y F8 PR 6 (acción de rotación múltiple) | 18 §9 (PR 3 a 6) |
+| Ficha del neumático (`neumaticos.js` [S]) | F8 PR 3 (formulario de datos del neumático) y F10 PR 9 | 18 §9 (PR 3), 17 §9 (PR 9) |
+| Cambio de neumático (`cambio-neumatico.js`) | F8 PR 4 (formulario prellenado con cubierta apta) | 18 §9 (PR 4) |
+| Sugerencia de compra (vista nueva; ubicación sin fijar, posiblemente `stock.js` [S]) | F8 PR 7 | 18 §9 (PR 7) |
+| Libres desde ya [S, contrastar al empezar cada ola] | Reportes, Calidad, Recauchutado, Costos, Flota, Mediciones e Inicio | sin mención en 17 §9 ni 18 §9 |
+
+#### 7.2.1 Quién construye «Uso» (decisión del director, 2026-11-15)
+
+- La pantalla «Uso» **pertenece a la pista de migración**: la construye en el stack nuevo, como piloto, el autor B, una vez terminada la ola 0.
+- F10 PR 7 se redefine como «la RPC y los datos de Uso ya están en la migración B (PR 6); la pantalla la entrega la pista de migración». F10 no escribe esa pantalla.
+- F10 va en serie (PR 4, 5 y 6 antes del 7) y la ola 0 son 3 a 4 PR, por lo que se prevé que la ola 0 termine antes. Si F10 llegara al PR 7 antes: el autor A **no** construye la pantalla; sigue con los PR siguientes que no dependen de ella (PR 8, 9, 10, 11 y 12 de [17](17-plan-roles-admin.md) §9: ninguno la requiere) y «Uso» espera a la ola 0.
+- Solo si la falta de «Uso» bloqueara a todo lo demás de F10, se hace una versión mínima en el panel viejo y se avisa al dueño; esa versión se reemplaza después por la del stack nuevo.
+- Lo mismo vale para la alternativa «Dispositivos de la empresa» (F10 PR 4): queda descartada como piloto de reserva mientras F10 PR 4 no esté fusionado. Si B se atrasa, el piloto de reserva se elige entre las pantallas libres de la tabla (por ejemplo Reportes o Flota, de solo lectura), nunca una pantalla en conflicto.
 
 ### 7.3 Reparto de agentes
 
