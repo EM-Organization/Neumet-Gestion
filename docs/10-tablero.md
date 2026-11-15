@@ -61,6 +61,7 @@
 - La baja de un cliente no desactiva su perfil `api` (asignado al PR 5 de [docs/17](17-plan-roles-admin.md): `api-proveedor` rechazará clientes con `deleted_at`).
 - Paginación por offset en los exportes.
 - `mapErr` de `crear-cliente` trata 422 como «email ya existe».
+- `tests/sql/run.sh` no aplica `20261108010000_comentarios_mm.sql` (sugerencia del revisor del PR 72; fuera de su alcance).
 
 ## Fuera de alcance de la primera versión
 Presión/temperatura (TPMS) y machine learning: dependen de datos que todavía no existen. CPK y recauchutado ya están implementados (F4 y F5).
