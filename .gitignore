@@ -35,3 +35,7 @@ referencias/
 
 # Estado local del CLI de Supabase
 supabase/.temp/
+
+# Salidas de Vite y Vitest
+.vite/
+coverage/
