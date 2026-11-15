@@ -221,6 +221,34 @@ Deno.test('la lectura del estado falla => error con acceso cortado, sin inventar
   assertEquals(b.acceso_cortado, undefined);
 });
 
+Deno.test('la relectura falla DESPUÉS de un Auth exitoso => estado_no_confirmado, sin afirmar acceso cortado', async () => {
+  const m = new Mundo();
+  let lecturas = 0;
+  const { deps } = mk({
+    estado: (id, marca) => (++lecturas === 1 ? m.estado(id, marca) : Promise.reject(new Error('db'))),
+  }, m);
+  const r = await handle(req(baja), deps);
+  const b = await json(r);
+  assertEquals(r.status, 502);
+  assertEquals(b.codigo, 'estado_no_confirmado');
+  assertEquals(b.acceso_cortado, undefined);
+  assertEquals(b.acceso_repuesto, undefined);
+  assert(m.baneado, 'el ban sí llegó a Auth: la función no lo oculta, solo no lo afirma');
+});
+
+Deno.test('la fila ya no existe o tiene_perfil es null => estado_no_confirmado, nunca acceso_cortado', async () => {
+  for (const vigente of [{ existe: false, tiene_perfil: null }, { existe: true, tiene_perfil: null }]) {
+    const m = new Mundo();
+    const { deps } = mk({ estado: () => Promise.resolve(vigente) }, m);
+    const r = await handle(req(baja), deps);
+    const b = await json(r);
+    assertEquals(r.status, 502, JSON.stringify(vigente));
+    assertEquals(b.codigo, 'estado_no_confirmado');
+    assertEquals(b.acceso_cortado, undefined);
+    assertEquals(llamadasAuth(m.log), [], 'sin estado legible no se toca Auth');
+  }
+});
+
 Deno.test('(b) reintento de baja (ya_quitado) cuyo ban llega tras «reponer»: relee, ve perfil y desbloquea', async () => {
   const m = new Mundo();
   m.tienePerfil = false;
