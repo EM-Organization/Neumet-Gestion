@@ -308,7 +308,7 @@ Sin dependencias abiertas: todas las decisiones están tomadas.
 | 4 | Panel «Empresa» (incluye Dispositivos en solo lectura), `esAdminEmpresa()` y `soloEmpresa`; `ciclo-vida.js` ofrece al administrador de empresa corregir el kilometraje hacia abajo con `vehiculo_corregir_odometro`; el router cierra con `soloAdmin` la ficha, Balance y Clientes |
 | 5 | `api-proveedor`: login en `ingesta_log` (antes de la migración B, para que el primer cierre mensual ya cuente logins) y rechazo de cuentas `api` de clientes con `deleted_at` (sección 8) |
 | 6 | Migración B (índice, `uso_cliente_mensual`, función de cierre sin cron, RPC de uso) y prueba `t_94`; paso operativo posterior: programar el cierre si pg_cron está habilitado |
-| 7 | Pantalla «Uso» |
+| 7 | Pantalla «Uso»: **la construye la pista de migración en el stack nuevo** ([19](19-migracion-framework.md) §7.2.1); este PR queda como la RPC y los datos de Uso, que ya están en la migración B (PR 6). F10 sigue con los PR siguientes |
 | 8 | Migración C1 (RPC del precio mensual, retrocompatible) |
 | 9 | Front de Balance sobre la RPC de C1; ficha de cliente, umbrales, sucursales y la tarjeta de `seccionales-admin.js` en solo lectura para Neumet; retiro de los formularios de escritura de Neumet en `vehiculos.js`, `stock.js`, `neumaticos.js` y `ciclo-vida.js`, incluida la escritura directa del odómetro `ciclo-vida.js:203` (tabla de la sección 4.1); se fusiona con C1 ya aplicada y verificada y con Empresa (PR 4) en producción |
 | 10 | `crear-usuario-seccional` deja de aceptar al equipo Neumet (sección 4.2); solo con el PR 9 desplegado |
@@ -349,4 +349,4 @@ Es un caso por rol quitado: administrador de empresa, usuario de sucursal.
 - UPDATE directo sobre `perfiles` y `clientes` por la empresa: 0 filas afectadas; INSERT directo: `42501` (la política `WITH CHECK` lo rechaza, no hay política de escritura).
 - Idempotencia: cada migración aplicada dos veces sin errores.
 - Pruebas del handler de `crear-usuario-seccional`: 403 con `cliente_id` ajeno, 403 con sucursal ajena, rechazo de rol sucursal y `api`, nunca crea `admin` ni `api`; 409 con el mensaje de «Reponer acceso» solo para un quitado del mismo cliente.
-- E2E: el administrador crea un usuario de sucursal, este entra y ve solo su sucursal, se le quita el acceso y pasa a ver «Sin acceso»; el equipo Neumet ve «Uso».
+- E2E: el administrador crea un usuario de sucursal, este entra y ve solo su sucursal, se le quita el acceso y pasa a ver «Sin acceso»; el equipo Neumet ve «Uso» (la pantalla la entrega la pista de migración, [19](19-migracion-framework.md) §7.2.1; hasta entonces se prueba la RPC de uso).
