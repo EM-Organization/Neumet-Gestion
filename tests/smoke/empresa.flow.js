@@ -25,6 +25,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (btn('u-1', 'empresaQuitar')) fail('empresa: el usuario de la sesión puede quitarse a sí mismo');
   if (!btn('u-5', 'empresaQuitar')) fail('empresa: falta Quitar en un usuario vigente');
   if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Quitar');
+  if (btn('u-5', 'empresaQuitar').className.indexOf('icon-btn danger') === -1 || /(^| )btn( |$)/.test(btn('u-5', 'empresaQuitar').className)) fail('empresa: Quitar debe usar el estilo de baja del panel (icon-btn danger), no un botón rojo sólido: ' + btn('u-5', 'empresaQuitar').className);
   if (!btn('u-21', 'empresaQuitar')) fail('empresa: Quitar falta en una fila quitada sin bloqueo pendiente');
   if (!fila('u-1') || fila('u-1').textContent.indexOf('Sesión actual') === -1) fail('empresa: la fila propia no se marca como sesión actual');
   var opciones = all('#emp-user-sucursal option').length;

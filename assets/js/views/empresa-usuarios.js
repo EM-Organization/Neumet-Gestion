@@ -50,7 +50,7 @@ function botonesFila(u) {
   }
   // «Quitar» en toda fila quitada, tenga o no la marca de Auth (es informativa; repetir es idempotente).
   if (a.quitar) {
-    out.push(html`<button type="button" class="btn ghost danger" data-action="empresaQuitar" data-args="${JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null])}">Quitar</button>`);
+    out.push(html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null])}">Quitar</button>`);
   }
   if (p && p.ofrecer === 'actualizar') out.push(html`<button type="button" class="btn ghost" data-action="empresaActualizar">Actualizar lista</button>`);
   return joinHtml(out);
@@ -63,7 +63,7 @@ function render() {
     const quitado = u.estado === ESTADO_QUITADO;
     const p = pendientes.get(u.user_id);
     return html`<tr data-user="${u.user_id}" data-estado="${u.estado}">
-      <td>${u.email || ('ID ' + String(u.user_id).slice(0, 8))}${u.user_id === miId ? html` <span class="badge gray">Sesión actual</span>` : ''}${p ? html`<div class="salud-muted" role="status">${p.mensaje}</div>` : ''}</td>
+      <td>${u.email || ('ID ' + String(u.user_id).slice(0, 8))}${u.user_id === miId ? html` <span class="badge gray">Sesión actual</span>` : ''}<div class="salud-muted emp-movil">${textoAlcance(u)}</div><div class="emp-movil">${quitado ? chip('gray', 'Quitado', '–') : chip('green', 'Vigente', '✓')}</div>${p ? html`<div class="salud-muted" role="status">${p.mensaje}</div>` : ''}</td>
       <td>${textoAlcance(u)}</td>
       <td>${quitado ? chip('gray', 'Quitado', '–') : chip('green', 'Vigente', '✓')}</td>
       <td><div class="actions">${botonesFila(u)}</div></td>
