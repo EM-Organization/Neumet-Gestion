@@ -25,6 +25,8 @@ test('src/ no esquiva la regla con alias, acceso computado, SupabaseClient ni su
     ["export const db = globalThis.supabase.createClient('a', 'b');\n", 'globalThis'],
     ["import { SupabaseClient } from '@supabase/supabase-js';\nexport const db = new SupabaseClient('a', 'b');\n", 'new SupabaseClient'],
     ["import { createClient } from '@supabase/supabase-js/dist/module/index.js';\nexport { createClient };\n", 'subruta de supabase-js'],
+    ["export const db = new window.supabase.SupabaseClient('a', 'b');\n", 'new window.supabase.SupabaseClient sin import'],
+    ["export const cargar = (v) => import(`@supabase/${v}`);\n", 'import() con plantilla'],
     ["import { x } from '@supabase/auth-js';\nexport { x };\n", 'otro paquete @supabase/*'],
   ];
   for (const [codigo, que] of casos) {

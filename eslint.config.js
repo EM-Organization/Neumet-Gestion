@@ -24,7 +24,8 @@ const sinClienteSupabase = {
     // El global UMD de supabase-js no se toca desde src/ (cubre window.supabase, globalThis.supabase y llamadas indirectas como (0, window.supabase.createClient)()).
     { selector: "MemberExpression[object.name=/^(window|globalThis|self)$/][property.name='supabase']", message: 'Prohibido el global supabase en src/: usar ctx.db (docs/19 §5.2).' },
     { selector: "NewExpression[callee.name='SupabaseClient'], NewExpression[callee.property.name='SupabaseClient']", message: 'Prohibido new SupabaseClient en src/: usar ctx.db (docs/19 §5.2).' },
-    { selector: "ImportExpression[source.value=/^@supabase\\//]", message: 'Prohibido importar @supabase/* en src/ (docs/19 §5.2).' }],
+    { selector: "ImportExpression[source.value=/^@supabase\\//]", message: 'Prohibido importar @supabase/* en src/ (docs/19 §5.2).' },
+    { selector: "ImportExpression[source.type='TemplateLiteral']", message: 'import() con plantilla prohibido en src/: no se puede comprobar el destino (docs/19 §5.2).' }],
 };
 
 module.exports = [

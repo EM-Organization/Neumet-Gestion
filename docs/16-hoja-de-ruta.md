@@ -118,7 +118,7 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 ### F11 · Migración gradual del panel a un framework con build
 - Estado: **planificado**, ver el plan en [19](19-migracion-framework.md) (F11 es el siguiente número libre; no indica prioridad).
 - Contexto: el objetivo es un front mantenible, consistente y bien diseñado (componentes y sistema de diseño); lo móvil es una mejora secundaria. El sistema de diseño no depende del framework; el framework ayuda a sostenerlo con componentes reutilizables.
-- Propuesta: migración gradual por «islas» dentro del panel actual, detrás de banderas por rol, con Svelte 5 y Vite como recomendación (plan B: React 19 y Vite), a confirmar con una prueba de concepto. Estimación: 19 a 31 PR.
+- Propuesta: migración gradual por «islas» dentro del panel actual, detrás de banderas por rol, con Svelte 5 y Vite, sin prueba de concepto previa (decisión del director, 2026-11-16): el piloto de la ola 1 lo valida y React 19 con Vite es el plan B. Estimación: 19 a 31 PR.
 - No cambia el orden de F8 ni de F10, pero sí quién construye la pantalla «Uso» (F10 PR 7): la entrega la pista de migración ([19](19-migracion-framework.md) §7.2.1), y F10 queda con la RPC y los datos. Una pantalla que toca un PR de F8 o F10 en curso se queda en el panel viejo. Ningún PR de migración de pantallas lleva migración SQL. Decisiones del dueño del 2026-11-15 en la sección 10 de [19](19-migracion-framework.md): objetivo = front mantenible y consistente (móvil secundario), sin staging mientras no haya datos reales, y un autor para F8 y F10 en serie más hasta 2 en migración.
 
 ## Fuera de alcance por ahora
