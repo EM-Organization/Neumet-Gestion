@@ -151,6 +151,8 @@ Versiones de npm consultadas el 2026-11-15 (**reconfirmar al fijar**): React 19.
 
 El primer paso es introducir el build **sin cambiar lo que se sirve**.
 
+> Implementado en el PR 0 (rama `feat/f11-pr0-build-neutro`): `scripts/build.mjs`, `npm run build`, job `build` del CI y `tests/build/verificar-dist.mjs`. Pendiente de comprobar en un preview de Vercel (solo posible con el PR abierto): que `outputDirectory` sirva las mismas rutas y cabeceras. `.vercelignore` sigue excluyendo `docs/`, `tests/`, `supabase/` y demás, pero ya no `package*.json`; `scripts/` se sube porque el build lo necesita. `.gitignore` ignoraba `build/` y se agregó la excepción `!tests/build/`.
+
 - `vercel.json`: `installCommand` `npm ci`, `buildCommand` `npm run build`, `outputDirectory` `dist`.
 - Un script copia tal cual a `dist/` solo `index.html`, `adminpanel/`, `assets/` (incluye `assets/config.js`) y `app-demo.mp4`: es lo que `.vercelignore` deja publicar. `vercel.json` no se copia (lo lee Vercel desde la raíz); verificar en el PR 0 que no haga falta otro archivo.
 - `.vercelignore` deja de excluir `package.json` y `package-lock.json`. La garantía de no publicar `docs/`, `tests/` ni `supabase/` pasa a ser `outputDirectory` más una prueba que verifica que `dist/` no los contiene.
