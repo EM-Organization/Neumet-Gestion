@@ -1,14 +1,13 @@
-# El sitio es estático y se sirve desde la raíz del repo: solo deben desplegarse
-# index.html, adminpanel/, assets/, app-demo.mp4 y vercel.json.
-# Todo lo demás (docs, funciones, CI, tooling, tests) no debe publicarse en producción.
+# Vercel construye con `npm ci && npm run build` y sirve solo dist/ (ver vercel.json).
+# El build necesita: package.json, package-lock.json, scripts/build.mjs, index.html,
+# adminpanel/, assets/ y app-demo.mp4. Lo demás no se sube a Vercel (la garantía de
+# que no se publica nada más es outputDirectory + tests/build/verificar-dist.mjs).
 docs/
 supabase/
 tests/
 .github/
 .claude/
 node_modules/
-package.json
-package-lock.json
 eslint.config.js
 .gitleaks.toml
 .gitignore

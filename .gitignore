@@ -19,6 +19,8 @@ Thumbs.db
 # Build output
 dist/
 build/
+# tests/build/ contiene pruebas versionadas, no salida de build
+!tests/build/
 servidor.ps1
 .vercel
 
