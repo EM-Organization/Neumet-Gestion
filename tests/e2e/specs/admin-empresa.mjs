@@ -75,8 +75,9 @@ export function registrar(env) {
       const fila = lista.find(f => f.user_id === quitado);
       assert.equal(fila.estado, 'quitado');
       assert.equal(fila.bloqueo_auth_pendiente, true);
-      assert.equal((await rpc(env, 'global', 'usuario_empresa_quitar_acceso', { p_user_id: quitado })).datos.estado, 'ya_quitado');
-      denegado(await rpc(env, 'otra', 'usuario_empresa_quitar_acceso', { p_user_id: quitado }), 'otra empresa reintenta la baja ajena');
+      assert.equal((await rpc(env, 'global', 'usuario_empresa_quitar_acceso', { p_user_id: quitado, p_acceso_id: fila.acceso_id })).datos.estado, 'ya_quitado');
+      denegado(await rpc(env, 'global', 'usuario_empresa_quitar_acceso', { p_user_id: quitado }), 'sin p_acceso_id y sin perfil no hay baja que reintentar');
+      denegado(await rpc(env, 'otra', 'usuario_empresa_quitar_acceso', { p_user_id: quitado, p_acceso_id: fila.acceso_id }), 'otra empresa reintenta la baja ajena');
 
       for (const rol of ['admin', 'salto', 'otra', 'api', 'sinperfil', null]) {
         denegado(await rpc(env, rol, 'usuario_empresa_reponer_acceso', { p_acceso_id: fila.acceso_id }), `reponer como ${rol}`);
@@ -86,6 +87,9 @@ export function registrar(env) {
       assert.equal(rep.datos.estado, 'repuesto');
       assert.equal(json(env, `select sucursal_id from public.perfiles where user_id = '${quitado}'`)[0].sucursal_id, antes);
       assert.equal(await visibles(env, 'montevideo'), vistos, 'recupera lo que veía');
+      // Reintento tardío de la baja (perdió frente a «reponer»): 42501 y el perfil repuesto sigue
+      denegado(await rpc(env, 'global', 'usuario_empresa_quitar_acceso', { p_user_id: quitado, p_acceso_id: fila.acceso_id }), 'reintento de baja con el perfil ya repuesto');
+      assert.equal(Number(env.sql(`select count(*) from public.perfiles where user_id = '${quitado}'`)), 1);
     } finally {
       env.sql(`delete from public.accesos_quitados where user_id = '${quitado}'`);
       env.sql(`insert into public.perfiles (user_id, rol, cliente_id, sucursal_id) values ('${quitado}', 'cliente', ${DEMO}, ${antes}) on conflict (user_id) do nothing`);

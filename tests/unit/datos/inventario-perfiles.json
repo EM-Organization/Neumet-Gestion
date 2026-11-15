@@ -386,67 +386,72 @@
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 40,
+  "linea": 41,
   "texto": "select p.cliente_id from public.perfiles p"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 106,
+  "linea": 109,
   "texto": "select exists (select 1 from public.perfiles p where p.user_id = v_user) into v_perfil;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 172,
+  "linea": 176,
   "texto": "from public.perfiles p"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 186,
+  "linea": 189,
   "texto": "and not exists (select 1 from public.perfiles p2 where p2.user_id = a.user_id)"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 216,
+  "linea": 224,
   "texto": "v_t       public.perfiles%rowtype;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 234,
+  "linea": 242,
   "texto": "from (select p.user_id from public.perfiles p"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 244,
-  "texto": "select * into v_t from public.perfiles p where p.user_id = p_user_id for update;"
+  "linea": 253,
+  "texto": "select * into v_t from public.perfiles p where p.user_id = p_user_id and p.cliente_id = v_cli for update;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 272,
+  "linea": 257,
+  "texto": "if p_acceso_id is null or exists (select 1 from public.perfiles p where p.user_id = p_user_id) then"
+ },
+ {
+  "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
+  "linea": 286,
   "texto": "delete from public.perfiles p where p.user_id = p_user_id;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 305,
+  "linea": 319,
   "texto": "v_perf   public.perfiles%rowtype;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 319,
+  "linea": 333,
   "texto": "perform 1 from public.perfiles p"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 331,
+  "linea": 345,
   "texto": "select * into v_perf from public.perfiles p where p.user_id = v_user;"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 348,
+  "linea": 362,
   "texto": "insert into public.perfiles (user_id, rol, cliente_id, sucursal_id, email)"
  },
  {
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
-  "linea": 549,
+  "linea": 563,
   "texto": "select p.rol, p.sucursal_id into v_rol, v_suc from public.perfiles p where p.user_id = v_uid;"
  }
 ]

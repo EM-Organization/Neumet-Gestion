@@ -827,7 +827,7 @@ La alerta sigue al neumático: rotar no crea otra y cambiarlo la resuelve. Dispa
 - `alerta_reconocer(id, nota)`: `abierta` a `reconocida`; idempotente.
 - `alerta_silenciar(id, hasta, motivo)`: hasta 90 días; `hasta` nulo quita el silencio. La alerta sigue abierta.
 - `alerta_resolver(id, nota)`: nota obligatoria; motivo `manual`. Con el neumático aún bajo el umbral, la siguiente medición abre una alerta nueva.
-- `alerta_configurar(cliente, umbral_critico_mm, histeresis_mm)`: solo admin o perfil de cliente global (el de sucursal recibe 42501). Mantiene retiro < crítico < bajo (23514), un decimal (22023); reevalúa la flota.
+- `alerta_configurar(cliente, umbral_critico_mm, histeresis_mm)` (firma de 3 parámetros, reemplazada en el apéndice N por una de 8): solo admin o perfil de cliente global (el de sucursal recibe 42501). Mantiene retiro < crítico < bajo (23514), un decimal (22023); reevalúa la flota.
 - Resuelta o con estado incompatible: 55000. Alerta inexistente: 42501 para no admin (P0002 para admin). Rol `api`, sin perfil y `anon`: sin acceso.
 
 ## M.5 Panel
@@ -864,16 +864,17 @@ El administrador de empresa es un `perfiles.rol = 'cliente'` con `sucursal_id` n
 
 | RPC | Quién | Resultado |
 |---|---|---|
-| `usuarios_empresa_listar(p_cliente_id)` | administrador de empresa; `admin` y global solo lectura | `user_id, email, alcance, sucursal_id, sucursal_nombre, estado` (`vigente`/`quitado`), `desde`, `acceso_id`, `bloqueo_auth_pendiente` |
-| `usuario_empresa_quitar_acceso(p_user_id)` | administrador de empresa | `quitado` o `ya_quitado` |
+| `usuarios_empresa_listar(p_cliente_id)` | administrador de empresa; equipo Neumet (con `p_cliente_id`), solo lectura | `user_id, email, alcance, sucursal_id, sucursal_nombre, estado` (`vigente`/`quitado`), `desde`, `acceso_id`, `bloqueo_auth_pendiente` |
+| `usuario_empresa_quitar_acceso(p_user_id, p_acceso_id default null)` | administrador de empresa | `quitado` (baja nueva) o `ya_quitado` (reintento de la baja `p_acceso_id`) |
 | `usuario_empresa_reponer_acceso(p_acceso_id, p_sucursal_id)` | administrador de empresa | `repuesto` o `ya_repuesto` |
-| `accesos_quitados_marcar_auth(p_id, p_marca)` | solo `service_role` | estado `{id, existe, tiene_perfil, escrita, es_la_mas_reciente, repuesto, bloqueo_auth_*}`; con `p_marca` nulo es solo lectura |
+| `accesos_quitados_marcar_auth(p_id, p_marca)` | solo `service_role` | estado `{id, existe, tiene_perfil, escrita, es_la_mas_reciente, ultima_repuesta, ultima_bloqueo_auth_aplicado_at, ultima_bloqueo_auth_levantado_at}`: `id` es el pedido y `ultima_*` describen la fila más reciente del usuario (puede ser otra); con `p_marca` nulo es solo lectura |
 | `vehiculo_corregir_odometro(p_vehiculo_id, p_odometro_km)` | administrador de empresa | corrige el kilometraje hacia abajo, con auditoría |
 | `alerta_configurar(...)` | ampliada a 8 parámetros (se elimina la firma de 3) | conserva la rama de `admin` hasta C2 |
 
 Reglas:
 - No se puede quitar al último administrador de la empresa ni a uno mismo; quitar es idempotente (`ya_quitado`) y reponer también (`ya_repuesto`, incluido un perfil presente reasignado por el equipo Neumet dentro de la misma empresa; de otra empresa es 42501).
-- **Reintento frente a baja nueva**: decide la presencia del perfil del objetivo. Sin perfil, la llamada es un reintento y solo vale sobre la fila más reciente del usuario, de este cliente y sin reponer (si no, 42501). Con perfil, es una baja nueva (fila nueva). Si una reposición gana la carrera a un reintento, esa llamada pasa a ser una baja nueva.
+- **Reintento frente a baja nueva**: lo declara quien llama con `p_acceso_id`. Con `p_acceso_id`, es un reintento de esa baja y solo vale si el perfil del usuario sigue ausente y la fila es de este cliente, de ese usuario, la más reciente y sin reponer; con perfil presente (una reposición ganó la carrera) o cualquier otra cosa, 42501 sin tocar Auth ni crear fila. Sin `p_acceso_id`, es una baja nueva y exige perfil del objetivo en este cliente (sin perfil, 42501). Se eliminó la firma de un parámetro.
+- **Empresa dada de baja**: `admin_empresa_cliente_id()` devuelve nulo si `clientes.deleted_at` no es nulo, así que listar, quitar, reponer y corregir kilometraje responden 42501 al administrador de esa empresa.
 - `accesos_quitados_marcar_auth` nunca rechaza (salvo 22004 por `p_id` nulo y 22023 por marca desconocida) y escribe la marca solo si es cierta, bajo `for update` de la fila más reciente. El bucle de convergencia con Auth (PR 3) empieza leyendo con `p_marca` nulo.
 
 ## N.4 Auditoría
@@ -882,7 +883,7 @@ Reglas:
 
 ## N.5 Pruebas
 
-- `tests/sql/t_93_admin_empresa.sql`: matriz por rol para cada RPC (administrador de empresa, usuario de sucursal, global, `admin`, sin perfil, `api`, `anon`), acceso directo a `accesos_quitados`, último administrador, JWT vigente de un quitado, vínculo `auth_user_id` en otra empresa, auditoría y `alerta_configurar` ampliada.
+- `tests/sql/t_93_admin_empresa.sql`: matriz por rol para cada RPC (administrador de empresa, usuario de sucursal, global, `admin`, sin perfil, `api`, `anon`), acceso directo a `accesos_quitados`, último administrador, JWT vigente de un quitado, vínculo `auth_user_id` en otra empresa, reintento con `p_acceso_id`, empresa dada de baja, auditoría y `alerta_configurar` ampliada. `tests/sql/concurrencia_admin_empresa.sh` incluye el reintento de baja que pierde frente a «reponer» (42501, B queda repuesto, sin fila nueva).
 - `tests/sql/concurrencia_admin_empresa.sh` (lo carga `run.sh`): dos sesiones reales con bloqueos; bajas cruzadas, bajas mutuas, dos reposiciones y reposición contra reintento.
 - `tests/e2e/specs/admin-empresa.mjs`: las mismas RPC por la API real con el JWT de cada rol.
 - `tests/unit/inventario-perfiles.test.mjs`: repite los cuatro `grep` de `docs/17` §2.5 y falla ante una ruta nueva sin revisar (regenerar con `--regenerar` tras clasificarla).

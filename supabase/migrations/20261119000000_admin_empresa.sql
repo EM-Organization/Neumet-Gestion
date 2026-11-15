@@ -29,7 +29,8 @@
 -- 1. admin_empresa_cliente_id()
 -- -----------------------------------------------------------------------------
 -- cliente_id del administrador de empresa (rol 'cliente' sin sucursal) o NULL. NULL también para el equipo Neumet
--- (rol 'admin'), el usuario de sucursal, 'api' y quien no tiene perfil. Las RPC nuevas la reutilizan.
+-- (rol 'admin'), el usuario de sucursal, 'api', quien no tiene perfil y el administrador de una empresa dada de baja
+-- (clientes.deleted_at): las RPC nuevas la reutilizan, así que ninguna opera sobre una empresa dada de baja.
 create or replace function public.admin_empresa_cliente_id()
 returns bigint
 language sql
@@ -39,6 +40,7 @@ set search_path = ''
 as $$
   select p.cliente_id from public.perfiles p
   where p.user_id = (select auth.uid()) and p.rol = 'cliente' and p.sucursal_id is null
+    and exists (select 1 from public.clientes c where c.id = p.cliente_id and c.deleted_at is null)
 $$;
 revoke all on function public.admin_empresa_cliente_id() from public, anon;
 grant execute on function public.admin_empresa_cliente_id() to authenticated;
@@ -80,6 +82,7 @@ revoke all on sequence public.accesos_quitados_id_seq from public, anon, authent
 -- marca es cierta, bajo el bloqueo de la fila más reciente del usuario: 'aplicado' si p_id es la más reciente, no está
 -- repuesta y el perfil sigue ausente; 'levantado' si es la más reciente, está repuesta y el perfil está presente.
 -- Ninguna marca condiciona una decisión: son informativas.
+-- `id` es el pedido; `ultima_*` describen la fila MÁS RECIENTE del usuario (que puede ser otra: ver `es_la_mas_reciente`).
 create or replace function public.accesos_quitados_marcar_auth(p_id bigint, p_marca text default null)
 returns jsonb
 language plpgsql
@@ -115,8 +118,9 @@ begin
      where a.id = p_id returning * into v_ult;
   end if;
   return jsonb_build_object('id', p_id, 'existe', true, 'tiene_perfil', v_perfil, 'escrita', v_ok,
-    'es_la_mas_reciente', v_ult.id = p_id, 'repuesto', v_ult.repuesto_at is not null,
-    'bloqueo_auth_aplicado_at', v_ult.bloqueo_auth_aplicado_at, 'bloqueo_auth_levantado_at', v_ult.bloqueo_auth_levantado_at);
+    'es_la_mas_reciente', v_ult.id = p_id, 'ultima_repuesta', v_ult.repuesto_at is not null,
+    'ultima_bloqueo_auth_aplicado_at', v_ult.bloqueo_auth_aplicado_at,
+    'ultima_bloqueo_auth_levantado_at', v_ult.bloqueo_auth_levantado_at);
 end
 $$;
 revoke all on function public.accesos_quitados_marcar_auth(bigint, text) from public, anon, authenticated;
@@ -126,7 +130,7 @@ grant execute on function public.accesos_quitados_marcar_auth(bigint, text) to s
 -- 3b. usuarios_empresa_listar
 -- -----------------------------------------------------------------------------
 -- Usuarios del cliente con su alcance, su email real (de auth.users: perfiles.email es nulo para el primer usuario) y su
--- estado. Incluye a los quitados (la fila más reciente sin reponer y sin perfil): «Reponer acceso» los necesita.
+-- estado. Los quitados usan solo el email copiado en accesos_quitados al quitar (sin leer auth.users). Incluye a los quitados (la fila más reciente sin reponer y sin perfil): «Reponer acceso» los necesita.
 -- Administrador de empresa: solo su cliente (p_cliente_id se ignora si es nulo; si no coincide, 42501).
 -- Equipo Neumet: debe indicar p_cliente_id y lo recibe en solo lectura. Los demás roles: 42501.
 -- Las cuentas 'api' no se listan aquí (cuentas_api_listar).
@@ -174,11 +178,10 @@ begin
       left join public.sucursales s on s.id = p.sucursal_id and s.cliente_id = p.cliente_id
      where p.cliente_id = v_cli and p.rol = 'cliente'
     union all
-    select a.user_id, coalesce(u.email::text, a.email),
+    select a.user_id, a.email,
            case when a.sucursal_id is null then 'empresa' else 'sucursal' end,
            a.sucursal_id, s.nombre, 'quitado'::text, a.quitado_at, a.id, (a.bloqueo_auth_aplicado_at is null)
       from public.accesos_quitados a
-      left join auth.users u on u.id = a.user_id
       left join public.sucursales s on s.id = a.sucursal_id and s.cliente_id = a.cliente_id
      where a.cliente_id = v_cli
        and a.repuesto_at is null
@@ -193,17 +196,22 @@ grant execute on function public.usuarios_empresa_listar(bigint) to authenticate
 -- -----------------------------------------------------------------------------
 -- 3c. usuario_empresa_quitar_acceso
 -- -----------------------------------------------------------------------------
--- Estados de éxito: 'quitado' (baja hecha ahora) y 'ya_quitado' (reintento: la baja ya estaba; la Edge Function converge
--- con Auth tenga o no la marca). Todo lo demás es error.
--- Reintento o baja nueva se decide por la presencia del perfil del objetivo: sin perfil = reintento (solo vale sobre la
--- fila más reciente del usuario, de este cliente y sin reponer; si no, 42501); con perfil = baja nueva (se valida y
--- se escribe una fila nueva). Si una reposición gana la carrera a un reintento, el usuario tiene perfil y la llamada
--- pasa a ser una baja nueva: el administrador pidió quitarlo y queda quitado, con su propia fila.
+-- Estados de éxito: 'quitado' (baja hecha ahora) y 'ya_quitado' (reintento de una baja que sigue vigente; la Edge
+-- Function converge con Auth tenga o no la marca). Todo lo demás es error.
+-- Baja nueva o reintento los decide quien llama con p_acceso_id (la baja que reintenta, la `acceso_id` que devolvió
+-- 'quitado' o que lista usuarios_empresa_listar), no la presencia del perfil: con solo p_user_id no se distingue un
+-- reintento que perdió frente a «reponer» de una baja nueva pedida a propósito.
+--   p_acceso_id nulo: baja nueva. El objetivo debe tener perfil de este cliente; sin perfil, 42501.
+--   p_acceso_id dado: reintento de esa baja. Solo vale si el perfil del usuario sigue ausente y la fila es de este
+--     cliente, de ese usuario, la más reciente y sin reponer; con perfil presente (p. ej. «reponer» ganó la carrera) o
+--     cualquier otra cosa, 42501, sin escribir nada.
 -- Concurrencia: se bloquean (for update, order by user_id: orden determinista, sin 40P01) los administradores vigentes
 -- del cliente ANTES de validar. Dos que se quitan a la vez se serializan; el actor se valida después, dentro del
 -- conjunto bloqueado: si otro ya lo quitó, su fila no está y recibe 42501 en lugar de quitar a un tercero.
 -- Orden de bloqueos (común a reponer): filas de perfiles primero, fila de auditoría después.
-create or replace function public.usuario_empresa_quitar_acceso(p_user_id uuid)
+-- Se elimina la firma de un parámetro: quedaría como una segunda ruta de baja nueva sin la distinción.
+drop function if exists public.usuario_empresa_quitar_acceso(uuid);
+create or replace function public.usuario_empresa_quitar_acceso(p_user_id uuid, p_acceso_id bigint default null)
 returns jsonb
 language plpgsql
 security definer
@@ -241,21 +249,27 @@ begin
     raise exception 'no se puede quitar el acceso propio' using errcode = '22023';
   end if;
 
-  select * into v_t from public.perfiles p where p.user_id = p_user_id for update;
+  -- Solo se bloquea el perfil si es de este cliente (no se toca ni se espera por filas de otra empresa).
+  select * into v_t from public.perfiles p where p.user_id = p_user_id and p.cliente_id = v_cli for update;
   if not found then
-    -- Reintento: el perfil ya no está. Solo vale sobre la fila más reciente del usuario, de este cliente y sin reponer.
+    -- Sin perfil de este cliente: o es un reintento (p_acceso_id) o no hay nada que quitar. Si el usuario tiene perfil
+    -- en otra empresa tampoco hay reintento que valga.
+    if p_acceso_id is null or exists (select 1 from public.perfiles p where p.user_id = p_user_id) then
+      raise exception 'permiso denegado' using errcode = '42501';
+    end if;
     select * into v_ult from public.accesos_quitados a where a.user_id = p_user_id order by a.id desc limit 1 for update;
-    if not found or v_ult.cliente_id <> v_cli or v_ult.repuesto_at is not null then
+    if not found or v_ult.id <> p_acceso_id or v_ult.cliente_id <> v_cli or v_ult.repuesto_at is not null then
       raise exception 'permiso denegado' using errcode = '42501';
     end if;
     return jsonb_build_object('estado', 'ya_quitado', 'acceso_id', v_ult.id, 'user_id', p_user_id);
   end if;
 
-  if v_t.cliente_id is distinct from v_cli or v_t.rol <> 'cliente' then
+  -- Con perfil presente solo cabe una baja nueva: un p_acceso_id es un reintento que perdió frente a «reponer».
+  if p_acceso_id is not null or v_t.rol <> 'cliente' then
     raise exception 'permiso denegado' using errcode = '42501';
   end if;
-  -- Defensa: con el actor distinto del objetivo y dentro del conjunto, siempre queda uno; se deja explícito por si
-  -- un cambio futuro altera la validación del actor.
+  -- Defensa, no ejercitable hoy: con el actor distinto del objetivo y dentro del conjunto bloqueado siempre queda al
+  -- menos uno, así que el 23514 no se alcanza; se deja explícito por si un cambio futuro altera la validación del actor.
   if v_t.sucursal_id is null and cardinality(array_remove(v_admins, p_user_id)) < 1 then
     raise exception 'no se puede quitar al último administrador de la empresa' using errcode = '23514';
   end if;
@@ -274,8 +288,8 @@ begin
   return jsonb_build_object('estado', 'quitado', 'acceso_id', v_id, 'user_id', p_user_id, 'email', coalesce(v_email, v_t.email));
 end
 $$;
-revoke all on function public.usuario_empresa_quitar_acceso(uuid) from public, anon;
-grant execute on function public.usuario_empresa_quitar_acceso(uuid) to authenticated;
+revoke all on function public.usuario_empresa_quitar_acceso(uuid, bigint) from public, anon;
+grant execute on function public.usuario_empresa_quitar_acceso(uuid, bigint) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 3d. usuario_empresa_reponer_acceso

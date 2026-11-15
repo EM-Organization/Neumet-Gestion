@@ -66,6 +66,7 @@ SQL
 fallar() { echo "FALLO concurrencia: $1" >&2; echo "--- sesión 1:"; cat "$O1"; echo "--- sesión 2:"; cat "$O2"; c_limpiar; exit 1; }
 O1="$WORK/c1.txt"; O2="$WORK/c2.txt"
 Q() { echo "select public.usuario_empresa_quitar_acceso('$1');"; }
+QR() { echo "select public.usuario_empresa_quitar_acceso('$1', $2);"; }  # reintento de la baja $2
 R() { echo "select public.usuario_empresa_reponer_acceso($1);"; }
 perfiles() { PQ -c "select count(*) from public.perfiles where cliente_id = 9301 and user_id = '$1'"; }
 
@@ -102,11 +103,24 @@ echo "== concurrencia: reponer contra el reintento de la baja"
 c_reset
 PQ -c "select test.become('authenticated','$CA'); select public.usuario_empresa_quitar_acceso('$CB');" >/dev/null
 ID=$(PQ -c "select max(id) from public.accesos_quitados where user_id = '$CB'")
-c_par "$CA" "$(Q "$CB")" "$CC" "$(R "$ID")" "$O1" "$O2"
+c_par "$CA" "$(QR "$CB" "$ID")" "$CC" "$(R "$ID")" "$O1" "$O2"
 grep -q 'ya_quitado' "$O1" || fallar "el reintento debía responder ya_quitado"
 grep -q '"estado": "repuesto"' "$O2" || fallar "la reposición debía prosperar tras el reintento"
 [ "$(perfiles "$CB")" = 1 ] || fallar "B debía estar repuesto"
 [ "$(PQ -c "select (repuesto_at is not null)::text || (bloqueo_auth_aplicado_at is null)::text from public.accesos_quitados where id = $ID")" = "truetrue" ] \
   || fallar "marcas inconsistentes: repuesto sin aplicado"
 echo "ok   - reponer tras un reintento de baja deja marcas consistentes"
+
+echo "== concurrencia: el reintento de la baja pierde frente a «reponer» (X1)"
+c_reset
+PQ -c "select test.become('authenticated','$CA'); select public.usuario_empresa_quitar_acceso('$CB');" >/dev/null
+ID=$(PQ -c "select max(id) from public.accesos_quitados where user_id = '$CB'")
+# la sesión 1 repone y retiene el bloqueo; la 2 reintenta la baja $ID y debe esperar, luego ver el perfil y recibir 42501
+c_par "$CC" "$(R "$ID")" "$CA" "$(QR "$CB" "$ID")" "$O1" "$O2"
+grep -q '"estado": "repuesto"' "$O1" || fallar "la reposición debía prosperar"
+grep -q 'permiso denegado' "$O2" || fallar "el reintento que pierde debía recibir 42501, no una baja nueva"
+grep -q '"estado"' "$O2" && fallar "el reintento que pierde no debía responder un estado de éxito"
+[ "$(perfiles "$CB")" = 1 ] || fallar "B debía seguir repuesto"
+[ "$(PQ -c "select count(*) from public.accesos_quitados where user_id = '$CB'")" = 1 ] || fallar "no debía crearse una baja nueva"
+echo "ok   - el reintento que pierde frente a reponer da 42501 y no vuelve a quitar"
 c_limpiar

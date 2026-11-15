@@ -122,19 +122,23 @@ select test.eq('E: rastro con rol, sucursal y vínculos desvinculados',
 select test.eq('E: el usuario de Auth sigue existiendo (lo maneja la Edge Function)', (select count(*) from auth.users where id = test.u_f3()), 1::bigint);
 update public.clientes set auth_user_id = test.u_cli_b() where id = 2;
 
+reset role;
+create temp table _acc as select id from public.accesos_quitados where user_id = test.u_f3();
+grant select on _acc to public;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('E: aparece como quitado en el listado',
   (select estado || '|' || bloqueo_auth_pendiente::text from public.usuarios_empresa_listar() where user_id = test.u_f3()), 'quitado|true');
 select test.eq('E: ya no cuenta como vigente', (select count(*) from public.usuarios_empresa_listar() where estado = 'vigente'), 3::bigint);
-select test.eq('E: reintento sin marca de Auth: ya_quitado', public.usuario_empresa_quitar_acceso(test.u_f3()) ->> 'estado', 'ya_quitado');
+select test.eq('E: reintento sin marca de Auth: ya_quitado', public.usuario_empresa_quitar_acceso(test.u_f3(), (select id from _acc)) ->> 'estado', 'ya_quitado');
+select test.denied('E: sin p_acceso_id y sin perfil no hay reintento ni baja nueva', format($$select public.usuario_empresa_quitar_acceso(%L)$$, test.u_f3()));
+select test.denied('E: p_acceso_id de otro usuario no autoriza el reintento', format($$select public.usuario_empresa_quitar_acceso(%L, (select id from _acc))$$, test.u_f2()));
+select test.denied('E: p_acceso_id inexistente', format($$select public.usuario_empresa_quitar_acceso(%L, 999999)$$, test.u_f3()));
 select test.become('authenticated', test.u_cli_b());
-select test.denied('E: otra empresa no reintenta la baja ajena', format($$select public.usuario_empresa_quitar_acceso(%L)$$, test.u_f3()));
+select test.denied('E: otra empresa no reintenta la baja ajena', format($$select public.usuario_empresa_quitar_acceso(%L, (select id from _acc))$$, test.u_f3()));
 select test.eq('E: otra empresa no ve a los quitados ajenos', (select count(*) from public.usuarios_empresa_listar()), 1::bigint);
 
 -- ---- accesos_quitados_marcar_auth: solo servicio, con revalidación -------------------------------------------------
 reset role;
-create temp table _acc as select id from public.accesos_quitados where user_id = test.u_f3();
-grant select on _acc to public;
 select test.become('authenticated', test.u_cli_a());
 select test.denied('F: authenticated no marca', $$select public.accesos_quitados_marcar_auth((select id from _acc), 'aplicado')$$);
 select test.become('anon', null);
@@ -148,7 +152,7 @@ select test.eq('F: sin marca es solo lectura y devuelve el estado',
 select test.eq('F: marca inexistente no es error', public.accesos_quitados_marcar_auth(999999, 'aplicado') ->> 'existe', 'false');
 select test.denied('F: marca desconocida', $$select public.accesos_quitados_marcar_auth((select id from _acc), 'otra')$$, '22023');
 select test.become('authenticated', test.u_cli_a());
-select test.eq('F: tras la marca, el reintento ya no tiene nada pendiente', public.usuario_empresa_quitar_acceso(test.u_f3()) ->> 'estado', 'ya_quitado');
+select test.eq('F: tras la marca, el reintento ya no tiene nada pendiente', public.usuario_empresa_quitar_acceso(test.u_f3(), (select id from _acc)) ->> 'estado', 'ya_quitado');
 
 -- ---- reponer acceso -----------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_f2());
@@ -190,6 +194,13 @@ select test.eq('G: «aplicado» ya no vale (hay perfil): no escribe y lo dice',
   (select (r ->> 'escrita') || '|' || (r ->> 'tiene_perfil') from (select public.accesos_quitados_marcar_auth((select id from _acc), 'aplicado') r) x), 'false|true');
 select test.become('authenticated', test.u_cli_a());
 select test.eq('G: reponer repetido tras levantar', public.usuario_empresa_reponer_acceso((select id from _acc)) ->> 'estado', 'ya_repuesto');
+-- X1 (revisor): el reintento de una baja que pierde frente a «reponer» no es una baja nueva: 42501 y no toca nada
+select test.denied('G: el reintento con p_acceso_id y perfil presente no quita de nuevo',
+  format($$select public.usuario_empresa_quitar_acceso(%L, (select id from _acc))$$, test.u_f3()));
+select test.eq('G: el perfil repuesto sigue ahí tras el reintento rechazado', (select count(*) from public.usuarios_empresa_listar() where user_id = test.u_f3() and estado = 'vigente'), 1::bigint);
+reset role;
+select test.eq('G: y no se creó una fila de baja nueva', (select count(*) from public.accesos_quitados where user_id = test.u_f3()), 1::bigint);
+select test.become('authenticated', test.u_cli_a());
 select test.eq('G: ya no aparece como quitado', (select count(*) from public.usuarios_empresa_listar() where estado = 'quitado'), 0::bigint);
 select test.eq('G: quitarlo de nuevo crea otra fila', public.usuario_empresa_quitar_acceso(test.u_f3()) ->> 'estado', 'quitado');
 select test.eq('G: dos filas de baja para el usuario', (select count(*) from public.usuarios_empresa_listar() where estado = 'quitado'), 1::bigint);
@@ -314,5 +325,16 @@ select public.vehiculo_registrar_odometro(931, 4600);
 reset role;
 select test.eq('L: el equipo Neumet sigue como «admin»',
   (select actor_rol from public.audit_log where entidad = 'vehiculos' and entidad_id = '931' and (despues ->> 'odometro_km') = '4600'), 'admin');
+
+-- ---- empresa dada de baja (clientes.deleted_at): su administrador ya no opera ------------------------------------
+reset role;
+update public.clientes set deleted_at = now() where id = 1;
+select test.become('authenticated', test.u_cli_a());
+select test.denied('M: empresa dada de baja: no lista', $$select * from public.usuarios_empresa_listar()$$);
+select test.denied('M: empresa dada de baja: no quita', format($$select public.usuario_empresa_quitar_acceso(%L)$$, test.u_f2()));
+select test.denied('M: empresa dada de baja: no repone', $$select public.usuario_empresa_reponer_acceso((select id from _acc))$$);
+reset role;
+select test.eq('M: nada cambió', (select count(*) from public.perfiles where user_id = test.u_f2()), 1::bigint);
+update public.clientes set deleted_at = null where id = 1;
 
 rollback;
