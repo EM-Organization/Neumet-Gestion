@@ -136,6 +136,12 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!rp || rp.fn !== 'reponer-acceso-usuario' || rp.body.acceso_id !== 55) fail('empresa: reintento de reponer tras desbloqueo pendiente ' + JSON.stringify(rp));
   if (!btn('u-5', 'empresaQuitar')) fail('empresa: resuelto el pendiente, la fila vigente debe volver a ofrecer Quitar');
 
+  // 500 tras una RPC exitosa: la baja quedó hecha aunque la función falló; la vista relee la lista y no deja la fila desactualizada
+  fx.cola.push({ status: 500, body: { ok: false, error: 'Error interno' }, efecto: 'quitado' });
+  btn('u-5', 'empresaQuitar').click(); await confirmar();
+  if (fila('u-5').dataset.estado !== 'quitado') fail('empresa: tras un 500 la fila no se actualizó desde la base');
+  btn('u-5', 'empresaReponer').click(); await sleep(400);
+
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
   if (all('#emp-umb-campos [data-umbral]').length !== 5) fail('empresa: faltan campos de umbrales');

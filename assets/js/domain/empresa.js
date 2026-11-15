@@ -88,8 +88,8 @@ export function resultadoAcceso(op, status, body) {
   if (status === 400 && b.codigo === 'acceso_propio') return { ...base, recargar: false, mensaje: 'No se puede quitar el acceso propio.' };
   if (status === 400 && b.codigo === 'elegir_sucursal') return { ...base, recargar: false, mensaje: 'La sucursal original ya no existe. Elegir otra.', ofrecer: 'sucursal' };
   if (status === 401) return { ...base, recargar: false, mensaje: 'La sesión venció. Volver a iniciar sesión.' };
-  if (status === 409 && b.estado === 'ya_quitado') return { ...base, mensaje: 'El acceso ya estaba quitado' };
-  return { ...base, recargar: false, mensaje: err || (op === 'quitar' ? 'No se pudo quitar el acceso' : 'No se pudo reponer el acceso') };
+  // Sin respuesta (0) o 500: la RPC pudo haber cambiado el estado antes del fallo; se relee la lista. Un 4xx de validación no cambia nada.
+  return { ...base, recargar: status === 0 || status >= 500, mensaje: err || (op === 'quitar' ? 'No se pudo quitar el acceso' : 'No se pudo reponer el acceso') };
 }
 
 // Alta de usuario: añade al mensaje de crear-usuario-seccional los casos de la empresa (409 con acceso quitado, 429).

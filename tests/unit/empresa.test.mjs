@@ -84,7 +84,7 @@ test('accionesFila con pendiente: quita de la fila lo que el contrato prohíbe',
   assert.deepEqual(accionesFila(quitado, {}), { reponer: true, quitar: true });
 });
 
-test.skip('resultadoAcceso 0 y 500 recargan la lista (la RPC pudo haber cambiado el estado); un 400 genérico no', () => {
+test('resultadoAcceso 0 y 500 recargan la lista (la RPC pudo haber cambiado el estado); un 400 genérico no', () => {
   assert.equal(resultadoAcceso('quitar', 0, null).recargar, true);
   assert.equal(resultadoAcceso('reponer', 500, { error: 'Error interno' }).recargar, true);
   assert.equal(resultadoAcceso('quitar', 400, { error: 'Parámetros obligatorios' }).recargar, false);
