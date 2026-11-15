@@ -60,6 +60,19 @@ jobs:
       - run: npm run lint
       - run: npm run check
 
+  build:
+    # Build neutro: dist/ debe ser una copia idéntica de lo publicable (docs/19 §5.1).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node tests/build/verificar-dist.mjs
+
   test:
     runs-on: ubuntu-latest
     steps:
