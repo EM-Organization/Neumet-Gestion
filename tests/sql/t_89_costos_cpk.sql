@@ -261,7 +261,7 @@ select test.eq('el monto se guardó redondeado a 2 decimales',
 select test.eq('created_by = quien registró',
   (select count(*) from public.costos_neumatico where neumatico_id = (select id from _ids89 where idn = 'C89-P5') and created_by = test.u_cli_a()), 3::bigint);
 select test.eq('auditoría: INSERT con actor y rol',
-  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'INSERT' and actor_id = test.u_cli_a() and actor_rol = 'cliente'), 3::bigint);
+  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'INSERT' and actor_id = test.u_cli_a() and actor_rol = 'admin_empresa'), 3::bigint);
 
 select test.become('authenticated', test.u_admin());
 select test.eq('admin registra un costo en cualquier cliente',
@@ -301,7 +301,7 @@ select test.eq('global elimina un costo de su cliente',
 reset role;
 select test.eq('tras eliminar el total baja', test.c89('C89-P5'), '260.50|0.026050|NULL|false|true');
 select test.eq('auditoría: DELETE con actor y rol',
-  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'DELETE' and actor_id = test.u_cli_a() and actor_rol = 'cliente'), 1::bigint);
+  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'DELETE' and actor_id = test.u_cli_a() and actor_rol = 'admin_empresa'), 1::bigint);
 select test.become('authenticated', test.u_admin());
 select test.eq('admin elimina cualquier costo', (public.costo_eliminar((select min(id) from _cost89))->>'neumatico_id')::bigint, (select id from _ids89 where idn = 'C89-P1'));
 reset role;

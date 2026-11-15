@@ -153,6 +153,10 @@ echo "== migración de alerta crítica (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
 echo "== migración de alerta crítica (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261118500000_alerta_critica.sql"
+echo "== migración de administración de empresa (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261119000000_admin_empresa.sql"
+echo "== migración de administración de empresa (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261119000000_admin_empresa.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
@@ -168,4 +172,7 @@ for f in "$SQL"/t_*.sql; do
   echo "== $(basename "$f")"
   run_quiet "$f" show
 done
+# Concurrencia con dos sesiones reales (datos propios, confirmados y borrados al terminar)
+# shellcheck source=tests/sql/concurrencia_admin_empresa.sh
+source "$SQL/concurrencia_admin_empresa.sh"
 echo "TODOS LOS TESTS SQL PASARON"

@@ -843,3 +843,50 @@ La alerta sigue al neumático: rotar no crea otra y cambiarlo la resuelve. Dispa
 ## M.7 Límites
 
 Sin anulaciones por eje, posición ni marca/modelo, sin destinatarios, correo ni reevaluación nocturna (docs/15 B.5, etapas 2 y 3). La reapertura a 7 días no es configurable todavía.
+
+---
+
+# Apéndice N · Administración de empresa: base (migración `20261119000000`, F10 PR 2)
+
+Primera migración del plan de roles ([`docs/17`](17-plan-roles-admin.md) §9, migración A). Solo agrega esquema y RPC: ningún cambio de interfaz ni de Edge Function (esos son los PR siguientes). La migración **va sin aplicar** hasta que pase la compuerta.
+
+## N.1 Regla de producto
+
+El administrador de empresa es un `perfiles.rol = 'cliente'` con `sucursal_id` nulo; el usuario de sucursal tiene `sucursal_id`. «Quitar acceso» borra la fila de `perfiles` (falla cerrado) y deja una fila en `accesos_quitados`; reponer la vuelve a crear. El perfil `admin` (equipo Neumet) no gestiona usuarios.
+
+## N.2 Esquema
+
+- `admin_empresa_cliente_id()`: devuelve el `cliente_id` del administrador de empresa vigente, o nulo.
+- `accesos_quitados` (RLS activa, sin políticas y sin grants a `anon` ni `authenticated`): `id`, `cliente_id` (FK con cascada), `user_id`, `email`, `rol`, `sucursal_id`, `clientes_desvinculados`, `quitado_por/at`, `repuesto_por/at`, `bloqueo_auth_aplicado_at`, `bloqueo_auth_levantado_at`. Dos índices (por usuario y por cliente).
+- Orden de bloqueos fijo para evitar deadlocks: filas de `perfiles` primero, la fila más reciente de `accesos_quitados` después.
+
+## N.3 RPC (`SECURITY DEFINER`, `search_path` vacío, 42501 uniforme)
+
+| RPC | Quién | Resultado |
+|---|---|---|
+| `usuarios_empresa_listar(p_cliente_id)` | administrador de empresa; `admin` y global solo lectura | `user_id, email, alcance, sucursal_id, sucursal_nombre, estado` (`vigente`/`quitado`), `desde`, `acceso_id`, `bloqueo_auth_pendiente` |
+| `usuario_empresa_quitar_acceso(p_user_id)` | administrador de empresa | `quitado` o `ya_quitado` |
+| `usuario_empresa_reponer_acceso(p_acceso_id, p_sucursal_id)` | administrador de empresa | `repuesto` o `ya_repuesto` |
+| `accesos_quitados_marcar_auth(p_id, p_marca)` | solo `service_role` | estado `{id, existe, tiene_perfil, escrita, es_la_mas_reciente, repuesto, bloqueo_auth_*}`; con `p_marca` nulo es solo lectura |
+| `vehiculo_corregir_odometro(p_vehiculo_id, p_odometro_km)` | administrador de empresa | corrige el kilometraje hacia abajo, con auditoría |
+| `alerta_configurar(...)` | ampliada a 8 parámetros (se elimina la firma de 3) | conserva la rama de `admin` hasta C2 |
+
+Reglas:
+- No se puede quitar al último administrador de la empresa ni a uno mismo; quitar es idempotente (`ya_quitado`) y reponer también (`ya_repuesto`, incluido un perfil presente reasignado por el equipo Neumet dentro de la misma empresa; de otra empresa es 42501).
+- **Reintento frente a baja nueva**: decide la presencia del perfil del objetivo. Sin perfil, la llamada es un reintento y solo vale sobre la fila más reciente del usuario, de este cliente y sin reponer (si no, 42501). Con perfil, es una baja nueva (fila nueva). Si una reposición gana la carrera a un reintento, esa llamada pasa a ser una baja nueva.
+- `accesos_quitados_marcar_auth` nunca rechaza (salvo 22004 por `p_id` nulo y 22023 por marca desconocida) y escribe la marca solo si es cierta, bajo `for update` de la fila más reciente. El bucle de convergencia con Auth (PR 3) empieza leyendo con `p_marca` nulo.
+
+## N.4 Auditoría
+
+`audit_row()` rotula `actor_rol` como `admin_empresa` (sucursal nula) o `sucursal`; antes todo era `cliente`. Solo cambian las filas escritas por trigger: las RPC que insertan en `audit_log` por su cuenta (`gestion_sucursales`, `stock_cubiertas`, `calidad_datos`) siguen con `cliente`.
+
+## N.5 Pruebas
+
+- `tests/sql/t_93_admin_empresa.sql`: matriz por rol para cada RPC (administrador de empresa, usuario de sucursal, global, `admin`, sin perfil, `api`, `anon`), acceso directo a `accesos_quitados`, último administrador, JWT vigente de un quitado, vínculo `auth_user_id` en otra empresa, auditoría y `alerta_configurar` ampliada.
+- `tests/sql/concurrencia_admin_empresa.sh` (lo carga `run.sh`): dos sesiones reales con bloqueos; bajas cruzadas, bajas mutuas, dos reposiciones y reposición contra reintento.
+- `tests/e2e/specs/admin-empresa.mjs`: las mismas RPC por la API real con el JWT de cada rol.
+- `tests/unit/inventario-perfiles.test.mjs`: repite los cuatro `grep` de `docs/17` §2.5 y falla ante una ruta nueva sin revisar (regenerar con `--regenerar` tras clasificarla).
+
+## N.6 Límites
+
+Sin Edge Functions (PR 3), sin panel (PR 4 en adelante), sin cambios en `api-proveedor`, sin migraciones B (uso) ni C1/C2 (recorte de `admin`), sin MFA. Las RPC existentes que insertan en `audit_log` y `vehiculo_registrar_odometro` no cambian.
