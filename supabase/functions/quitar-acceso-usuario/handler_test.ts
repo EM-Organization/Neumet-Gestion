@@ -1,6 +1,6 @@
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { ADMIN_JWT, compuerta, llamadasAuth, Mundo, USUARIO } from '../_shared/simulado.ts';
-import { type Deps, handle, MSG_PENDIENTE, MSG_RECARGAR } from './handler.ts';
+import { type Deps, handle, MSG_ESTADO_DESCONOCIDO, MSG_PENDIENTE, MSG_RECARGAR, MSG_REPUESTO_PENDIENTE } from './handler.ts';
 
 const ORIGIN = 'https://panel.example.com';
 const tick = async () => {
@@ -214,6 +214,53 @@ Deno.test('la lectura del estado falla => error con acceso cortado, sin inventar
   const { deps } = mk({ estado: () => Promise.reject(new Error('db')) });
   const r = await handle(req(baja), deps);
   assertEquals(r.status, 502);
+  const b = await json(r);
+  // No se afirma «acceso cortado» sin haberlo comprobado: la lectura falló.
+  assertEquals(b.codigo, 'estado_no_confirmado');
+  assertEquals(b.error, MSG_ESTADO_DESCONOCIDO);
+  assertEquals(b.acceso_cortado, undefined);
+});
+
+Deno.test('(b) reintento de baja (ya_quitado) cuyo ban llega tras «reponer»: relee, ve perfil y desbloquea', async () => {
+  const m = new Mundo();
+  m.tienePerfil = false;
+  m.filas.push({ id: 1, repuesta: false, aplicado: false, levantado: false });
+  m.ultimoAcceso = 1;
+  const { deps } = mk({}, m);
+  const g = compuerta();
+  m.retener.push({ cuando: 'ban', compuerta: g.esperar });
+  const q = handle(req({ ...baja, acceso_id: 1 }), deps);
+  await tick();
+  assertEquals(m.log, ['rpc:quitar:1']); // ya_quitado confirmado, ban en vuelo
+  await m.reponer(ADMIN_JWT, 1, null);
+  await m.fijarBloqueo(USUARIO, false);
+  g.liberar();
+  const r = await q;
+  assertEquals(r.status, 200);
+  assertEquals((await json(r)).estado, 'repuesto_durante_baja');
+  assert(!m.baneado && m.tienePerfil && m.coherente());
+});
+
+Deno.test('(d) ban tardío tras «reponer» y falla el desbloqueo de convergencia: el 502 sale del estado real (repuesto), no de la baja pedida', async () => {
+  const { deps, m } = mk();
+  const g = compuerta();
+  m.retener.push({ cuando: 'ban', compuerta: g.esperar });
+  const q = handle(req(baja), deps);
+  await tick();
+  await m.reponer(ADMIN_JWT, 1, null); // R repone y desbloquea
+  await m.fijarBloqueo(USUARIO, false);
+  m.fallosAuth.push(false, true); // llega el ban de Q (ok); su unban de convergencia falla
+  g.liberar();
+  const r = await q;
+  const b = await json(r);
+  assertEquals(r.status, 502);
+  assertEquals(b.codigo, 'desbloqueo_auth_pendiente');
+  assertEquals(b.error, MSG_REPUESTO_PENDIENTE);
+  assertEquals(b.acceso_repuesto, true);
+  assertEquals(b.acceso_cortado, false);
+  assertEquals(b.acceso_id, 1);
+  assert(m.tienePerfil && m.baneado, 'estado real: con perfil y Auth bloqueado; no hay baja nueva que repetir');
+  assert(!JSON.stringify(b).includes('«quitado»'), 'no manda a repetir Quitar');
 });
 
 Deno.test('CORS: origen permitido, no permitido, vacío y preflight', async () => {

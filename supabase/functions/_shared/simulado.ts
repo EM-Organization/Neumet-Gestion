@@ -53,7 +53,9 @@ export class Mundo {
     this.log.push(`rpc:reponer:${accesoId}`);
     const den: RpcResult = { error: { code: '42501', message: 'permiso denegado' } };
     const u = this.ultima;
-    if (token !== ADMIN_JWT || !u) return Promise.resolve(den);
+    // Como la RPC (migración A, usuario_empresa_reponer_acceso): un acceso_id inexistente o ajeno es 42501 uniforme,
+    // también con perfil presente; ya_repuesto solo vale para el acceso que existe de este usuario.
+    if (token !== ADMIN_JWT || !u || !this.filas.some((f) => f.id === accesoId)) return Promise.resolve(den);
     if (this.tienePerfil) {
       return Promise.resolve({ data: { estado: 'ya_repuesto', acceso_id: u.id, user_id: USUARIO } });
     }

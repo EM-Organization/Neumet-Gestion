@@ -27,6 +27,10 @@ export const MSG_RECARGAR =
   'No se pudo quitar el acceso: la lista cambió o falta permiso. Actualizar la lista y repetir desde la fila del usuario.';
 export const MSG_PENDIENTE =
   'El acceso a los datos ya está cortado, pero no se pudo cerrar la sesión. Repetir «Quitar» desde la fila «quitado».';
+export const MSG_REPUESTO_PENDIENTE =
+  'El acceso quedó repuesto por otra persona, pero no se pudo levantar el bloqueo de la sesión. Repetir «Reponer acceso» para terminar.';
+export const MSG_ESTADO_DESCONOCIDO =
+  'No se pudo confirmar el estado del acceso. Actualizar la lista y revisar la fila del usuario.';
 export const MSG_NO_CONVERGE =
   'El estado del usuario siguió cambiando. Repetir la operación para terminar de cerrar la sesión.';
 
@@ -77,7 +81,19 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (c.motivo === 'no_converge') {
       return fail(MSG_NO_CONVERGE, 409, cors, { codigo: 'no_converge', estado: estadoRpc, acceso_id: idAcceso });
     }
-    // El acceso a datos ya está cortado (la RPC confirmó): lo que falta es Auth. Repetir con `acceso_id` converge.
+    // El 502 sale del último estado observado, no de la operación pedida: otra persona pudo reponer entretanto.
+    if (c.tienePerfil === null) {
+      return fail(MSG_ESTADO_DESCONOCIDO, 502, cors, { codigo: 'estado_no_confirmado', acceso_id: idAcceso });
+    }
+    if (c.tienePerfil) {
+      return fail(MSG_REPUESTO_PENDIENTE, 502, cors, {
+        codigo: 'desbloqueo_auth_pendiente',
+        acceso_id: idAcceso,
+        acceso_repuesto: true,
+        acceso_cortado: false,
+      });
+    }
+    // Consistente con lo pedido: el acceso a datos está cortado; falta Auth. Repetir con `acceso_id` converge.
     return fail(MSG_PENDIENTE, 502, cors, {
       codigo: 'bloqueo_auth_pendiente',
       estado: estadoRpc,

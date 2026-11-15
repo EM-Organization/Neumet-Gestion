@@ -25,6 +25,10 @@ export const MSG_RECARGAR =
   'No se pudo reponer el acceso: la lista cambió o falta permiso. Actualizar la lista y repetir desde la fila del usuario.';
 export const MSG_PENDIENTE =
   'El acceso ya está repuesto, pero no se pudo levantar el bloqueo de la sesión. Repetir «Reponer acceso» para terminar.';
+export const MSG_QUITADO_PENDIENTE =
+  'El acceso quedó quitado por otra persona y no se pudo bloquear la sesión. Actualizar la lista y repetir «Quitar» desde la fila «quitado» para terminar.';
+export const MSG_ESTADO_DESCONOCIDO =
+  'No se pudo confirmar el estado del acceso. Actualizar la lista y revisar la fila del usuario.';
 export const MSG_NO_CONVERGE =
   'El estado del usuario siguió cambiando. Repetir la operación para terminar de levantar el bloqueo.';
 export const MSG_SUCURSAL = 'La sucursal original ya no existe en la empresa. Elegir otra sucursal.';
@@ -72,6 +76,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     log('error', 'convergencia_fallida', { actor, motivo: c.motivo, acceso_id: idAcceso });
     if (c.motivo === 'no_converge') {
       return fail(MSG_NO_CONVERGE, 409, cors, { codigo: 'no_converge', estado: estadoRpc, acceso_id: idAcceso });
+    }
+    // El 502 sale del último estado observado, no de la operación pedida: otra persona pudo quitar entretanto.
+    if (c.tienePerfil === null) {
+      return fail(MSG_ESTADO_DESCONOCIDO, 502, cors, { codigo: 'estado_no_confirmado', acceso_id: idAcceso });
+    }
+    if (!c.tienePerfil) {
+      return fail(MSG_QUITADO_PENDIENTE, 502, cors, {
+        codigo: 'bloqueo_auth_pendiente',
+        // Sin `acceso_id`: el recibido es de la baja anterior; la vigente es otra y la lista recargada la trae.
+        acceso_cortado: true,
+        acceso_repuesto: false,
+      });
     }
     return fail(MSG_PENDIENTE, 502, cors, {
       codigo: 'desbloqueo_auth_pendiente',

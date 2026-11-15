@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { type AuthResult, type Deps, handle } from './handler.ts';
 import { crearLimite } from './limite.ts';
+import { accesoQuitadoDe, type ClienteLectura } from './quitado.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -40,12 +41,7 @@ const deps: Deps = {
       ? { rol: data.rol as string, cliente_id: data.cliente_id as number | null, sucursal_id: data.sucursal_id as number | null }
       : null;
   },
-  async accesoQuitado(email, clienteId) {
-    const { data, error } = await admin.from('accesos_quitados').select('id').eq('cliente_id', clienteId)
-      .eq('email', email.toLowerCase()).is('repuesto_at', null).limit(1);
-    if (error) throw error;
-    return (data?.length ?? 0) > 0;
-  },
+  accesoQuitado: (email, clienteId) => accesoQuitadoDe(admin as unknown as ClienteLectura, email, clienteId),
   permitirIntento: crearLimite(20, 60 * 60 * 1000),
   async clienteExiste(id) {
     const { data, error } = await admin.from('clientes').select('id').eq('id', id).is('deleted_at', null)

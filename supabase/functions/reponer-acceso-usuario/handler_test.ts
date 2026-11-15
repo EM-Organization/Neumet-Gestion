@@ -1,6 +1,14 @@
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 import { ADMIN_JWT, compuerta, llamadasAuth, Mundo, USUARIO } from '../_shared/simulado.ts';
-import { type Deps, handle, MSG_PENDIENTE, MSG_RECARGAR, MSG_SUCURSAL } from './handler.ts';
+import {
+  type Deps,
+  handle,
+  MSG_ESTADO_DESCONOCIDO,
+  MSG_PENDIENTE,
+  MSG_QUITADO_PENDIENTE,
+  MSG_RECARGAR,
+  MSG_SUCURSAL,
+} from './handler.ts';
 
 const ORIGIN = 'https://panel.example.com';
 const tick = async () => {
@@ -117,7 +125,7 @@ Deno.test('(c) ya_repuesto con Auth bloqueado (bloqueo huérfano): desbloquea', 
   assert(!m.baneado && m.coherente());
 });
 
-Deno.test('(d) Auth falla al desbloquear: informa desbloqueo pendiente y repetir (ya_repuesto) converge', async () => {
+Deno.test('Auth falla al desbloquear: informa desbloqueo pendiente y repetir (ya_repuesto) converge', async () => {
   const { deps, m } = mk();
   m.fallosAuth.push(true);
   const r = await handle(req(rep), deps);
@@ -142,9 +150,11 @@ Deno.test('(e) un ban que llega antes que el unban de reponer termina sin bloque
   await tick();
   await m.fijarBloqueo(USUARIO, true); // ban atrasado de una baja anterior, llega ahora
   g.liberar();
-  assertEquals((await handle(req(rep), deps)).status, 200);
-  assertEquals((await r).status, 200);
-  assert(!m.baneado && m.tienePerfil && m.coherente());
+  const r1 = await r; // resultado de la PRIMERA llamada, antes de cualquier otra
+  assertEquals(r1.status, 200);
+  assertEquals((await json(r1)).estado, 'repuesto');
+  assert(!m.baneado && m.tienePerfil && m.coherente(), 'termina sin bloqueo solo por la primera llamada');
+  assertEquals((await handle(req(rep), deps)).status, 200); // y repetir sigue siendo inocuo
 });
 
 Deno.test('(f, escenario A) unban de R retenido, Q2 quita de nuevo: R relee, vuelve a bloquear y responde quitado_durante_reposicion', async () => {
@@ -165,6 +175,55 @@ Deno.test('(f, escenario A) unban de R retenido, Q2 quita de nuevo: R relee, vue
   assert(m.baneado && !m.tienePerfil && m.coherente(), 'Auth bloqueado, usuario sin perfil');
   assert(m.filas[1].aplicado, 'la fila 2 conserva su marca');
   assertEquals(m.filas[0].levantado, false, 'ninguna marca falsa sobre la fila 1');
+});
+
+Deno.test('(d) unban de R retenido, Q2 quita, llega el unban y falla el bloqueo de convergencia: el 502 sale del estado real (quitado), no de la reposición pedida', async () => {
+  const { deps, m } = mk();
+  const g = compuerta();
+  m.retener.push({ cuando: 'unban', compuerta: g.esperar });
+  const rp = handle(req(rep), deps);
+  await tick();
+  await m.quitar(ADMIN_JWT, USUARIO, null); // Q2: fila 2
+  await m.fijarBloqueo(USUARIO, true);
+  await m.estado(2, 'aplicado');
+  m.fallosAuth.push(false, true); // llega el unban de R (ok); su ban de convergencia falla
+  g.liberar();
+  const r = await rp;
+  const b = await json(r);
+  assertEquals(r.status, 502);
+  assertEquals(b.codigo, 'bloqueo_auth_pendiente');
+  assertEquals(b.error, MSG_QUITADO_PENDIENTE);
+  assertEquals(b.acceso_cortado, true);
+  assertEquals(b.acceso_repuesto, false);
+  assertEquals(b.acceso_id, undefined, 'el acceso_id de R es de la baja anterior: no se ofrece para repetir');
+  assert(!m.tienePerfil && !m.baneado && m.filas[1].aplicado, 'estado real: sin perfil, Auth desbloqueado, fila 2 vigente');
+  assert(!JSON.stringify(b).includes('Repetir «Reponer'), 'no manda a repetir Reponer');
+});
+
+Deno.test('la lectura del estado falla tras la RPC => 502 sin afirmar quitado ni repuesto', async () => {
+  const { deps } = mk({ estado: () => Promise.reject(new Error('db')) });
+  const r = await handle(req(rep), deps);
+  const b = await json(r);
+  assertEquals(r.status, 502);
+  assertEquals(b.codigo, 'estado_no_confirmado');
+  assertEquals(b.error, MSG_ESTADO_DESCONOCIDO);
+  assertEquals(b.acceso_repuesto, undefined);
+  assertEquals(b.acceso_cortado, undefined);
+});
+
+Deno.test('RPC reponer simulada: 42501 si el acceso_id no existe o no es de este cliente', async () => {
+  const m = quitado();
+  // deno-lint-ignore no-explicit-any
+  const r: any = await m.reponer(ADMIN_JWT, 99, null);
+  assertEquals(r.error?.code, '42501');
+  assert(!m.tienePerfil, 'no repuso nada');
+  m.tienePerfil = true; // con perfil presente tampoco hay ya_repuesto para un acceso que no existe
+  // deno-lint-ignore no-explicit-any
+  assertEquals(((await m.reponer(ADMIN_JWT, 99, null)) as any).error?.code, '42501');
+  m.tienePerfil = false;
+  const { deps } = mk({}, m);
+  assertEquals((await handle(req({ acceso_id: 99 }), deps)).status, 403);
+  assertEquals(llamadasAuth(m.log), []);
 });
 
 Deno.test('(h) convergencia agotada => no_converge y repetir con el estado estable converge', async () => {

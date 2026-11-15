@@ -29,7 +29,9 @@ export const MAX_INTENTOS = 3;
 
 export type Convergencia =
   | { ok: true; tienePerfil: boolean }
-  | { ok: false; motivo: 'auth' | 'no_converge' | 'estado' };
+  // `tienePerfil`: último estado de perfil OBSERVADO en la base antes de fallar (null si no se pudo leer o la fila ya no
+  // existe). Los handlers arman el 502 desde ese estado, no desde la operación pedida: otra operación pudo cambiarlo.
+  | { ok: false; motivo: 'auth' | 'no_converge' | 'estado'; tienePerfil: boolean | null };
 
 /**
  * Invariante (docs/17 §4.1): el estado final de Auth es el del último estado de BD observado tras la última llamada a
@@ -42,10 +44,10 @@ export async function converger(deps: ConvergenciaDeps, userId: string, accesoId
   try {
     s = await deps.estado(accesoId, null);
   } catch {
-    return { ok: false, motivo: 'estado' };
+    return { ok: false, motivo: 'estado', tienePerfil: null };
   }
   for (let i = 0; i < MAX_INTENTOS; i++) {
-    if (!s.existe || s.tiene_perfil === null) return { ok: false, motivo: 'estado' };
+    if (!s.existe || s.tiene_perfil === null) return { ok: false, motivo: 'estado', tienePerfil: null };
     const conPerfil = s.tiene_perfil;
     let aplicado = false;
     try {
@@ -53,17 +55,17 @@ export async function converger(deps: ConvergenciaDeps, userId: string, accesoId
     } catch {
       aplicado = false;
     }
-    if (!aplicado) return { ok: false, motivo: 'auth' };
+    if (!aplicado) return { ok: false, motivo: 'auth', tienePerfil: conPerfil };
     let despues: EstadoVigente;
     try {
       despues = await deps.estado(accesoId, conPerfil ? 'levantado' : 'aplicado');
     } catch {
-      return { ok: false, motivo: 'estado' };
+      return { ok: false, motivo: 'estado', tienePerfil: null };
     }
     if (despues.existe && despues.tiene_perfil === conPerfil) return { ok: true, tienePerfil: conPerfil };
     s = despues;
   }
-  return { ok: false, motivo: 'no_converge' };
+  return { ok: false, motivo: 'no_converge', tienePerfil: s.existe ? s.tiene_perfil : null };
 }
 
 export interface Entrada {

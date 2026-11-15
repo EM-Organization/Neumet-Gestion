@@ -104,7 +104,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Encarece la enumeración de cuentas por el 409: tope de intentos por llamante (el equipo Neumet no se limita).
   if (esAdminEmpresa && !deps.permitirIntento(user.id)) {
     log('warn', 'rate_limited', { actor: user.id });
-    return fail('Demasiados intentos de alta. Esperar unos minutos y repetir.', 429, cors);
+    return fail('Demasiados intentos de alta en la última hora. Repetir más tarde.', 429, cors);
   }
 
   // 2. Cuerpo y validación

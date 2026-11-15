@@ -196,13 +196,38 @@
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
-  "linea": 36,
+  "linea": 37,
   "texto": "const { data, error } = await admin.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id', userId)"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
-  "linea": 74,
+  "linea": 70,
   "texto": "const { error } = await admin.from('perfiles').insert({"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 27,
+  "texto": "assertEquals(await accesoQuitadoDe(simulado({ accesos_quitados: [quitadoA], perfiles: [] }), 'A@B.cl', 7), true);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 30,
+  "texto": "const db = simulado({ accesos_quitados: [quitadoA], perfiles: [] });"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 36,
+  "texto": "perfiles: [],"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 41,
+  "texto": "const db = simulado({ accesos_quitados: [quitadoA], perfiles: [{ user_id: 'u1' }] });"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado.ts",
+  "linea": 25,
+  "texto": "const { data: perfil, error: e2 } = await db.from('perfiles').select('user_id').eq('user_id', fila.user_id).limit(1);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/README.md",
