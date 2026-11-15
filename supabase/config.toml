@@ -29,3 +29,10 @@ verify_jwt = false
 # Idem para crear-usuario-seccional.
 [functions.crear-usuario-seccional]
 verify_jwt = false
+
+# Validan el JWT del llamante y delegan la autorización en la RPC (se invoca con ese mismo JWT); el preflight CORS no lleva token.
+[functions.quitar-acceso-usuario]
+verify_jwt = false
+
+[functions.reponer-acceso-usuario]
+verify_jwt = false

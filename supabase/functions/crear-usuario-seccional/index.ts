@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { type AuthResult, type Deps, handle } from './handler.ts';
+import { crearLimite } from './limite.ts';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -31,11 +32,21 @@ const deps: Deps = {
     const { data, error } = await admin.auth.getUser(token);
     return error || !data.user ? null : { id: data.user.id };
   },
-  async isAdmin(userId) {
-    const { data, error } = await admin.from('perfiles').select('rol').eq('user_id', userId).maybeSingle();
+  async getPerfil(userId) {
+    const { data, error } = await admin.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id', userId)
+      .maybeSingle();
     if (error) throw error;
-    return data?.rol === 'admin';
+    return data
+      ? { rol: data.rol as string, cliente_id: data.cliente_id as number | null, sucursal_id: data.sucursal_id as number | null }
+      : null;
   },
+  async accesoQuitado(email, clienteId) {
+    const { data, error } = await admin.from('accesos_quitados').select('id').eq('cliente_id', clienteId)
+      .eq('email', email.toLowerCase()).is('repuesto_at', null).limit(1);
+    if (error) throw error;
+    return (data?.length ?? 0) > 0;
+  },
+  permitirIntento: crearLimite(20, 60 * 60 * 1000),
   async clienteExiste(id) {
     const { data, error } = await admin.from('clientes').select('id').eq('id', id).is('deleted_at', null)
       .maybeSingle();

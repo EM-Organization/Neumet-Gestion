@@ -1,5 +1,6 @@
 import { assert, assertEquals } from 'jsr:@std/assert@1';
-import { type Deps, handle } from './handler.ts';
+import { type Deps, handle, type PerfilLlamante } from './handler.ts';
+import { crearLimite } from './limite.ts';
 
 const ORIGIN = 'https://panel.example.com';
 
@@ -13,8 +14,32 @@ function mk(over: Partial<Deps> = {}) {
   };
   const deps: Deps = {
     allowedOrigins: [ORIGIN],
-    getUser: (t) => Promise.resolve(t === 'admin-jwt' ? { id: 'admin-1' } : t === 'user-jwt' ? { id: 'u-2' } : null),
-    isAdmin: (id) => Promise.resolve(id === 'admin-1'),
+    getUser: (t) =>
+      Promise.resolve(
+        t === 'admin-jwt'
+          ? { id: 'admin-1' }
+          : t === 'user-jwt'
+          ? { id: 'u-2' }
+          : t === 'emp-jwt'
+          ? { id: 'emp-1' }
+          : t === 'suc-jwt'
+          ? { id: 'suc-1' }
+          : t === 'emp8-jwt'
+          ? { id: 'emp-8' }
+          : null,
+      ),
+    getPerfil: (id) =>
+      Promise.resolve(
+        ({
+          'admin-1': { rol: 'admin', cliente_id: null, sucursal_id: null },
+          'emp-1': { rol: 'cliente', cliente_id: 7, sucursal_id: null },
+          'emp-8': { rol: 'cliente', cliente_id: 8, sucursal_id: null },
+          'suc-1': { rol: 'cliente', cliente_id: 7, sucursal_id: 70 },
+          'api-1': { rol: 'api', cliente_id: 7, sucursal_id: null },
+        } as Record<string, PerfilLlamante>)[id] ?? null,
+      ),
+    accesoQuitado: (e, c) => Promise.resolve(e === 'quitado@b.cl' && c === 7),
+    permitirIntento: () => true,
     clienteExiste: (id) => Promise.resolve(id === 7 || id === 8),
     getSucursal: (id) =>
       Promise.resolve(id === 70 ? { id: 70, cliente_id: 7 } : id === 80 ? { id: 80, cliente_id: 8 } : null),
@@ -161,4 +186,95 @@ Deno.test('logs: JSON con request_id y sin datos sensibles', async () => {
   const all = calls.logs.join('\n');
   assert(all.includes('"request_id":"rid"'));
   for (const s of ['salto@b.cl', 'una-clave-larga-1', 'admin-jwt']) assert(!all.includes(s));
+});
+
+// --- Administrador de empresa (docs/17 §4.2) ---
+const emp = { token: 'emp-jwt' };
+Deno.test('administrador de empresa: crea en SU empresa y el cliente_id sale del perfil, no del cuerpo', async () => {
+  const { deps, calls } = mk();
+  const r = await handle(req({ sucursal_id: 70, email: 'nuevo@b.cl' }, emp), deps);
+  assertEquals(r.status, 201);
+  assertEquals(calls.perfiles, [['new-2', 7, 70, 'nuevo@b.cl']]);
+  // con cliente_id propio explícito también vale
+  assertEquals((await handle(req({ ...ok, email: 'otro@b.cl' }, emp), deps)).status, 201);
+});
+Deno.test('administrador de empresa: puede crear otro administrador de empresa (sin sucursal)', async () => {
+  const { deps, calls } = mk();
+  assertEquals((await handle(req({ email: 'adm2@b.cl' }, emp), deps)).status, 201);
+  assertEquals(calls.perfiles, [['new-2', 7, null, 'adm2@b.cl']]);
+});
+Deno.test('administrador de empresa con cliente_id de OTRA empresa => 403, nada se crea', async () => {
+  const { deps, calls } = mk();
+  const r = await handle(req({ ...ok, cliente_id: 8, sucursal_id: 80 }, emp), deps);
+  assertEquals(r.status, 403);
+  assertEquals(none(calls), 0);
+  assertEquals(calls.perfiles.length, 0);
+});
+Deno.test('administrador de empresa con sucursal de otra empresa => 400', async () => {
+  const { deps, calls } = mk();
+  assertEquals((await handle(req({ email: 'x@b.cl', sucursal_id: 80 }, emp), deps)).status, 400);
+  assertEquals(none(calls), 0);
+});
+Deno.test('usuario de sucursal, perfil api y sin perfil: 403, nada se crea', async () => {
+  const { deps, calls } = mk();
+  assertEquals((await handle(req(ok, { token: 'suc-jwt' }), deps)).status, 403);
+  const api = mk({ getUser: () => Promise.resolve({ id: 'api-1' }) });
+  assertEquals((await handle(req(ok), api.deps)).status, 403);
+  assertEquals((await handle(req(ok, { token: 'user-jwt' }), deps)).status, 403); // sin perfil
+  assertEquals(none(calls) + none(api.calls), 0);
+});
+Deno.test('empresa dada de baja: su administrador recibe 403 y no crea nada', async () => {
+  const { deps, calls } = mk({ clienteExiste: () => Promise.resolve(false) });
+  assertEquals((await handle(req({ email: 'x@b.cl' }, emp), deps)).status, 403);
+  assertEquals(none(calls), 0);
+});
+Deno.test('el equipo Neumet sigue pudiendo crear en cualquier cliente (la rama se retira en el PR 10)', async () => {
+  const { deps } = mk();
+  assertEquals((await handle(req({ ...ok, cliente_id: 8, sucursal_id: 80 }), deps)).status, 201);
+});
+
+Deno.test('409 con acceso quitado de la misma empresa: orienta a «Reponer acceso»', async () => {
+  const { deps, calls } = mk({ createUser: () => Promise.resolve({ error: 'exists' }) });
+  const r = await handle(req({ email: 'quitado@b.cl', password: 'una-clave-larga-1' }, emp), deps);
+  const b = await r.json();
+  assertEquals(r.status, 409);
+  assertEquals(b.codigo, 'acceso_quitado');
+  assert(b.error.includes('Reponer acceso'));
+  assertEquals(calls.perfiles.length, 0);
+});
+Deno.test('409 de email ajeno o sin rastro: mensaje genérico, sin pista de quién es la cuenta', async () => {
+  const { deps } = mk({ createUser: () => Promise.resolve({ error: 'exists' }) });
+  const r = await handle(req({ email: 'ajeno@b.cl', password: 'una-clave-larga-1' }, emp), deps);
+  const b = await r.json();
+  assertEquals(r.status, 409);
+  assertEquals(b.error, 'Ya existe un usuario con ese email');
+  assert(!('codigo' in b));
+  // el mismo email quitado, pero consultado desde otra empresa (cliente 8), no orienta a reponer
+  const otra = await handle(req({ email: 'quitado@b.cl', password: 'una-clave-larga-1' }, { token: 'emp8-jwt' }), deps);
+  assertEquals((await otra.json()).error, 'Ya existe un usuario con ese email');
+});
+Deno.test('409: si la consulta de accesos_quitados falla, cae al mensaje genérico', async () => {
+  const { deps } = mk({
+    createUser: () => Promise.resolve({ error: 'exists' }),
+    accesoQuitado: () => Promise.reject(new Error('db')),
+  });
+  const r = await handle(req({ email: 'quitado@b.cl', password: 'una-clave-larga-1' }, emp), deps);
+  assertEquals(r.status, 409);
+  assertEquals((await r.json()).error, 'Ya existe un usuario con ese email');
+});
+
+Deno.test('límite de intentos: el administrador de empresa excedido recibe 429 sin crear; el equipo Neumet no se limita', async () => {
+  const { deps, calls } = mk({ permitirIntento: () => false });
+  assertEquals((await handle(req(ok, emp), deps)).status, 429);
+  assertEquals(none(calls), 0);
+  assertEquals((await handle(req(ok), deps)).status, 201);
+});
+Deno.test('crearLimite: tope por usuario en ventana deslizante', () => {
+  let t = 0;
+  const permitir = crearLimite(3, 1000, () => t);
+  assert(permitir('a') && permitir('a') && permitir('a'));
+  assert(!permitir('a'), 'el cuarto intento en la ventana se rechaza');
+  assert(permitir('b'), 'otro usuario no se ve afectado');
+  t = 1001;
+  assert(permitir('a'), 'pasada la ventana vuelve a permitir');
 });

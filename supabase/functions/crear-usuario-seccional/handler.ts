@@ -2,11 +2,19 @@
 // Crea un usuario Auth + su perfil 'cliente' de un cliente existente:
 //   * con sucursal_id => perfil de SUCURSAL (solo ve los vehículos de esa sucursal);
 //   * sin sucursal_id => perfil GLOBAL adicional (ve todo el cliente).
-// Solo admins. La coherencia sucursal/cliente la garantiza además una FK compuesta en la base.
+// Lo llama el equipo Neumet (`admin`, cualquier cliente; la rama se retira en el PR 10 de docs/17) o el administrador de
+// empresa (`cliente` sin sucursal), que solo crea usuarios de SU empresa: el cliente_id sale de su perfil, nunca del cuerpo.
+// La coherencia sucursal/cliente la garantiza además una FK compuesta en la base.
 
 export interface SucursalRow {
   id: number;
   cliente_id: number;
+}
+
+export interface PerfilLlamante {
+  rol: string;
+  cliente_id: number | null;
+  sucursal_id: number | null;
 }
 
 export type AuthResult = { id: string } | { error: 'exists' | 'other' };
@@ -16,8 +24,12 @@ export interface Deps {
   allowedOrigins: string[];
   /** Valida el JWT (auth.getUser). null si inválido. */
   getUser(token: string): Promise<{ id: string } | null>;
-  /** ¿perfiles.rol = 'admin' para ese usuario? (service role) */
-  isAdmin(userId: string): Promise<boolean>;
+  /** Perfil de quien llama (service role), o null si no tiene. */
+  getPerfil(userId: string): Promise<PerfilLlamante | null>;
+  /** ¿El email corresponde a un usuario con acceso quitado (sin reponer) en `accesos_quitados` de ese cliente? */
+  accesoQuitado(email: string, clienteId: number): Promise<boolean>;
+  /** Registra un intento de alta del llamante y dice si aún está dentro del límite (false = excedido). */
+  permitirIntento(userId: string): boolean;
   /** ¿existe el cliente (no eliminado)? */
   clienteExiste(clienteId: number): Promise<boolean>;
   /** Sucursal por id, o null si no existe. */
@@ -39,7 +51,8 @@ const EMAIL_RE = /^[^\s@<>"',;:]+@[^\s@<>"',;:]+\.[^\s@<>"',;:]{2,}$/;
 function respond(body: unknown, status: number, headers: Record<string, string>): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
 }
-const fail = (error: string, status: number, h: Record<string, string>) => respond({ ok: false, error }, status, h);
+const fail = (error: string, status: number, h: Record<string, string>, extra: Record<string, unknown> = {}) =>
+  respond({ ok: false, error, ...extra }, status, h);
 const posInt = (v: unknown): number | null => (typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : null);
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
@@ -74,16 +87,24 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     log('warn', 'invalid_token');
     return fail('No autenticado', 401, cors);
   }
-  let admin = false;
+  let perfil: PerfilLlamante | null = null;
   try {
-    admin = await deps.isAdmin(user.id);
+    perfil = await deps.getPerfil(user.id);
   } catch {
     log('error', 'role_check_failed');
     return fail('Error interno', 500, cors);
   }
-  if (!admin) {
+  const esAdmin = perfil?.rol === 'admin';
+  // Administrador de empresa: perfil `cliente` sin sucursal. El usuario de sucursal y el global con sucursal no crean.
+  const esAdminEmpresa = perfil?.rol === 'cliente' && perfil.sucursal_id === null && perfil.cliente_id !== null;
+  if (!esAdmin && !esAdminEmpresa) {
     log('warn', 'forbidden', { actor: user.id });
     return fail('Acceso denegado', 403, cors);
+  }
+  // Encarece la enumeración de cuentas por el 409: tope de intentos por llamante (el equipo Neumet no se limita).
+  if (esAdminEmpresa && !deps.permitirIntento(user.id)) {
+    log('warn', 'rate_limited', { actor: user.id });
+    return fail('Demasiados intentos de alta. Esperar unos minutos y repetir.', 429, cors);
   }
 
   // 2. Cuerpo y validación
@@ -97,7 +118,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   } catch {
     return fail('JSON inválido', 400, cors);
   }
-  const clienteId = posInt(body.cliente_id);
+  let clienteId = posInt(body.cliente_id);
+  if (esAdminEmpresa) {
+    // El administrador de empresa no elige empresa: si el cuerpo trae otra, se rechaza en lugar de ignorarla.
+    const propio = perfil!.cliente_id!;
+    if (body.cliente_id !== undefined && body.cliente_id !== null && clienteId !== propio) {
+      log('warn', 'cliente_ajeno', { actor: user.id, cliente_id: clienteId });
+      return fail('Acceso denegado', 403, cors);
+    }
+    clienteId = propio;
+  }
   if (clienteId === null) return fail('cliente_id inválido', 400, cors);
   let sucursalId: number | null = null;
   if (body.sucursal_id !== undefined && body.sucursal_id !== null && body.sucursal_id !== '') {
@@ -117,7 +147,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   // 3. El cliente y la sucursal existen y son coherentes
   try {
-    if (!(await deps.clienteExiste(clienteId))) return fail('Cliente inexistente', 404, cors);
+    if (!(await deps.clienteExiste(clienteId))) {
+      // Empresa dada de baja: su administrador ya no opera (misma regla que las RPC, que responden 42501).
+      return esAdminEmpresa ? fail('Acceso denegado', 403, cors) : fail('Cliente inexistente', 404, cors);
+    }
     if (sucursalId !== null) {
       const s = await deps.getSucursal(sucursalId);
       if (!s) return fail('Sucursal inexistente', 404, cors);
@@ -137,6 +170,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if ('error' in created) {
     if (created.error === 'exists') {
       log('info', 'email_exists', { actor: user.id });
+      // Solo si el usuario es de esta empresa y su acceso está quitado se orienta a «Reponer acceso»; de otra empresa o
+      // sin rastro, el mensaje genérico (no se revela de quién es la cuenta).
+      const quitado = await deps.accesoQuitado(email, clienteId).catch(() => false);
+      if (quitado) {
+        return fail('Ese usuario tiene el acceso quitado. Usar «Reponer acceso» en la lista de usuarios.', 409, cors, {
+          codigo: 'acceso_quitado',
+        });
+      }
       return fail('Ya existe un usuario con ese email', 409, cors);
     }
     log('error', 'auth_create_failed', { mode });

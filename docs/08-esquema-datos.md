@@ -890,4 +890,4 @@ Reglas:
 
 ## N.6 Límites
 
-Sin Edge Functions (PR 3), sin panel (PR 4 en adelante), sin cambios en `api-proveedor`, sin migraciones B (uso) ni C1/C2 (recorte de `admin`), sin MFA. Las RPC existentes que insertan en `audit_log` y `vehiculo_registrar_odometro` no cambian.
+Las Edge Functions que usan estas RPC (`quitar-acceso-usuario`, `reponer-acceso-usuario`, PR 3) no cambian la base: llaman a las RPC con el JWT del llamante y a `accesos_quitados_marcar_auth` con la clave de servicio. Sin panel (PR 4 en adelante), sin cambios en `api-proveedor`, sin migraciones B (uso) ni C1/C2 (recorte de `admin`), sin MFA. Las RPC existentes que insertan en `audit_log` y `vehiculo_registrar_odometro` no cambian.
