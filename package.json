@@ -2,6 +2,7 @@
   "name": "neumet",
   "version": "0.0.0",
   "private": true,
+  "engines": { "node": ">=22.12.0" },
   "description": "Neumet: sitio estático + panel (tooling de calidad)",
   "scripts": {
     "lint": "eslint assets tests src scripts vite.config.mjs",

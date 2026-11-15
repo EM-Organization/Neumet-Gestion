@@ -16,6 +16,7 @@ El estado cambiante del trabajo vive en `docs/10-tablero.md`, no aquí.
 | Qué | Comando |
 |---|---|
 | Lint / sintaxis / unitarias | `npm run lint` · `npm run check` · `npm test` |
+| Front nuevo (Vitest) / reglas de lint de `src/` | `npm run test:front` · `npm run test:lint` |
 | SQL (migraciones x2 + pruebas por rol, Postgres desechable) | `tests/sql/run.sh` |
 | Smoke con Supabase simulado | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota\|sinperfil\|api\|montar` |
 | E2E contra Postgres + PostgREST reales | `npm run e2e` (un test: `node --test --test-name-pattern="X" tests/e2e/e2e.test.mjs`) |
