@@ -141,58 +141,93 @@
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 11,
+  "linea": 12,
   "texto": "perfiles: [] as Array<[string, number, number | null, string]>,"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 24,
+  "linea": 49,
   "texto": "insertPerfil: (u, c, s, e) => (calls.perfiles.push([u, c, s, e]), Promise.resolve(true)),"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 57,
+  "linea": 82,
   "texto": "assertEquals(calls.perfiles.length, 0);"
- },
- {
-  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 97,
-  "texto": "assertEquals(calls.perfiles.length, 0);"
- },
- {
-  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 109,
-  "texto": "assertEquals(calls.perfiles, [['new-1', 7, 70, 'salto@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
   "linea": 122,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 134,
+  "texto": "assertEquals(calls.perfiles, [['new-1', 7, 70, 'salto@b.cl']]);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 147,
   "texto": "assertEquals(calls.perfiles, [['new-2', 7, null, 'global@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 139,
+  "linea": 164,
   "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {
-  "archivo": "supabase/functions/crear-usuario-seccional/handler.ts",
-  "linea": 19,
-  "texto": "/** ¿perfiles.rol = 'admin' para ese usuario? (service role) */"
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 197,
+  "texto": "assertEquals(calls.perfiles, [['new-2', 7, 70, 'nuevo@b.cl']]);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 204,
+  "texto": "assertEquals(calls.perfiles, [['new-2', 7, null, 'adm2@b.cl']]);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 211,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 243,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
-  "linea": 35,
-  "texto": "const { data, error } = await admin.from('perfiles').select('rol').eq('user_id', userId).maybeSingle();"
+  "linea": 37,
+  "texto": "const { data, error } = await admin.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id', userId)"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/index.ts",
-  "linea": 63,
+  "linea": 70,
   "texto": "const { error } = await admin.from('perfiles').insert({"
  },
  {
-  "archivo": "supabase/functions/crear-usuario-seccional/README.md",
-  "linea": 21,
-  "texto": "- JWT verificado con `auth.getUser` y rol con `perfiles.rol = 'admin'` (service role)."
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 27,
+  "texto": "assertEquals(await accesoQuitadoDe(simulado({ accesos_quitados: [quitadoA], perfiles: [] }), 'A@B.cl', 7), true);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 30,
+  "texto": "const db = simulado({ accesos_quitados: [quitadoA], perfiles: [] });"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 36,
+  "texto": "perfiles: [],"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado_test.ts",
+  "linea": 41,
+  "texto": "const db = simulado({ accesos_quitados: [quitadoA], perfiles: [{ user_id: 'u1' }] });"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/quitado.ts",
+  "linea": 25,
+  "texto": "const { data: perfil, error: e2 } = await db.from('perfiles').select('user_id').eq('user_id', fila.user_id).limit(1);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/README.md",

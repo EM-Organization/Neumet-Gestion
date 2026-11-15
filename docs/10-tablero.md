@@ -33,7 +33,8 @@
 - Costos por cubierta y costo por km (migración `20261117000000`; apéndice J, F4).
 - Recauchutado por carcasa: vista Recauchutado, grupos Vida y Banda en el costo por km (migración `20261118000000`; apéndice L, F5).
 - Alerta única «crítico» con estado, histéresis y umbral por cliente (migración `20261118500000`; apéndice M, F7).
-- Administración de empresa, base de datos (F10 PR 2): `accesos_quitados`, RPC de usuarios, kilometraje y alerta ampliada; migración `20261119000000` **sin aplicar** (apéndice N).
+- Administración de empresa, base de datos (F10 PR 2): `accesos_quitados`, RPC de usuarios, kilometraje y alerta ampliada; migración `20261119000000` aplicada en producción (apéndice N).
+- Edge Functions de acceso de empresa (F10 PR 3, sin desplegar): `quitar-acceso-usuario` y `reponer-acceso-usuario` con convergencia con Auth, y `crear-usuario-seccional` abierta al administrador de empresa con el 409 orientado a reponer (docs/17 §4.1 y §4.2).
 - Documentación del producto: README raíz, índice de `docs/` y guías de revisión y de textos.
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
 
@@ -58,6 +59,7 @@
 | Destino «reparación» del neumático retirado | F1 y F5 cubren «almacenar» y el flujo de recauchutado; **[confirmar]** que «reparación» devuelve la cubierta al stock como «Reparado» |
 
 ### Sugerencias del revisor (sin resolver)
+- Límite de altas de `crear-usuario-seccional` (20 por hora por llamante) es en memoria de la instancia; un contador durable por llamante, que cuente también los 409, necesita una tabla (migración futura).
 - `x-forwarded-for` es falseable en el límite de intentos de login.
 - Las RPC no comprueban `clientes.deleted_at`.
 - La baja de un cliente no desactiva su perfil `api` (asignado al PR 5 de [docs/17](17-plan-roles-admin.md): `api-proveedor` rechazará clientes con `deleted_at`).
