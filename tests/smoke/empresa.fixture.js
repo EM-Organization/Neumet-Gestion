@@ -43,7 +43,20 @@
 
   var base = window.supabase.createClient;
   window.supabase.createClient = function () {
-    var c = base.apply(this, arguments), rpcBase = c.rpc;
+    var c = base.apply(this, arguments), rpcBase = c.rpc, fromBase = c.from;
+    // Umbrales de la empresa: la lectura con maybeSingle() devuelve los valores por defecto (alimenta Empresa > Umbrales y su captura).
+    c.from = function (t) {
+      var q = fromBase.apply(this, arguments);
+      if (t === 'clientes' && q.maybeSingle) {
+        var ms = q.maybeSingle;
+        q.maybeSingle = function () {
+          return ms.apply(q, arguments).then(function (o) {
+            return o && o.data ? { data: Object.assign({ umbral_bajo_mm: 8, umbral_critico_mm: 5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2 }, o.data), error: o.error } : o;
+          });
+        };
+      }
+      return q;
+    };
     c.rpc = function (name, args) {
       if (name === 'usuarios_empresa_listar') {
         fx.rpcs.push({ name: name, args: args });
