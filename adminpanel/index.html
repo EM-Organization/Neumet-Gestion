@@ -90,6 +90,19 @@
         Dispositivos
         <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
       </button>
+      <div class="nav-section" data-empresa-only style="display:none">Empresa</div>
+      <button type="button" class="nav-item" data-view="empresa-usuarios" data-empresa-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Usuarios
+      </button>
+      <button type="button" class="nav-item" data-view="empresa-umbrales" data-empresa-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+        Umbrales
+      </button>
+      <button type="button" class="nav-item" data-view="empresa-dispositivos" data-empresa-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
+        Dispositivos de la empresa
+      </button>
       <div class="nav-section" data-admin-only>Administración</div>
       <button type="button" class="nav-item" data-view="flota" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
@@ -479,6 +492,76 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- EMPRESA: USUARIOS -->
+      <div class="view" id="view-empresa-usuarios">
+        <div class="page-header">
+          <h2 class="page-title">Usuarios</h2>
+          <div class="page-actions"><button type="button" class="btn ghost" data-action="loadEmpresaUsuarios">Actualizar</button></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th scope="col">Usuario</th>
+              <th scope="col">Alcance</th>
+              <th scope="col">Estado</th>
+              <th scope="col"><span class="sr-only">Acciones</span></th>
+            </tr></thead>
+            <tbody id="tbody-empresa-usuarios">
+              <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <form class="ficha-card" id="emp-user-form" novalidate>
+          <div class="ficha-card-title">Nuevo usuario</div>
+          <div class="ficha-sub">Sin contraseña se envía una invitación por email.</div>
+          <div class="ficha-umbrales">
+            <div class="field"><label for="emp-user-email">Email</label><input type="email" id="emp-user-email" autocomplete="off"/></div>
+            <div class="field"><label for="emp-user-sucursal">Alcance</label><select id="emp-user-sucursal" class="flota-select"><option value="">Toda la empresa</option></select></div>
+            <div class="field"><label for="emp-user-password">Contraseña (opcional, mínimo 12 caracteres)</label><input type="password" id="emp-user-password" autocomplete="new-password"/></div>
+          </div>
+          <div class="login-error" id="emp-user-error" role="alert"></div>
+          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-user-crear">Crear usuario</button></div>
+        </form>
+      </div>
+
+      <!-- EMPRESA: UMBRALES -->
+      <div class="view" id="view-empresa-umbrales">
+        <div class="page-header">
+          <h2 class="page-title">Umbrales</h2>
+          <div class="page-actions"><button type="button" class="btn ghost" data-action="loadEmpresaUmbrales">Actualizar</button></div>
+        </div>
+        <form class="ficha-card" id="emp-umb-form" novalidate>
+          <div class="ficha-card-title">Umbrales de desgaste</div>
+          <div class="ficha-sub">Se aplican a los estados y alertas de la empresa. Deben cumplir retiro &lt; crítico &lt; bajo.</div>
+          <div class="ficha-umbrales" id="emp-umb-campos"></div>
+          <div class="login-error" id="emp-umb-error" role="alert"></div>
+          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button></div>
+        </form>
+      </div>
+
+      <!-- EMPRESA: DISPOSITIVOS (solo lectura) -->
+      <div class="view" id="view-empresa-dispositivos">
+        <div class="page-header">
+          <h2 class="page-title">Dispositivos de la empresa</h2>
+          <div class="page-actions"><button type="button" class="btn ghost" data-action="loadEmpresaDispositivos">Actualizar</button></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th scope="col">Estado</th>
+              <th scope="col">MAC</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Última actividad</th>
+              <th scope="col">Sin actividad</th>
+              <th scope="col">Mediciones</th>
+            </tr></thead>
+            <tbody id="tbody-empresa-dispositivos">
+              <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

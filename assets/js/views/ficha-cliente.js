@@ -180,7 +180,7 @@ ACTIONS.copiarCredencialesApi=async function(){
 
 ACTIONS.loadFicha=loadFicha;
 export const load=loadFicha;
-registerView('ficha','Ficha de cliente',loadFicha,{menu:'clientes'});
+registerView('ficha','Ficha de cliente',loadFicha,{menu:'clientes',soloAdmin:true});
 ACTIONS.volverAClientes=()=>switchView('clientes');
 onLogin(()=>{ if(isClienteMode()) activoId=currentClienteId; });
 onLogout(()=>{ activoId=null; credenciales=null; });

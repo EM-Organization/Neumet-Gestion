@@ -28,6 +28,9 @@ import * as montarNeumatico from './views/montar-neumatico.js';
 import * as costos from './views/costos.js';
 import * as recauchutado from './views/recauchutado.js';
 import * as calidad from './views/calidad.js';
+import * as empresaUsuarios from './views/empresa-usuarios.js';
+import * as empresaUmbrales from './views/empresa-umbrales.js';
+import * as empresaDispositivos from './views/empresa-dispositivos.js';
 
 initActions();
 initAuth();
@@ -35,5 +38,5 @@ initNav();
 initModales();
 initConexion();
 initBuscador();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,flota,alertas,ficha,seccionalesAdmin,sucursalesView].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos].forEach(v=>v.init());
 checkAuth();

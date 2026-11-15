@@ -22,6 +22,7 @@ import { registrar as calidadDatos } from './specs/calidad-datos.mjs';
 import { registrar as costosCpk } from './specs/costos-cpk.mjs';
 import { registrar as preciosSoloGlobal } from './specs/precios-solo-global.mjs';
 import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
+import { registrar as empresaPanel } from './specs/empresa-panel.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -45,4 +46,5 @@ calidadDatos(env);
 costosCpk(env);
 preciosSoloGlobal(env);
 adminEmpresa(env);
+empresaPanel(env);
 contrato(env);

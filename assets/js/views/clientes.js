@@ -169,7 +169,7 @@ ACTIONS.removeClient=async function(id){
 
 ACTIONS.loadClients=loadClients;
 export const load=loadClients;
-registerView('clientes','Clientes',loadClients);
+registerView('clientes','Clientes',loadClients,{soloAdmin:true});
 onLogin(({cliente})=>{ if(!cliente) loadClients(); });
 onLogout(()=>{ clients=[]; showDeleted=false; });
 

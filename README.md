@@ -53,9 +53,9 @@ El rol se guarda en `perfiles.rol` (`admin`, `cliente` o `api`); la autorizació
 
 | Rol | Alcance | Puede |
 |---|---|---|
-| Administrador (`admin`) | Todos los clientes | Todo el panel: clientes, ficha, dispositivos, balance, mediciones, vehículos, stock, sucursales y cuentas de API |
-| Cliente global (`cliente`, `sucursal_id` nulo) | Todo su cliente | Ver su flota completa, gestionar sucursales y mover vehículos, cambiar y rotar neumáticos, registrar odómetro, gestionar el stock de cubiertas |
-| Cliente de sucursal (`cliente`, `sucursal_id` = X) | Solo los vehículos, neumáticos, mediciones y dispositivos de la sucursal X | Ver su flota, cambiar y rotar neumáticos de sus vehículos, registrar odómetro. No ve stock, otras sucursales ni gestión de sucursales |
+| Administrador (`admin`, rotulado «Equipo Neumet») | Todos los clientes | Todo el panel: clientes, ficha, dispositivos, balance, mediciones, vehículos, stock, sucursales y cuentas de API |
+| Administrador de empresa (`cliente`, `sucursal_id` nulo) | Todo su cliente | Menú Empresa (usuarios, quitar y reponer acceso, umbrales, dispositivos en solo lectura), ver su flota completa, gestionar sucursales y mover vehículos, cambiar y rotar neumáticos, registrar odómetro, gestionar el stock de cubiertas |
+| Usuario de sucursal (`cliente`, `sucursal_id` = X) | Solo los vehículos, neumáticos, mediciones y dispositivos de la sucursal X | Ver su flota, cambiar y rotar neumáticos de sus vehículos, registrar odómetro. No ve stock, otras sucursales ni gestión de sucursales |
 | Cuenta de API (`api`) | Un cliente, solo a través de `api-proveedor` | Login, `obtener_montaje` y `guardar_montaje_mm`. Sin acceso a las tablas por PostgREST |
 
 Las operaciones de escritura del cliente (cambio de neumático, rotación, odómetro, sucursales) pasan por RPC acotadas; el cliente no escribe tablas directamente. Detalle del modelo de autorización en [`docs/08-esquema-datos.md`](docs/08-esquema-datos.md) (apéndices B a E).
@@ -134,7 +134,7 @@ Otras pruebas, con sus propios lanzadores:
 
 | Prueba | Comando | Cubre |
 |---|---|---|
-| Smoke | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
+| Smoke | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota\|empresa\|empresa-sucursal\|empresa-admin` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
 | Visual | `tests/visual/run.sh` | Capturas de escritorio y móvil para revisión a ojo ([`README`](tests/visual/README.md)) |
 | SQL | `tests/sql/run.sh` | Todas las migraciones (aplicadas dos veces) y pruebas por rol en un Postgres desechable |
 | Rendimiento (fuera del CI) | `tests/perf/gen.sql` y `tests/perf/bench.sh` | Datos sintéticos y tiempos de `v_estado_neumaticos`; exige `PERF_PG_URL` apuntando a un Postgres local desechable, nunca a producción |

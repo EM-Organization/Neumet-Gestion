@@ -7,7 +7,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, confirmDialog } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
-import { esAdmin, isClienteMode, currentSucursalId } from '../core/auth.js';
+import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { reloadActiveView } from '../core/nav.js';
 import {
@@ -104,7 +104,7 @@ async function abrir(vehiculoId, posicion) {
   if (neum.estado === 'baja') { showToast(`El neumático de P${posicion} ya está dado de baja`, true); return; }
   const veh = rv.data || { id: vehiculoId };
   // El stock es del cliente del vehículo; la RLS ya limita qué ve cada perfil (el de sucursal no ve ninguno).
-  const puedeStock = esAdmin() || (isClienteMode() && currentSucursalId === null);
+  const puedeStock = esAdmin() || esAdminEmpresa();
   const [rs, rc, rsu] = await Promise.all([
     db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad').eq('cliente_id', neum.cliente_id).gte('cantidad', 1),
     puedeStock

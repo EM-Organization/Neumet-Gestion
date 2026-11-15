@@ -7,10 +7,24 @@ export const ROL_SIN_ACCESO = 'sin_acceso';
 
 export const puedeUsarPanel = rol => rol === ROL_ADMIN || rol === ROL_CLIENTE;
 
-// Precios y costos (neumaticos.precio_unidad, eventos_neumatico.costo): solo admin y perfil global (cliente sin sucursal).
+const sinSucursal = sucursalId => sucursalId === null || sucursalId === undefined;
+
+// Administrador de empresa: perfil `cliente` sin sucursal (espejo de public.admin_empresa_cliente_id()). Única definición
+// en el panel: toda vista que antes copiaba «cliente con sucursal nula» la usa. El `admin` de la base es el equipo Neumet y no lo es.
+export const esAdminEmpresa = (rol, sucursalId = null) => rol === ROL_CLIENTE && sinSucursal(sucursalId);
+// Usuario de sucursal: perfil `cliente` con sucursal (la RLS solo le muestra lo de ella).
+export const esUsuarioSucursal = (rol, sucursalId = null) => rol === ROL_CLIENTE && !sinSucursal(sucursalId);
+
+// Precios y costos (neumaticos.precio_unidad, eventos_neumatico.costo): solo admin y administrador de empresa.
 // Espejo de public.precios_visibles(); la base lo hace cumplir con privilegios por columna, esto evita pedir lo que se va a negar.
-export const puedeVerPrecios = (rol, sucursalId = null) =>
-  rol === ROL_ADMIN || (rol === ROL_CLIENTE && (sucursalId === null || sucursalId === undefined));
+export const puedeVerPrecios = (rol, sucursalId = null) => rol === ROL_ADMIN || esAdminEmpresa(rol, sucursalId);
+
+// Rótulo del rol en la barra lateral (docs/17 §4.3).
+export const ROTULO_ADMIN = 'Equipo Neumet';
+export const ROTULO_ADMIN_EMPRESA = 'Administrador de empresa';
+export const ROTULO_SUCURSAL = 'Usuario de sucursal';
+export const rotuloRol = (rol, sucursalId = null) =>
+  rol === ROL_ADMIN ? ROTULO_ADMIN : esAdminEmpresa(rol, sucursalId) ? ROTULO_ADMIN_EMPRESA : esUsuarioSucursal(rol, sucursalId) ? ROTULO_SUCURSAL : '';
 
 /**
  * @param perfil           fila de perfiles del usuario ({rol, cliente_id, sucursal_id}) o null

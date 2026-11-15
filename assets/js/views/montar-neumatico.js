@@ -8,7 +8,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
-import { esAdmin, isClienteMode, currentSucursalId } from '../core/auth.js';
+import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { reloadActiveView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { fmtNum, plural } from '../domain/formato.js';
@@ -23,7 +23,7 @@ import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 const $ = id => document.getElementById(id);
 const val = id => { const el = $(id); return el ? el.value : ''; };
 const nombrePos = pos => (Number(pos) === POS_AUXILIO ? 'el auxilio' : `P${pos}`);
-const puedeUsarStock = () => esAdmin() || (isClienteMode() && currentSucursalId === null);
+const puedeUsarStock = () => esAdmin() || esAdminEmpresa();
 
 let mont = null; // {veh, ocupadas, libres, cubiertas, sucursales, puedeStock, origen, cubiertaId, montados}
 let ret = null;  // {veh, neum, sucursales, puedeStock}

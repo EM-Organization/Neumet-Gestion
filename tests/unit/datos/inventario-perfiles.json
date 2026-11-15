@@ -1,12 +1,12 @@
 [
  {
   "archivo": "assets/js/core/auth.js",
-  "linea": 42,
+  "linea": 47,
   "texto": "const {data:perfil,error:ePerfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();"
  },
  {
   "archivo": "assets/js/domain/rol.js",
-  "linea": 16,
+  "linea": 30,
   "texto": "* @param perfil           fila de perfiles del usuario ({rol, cliente_id, sucursal_id}) o null"
  },
  {

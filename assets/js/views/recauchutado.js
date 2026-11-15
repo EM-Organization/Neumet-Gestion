@@ -3,7 +3,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
-import { isClienteMode, currentClienteId, currentSucursalId, esAdmin, onLogin, onLogout } from '../core/auth.js';
+import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogin, onLogout } from '../core/auth.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
@@ -15,7 +15,7 @@ import {
 
 const $ = id => document.getElementById(id);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
-const puedeGestionar = () => esAdmin() || (isClienteMode() && currentSucursalId === null);
+const puedeGestionar = () => esAdmin() || esAdminEmpresa();
 
 let procesos = [], cubiertas = [], sucursales = [], modal = null, cargaN = 0;
 

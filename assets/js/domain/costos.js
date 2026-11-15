@@ -4,6 +4,7 @@
 import { fmtNum } from './formato.js';
 import { buildCsv } from './reportes.js';
 import { NOTA_FALTAN_LECTURAS, NOTA_SIN_DATO } from './km-cubierta.js';
+import { esAdminEmpresa, ROL_CLIENTE } from './rol.js';
 
 export const COLUMNAS_COSTO = 'neumatico_id,vehiculo_id,tiene_costo,moneda,monedas,moneda_mixta,costo_total,costo_por_concepto,km_totales,km_recorridos,km_confiable,cpk,cpk_provisional,cpk_carcasa';
 
@@ -41,7 +42,7 @@ const num = v => (vacio(v) || !Number.isFinite(Number(v)) ? null : Number(v));
 // Quién ve y registra costos: el administrador y el perfil global de un cliente. El perfil de sucursal no (la base
 // tampoco le devuelve filas).
 export const puedeGestionarCostos = ({ admin = false, cliente = false, sucursalId = null } = {}) =>
-  admin === true || (cliente === true && (sucursalId === null || sucursalId === undefined));
+  admin === true || esAdminEmpresa(cliente === true ? ROL_CLIENTE : null, sucursalId);
 
 // «UYU 1.234,50»
 export const fmtMonto = (monto, moneda = MONEDA_DEFECTO) => (num(monto) === null ? '—' : `${moneda} ${fmtNum(monto, 2)}`);

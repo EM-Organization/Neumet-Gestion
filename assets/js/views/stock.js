@@ -1,7 +1,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, currentClienteId, currentClienteNombre, currentSucursalId, esAdmin, onLogout } from '../core/auth.js';
+import { isClienteMode, currentClienteId, currentClienteNombre, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { registerView, switchView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -36,7 +36,7 @@ export async function loadStockAssignments(){
 const $=id=>document.getElementById(id);
 let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0;
 
-const puedeGestionar=()=>esAdmin()||(isClienteMode()&&currentSucursalId===null);
+const puedeGestionar=()=>esAdmin()||esAdminEmpresa();
 const sucDe=cid=>sucursales.filter(x=>String(x.cliente_id)===String(cid));
 const nombreCliente=id=>(clientes.find(c=>String(c.id)===String(id))||{}).nombre||'';
 
