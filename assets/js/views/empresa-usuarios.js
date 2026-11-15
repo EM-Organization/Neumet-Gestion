@@ -110,7 +110,6 @@ async function operar(op, userId, funcion, cuerpo) {
   } finally { ocupado = false; }
 }
 
-ACTIONS.loadEmpresaUsuarios = loadEmpresaUsuarios;
 // Actualizar desde una fila: descarta el aviso pendiente de esa fila y decide con el estado real de la base.
 ACTIONS.empresaActualizar = () => { pendientes.clear(); return loadEmpresaUsuarios(); };
 ACTIONS.empresaQuitar = async function (userId, accesoId) {
@@ -145,7 +144,7 @@ async function crearUsuario() {
 }
 
 export const load = loadEmpresaUsuarios;
-registerView('empresa-usuarios', 'Usuarios', loadEmpresaUsuarios, { soloEmpresa: true });
+ACTIONS.loadEmpresaUsuarios = registerView('empresa-usuarios', 'Usuarios', loadEmpresaUsuarios, { soloEmpresa: true });
 onLogout(() => { usuarios = []; sucursales = []; miId = null; pendientes.clear(); });
 
 export function init() {

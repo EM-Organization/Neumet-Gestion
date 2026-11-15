@@ -36,7 +36,6 @@ export async function loadEmpresaDispositivos() {
   })));
 }
 
-ACTIONS.loadEmpresaDispositivos = loadEmpresaDispositivos;
-registerView('empresa-dispositivos', 'Dispositivos de la empresa', loadEmpresaDispositivos, { soloEmpresa: true });
+ACTIONS.loadEmpresaDispositivos = registerView('empresa-dispositivos', 'Dispositivos de la empresa', loadEmpresaDispositivos, { soloEmpresa: true });
 onLogout(() => { setHtml($('tbody-empresa-dispositivos'), html``); });
 export function init() {}

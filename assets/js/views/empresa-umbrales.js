@@ -44,8 +44,7 @@ async function guardar() {
   } finally { btn.disabled = false; btn.textContent = 'Guardar umbrales'; }
 }
 
-ACTIONS.loadEmpresaUmbrales = loadEmpresaUmbrales;
-registerView('empresa-umbrales', 'Umbrales', loadEmpresaUmbrales, { soloEmpresa: true });
+ACTIONS.loadEmpresaUmbrales = registerView('empresa-umbrales', 'Umbrales', loadEmpresaUmbrales, { soloEmpresa: true });
 onLogout(() => { setHtml($('emp-umb-campos'), html``); err(''); });
 
 export function init() {

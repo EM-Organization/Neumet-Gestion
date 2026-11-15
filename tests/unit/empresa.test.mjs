@@ -118,3 +118,17 @@ test('mensajeErrorConfigurar', () => {
   assert.match(mensajeErrorConfigurar({ message: 'boom' }), /boom/);
   assert.ok(mensajeErrorConfigurar(null));
 });
+
+// Defensa en profundidad: el filtro de rol de los loaders de empresa vive en registerView (nav.js) y las vistas registran
+// como acción el loader FILTRADO que devuelve. Si alguien lo quita o vuelve a asignar el loader crudo, esta prueba falla.
+test('los loaders de empresa pasan por el filtro soloEmpresa de registerView', async () => {
+  const { readFileSync } = await import('node:fs');
+  const nav = readFileSync(new URL('../../assets/js/core/nav.js', import.meta.url), 'utf8');
+  assert.match(nav, /soloEmpresa\s*\?\s*esAdminEmpresa/);
+  assert.match(nav, /return LOADERS\[name\]/);
+  for (const [vista, n] of [['usuarios', 'Usuarios'], ['umbrales', 'Umbrales'], ['dispositivos', 'Dispositivos']]) {
+    const src = readFileSync(new URL(`../../assets/js/views/empresa-${vista}.js`, import.meta.url), 'utf8');
+    assert.ok(src.includes(`ACTIONS.loadEmpresa${n} = registerView('empresa-${vista}'`), `empresa-${vista}: la acción debe ser el loader filtrado`);
+    assert.ok(!new RegExp(`ACTIONS\\.loadEmpresa${n} = loadEmpresa${n}`).test(src), `empresa-${vista}: acción sin filtro`);
+  }
+});

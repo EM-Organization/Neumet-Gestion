@@ -14,6 +14,8 @@ export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa}={}){
   NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name); if(soloEmpresa) SOLO_EMPRESA.add(name);
   const permitido=soloAdmin?esAdmin:soloEmpresa?esAdminEmpresa:panelHabilitado;
   LOADERS[name]=(...a)=>(permitido()?load(...a):undefined);
+  // Devuelve el loader con el filtro: lo registran como acción las vistas que se invocan también desde un botón del DOM.
+  return LOADERS[name];
 }
 
 let activa=null;

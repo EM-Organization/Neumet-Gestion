@@ -178,6 +178,11 @@ window.empresaBloqueadaFlow = async function (w, d, sleep, fail, log, quien) {
   ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
     if ($('#view-' + v).classList.contains('active')) fail('empresa(' + quien + '): entró a ' + v);
   });
+  // Defensa en profundidad: los botones «Actualizar» de las vistas de empresa (data-action al loader crudo) tampoco consultan
+  var tb = $('#tbody-empresa-dispositivos').innerHTML, tu = $('#tbody-empresa-usuarios').innerHTML;
+  ['loadEmpresaUsuarios', 'loadEmpresaUmbrales', 'loadEmpresaDispositivos'].forEach(function (a) { var b = $('[data-action="' + a + '"]'); if (b) b.click(); });
+  await sleep(500);
+  if ($('#tbody-empresa-dispositivos').innerHTML !== tb || $('#tbody-empresa-usuarios').innerHTML !== tu || $('#emp-umb-campos').innerHTML !== '') fail('empresa(' + quien + '): un loader de empresa cargó datos sin ser administrador de empresa');
   if (fx.rpcs.length || fx.llamadas.length) fail('empresa(' + quien + '): hubo llamadas a la base: ' + JSON.stringify(fx.rpcs.concat(fx.llamadas)));
   if (quien === 'sucursal') {
     // El usuario de sucursal tampoco ve Clientes ni Balance (siempre fue así)
