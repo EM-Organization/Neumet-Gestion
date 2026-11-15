@@ -12,6 +12,7 @@
 <script src="/tests/smoke/montar.flow.js"></script>
 <script src="/tests/smoke/calidad.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
+<script src="/tests/smoke/empresa.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
 <script src="/tests/smoke/sinacceso.flow.js"></script>
 <script src="/tests/visual/scenes.js"></script>
@@ -26,7 +27,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script><script src="/tests/smoke/empresa.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
@@ -53,6 +54,13 @@
     if(sinAcceso && !/[?&]shot=/.test(location.search)){
       // Sesión sin perfil o con rol api: solo «Sin acceso» (tests/smoke/sinacceso.flow.js)
       await window.sinAccesoFlow(w,d,sleep,fail,log);
+      throw new Error('__done');
+    }
+    if(/[?&]empresa=1/.test(location.search) && !/[?&]shot=/.test(location.search)){
+      // Pantalla Empresa (F10 PR 4): administrador de empresa = ?cliente=1; usuario de sucursal = ?secuser=1; equipo Neumet = sin cliente (tests/smoke/empresa.flow.js)
+      if(cliMode && !/[?&]secuser=1/.test(location.search)) await window.empresaFlow(w,d,sleep,fail,log);
+      else await window.empresaBloqueadaFlow(w,d,sleep,fail,log,cliMode?'sucursal':'neumet');
+      log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
     }
     var shotName=(location.search.match(/[?&]shot=([a-z0-9-]+)/)||[])[1];

@@ -2,7 +2,7 @@
 // filtran por vehiculos.sucursal_id. Un perfil de SUCURSAL no ve el selector: la RLS ya limita todo a su sucursal.
 import { db } from './supabase.js';
 import { html, setHtml, joinHtml } from './html.js';
-import { onLogin, onLogout, isClienteMode, currentClienteId, currentSucursalId } from './auth.js';
+import { onLogin, onLogout, isClienteMode, currentClienteId, esUsuarioSucursal } from './auth.js';
 import { reloadActiveView } from './nav.js';
 import { registerActions } from './actions.js';
 import { idsVehiculosDeSucursal, filtrarPorVehiculos, mostrarSelector } from '../domain/seccional.js';
@@ -30,7 +30,7 @@ export const filtrarConsulta = q => (hayFiltroSeccional() ? q.eq('sucursal_id', 
 function render() {
   const wrap = $('sec-selector');
   if (!wrap) return;
-  const ver = isClienteMode() && mostrarSelector({ esSeccional: currentSucursalId !== null, sucursales });
+  const ver = isClienteMode() && mostrarSelector({ esSeccional: esUsuarioSucursal(), sucursales });
   wrap.style.display = ver ? '' : 'none';
   if (!ver) return;
   setHtml($('sec-select'), joinHtml([html`<option value="">Todas las sucursales</option>`,

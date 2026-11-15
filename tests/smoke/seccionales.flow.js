@@ -126,7 +126,7 @@ window.seccionalesUsuarioFlow = async function(w, d, sleep, fail, log){
   if (navS && navS.getClientRects().length) fail('seccional: el perfil de sucursal no debe ver la entrada Sucursales');
   var sel = d.querySelector('#sec-selector');
   if (sel && sel.style.display !== 'none') fail('sucursal: el selector no debe verse para un perfil de sucursal');
-  if (d.querySelector('#user-role').textContent !== 'Sucursal') fail('sucursal: rol mostrado incorrecto: ' + d.querySelector('#user-role').textContent);
+  if (d.querySelector('#user-role').textContent !== 'Usuario de sucursal') fail('sucursal: rol mostrado incorrecto: ' + d.querySelector('#user-role').textContent);
   d.querySelector('.nav-item[data-view="reportes"]').click(); await sleep(400);
   if (!d.querySelector('#rep-cpk-card').hidden) fail('sucursal: el perfil de sucursal no debe ver Costo por km');
   d.querySelector('.nav-item[data-view="flota"]').click(); await sleep(500);

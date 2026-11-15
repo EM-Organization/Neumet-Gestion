@@ -8,9 +8,11 @@ import { json, ALCANCE } from '../lib/verdad.mjs';
 const CLIENTE = ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes'];
 // Recauchutado: admin y perfil global (el de sucursal no gestiona stock).
 const GLOBAL = ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes'];  // Dispositivos es solo de administración
+// Empresa (F10 PR 4): solo el administrador de empresa (cliente sin sucursal); el equipo Neumet no la ve.
+const EMPRESA = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
 const VISTAS = {
   admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
-  global: [...GLOBAL, 'sucursales'], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales']
+  global: [...GLOBAL, 'sucursales', ...EMPRESA], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales', ...EMPRESA]
 };
 
 // Intercepta las descargas y ventanas de impresión del panel para poder leer el CSV generado.

@@ -29,7 +29,9 @@ domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
   inicio.js             PURO: estadoInicio, proporciones, requierenAtencion, proximosCambios, resumen de dispositivos
-  rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso)
+  rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso); esAdminEmpresa() (regla única del
+                        cliente sin sucursal), esUsuarioSucursal(), rotuloRol() («Equipo Neumet», «Administrador de empresa», «Usuario de sucursal»)
+  empresa.js            PURO: pantalla Empresa (F10): interpreta las respuestas 200/4xx/502 de quitar y reponer acceso, orden y acciones de la lista, argumentos de alerta_configurar
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
@@ -37,6 +39,7 @@ views/
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
   neumaticos.js  stock.js  reportes.js
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
+  empresa-usuarios.js  empresa-umbrales.js  empresa-dispositivos.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
 ```
 
 Dependencias permitidas: `views/*` -> `core/*` y `domain/*`; `core/*` nunca importa `views/*` (usa los hooks
@@ -55,6 +58,7 @@ y, al importarse, **registra** (efectos de módulo, no dentro de `init`):
 
 - sus acciones: `ACTIONS.miAccion = fn` o `registerActions({...})`;
 - su entrada de navegación: `registerView('mivista', 'Etiqueta', load)`;
+- opcional: `{ soloAdmin: true }` (solo el equipo Neumet; hoy ficha de cliente, Balance, Clientes y Dispositivos) o `{ soloEmpresa: true }` (solo el administrador de empresa; el router redirige a Inicio al resto);
 - opcional: `onLogin(({cliente,user})=>...)` / `onLogout(()=>...)`.
 
 El estado de la vista es privado del módulo (`let items=[]`). Si varias partes de una vista lo comparten, usar un objeto

@@ -1,6 +1,6 @@
 import { db } from './supabase.js';
 import { userError } from './ui.js';
-import { decidirRol, puedeUsarPanel, puedeVerPrecios as rolVePrecios, ROL_ADMIN, ROL_SIN_ACCESO } from '../domain/rol.js';
+import { decidirRol, puedeUsarPanel, puedeVerPrecios as rolVePrecios, esAdminEmpresa as rolEsAdminEmpresa, esUsuarioSucursal as rolEsUsuarioSucursal, rotuloRol, ROL_ADMIN, ROL_SIN_ACCESO } from '../domain/rol.js';
 
 // ── MODO CLIENTE ─────────────────────────────────
 // null = admin (ve todo), número = cliente (ve solo lo suyo). Exportados como live bindings (solo auth.js los modifica).
@@ -15,7 +15,10 @@ export function isClienteMode(){ return currentClienteId!==null; }
 // Defensa en profundidad: nav.js y los loaders la consultan, sin confiar en que la pantalla correcta esté visible.
 export function panelHabilitado(){ return puedeUsarPanel(currentRol); }
 export function esAdmin(){ return currentRol===ROL_ADMIN; }
-// Admin o perfil global: los únicos que reciben precios y costos (el de sucursal no; la base lo niega con 42501).
+// Administrador de empresa (cliente sin sucursal): única regla del panel para «puede gestionar su empresa» (docs/17 §4.3).
+export function esAdminEmpresa(){ return rolEsAdminEmpresa(currentRol,currentSucursalId); }
+export function esUsuarioSucursal(){ return rolEsUsuarioSucursal(currentRol,currentSucursalId); }
+// Equipo Neumet o administrador de empresa: los únicos que reciben precios y costos (el de sucursal no; la base lo niega con 42501).
 export function puedeVerPrecios(){ return rolVePrecios(currentRol,currentSucursalId); }
 
 // Hooks: las vistas se enganchan sin que auth.js las importe.
@@ -28,10 +31,12 @@ export function onLogout(fn){ logoutHooks.push(fn); }
 function applyClienteMode(){
   document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display='none'; });
   document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display=''; });
+  // Menú Empresa: solo el administrador de empresa (el de sucursal y el equipo Neumet no lo ven).
+  document.querySelectorAll('[data-empresa-only]').forEach(el=>{ el.style.display=esAdminEmpresa()?'':'none'; });
   // Badge dispositivos no aplica a clientes
   document.getElementById('nav-unreg-badge').style.display='none';
   document.getElementById('user-email').textContent=currentClienteNombre||'Cliente';
-  document.getElementById('user-role').textContent=currentSucursalId!==null?'Sucursal':'Cliente';
+  document.getElementById('user-role').textContent=rotuloRol(currentRol,currentSucursalId);
 }
 
 // Resuelve el rol con decidirRol (domain/rol.js). Primero el perfil (cubre usuarios de sucursal, que no figuran en
@@ -83,7 +88,7 @@ function showApp(user){
   document.getElementById('user-email').textContent=user.email;
   document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();
   if(isClienteMode()) applyClienteMode();
-  else document.getElementById('user-role').textContent='Administrador';
+  else document.getElementById('user-role').textContent=rotuloRol(currentRol);
   loginHooks.forEach(fn=>fn({cliente:isClienteMode(),user}));
 }
 
@@ -118,6 +123,7 @@ function limpiarSesion(){
     logoutHooks.forEach(fn=>fn());
     document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
     document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display='none'; });
+    document.querySelectorAll('[data-empresa-only]').forEach(el=>{ el.style.display='none'; });
     document.getElementById('user-role').textContent='—';
   }
   showLogin();

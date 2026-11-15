@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarOdometro, planEvento, planRotacion, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg } from '../../assets/js/domain/ciclo-vida.js';
+import { validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, planEvento, planRotacion, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg } from '../../assets/js/domain/ciclo-vida.js';
 
 test('parseEnteroNoNeg y parseMontoNoNeg', () => {
   assert.equal(parseEnteroNoNeg('0'), 0);
@@ -94,4 +94,16 @@ test('ordenarEventos: por fecha y luego id, y en orden descendente', () => {
     { id: 1, created_at: '2026-01-01T00:00:00Z' }, { id: 2, created_at: '2026-01-02T00:00:00Z' }
   ];
   assert.deepEqual(ordenarEventos(e, true).map(x => x.id), [2, 1]);
+});
+
+test('rutaOdometro: quién puede bajar el kilometraje (docs/17 §4.1)', () => {
+  // Administrador de empresa: confirma y usa la RPC de corrección (antes: solo veía el aviso).
+  assert.deepEqual(rutaOdometro({ cliente: true, adminEmpresa: true, baja: true }), { accion: 'corregir', rpc: 'vehiculo_corregir_odometro' });
+  // Usuario de sucursal: no baja, ve el aviso y no se llama a ninguna RPC.
+  assert.deepEqual(rutaOdometro({ cliente: true, adminEmpresa: false, baja: true }), { accion: 'avisar', rpc: null });
+  // Sin baja el cliente sigue con la RPC que rechaza bajar; el equipo Neumet escribe directo como hasta ahora.
+  assert.equal(rutaOdometro({ cliente: true, adminEmpresa: true, baja: false }).rpc, 'vehiculo_registrar_odometro');
+  assert.equal(rutaOdometro({ cliente: true, adminEmpresa: false, baja: false }).rpc, 'vehiculo_registrar_odometro');
+  assert.deepEqual(rutaOdometro({ cliente: false, baja: true }), { accion: 'confirmar_directo', rpc: null });
+  assert.match(AVISO_ODOMETRO_SUCURSAL(1200), /1200 km.*administrador de empresa/);
 });

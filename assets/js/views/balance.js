@@ -191,5 +191,5 @@ async function removeGasto(id){
 
 ACTIONS.loadBalance=loadBalance;
 export const load=loadBalance;
-registerView('balance','Balance',loadBalance);
+registerView('balance','Balance',loadBalance,{soloAdmin:true});
 export function init(){}

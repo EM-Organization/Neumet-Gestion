@@ -156,8 +156,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    // Sucursales solo para el perfil global; el de sucursal no lo ve.
-    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,recauchutado,reportes,sucursales';
+    // Sucursales y la sección Empresa solo para el administrador de empresa (cliente sin sucursal); el de sucursal no las ve.
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,recauchutado,reportes,sucursales,empresa-usuarios,empresa-umbrales,empresa-dispositivos';
     if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
     // Defensa en el router: aunque se fuerce la vista Dispositivos (botón de menú oculto o acción), el cliente sigue en Inicio
     $('.nav-item[data-view="dispositivos"]').click(); await sleep(400);
@@ -171,6 +171,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(visible($('[data-action="openStockModal"]'))) fail('stock(cliente): ve el alta de compras');
   } else {
     ['flota','mediciones','clientes','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
+    ['empresa-usuarios','empresa-umbrales','empresa-dispositivos'].forEach(function(v){ if(navVisible(v)) fail('menu(admin): el equipo Neumet ve la sección Empresa: '+v); });
     if(!/administración/i.test($('.sidebar-nav').innerText)) fail('menu(admin): falta sección Administración');
   }
   var activos = all('.nav-item.active');

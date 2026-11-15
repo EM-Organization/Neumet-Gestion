@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decidirRol, puedeUsarPanel, ROL_ADMIN, ROL_CLIENTE, ROL_SIN_ACCESO } from '../../assets/js/domain/rol.js';
+import { decidirRol, puedeUsarPanel, esAdminEmpresa, esUsuarioSucursal, puedeVerPrecios, rotuloRol, ROL_ADMIN, ROL_CLIENTE, ROL_SIN_ACCESO } from '../../assets/js/domain/rol.js';
 
 const cli = { id: 7, nombre: 'Demo' };
 
@@ -63,4 +63,33 @@ test('puedeUsarPanel: solo admin y cliente', () => {
   assert.equal(puedeUsarPanel('admin'), true);
   assert.equal(puedeUsarPanel('cliente'), true);
   for (const r of ['sin_acceso', 'api', null, undefined, '', 'Admin']) assert.equal(puedeUsarPanel(r), false);
+});
+
+test('esAdminEmpresa: solo el cliente sin sucursal; el admin de la base es el equipo Neumet', () => {
+  assert.equal(esAdminEmpresa(ROL_CLIENTE, null), true);
+  assert.equal(esAdminEmpresa(ROL_CLIENTE), true);
+  assert.equal(esAdminEmpresa(ROL_CLIENTE, 5), false);
+  assert.equal(esAdminEmpresa(ROL_ADMIN, null), false);
+  assert.equal(esAdminEmpresa(ROL_SIN_ACCESO, null), false);
+  assert.equal(esAdminEmpresa(null, null), false);
+});
+
+test('esUsuarioSucursal: cliente con sucursal', () => {
+  assert.equal(esUsuarioSucursal(ROL_CLIENTE, 5), true);
+  assert.equal(esUsuarioSucursal(ROL_CLIENTE, null), false);
+  assert.equal(esUsuarioSucursal(ROL_ADMIN, 5), false);
+});
+
+test('puedeVerPrecios sigue la misma regla única', () => {
+  assert.equal(puedeVerPrecios(ROL_ADMIN), true);
+  assert.equal(puedeVerPrecios(ROL_CLIENTE, null), true);
+  assert.equal(puedeVerPrecios(ROL_CLIENTE, 3), false);
+  assert.equal(puedeVerPrecios(ROL_SIN_ACCESO, null), false);
+});
+
+test('rotuloRol: Equipo Neumet, Administrador de empresa, Usuario de sucursal', () => {
+  assert.equal(rotuloRol(ROL_ADMIN), 'Equipo Neumet');
+  assert.equal(rotuloRol(ROL_CLIENTE, null), 'Administrador de empresa');
+  assert.equal(rotuloRol(ROL_CLIENTE, 9), 'Usuario de sucursal');
+  assert.equal(rotuloRol(ROL_SIN_ACCESO), '');
 });

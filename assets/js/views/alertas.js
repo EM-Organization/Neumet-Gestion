@@ -6,7 +6,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
 import { chip, estadoVacio, estadoCarga, estadoError, filaEstado, miniVehiculo } from '../core/componentes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
-import { isClienteMode, currentRol, currentSucursalId } from '../core/auth.js';
+import { isClienteMode, esAdminEmpresa } from '../core/auth.js';
 import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
@@ -96,9 +96,8 @@ function fillFiltros() {
   }
 }
 
-// Nivel crítico: solo el perfil de cliente global lo edita (el de sucursal y el admin no ven este bloque; el admin
-// usa la ficha del cliente).
-const puedeConfigurar = () => isClienteMode() && currentRol === 'cliente' && (currentSucursalId === null || currentSucursalId === undefined);
+// Nivel crítico: solo el administrador de empresa lo edita (el de sucursal y el equipo Neumet no ven este bloque).
+const puedeConfigurar = () => esAdminEmpresa();
 function pintarConfig() {
   const card = $('alert-config');
   card.hidden = !(puedeConfigurar() && umbrales);

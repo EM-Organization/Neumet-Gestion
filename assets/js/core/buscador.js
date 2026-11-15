@@ -5,7 +5,7 @@
 // Enter abre el detalle si hay una coincidencia; si hay varias, muestra la lista. Atajo "/" para enfocarlo.
 import { db } from './supabase.js';
 import { html, setHtml, joinHtml } from './html.js';
-import { isClienteMode, currentClienteId, currentSucursalId, onLogin, onLogout } from './auth.js';
+import { isClienteMode, currentClienteId, esUsuarioSucursal, onLogin, onLogout } from './auth.js';
 import { runAction, registerActions } from './actions.js';
 import { filtrarFilas, listaSucursales } from './seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
@@ -57,7 +57,7 @@ async function traerQuemas() {
 // Cubiertas en stock con quema (neumáticos sin vehículo): solo las ve el admin o el perfil global (la RLS devuelve 0 filas
 // al de sucursal, que ni siquiera hace la consulta). Si falla, la búsqueda de vehículos sigue funcionando.
 async function traerCubiertas() {
-  if (isClienteMode() && currentSucursalId !== null) return [];
+  if (esUsuarioSucursal()) return [];
   const r = await fetchAll((from, to) => {
     let q = db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,cliente_id,clientes(nombre),sucursales(nombre)')
       .is('vehiculo_id', null).not('numero_quema', 'is', null).order('id').range(from, to);
