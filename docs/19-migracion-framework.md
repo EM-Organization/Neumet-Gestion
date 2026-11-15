@@ -260,7 +260,7 @@ La decisión final del stack **sale de esta prueba**, sobre una tarea frecuente 
 | 5 | 2 a 3 |
 | **Total** | **19 a 31 (central, unos 25; ±30 %)**, sin rondas de corrección |
 
-Lo que más la mueve: el tamaño de `vehiculo-detalle.js` y `mediciones-*`, el framework elegido, los cambios de F8 en el detalle y la decisión sobre rutas por URL (pregunta 5).
+Lo que más la mueve: el tamaño de `vehiculo-detalle.js` y `mediciones-*`, el framework elegido, los cambios de F8 en el detalle y la decisión sobre rutas por URL (pregunta abierta 1).
 
 ## 8. Riesgos
 
