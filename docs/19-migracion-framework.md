@@ -1,0 +1,305 @@
+# 19 · Plan de migración gradual del panel a un framework con build
+
+Estado: **planificado**. Este documento es una propuesta: no cambia código, migraciones, `vercel.json` ni CI. Ninguna pantalla, herramienta de build ni prueba descrita en las secciones 5 a 8 existe todavía. Lo vigente está en [`assets/js/README.md`](../assets/js/README.md), [03](03-despliegue-vercel-supabase.md) y [14](14-guia-de-textos.md). Es la fase **F11** de [16](16-hoja-de-ruta.md), sin prioridad asignada y sin cambiar el orden de F8 ni de F10.
+
+Convenciones de este documento. Las afirmaciones sobre el repositorio llevan `archivo:línea` y se comprobaron sobre `main` el 2026-11-15. **[V]** = verificado leyendo el repositorio; **[S]** = suposición o hipótesis, sin verificar; **[a medir]** = se decide con la prueba de concepto (sección 6). Las versiones de npm y los puntajes de la sección 4 provienen de una investigación hecha el 2026-11-15 por agentes: los puntajes son una opinión ponderada, no una medición, y las versiones deben reconfirmarse antes de fijarlas.
+
+## 1. Resumen para el dueño
+
+1. **El problema de fondo es de diseño, no de framework.** La percepción de que el panel funciona mal en móvil tiene causas visibles en el CSS (tablas con ancho mínimo, botones pequeños, siete anchos de corte distintos, un modal de 960 px). Casi todas se arreglan con un sistema de diseño pensado primero para móvil, y eso se puede hacer **sin** cambiar de framework. Un framework no arregla nada por sí solo: ayuda a **sostener** ese sistema, porque permite componentes reutilizables (un solo botón, una sola tabla que pasa a tarjetas, un solo modal) en lugar de las seis variantes de botón de hoy. Conviene decirlo con franqueza: si solo se quisiera arreglar el móvil, bastaría la sección 3 sin la 5.
+2. **Recomendación de stack:** Svelte 5 con Vite (sin SvelteKit), Tailwind 4 y shadcn-svelte/bits-ui. Plan B: React 19 con Vite y shadcn/ui. La decisión **final** sale de una prueba de concepto (sección 6), no de este documento.
+3. **Estrategia:** migración gradual («strangler»): el panel actual sigue vivo y cada pantalla nueva se monta como una «isla» dentro de él, detrás de una bandera por rol. Nada se reescribe de una vez. La producción se mantiene idéntica hasta que una bandera se enciende.
+4. **Costo estimado:** 19 a 31 PR (central, unos 25; ±30 %, sin contar rondas de corrección), en seis olas (sección 7).
+5. **Competencia con F8 y F10.** Hay tres lugares de autor en paralelo (CLAUDE.md). Dedicar uno o dos a esta migración demora F8, que es la prioridad fuerte. Es la primera decisión que necesita del dueño (pregunta 1).
+6. **Riesgo principal:** que dos sistemas convivan meses y que la migración quite capacidad a F8. Se mitiga con una regla escrita de «una pantalla, una sola pista a la vez» (sección 7.2).
+7. Hay siete preguntas para el dueño (sección 10); **tres bloquean** el arranque o la ola 4 (1, 3 y 4).
+
+## 2. Situación actual
+
+### 2.1 Panel
+
+| Aspecto | Hecho | Evidencia |
+|---|---|---|
+| Arquitectura | SPA de módulos ES sin bundler ni framework | `assets/js/README.md`; `adminpanel/index.html` carga `assets/js/main.js` |
+| HTML | 1.489 líneas, 15 `div.view`, unos 120 elementos con clase `modal`, 70 apariciones de `data-action` [V, conteo con `grep`; incluye variantes de clase] | `adminpanel/index.html` |
+| Vistas | 26 archivos en `assets/js/views`, 5.737 líneas en total; los mayores: `vehiculo-detalle.js` 551, `stock.js` 455, `neumaticos.js` 297, `mediciones-camion.js` 288 | `wc -l assets/js/views/*.js` [V] |
+| Núcleo acoplado al DOM | `core/actions.js` (delegación por `data-action` y `data-change`), `core/nav.js` (sin URL ni `history`; `registerView(nombre, etiqueta, load, {menu})`), `core/modal-a11y.js`, `core/ui.js`, `core/buscador.js`, `core/html.js` (único sumidero de `innerHTML`) | `assets/js/README.md:24` y `:43` [V] |
+| Lógica pura | `assets/js/domain/`: 30 archivos puros (sin DOM ni supabase), con pruebas `node:test` en `tests/unit/`. Se reutilizan tal cual | [V] |
+| Datos | Unas 144 llamadas `db.from(...)` o `db.rpc(...)` directas en `assets/js` (sin capa de datos); el cliente es un singleton `window.supabase.createClient` | `assets/js/core/supabase.js:4` [V] |
+| Estado | Live bindings exportados desde `core/auth.js` y `core/seccional.js` | [V] |
+| PWA | No hay service worker ni manifiesto | [V] |
+| Landing | `index.html` de la raíz es independiente del panel: queda fuera de alcance | [V] |
+
+### 2.2 Entrega y seguridad
+
+| Aspecto | Hecho | Evidencia |
+|---|---|---|
+| CSP | `script-src 'self' https://cdn.jsdelivr.net` (sin `unsafe-inline` ni `unsafe-eval`); `style-src 'self' 'unsafe-inline'` y Google Fonts; `connect-src` solo a `kootszosdejmawanfxug` | `vercel.json:11` [V] |
+| supabase-js | Por UMD de jsDelivr con SRI, versión 2.118.0 (la misma que `devDependency`) | `adminpanel/index.html:1485`, `package.json:15` [V] |
+| Caché | `assets/**/*.js` y `*.css` con `must-revalidate`; imágenes y fuentes `immutable` | `vercel.json:21-33` [V] |
+| Sitio estático | Vercel sirve el repositorio tal cual, sin build; `.vercelignore` excluye `package.json` y `package-lock.json` además de `docs/`, `tests/`, `supabase/` | `.vercelignore` [V] |
+| CI | Jobs `secrets`, `static`, `lint`, `test`, `deno`, `sql`, `e2e`; `static` usa Node 20 y los demás Node 22 | `.github/workflows/ci.yml:38`, `:57`, `:69`, `:134` [V] |
+
+### 2.3 Pruebas
+
+| Tipo | Depende del DOM actual | Qué pasa con la migración |
+|---|---|---|
+| Unitarias de `domain/` (30 archivos) | No | No cambian |
+| Smoke (`tests/smoke`: flujos `*.flow.js` con fixtures, iframe `srcdoc` y `stub.js`; selectores por id y `data-action`) | Sí | Se reescriben por pantalla migrada |
+| Visuales (`tests/visual`, escenas) | Sí | Ídem |
+| E2E (`tests/e2e`; `lib/web.mjs` reescribe `adminpanel/index.html` y `auth-shim.js` intercepta `window.supabase`) | Sí, en la capa web | Se reescribe la capa web; `lib/postgres.mjs`, `lib/postgrest.mjs`, `tests/sql` y las pruebas Deno se conservan |
+| CSP | Ninguna prueba la comprueba: el servidor e2e no envía las cabeceras de `vercel.json` | Se corrige en el PR 1 (sección 5.5) |
+
+### 2.4 Qué falla en móvil (hipótesis, sin capturas)
+
+Es una **auditoría estática del CSS**. Todo lo visual es hipótesis [S] hasta que existan capturas a 360 y 390 px (sección 3, regla de verificación).
+
+| Síntoma | Evidencia estática |
+|---|---|
+| Muchos anchos de corte | 19 bloques `@media` en `assets/css/styles.css`, con 7 anchos distintos (640 px en 7 bloques, 760 en 3, 860 en 3 con `min-width: 861px`, 880 en 2, 900, 520, 480); queda un rango sin cubrir de 761 a 880 px [V, conteo con `grep`] |
+| Scroll lateral en tablas | `.table-wrap table { min-width:560px }` (`assets/css/styles.css:498`); solo `.ciclo-tabla` y `.alert-tabla` pasan a tarjeta |
+| Objetivos táctiles menores de 44 px | `.menu-toggle` de 34×34 px (`styles.css:339`); `sub-tab` y `quick-amount` [S, sin medir]; el piso de 40 px solo rige a 640 px o menos |
+| Campos con letra menor de 16 px | `font-size: 15px` en el login (`styles.css:27`), 14 px en el buscador (`:119`), 12 px en el panel de neumático (`:198`): iOS hace zoom al enfocar [S, comportamiento conocido de iOS, no probado aquí] |
+| Modal ancho | `.modal.modal-neum { width: 960px; max-width: 96vw }` sin apilar en móvil (`styles.css:184`); lo usa el flujo de montar |
+| Seis implementaciones de botón | [S, hallazgo de la auditoría; no recontado] |
+| Estilos en línea | 91 atributos `style="` en `adminpanel/index.html` [V] |
+| Alto de pantalla | `min-height: 100vh` sin `dvh` (`styles.css:11`, `:15`, `:38`) [V]; la barra del navegador móvil lo desajusta [S] |
+
+## 3. Sistema de diseño mobile-first (independiente del framework)
+
+Esta sección es la parte que más cambia la experiencia móvil y **no depende** de la sección 4. Puede hacerse sobre el panel actual como PR de CSS y, si se migra, se porta a componentes.
+
+### 3.1 Qué incluye
+
+- Tokens únicos (`assets/css/tokens.css` ya existe: se amplía con espaciado, radios, alturas táctiles y puntos de corte).
+- **Un solo punto de corte de ancho: 768 px.** Hoy son siete.
+- Tabla que pasa a tarjeta bajo 768 px (un componente, no una variante por pantalla).
+- Modal que pasa a hoja inferior (bottom sheet) en móvil; apilado del flujo de montar.
+- Barra de navegación inferior en móvil y cabecera fija compacta.
+- Objetivos táctiles de 44×44 px y campos de 16 px.
+- Un solo componente de botón, de badge con texto y de estado vacío.
+- `dvh` en lugar de `vh`; sin `style=` en el HTML.
+
+### 3.2 Reglas medibles propuestas
+
+Se verifican con una prueba automática a 360, 390, 768 y 1280 px de ancho (extensión de `tests/visual` o de e2e con CDP).
+
+| N.º | Regla | Cómo se verifica |
+|---|---|---|
+| 1 | Cero scroll horizontal de la página (`scrollWidth <= clientWidth` del documento) | Prueba por pantalla y ancho |
+| 2 | Todo `button`, `a`, `input`, `select` y `[role=tab]` visible mide al menos 44×44 px | `getBoundingClientRect` en la prueba |
+| 3 | Todo `input`, `select` y `textarea` tiene `font-size` de al menos 16 px | `getComputedStyle` |
+| 4 | Ninguna tabla tiene scroll horizontal a 360 px, salvo excepciones listadas en el PR | Prueba por pantalla |
+| 5 | Un solo `@media` de ancho (768 px) en el CSS | `grep` en el lint |
+| 6 | Cabecera fija de 56 px o menos a 390 px | Prueba de medida |
+| 7 | El PR declara los clics de cada tarea frecuente que toca y no los aumenta sin justificación | Revisión ([13](13-checklist-revision-prs.md), [14](14-guia-de-textos.md) §5) |
+| 8 | Sin `style=` nuevo en HTML ni en plantillas | `grep` en el lint |
+
+Las reglas 1 a 6 son **hipótesis de umbral**: se ajustan con la prueba de concepto. Propuesta aparte: añadir una **regla 9 a [14](14-guia-de-textos.md) §5** («táctil y punto de corte único»), como cambio de un PR posterior; este PR no toca `docs/14`.
+
+## 4. Elección de stack
+
+### 4.1 Criterios y resultado
+
+Pesos (suman 100): inteligencia de los agentes que escriben el código (IA) 18, coexistencia con el panel actual 15, rendimiento móvil 15, accesibilidad 12, pruebas 10, madurez 10, CSP y Vercel 8, mantenimiento 7, PWA 3, integración con Supabase 2. Los puntajes son **opinión ponderada**, no medición.
+
+| Opción | Total | Comentario |
+|---|---|---|
+| Svelte 5 + Vite | 90 (86 sin las mitigaciones de 4.3) | Recomendada |
+| React 19 + Vite (con shadcn/ui) | 90 | Plan B; los modelos la conocen mejor |
+| Vue 3.5 | 84 | La 3.6 (Vapor) sigue en candidata a versión |
+| Preact 11 | 83 | |
+| SvelteKit 3 | unos 81 | Descartado como base (4.4) |
+| Lit / web components | 73 | Descartado (4.4) |
+
+Versiones de npm consultadas el 2026-11-15 (**reconfirmar al fijar**): React 19.3.1, Vite 8.3.8, Svelte 5.57.3, SvelteKit 3.2.0, Vue 3.5.45, Preact 11.2.0, Tailwind 4.3.5, shadcn-svelte 1.8.1 con bits-ui 2.21.0, shadcn 4.23.0, Vitest 5.1.0, Playwright 1.65.1, vite-plugin-pwa 2.0.0, supabase-js 2.119.0 (la 3.0 está en `next`).
+
+### 4.2 Recomendación y razones
+
+**Svelte 5 + Vite (sin SvelteKit), Tailwind 4, shadcn-svelte/bits-ui; TypeScript opcional.**
+
+- Menos JavaScript enviado a móviles de gama baja [a medir, sección 6].
+- `mount()` y `unmount()` permiten montar una pantalla dentro del shell viejo sin tocar el router, `domain/` ni las pruebas viejas.
+- El HTML actual se porta casi literal.
+- Los errores típicos se detectan en CI: `compilerOptions.runes = true` rechaza la sintaxis de Svelte 4, los avisos de accesibilidad del compilador se tratan como error y `svelte/no-at-html-tags` equivale a la regla del sumidero de `core/html.js`; además existe el autofixer del MCP de Svelte.
+
+### 4.3 Riesgos del stack y mitigaciones
+
+| Riesgo | Mitigación |
+|---|---|
+| Los modelos derivan a la sintaxis de Svelte 4 | `runes: true` como error de compilación; ejemplos en el brief del autor; el experimento comparativo de la sección 6 lo mide |
+| El preflight de Tailwind 4 resetea estilos del panel viejo dentro de la isla | Importar Tailwind sin preflight o acotado al contenedor de la isla; mapear `tokens.css` a `@theme` |
+| Tailwind 4 exige navegadores modernos (Chrome 111+, Safari 16.4+, Firefox 128+) | Verificar el parque real de móviles de los operarios (pregunta 4) antes de fijar `build.target` [compatibilidad sin verificar] |
+| Ecosistema chico de bits-ui | shadcn copia el código al repositorio: no hay dependencia dura de un paquete de componentes |
+| Versión de supabase-js | Fijarla igual al UMD (2.118.0) |
+
+### 4.4 Descartados, con motivo
+
+| Opción | Motivo |
+|---|---|
+| SvelteKit, Next, Nuxt | Emiten scripts en línea que chocan con la CSP de cabecera; el renderizado en servidor no aporta a un panel autenticado |
+| Vue con plantillas en el navegador | Exige `unsafe-eval` |
+| Preact con Radix vía capa de compatibilidad | Problemas de foco y portales |
+| Web components a mano | ARIA no cruza el shadow DOM; terminaría siendo un framework casero |
+| Tailwind o JavaScript por CDN | Rompe CSP y `script-src` |
+| Reescritura de una vez | Riesgo y congelamiento de F8 y F10 |
+| Vue Vapor (3.6) | Candidata a versión |
+
+## 5. Estrategia técnica
+
+### 5.1 PR 0: un build que no cambia nada
+
+El primer paso es introducir el build **sin cambiar lo que se sirve**.
+
+- `vercel.json`: `installCommand` `npm ci`, `buildCommand` `npm run build`, `outputDirectory` `dist`.
+- Un script copia tal cual `index.html`, `adminpanel/`, `assets/`, `app-demo.mp4` y `config` a `dist/`.
+- `.vercelignore` deja de excluir `package.json` y `package-lock.json`. La garantía de no publicar `docs/`, `tests/` ni `supabase/` pasa a ser `outputDirectory` más una prueba que verifica que `dist/` no los contiene.
+- Validación en un preview de Vercel: misma lista de archivos y mismas cabeceras (`curl -I`; hace falta el bypass de Deployment Protection).
+- Reversa: Instant Rollback de Vercel o revert del PR. Un build fallido nunca se promueve.
+
+### 5.2 Código nuevo e islas
+
+- Código nuevo en `src/`; Vite con `base: '/panel/'` y salida en `dist/panel/`. Los archivos con hash se sirven `immutable`; la entrada fija, `must-revalidate`. Cuando exista el shell nuevo, un rewrite `/panel/(.*)` → `/panel/index.html`.
+- **Islas dentro del shell viejo en las olas 1 a 4; shell nuevo recién en la ola 5.** `assets/js/core/islas.js` registra cada pantalla migrada con `registerView`; su `load` hace `import('/panel/islas.js')` y llama `montar(nombre, el, ctx)` sobre `div#view-x`; al salir de la vista, `desmontar`.
+- Contrato `ctx` versionado (`API_ISLAS = 1`): `db` (**el mismo cliente** del panel viejo: dos clientes dan el aviso «Multiple GoTrueClient» y se pisan los refrescos de sesión), `rol`, `clienteId`, `sucursalId`, `puedeVerPrecios`, `esAdmin`, `navegar(vista, ...args)`, `showToast` y `onCambioSucursal`. Si la versión no coincide, la isla pide recargar la página: cubre el desfase de caché del runbook ([11](11-runbook-operacion.md) §7, recarga forzada).
+- Sesión: mismo origen, misma clave `sb-<ref>-auth-token`, misma versión de supabase-js (pasa a `dependency` fijada en 2.118.0, como el UMD).
+- Configuración: sigue `assets/config.js`. No se usan `VITE_*` ni variables de entorno de Vercel; si algún día se usan `VITE_*`, son públicas por construcción.
+
+### 5.3 Banderas por rol
+
+- En código: `ISLAS = { uso: { roles: ['admin'] } }`. Orden de encendido: `admin`, luego perfil global, luego sucursal. Apagada significa vista vieja, que se conserva hasta la ola 5.
+- Override de soporte: `localStorage.neumet_islas = 'off'`.
+- Sin servicio remoto de banderas: cambiar una bandera es un PR de una línea.
+
+### 5.4 Previews contra producción
+
+No hay staging: los previews de Vercel apuntan a producción (riesgo G4 de [03](03-despliegue-vercel-supabase.md)). Por eso los previews deben estar protegidos (pregunta 7) y usarse **solo lectura con perfil admin**; las escrituras se prueban únicamente en e2e local. Un proyecto Supabase de staging antes de la ola 4 resuelve el problema de raíz (pregunta 3).
+
+### 5.5 CI
+
+| Cambio | Detalle |
+|---|---|
+| Job `build` | `npm ci && npm run build` y `tests/build/verificar-dist.mjs`: el panel viejo idéntico byte a byte, ningún `<script>` sin `src` en `dist/**/*.html`, sin `eval` ni `new Function` en el bundle, sin `sb_secret_` ni `service_role`, tope de tamaño |
+| Lint | `eslint` extendido a `src/` con la regla equivalente al sumidero (`svelte/no-at-html-tags`, o `react/no-danger` si gana el plan B) y `no-unsanitized` |
+| Pruebas | Vitest además de `npm test` |
+| Node | 22 en todos los jobs (hoy `static` usa 20) |
+| CSP | La de `vercel.json` sirve tal cual para un build Vite de producción, sin nonces ni hashes [S, a confirmar en el preview]. En la ola 5 se quitan `cdn.jsdelivr.net` de `script-src` y `unsafe-inline` de `style-src` (el framework no inyecta `<style>` en tiempo de ejecución) |
+| E2E | El servidor e2e pasa a enviar las cabeceras de `vercel.json`; un evento `securitypolicyviolation` o un `console.error` falla la prueba. El e2e corre el build y sirve `dist/` (`ROOT` configurable en `lib/web.mjs`) |
+| Secretos | gitleaks igual; agregar `dist/`, `.vite/` y `coverage/` a `.gitignore`; nunca ampliar el allowlist |
+
+### 5.6 Pruebas
+
+- `domain/` se comparte con un alias `@domain` (una sola copia; `server.fs.allow`).
+- Auth del e2e: reemplazar `auth-shim.js` por una sesión precargada en `localStorage` (JWT de prueba HS256 con `expires_at` lejano) más stubs de `/auth/v1/token`, `/auth/v1/user` y `/auth/v1/logout`. **[Verificar]** que supabase-js no intente refrescar la sesión.
+- Los flujos de smoke y las escenas visuales pasan a pruebas de componente (Vitest con Testing Library y un `ctx.db` simulado): roles, vacíos y errores.
+- Capturas de pantallas nuevas desde e2e (CDP, escritorio y móvil).
+- Smoke y escenas de una pantalla vieja se borran **en el mismo PR** que borra la vista vieja.
+- Specs e2e con selectores por rol y texto; corren con la isla encendida y apagada mientras convivan. Las aserciones contra la base no cambian.
+
+## 6. Prueba de concepto
+
+La decisión final del stack **sale de esta prueba**, sobre una tarea frecuente del operario (medir, cambiar, rotar o montar). Se hace antes del PR 1.
+
+| N.º | Chequeo | Criterio |
+|---|---|---|
+| 1 | Coexistencia: `mount` y `unmount` sin fugas; sesión compartida | Una sola instancia de GoTrue; sin avisos |
+| 2 | CSP en un preview de Vercel | Cero violaciones; `dist` sin código en línea |
+| 3 | Peso y rendimiento móvil | KB comprimidos por pantalla y Lighthouse móvil con CPU 4x, frente a `main` [a medir] |
+| 4 | Tailwind sin preflight | Las capturas del panel viejo no cambian |
+| 5 | Accesibilidad | axe, foco y teclado, y lector de pantalla en móvil |
+| 6 | Pruebas | Smoke, e2e y visuales viejos pasan sin cambios; una prueba de componente en Vitest en modo navegador |
+| 7 | Experimento comparativo | El mismo ticket a dos autores `sonnet`, uno con Svelte y otro con React: bloqueantes del revisor, sintaxis vieja, líneas |
+| 8 | Clics | Declarados sin aumentar; auditados con `neumet-ux` |
+| 9 | Operación | Rollback del preview, caché de módulos y tiempo de build |
+
+## 7. Olas, reparto de agentes y estimación
+
+### 7.1 Olas
+
+| Ola | Contenido | Entrada | Salida | PR |
+|---|---|---|---|---|
+| 0 (un solo autor, en serie) | **PR 0** build neutro; **PR 1** scaffold Vite y framework, CI, CSP en e2e, `dist` en e2e, auth sin shim; **PR 2** contratos: sistema de diseño base (botón, tabla a tarjeta, modal accesible equivalente a `modal-a11y.js`, toast, estado vacío, badge con texto), capa de datos sobre `ctx.db` con manejo uniforme de `userError` y 42501, contrato `ctx` y `navegar` | Framework decidido por la prueba de concepto y F10 PR 3 fusionado (nadie toca `package.json` en paralelo) | Producción idéntica; CI verde con los jobs nuevos; una isla «hola» oculta tras una bandera sin roles | 3 a 4 |
+| 1 piloto | Pantalla «Uso» (F10 PR 7): nueva, solo lectura, solo equipo Neumet, construida directo en el stack nuevo | Migración B (F10 PR 6) aplicada | E2E por rol, capturas revisadas, una semana de uso interno sin errores | 0 a 1 |
+| 2 administración | Dispositivos, Mediciones, Balance, Clientes, Ficha. Balance, Clientes y Ficha solo tras F10 PR 9 a 11 | Ola 1 | Banderas encendidas por rol | 3 a 5 |
+| 3 lectura del cliente | Reportes, Calidad, Recauchutado, Costos, Flota, Alertas (tras F8 PR 2), Inicio con buscador | Ola 2 | Idem | 5 a 8 |
+| 4 escritura del operario | Vehículos y detalle (551 líneas, en 2 a 3 PR), cambio, montar, ciclo de vida, Stock, Sucursales | Solo tras F8 PR 4 y 6 y F10 PR 11 (C2); staging recomendado (pregunta 3) | Cada PR declara los clics de las tareas que toca y no los aumenta | 6 a 10 |
+| 5 cierre | Shell nuevo en `/panel` con rutas por URL; `/adminpanel` redirige; el panel viejo queda N semanas de reversa y luego se borra junto con el harness smoke, `check-modules` y el CDN de la CSP | Olas 1 a 4 | Un solo sistema | 2 a 3 |
+
+**Piloto.** La pantalla «Uso» depende de la migración B. Si B se atrasa, la alternativa es «Dispositivos de la empresa» en solo lectura (F10 PR 4). Un inventario previo propuso `alertas` como piloto por ser pequeña y de solo lectura; se descarta como primera opción porque F8 PR 2 la toca (`alertas.js` hospeda hoy la edición de `alerta_configurar`, ver [18](18-rotacion-vehiculos-pesados.md) §9.1) y regiría la regla de conflicto de 7.2.
+
+**Reversa por ola:** apagar la bandera o Instant Rollback. **Ningún PR de migración de pantallas lleva migración SQL.**
+
+### 7.2 Regla de encaje con F8 y F10
+
+- Una pantalla está en **una sola pista a la vez**. Las que toca un PR de roadmap en curso se quedan en el panel viejo hasta que ese PR se fusione.
+- Pantallas nuevas de roadmap posteriores a la ola 0 nacen en el stack nuevo.
+- Tocadas por roadmap (contrastado con [17](17-plan-roles-admin.md) §9 y [18](18-rotacion-vehiculos-pesados.md) §9): F10 PR 4 (panel Empresa y Dispositivos); F10 PR 9 (ficha, `seccionales-admin`, vehículos, stock, neumáticos y ciclo de vida); F8 PR 2 (alertas); F8 PR 4 y 6 (detalle del vehículo).
+- Libres desde ya [S, contrastar al empezar cada ola]: reportes, calidad, recauchutado, costos, flota, mediciones, sucursales e inicio.
+
+### 7.3 Reparto de agentes
+
+| Pista | Quién | Alcance |
+|---|---|---|
+| Ola 0 | Un solo autor, en serie | Plataforma completa |
+| A | Autor A | Roadmap F8 y F10 en el panel viejo |
+| B y C | Autores B y C | Pantallas **distintas** en el stack nuevo; cada uno es dueño de `src/pantallas/<pantalla>/`, sus pruebas y su spec |
+
+- **Archivos ajenos** (solo un PR de plataforma aparte): `src/compartido/**`, `package.json` y su lock, `vercel.json`, `eslint.config.js`, `vite.config.*`, `.github/workflows/ci.yml`.
+- **Conflictos seguros** (se esperan y se resuelven al fusionar): `islas.js`, `main.js`, `adminpanel/index.html`, `docs/10`, la lista `ALL` de `tests/visual/run.sh` y `harness.html`.
+- Nunca dos ramas sobre la misma pantalla; revisor distinto del autor; máximo tres autores a la vez (CLAUDE.md).
+
+### 7.4 Estimación
+
+| Ola | PR |
+|---|---|
+| 0 | 3 a 4 |
+| 1 | 0 a 1 |
+| 2 | 3 a 5 |
+| 3 | 5 a 8 |
+| 4 | 6 a 10 |
+| 5 | 2 a 3 |
+| **Total** | **19 a 31 (central, unos 25; ±30 %)**, sin rondas de corrección |
+
+Lo que más la mueve: el tamaño de `vehiculo-detalle.js` y `mediciones-*`, el framework elegido, los cambios de F8 en el detalle y la decisión sobre rutas por URL (pregunta 5).
+
+## 8. Riesgos
+
+| Riesgo | Mitigación |
+|---|---|
+| Desfase de caché entre el panel viejo y la isla | `API_ISLAS` versionado; la isla pide recargar |
+| Dos clientes GoTrue | El `ctx.db` es el cliente del panel viejo; chequeo 1 de la prueba de concepto |
+| CSP rota solo en Vercel | El e2e envía las cabeceras; chequeo 2 en un preview; `verificar-dist` |
+| Previews contra producción | Protegidos, solo lectura; staging antes de la ola 4 |
+| Regresión de clics del operario | Cada PR declara clics y se audita con `neumet-ux`; el principio de [14](14-guia-de-textos.md) §5 rige |
+| La migración quita capacidad a F8 | Regla de encaje 7.2; pregunta 1 |
+| Dos sistemas conviviendo meses | Regla escrita de cuál usar, banderas por rol y ola 5 con fecha de retiro |
+| Un build fallido en Vercel | Nunca se promueve; Instant Rollback |
+| Compatibilidad de Tailwind 4 con los móviles del operario | Pregunta 4, antes de fijar `build.target` |
+
+## 9. Qué NO incluye este plan
+
+- Código de producto, migraciones, cambios en `vercel.json` ni en CI: llegan en los PR 0 a 2.
+- La landing de la raíz.
+- Cambios de la API de proveedor o de las Edge Functions.
+- Service worker y PWA (se evalúan después de la ola 5; `vite-plugin-pwa` queda como opción).
+- La regla 9 de [14](14-guia-de-textos.md): propuesta de un PR posterior.
+
+## 10. Preguntas abiertas para el dueño
+
+Cada una trae la recomendación del autor. Las marcadas **bloquea** impiden arrancar la fase o la ola indicada; las otras tienen un valor por defecto razonable.
+
+| N.º | Pregunta | Recomendación | Tipo |
+|---|---|---|---|
+| 1 | ¿Se dedican uno o dos de los tres lugares de autor a esta migración, aun si demora F8? | Un lugar a partir de la ola 0 y solo cuando F10 PR 3 esté fusionado; F8 conserva los otros dos | **Bloquea** el arranque de la ola 0 |
+| 2 | ¿Se lanza primero como piloto interno (solo equipo Neumet)? | Sí: ola 1 solo para `admin` | Default razonable |
+| 3 | ¿Se crea un proyecto Supabase de staging antes de la ola 4? | Sí: los previews de Vercel hoy escriben en producción | **Bloquea** la ola 4 |
+| 4 | ¿Qué dispositivos y navegadores usan los operarios? | Relevar el parque real (versiones de Chrome y Safari) | **Bloquea** fijar `build.target` y Tailwind 4 (PR 1) |
+| 5 | ¿Se quieren enlaces por URL compartibles (por ejemplo a un vehículo)? | Sí, desde la ola 5; antes no hay rutas por URL | Default razonable |
+| 6 | ¿Se avisa a los clientes antes de cambiar pantallas de escritura? | Sí, un aviso breve antes de cada pantalla de la ola 4 | Default razonable |
+| 7 | ¿El plan de Vercel incluye protección de previews (Deployment Protection)? | Confirmar; si no, los previews no se usan con sesión real | Default razonable [confirmar] |
+
+## 11. Fuentes y límites de la verificación
+
+- Repositorio: archivos citados en cada sección, sobre `main` al 2026-11-15.
+- Versiones y puntajes de la sección 4: síntesis de una investigación por agentes; no se volvió a consultar el registro de npm al redactar este documento.
+- **No verificado:** capturas en móvil (todo lo visual es hipótesis), peso en KB y Lighthouse de cualquier stack, comportamiento de refresco de supabase-js con sesión precargada, compatibilidad de Tailwind 4 con los dispositivos reales, CSP de un build Vite en Vercel, el conteo de seis implementaciones de botón y los objetivos táctiles de `sub-tab` y `quick-amount`.
