@@ -41,6 +41,7 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
 - **mediciones-neumatico**: cambiar un neumático crítico (ingresando uno nuevo) deja la rueda en "sin datos", quita su alerta
   crítica y baja el contador de Inicio; al medir el nuevo toma su valor sin arrastrar el gráfico del viejo; rotar dos ruedas
   lleva mm, color, historial y alertas con el neumático.
+- **empresa-panel**: pantalla Empresa en Chrome contra la base real: el perfil global ve la lista real de usuarios (sin «Quitar» para sí mismo), guarda umbrales con Enter por `alerta_configurar` (sin UPDATE directo) y ve sus dispositivos de solo lectura; el admin y el usuario de sucursal no ven la sección ni entran forzándola. Las Edge Functions no corren aquí.
 - **sucursales**: el perfil global crea, renombra y elimina sucursales, agrega vehículos y los mueve con confirmación (historial
   de mediciones, neumáticos y eventos intacto, auditoría `MOVER_SUCURSAL`); el perfil de sucursal no puede gestionar; Otra Empresa SA
   no ve ni mueve nada de Demo Transportes (RPC directas rechazadas con 42501 y la base sin cambios).

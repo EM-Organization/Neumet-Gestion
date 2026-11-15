@@ -153,3 +153,20 @@ body:has(#contenido[data-vista="stock"]) #sec-selector { display: none !importan
   .stk-compra { grid-area: compra; text-align: right; font-size: 13px; }
   .stk-acc { grid-area: acc; justify-content: flex-start; flex-wrap: wrap; margin-top: 4px; }
 }
+
+/* Empresa > Usuarios: «Quitar» con el estilo de baja del panel (rojo solo al pasar el mouse, docs/14) y, en móvil, el alcance y el estado
+   bajan a la celda del usuario para que las acciones queden a la vista sin desplazar la tabla. */
+.icon-btn.con-texto { width: auto; height: 30px; padding: 0 12px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; }
+.emp-movil { display: none; }
+@media (max-width: 640px) {
+  #view-empresa-usuarios th:nth-child(2), #view-empresa-usuarios th:nth-child(3), #tbody-empresa-usuarios td:nth-child(2), #tbody-empresa-usuarios td:nth-child(3) { display: none; }
+  #tbody-empresa-usuarios .emp-movil { display: block; margin-top: 2px; }
+  #tbody-empresa-usuarios td { padding-left: 10px; padding-right: 10px; word-break: break-word; }
+  #view-empresa-usuarios .table-wrap table { min-width: 0; }
+  #view-empresa-usuarios table, #view-empresa-usuarios tbody, #view-empresa-usuarios thead { display: block; }
+  #view-empresa-usuarios thead tr, #tbody-empresa-usuarios tr[data-user] { display: grid; grid-template-columns: minmax(0, 1fr) 136px; align-items: center; width: 100%; box-sizing: border-box; }
+  #view-empresa-usuarios thead tr { align-items: stretch; }
+  #tbody-empresa-usuarios tr:not([data-user]) { display: table; width: 100%; }
+  #tbody-empresa-usuarios .actions { flex-direction: column; align-items: stretch; }
+  #tbody-empresa-usuarios .actions .btn, #tbody-empresa-usuarios .actions .icon-btn { justify-content: center; }
+}

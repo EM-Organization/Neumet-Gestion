@@ -33,6 +33,18 @@ export function validarOdometro(actual, nuevoTexto, confirmarBaja=false){
   return {ok:true, valor, baja};
 }
 
+// Qué hace cada rol ante un kilometraje menor al actual (docs/17 §4.1):
+//   'confirmar_directo'  el equipo Neumet confirma y escribe como hasta ahora (se retira en el PR 9 de F10);
+//   'corregir'           el administrador de empresa confirma y usa la RPC vehiculo_corregir_odometro;
+//   'avisar'             el usuario de sucursal no puede: se le indica quién lo corrige.
+// Sin baja, el cliente usa vehiculo_registrar_odometro (que rechaza bajar) y el equipo Neumet escribe directo.
+export function rutaOdometro({ cliente = false, adminEmpresa = false, baja = false } = {}){
+  if(!cliente) return {accion:'confirmar_directo', rpc:null};
+  if(!baja) return {accion:'registrar', rpc:'vehiculo_registrar_odometro'};
+  return adminEmpresa ? {accion:'corregir', rpc:'vehiculo_corregir_odometro'} : {accion:'avisar', rpc:null};
+}
+export const AVISO_ODOMETRO_SUCURSAL = actual => `El kilometraje no puede ser menor al actual (${actual} km). La corrección la hace el administrador de empresa`;
+
 // Valida y arma el cambio a neumaticos (`patch`, puede ser {}) y la fila de eventos_neumatico para una acción.
 // n: fila de neumaticos {id,vehiculo_id,cliente_id,posicion,estado,vida,idneumatico}
 // d: {odometro, costo, notas, destinoEstado, motivo, fecha, posicionDestino}; hoy: 'YYYY-MM-DD'

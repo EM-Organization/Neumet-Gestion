@@ -4,7 +4,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, currentClienteId, currentSucursalId, onLogin, onLogout } from '../core/auth.js';
+import { currentClienteId, esAdminEmpresa, onLogin, onLogout } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
@@ -58,7 +58,7 @@ function renderVehiculos() {
 function render() { renderSucursales(); renderVehiculos(); }
 
 export async function loadSucursales() {
-  if (!isClienteMode() || currentSucursalId !== null) return;
+  if (!esAdminEmpresa()) return;
   const mio = ++cargando;
   err('');
   const [s, v] = await Promise.all([
@@ -138,10 +138,10 @@ registerActions({
 });
 
 registerView('sucursales', 'Sucursales', loadSucursales);
-onLogin(({ cliente }) => {
+onLogin(() => {
   // El perfil de sucursal no gestiona: la entrada del menú queda oculta (y la base rechaza igual).
   const item = document.querySelector('.nav-item[data-view="sucursales"]');
-  if (item) item.style.display = cliente && currentSucursalId === null ? '' : 'none';
+  if (item) item.style.display = esAdminEmpresa() ? '' : 'none';
 });
 onLogout(() => {
   sucursales = []; vehiculos = [];

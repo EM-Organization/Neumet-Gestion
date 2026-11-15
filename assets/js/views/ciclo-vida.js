@@ -4,7 +4,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode } from '../core/auth.js';
+import { isClienteMode, esAdminEmpresa } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { getVehiculos } from './vehiculos.js';
 import { fmtNum, fmtFechaHora } from '../domain/formato.js';
@@ -13,7 +13,7 @@ import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
 import { abrirRegistroCosto, puedeVerCostos } from './costos.js';
-import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, planEvento, planRotacion, ordenarEventos } from '../domain/ciclo-vida.js';
+import { TIPOS_EVENTO, TIPO_LABEL, validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, planEvento, planRotacion, ordenarEventos } from '../domain/ciclo-vida.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
 import { miniVehiculo } from '../core/componentes.js';
@@ -186,9 +186,11 @@ ACTIONS.cicloGuardarOdometro=async function(){
   if(!veh) return;
   const cliente=isClienteMode();
   let r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value);
+  let ruta=rutaOdometro({cliente, adminEmpresa:esAdminEmpresa(), baja:!!r.requiereConfirmacion});
   if(r.requiereConfirmacion){
-    // El cliente no puede bajar el kilometraje (lo corrige el admin); el admin confirma, p. ej. por cambio de tablero.
-    if(cliente){ showToast(`El kilometraje no puede ser menor al actual (${veh.odometro_km} km). La corrección la hace el administrador`,true); return; }
+    // Bajar el kilometraje (p. ej. por cambio de tablero): el usuario de sucursal no puede; el administrador de empresa
+    // y el equipo Neumet confirman.
+    if(ruta.accion==='avisar'){ showToast(AVISO_ODOMETRO_SUCURSAL(veh.odometro_km),true); return; }
     if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`,'Continuar',false))) return;
     r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value, true);
   }
@@ -196,8 +198,8 @@ ACTIONS.cicloGuardarOdometro=async function(){
   const btn=$('ciclo-odo-save'); btn.disabled=true;
   try{
     const ts=new Date().toISOString();
-    if(cliente){
-      const {error}=await db.rpc('vehiculo_registrar_odometro',{p_vehiculo_id:vehId, p_odometro_km:r.valor});
+    if(ruta.rpc){
+      const {error}=await db.rpc(ruta.rpc,{p_vehiculo_id:vehId, p_odometro_km:r.valor});
       if(error) throw error;
     } else {
       const {error}=await db.from('vehiculos').update({odometro_km:r.valor, odometro_actualizado_at:ts}).eq('id',vehId);

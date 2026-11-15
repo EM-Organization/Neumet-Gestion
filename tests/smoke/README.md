@@ -13,6 +13,9 @@ Requiere Google Chrome y `python3`:
 tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de sucursales)
 tests/smoke/run.sh cliente    # sesión de cliente global (panel, vehículos, mediciones, selector de sucursal, vista Sucursales; Dispositivos no existe para el cliente)
 tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin selector; sucursales.fixture.js)
+tests/smoke/run.sh empresa   # administrador de empresa: menú Empresa, usuarios (alta con Enter, quitar, reponer y los 502/403/409/400), umbrales y dispositivos de solo lectura (empresa.fixture.js, empresa.flow.js)
+tests/smoke/run.sh empresa-sucursal  # usuario de sucursal: sin menú Empresa, el router lo devuelve a Inicio y no hay llamadas
+tests/smoke/run.sh empresa-admin     # equipo Neumet (admin): igual que el anterior
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
 tests/smoke/run.sh sinperfil  # sesión sin perfil: solo «Sin acceso», sin menú ni consultas de datos (sinacceso.flow.js)
 tests/smoke/run.sh api        # perfil de rol 'api': igual que sinperfil

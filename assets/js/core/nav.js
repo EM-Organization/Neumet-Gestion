@@ -1,16 +1,21 @@
 // Navegación entre vistas: cada vista se registra con registerView(nombre, etiqueta, load, { menu }).
 // `menu` = ítem del menú lateral que queda resaltado cuando la vista está abierta (por defecto, ella misma):
 // el detalle de vehículo cuelga de Vehículos y la ficha de cliente cuelga de Clientes.
-import { isClienteMode, panelHabilitado, esAdmin } from './auth.js';
+import { isClienteMode, panelHabilitado, esAdmin, esAdminEmpresa } from './auth.js';
 const NAV_LABELS={};
 const LOADERS={};
 const MENU={};
-const SOLO_ADMIN=new Set();
-// `soloAdmin`: vista de administración; el rol cliente que la pida (menú, buscador o código) vuelve a Inicio.
-export function registerView(name,label,load,{menu,soloAdmin}={}){
-  // Defensa en profundidad: ningún loader consulta datos si la sesión no es admin/cliente (los de administración, solo admin).
-  NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name);
-  LOADERS[name]=(...a)=>((soloAdmin?esAdmin():panelHabilitado())?load(...a):undefined);
+const SOLO_ADMIN=new Set(), SOLO_EMPRESA=new Set();
+// `soloAdmin`: vista de administración (equipo Neumet); el rol cliente que la pida (menú, buscador o código) vuelve a Inicio.
+// `soloEmpresa`: vista del administrador de empresa; el equipo Neumet y el usuario de sucursal vuelven a Inicio.
+export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa}={}){
+  // Defensa en profundidad: ningún loader consulta datos si la sesión no es admin/cliente (los de administración, solo admin;
+  // los de empresa, solo el administrador de empresa).
+  NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name); if(soloEmpresa) SOLO_EMPRESA.add(name);
+  const permitido=soloAdmin?esAdmin:soloEmpresa?esAdminEmpresa:panelHabilitado;
+  LOADERS[name]=(...a)=>(permitido()?load(...a):undefined);
+  // Devuelve el loader con el filtro: lo registran como acción las vistas que se invocan también desde un botón del DOM.
+  return LOADERS[name];
 }
 
 let activa=null;
@@ -30,7 +35,7 @@ export function setTitulo(actual,padre=null){
 
 export function switchView(v){
   if(!panelHabilitado()) return;
-  if(SOLO_ADMIN.has(v)&&isClienteMode()) v='inicio';
+  if((SOLO_ADMIN.has(v)&&isClienteMode())||(SOLO_EMPRESA.has(v)&&!esAdminEmpresa())) v='inicio';
   activa=v;
   const item=MENU[v]||v;
   document.querySelectorAll('.nav-item[data-view]').forEach(n=>{

@@ -35,6 +35,7 @@
 - Alerta única «crítico» con estado, histéresis y umbral por cliente (migración `20261118500000`; apéndice M, F7).
 - Administración de empresa, base de datos (F10 PR 2): `accesos_quitados`, RPC de usuarios, kilometraje y alerta ampliada; migración `20261119000000` aplicada en producción (apéndice N).
 - Edge Functions de acceso de empresa (F10 PR 3, sin desplegar): `quitar-acceso-usuario` y `reponer-acceso-usuario` con convergencia con Auth, y `crear-usuario-seccional` abierta al administrador de empresa con el 409 orientado a reponer (docs/17 §4.1 y §4.2).
+- Panel Empresa y regla única `esAdminEmpresa()` (F10 PR 4): Usuarios (alta, quitar y reponer con los 502 de las funciones), Umbrales (`alerta_configurar`) y Dispositivos de solo lectura; `soloAdmin` en ficha, Balance y Clientes; el administrador de empresa baja el kilometraje con `vehiculo_corregir_odometro`. Solo front, sin migración. Pendiente (PR 9): la tarjeta de sucursales y la escritura directa del odómetro del equipo Neumet.
 - Documentación del producto: README raíz, índice de `docs/` y guías de revisión y de textos.
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
 
