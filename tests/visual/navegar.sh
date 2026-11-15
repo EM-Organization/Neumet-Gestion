@@ -2,8 +2,8 @@
 # Panel navegable con datos simulados (stub de tests/smoke), para recorrerlo a mano o con un navegador controlado por un agente.
 # Uso: tests/visual/navegar.sh [admin|global|sucursal|sinperfil]   (sin argumento: imprime las 4 URL)
 # Servidor SOLO local (127.0.0.1) que responde 404 a lo sensible (rutas con un segmento que empiece con «.», referencias/,
-# supabase/.temp; sin distinguir mayúsculas), y a todo enlace simbólico que salga del repo. Se detiene con SIGTERM (kill -TERM <pid>, o TaskStop si se lanzó en segundo plano) o Ctrl+C en primer
-# plano. Nunca usa el sitio real, contraseñas ni producción.
+# supabase/.temp; sin distinguir mayúsculas), y a todo enlace simbólico que salga del repo. Se detiene con SIGTERM (kill -TERM <pid>) o Ctrl+C en primer
+# plano. Límite conocido: un hardlink hacia un archivo de referencias/ se sirve (no hay forma de detectarlo por ruta); no crearlos. Nunca usa el sitio real, contraseñas ni producción.
 # El arnés muestra el panel dentro de un iframe del mismo origen: es interactivo (clics, formularios), pero los datos
 # son simulados y se reinician al recargar. Para datos reales de demo hace falta el e2e (ver .claude/skills/neumet-auditoria-ux).
 set -uo pipefail
