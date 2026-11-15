@@ -45,7 +45,7 @@ Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sug
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; investigación y propuesta de reglas en [18](18-rotacion-vehiculos-pesados.md) (PR 74); pendiente de implementar (F8) |
 | Separar admin del equipo Neumet y admin de empresa | Planificado (F10; plan en [17](17-plan-roles-admin.md), sin implementar) |
-| Migración gradual del panel a un framework con build (y sistema de diseño mobile-first) | Planificado (F11; plan en [19](19-migracion-framework.md), sin implementar; sin prioridad asignada, no altera el orden de F8 ni de F10) |
+| Migración gradual del panel a un framework con build (y sistema de diseño) | Planificado (F11; plan en [19](19-migracion-framework.md), sin implementar; sin prioridad asignada, no altera el orden de F8 ni de F10) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
