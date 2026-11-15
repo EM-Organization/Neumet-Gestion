@@ -44,7 +44,7 @@ Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sug
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | Hecho (migración `20261115000000`, aplicada: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
 | Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; pendiente de investigar e implementar (F8) |
-| Separar admin del equipo Neumet y admin de empresa | Planificación pendiente (F10; plan en elaboración, docs/17) |
+| Separar admin del equipo Neumet y admin de empresa | Planificado (F10; plan en [17](17-plan-roles-admin.md), sin implementar) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
 
 Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto vigente (comprobar con `supabase migration list --remote`).
@@ -108,11 +108,11 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Sin resurrección desde «dispuesto» por simple edición.
 
 ### F10 · Separar el admin del equipo Neumet del admin de empresa
-- Estado: **planificación pendiente** (F10 es el siguiente número libre; no indica prioridad).
+- Estado: **planificado**, ver el plan en [17](17-plan-roles-admin.md) (F10 es el siguiente número libre; no indica prioridad).
 - Contexto (decisión del 2026-11-13, confirmada con un cliente): el perfil `admin` pasa a ser interno del equipo Neumet, no un administrador de cliente. Hoy mezcla ambos roles: `admin` ya es global (`cliente_id` nulo) y existe el perfil global de cliente (`rol = 'cliente'` sin sucursal), que se parece al futuro administrador de empresa. Cada cliente tendrá su propio administrador de empresa.
 - Objetivo del admin del equipo Neumet: ver el uso de cada cliente (vehículos, dispositivos, consultas a la API) y administrar la plataforma.
 - Es un cambio del modelo de roles: requiere un plan previo que cubra roles, RLS, vistas, interfaz, migración de los usuarios existentes y el riesgo de quedar sin acceso (lockout).
-- Plan: en elaboración (se documentará en docs/17).
+- Plan: [17 · Plan de roles](17-plan-roles-admin.md), estado **planificado** (sin migraciones ni código todavía).
 
 ## Fuera de alcance por ahora
 
