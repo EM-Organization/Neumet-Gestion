@@ -39,8 +39,7 @@ const err = msg => { const el = $('emp-user-error'); el.textContent = msg || '';
 
 function botonesFila(u) {
   const p = pendientes.get(u.user_id);
-  // Repetir la baja solo cuando un pendiente lo pide (Auth sin bloquear): en una fila quitada no se ofrece «Quitar» de entrada.
-  const a = accionesFila(u, { propio: u.user_id === miId, suprimir: p ? p.suprimir : null, reintentarBaja: !!p && (p.ofrecer === 'quitar' || p.suprimir === 'reponer') });
+  const a = accionesFila(u, { propio: u.user_id === miId, suprimir: p ? p.suprimir : null });
   const out = [];
   if (p && p.ofrecer === 'sucursal') {
     out.push(html`<select class="flota-select" id="emp-suc-${u.user_id}" aria-label="Sucursal donde reponer">${sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)}</select>
@@ -50,9 +49,12 @@ function botonesFila(u) {
   } else if (a.reponer) {
     out.push(html`<button type="button" class="btn" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer acceso</button>`);
   }
-  // En una fila quitada, «Quitar» solo reintenta el bloqueo en Auth (marca de la base o pendiente de esta sesión).
+  // Fila quitada: «Repetir bloqueo» (botón secundario) reaplica el bloqueo en Auth; fila vigente: «Quitar» con la baja del panel.
   if (a.quitar) {
-    out.push(html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null])}">Quitar</button>`);
+    const args = JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null]);
+    out.push(u.estado === ESTADO_QUITADO
+      ? html`<button type="button" class="btn ghost" data-action="empresaQuitar" data-args="${args}">Repetir bloqueo</button>`
+      : html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${args}">Quitar</button>`);
   }
   if (p && p.ofrecer === 'actualizar') out.push(html`<button type="button" class="btn ghost" data-action="empresaActualizar">Actualizar lista</button>`);
   return joinHtml(out);

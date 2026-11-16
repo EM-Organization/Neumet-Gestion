@@ -24,9 +24,10 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (d.body.innerHTML.indexOf('<Norte>') !== -1) fail('empresa: nombre de sucursal sin escapar');
   if (btn('u-1', 'empresaQuitar')) fail('empresa: el usuario de la sesión puede quitarse a sí mismo');
   if (!btn('u-5', 'empresaQuitar')) fail('empresa: falta Quitar en un usuario vigente');
-  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Quitar');
+  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Repetir bloqueo');
   if (btn('u-5', 'empresaQuitar').className.indexOf('icon-btn danger') === -1 || /(^| )btn( |$)/.test(btn('u-5', 'empresaQuitar').className)) fail('empresa: Quitar debe usar el estilo de baja del panel (icon-btn danger), no un botón rojo sólido: ' + btn('u-5', 'empresaQuitar').className);
-  if (btn('u-21', 'empresaQuitar')) fail('empresa: Quitar aparece en una fila ya quitada sin bloqueo de Auth pendiente');
+  if (!btn('u-21', 'empresaQuitar') || btn('u-21', 'empresaQuitar').textContent.trim() !== 'Repetir bloqueo') fail('empresa: toda fila quitada debe ofrecer Quitar rotulado «Repetir bloqueo» (docs/17 sección 10), incluso sin bloqueo de Auth pendiente');
+  if (/danger/.test(btn('u-21', 'empresaQuitar').className)) fail('empresa: «Repetir bloqueo» debe ser un botón secundario, no el estilo de baja');
   if (!btn('u-20', 'empresaReponer') || /primary/.test(btn('u-20', 'empresaReponer').className)) fail('empresa: Reponer acceso debe ser un botón secundario (un solo primario por pantalla)');
   if (!($('#emp-user-form').compareDocumentPosition($('#tbody-empresa-usuarios')) & 4)) fail('empresa: el formulario Nuevo usuario debe ir arriba de la lista');
   if (!fila('u-1') || fila('u-1').textContent.indexOf('Sesión actual') === -1) fail('empresa: la fila propia no se marca como sesión actual');

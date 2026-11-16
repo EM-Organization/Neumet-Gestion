@@ -20,13 +20,12 @@ test('ordenarUsuarios: vigentes primero, empresa antes que sucursal, luego email
   assert.deepEqual(ordenarUsuarios(null), []);
 });
 
-test('accionesFila: una fila quitada no ofrece Quitar salvo para reintentar el bloqueo en Auth; el propio usuario no se quita', () => {
+test('accionesFila: toda fila quitada ofrece Quitar (reintento de bloqueo en Auth); el propio usuario no se quita', () => {
   assert.deepEqual(accionesFila(vig('a')), { reponer: false, quitar: true });
   assert.deepEqual(accionesFila(vig('a'), { propio: true }), { reponer: false, quitar: false });
-  assert.deepEqual(accionesFila(qui('a')), { reponer: true, quitar: false });
-  assert.deepEqual(accionesFila({ ...qui('a'), bloqueo_auth_pendiente: false }), { reponer: true, quitar: false });
+  assert.deepEqual(accionesFila(qui('a')), { reponer: true, quitar: true });
+  assert.deepEqual(accionesFila({ ...qui('a'), bloqueo_auth_pendiente: false }), { reponer: true, quitar: true });
   assert.deepEqual(accionesFila({ ...qui('a'), bloqueo_auth_pendiente: true }), { reponer: true, quitar: true });
-  assert.deepEqual(accionesFila(qui('a'), { reintentarBaja: true }), { reponer: true, quitar: true });
 });
 
 test('alcance del usuario nuevo: vacío no se envía; «Toda la empresa» es una opción explícita', () => {
@@ -103,9 +102,9 @@ test('resultadoAcceso suprime la acción que el contrato prohíbe según el pend
 
 test('accionesFila con pendiente: quita de la fila lo que el contrato prohíbe', () => {
   const quitado = { estado: 'quitado' }, vigente = { estado: 'vigente' };
-  assert.deepEqual(accionesFila(quitado, { suprimir: 'reponer', reintentarBaja: true }), { reponer: false, quitar: true });
+  assert.deepEqual(accionesFila(quitado, { suprimir: 'reponer' }), { reponer: false, quitar: true });
   assert.deepEqual(accionesFila(vigente, { suprimir: 'quitar' }), { reponer: false, quitar: false });
-  assert.deepEqual(accionesFila(quitado, {}), { reponer: true, quitar: false });
+  assert.deepEqual(accionesFila(quitado, {}), { reponer: true, quitar: true });
 });
 
 test('resultadoAcceso 0 y 500 recargan la lista (la RPC pudo haber cambiado el estado); un 400 genérico no', () => {
