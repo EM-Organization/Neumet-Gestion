@@ -41,10 +41,13 @@ export function etiquetaMes(clave) {
   return formatoMes.format(new Date(Date.UTC(a, m - 1, 1)));
 }
 
-// Mantiene desde <= hasta cuando cambia uno de los dos: el que se movió manda y el otro se arrastra.
-export function normalizarRango({ desde, hasta }, cambio) {
-  if (desde <= hasta) return { desde, hasta };
-  return cambio === 'hasta' ? { desde: hasta, hasta } : { desde, hasta: desde };
+// Un solo selector «Mes»: la opción inicial cubre los últimos 12 meses cerrados y las demás son un mes puntual (desde = hasta).
+// Reemplaza a «Desde» y «Hasta», que obligaban a 4 clics para ver un mes; ahora son 2 y el caso frecuente (todo el año) no pide ninguno.
+export const SELECCION_ULTIMOS = 'ultimos';
+export const ETIQUETA_ULTIMOS = `Últimos ${MESES_POR_DEFECTO} meses`;
+const ES_CLAVE_MES = /^\d{4}-(0[1-9]|1[0-2])-01$/;
+export function rangoDeSeleccion(valor, ahora = new Date()) {
+  return ES_CLAVE_MES.test(String(valor)) ? { desde: valor, hasta: valor } : rangoPorDefecto(ahora);
 }
 
 const formatoFecha = new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
@@ -57,12 +60,12 @@ export const COLUMNAS = [
   { clave: 'mes', etiqueta: 'Mes' },
   { clave: 'cliente', etiqueta: 'Cliente' },
   { clave: 'api', etiqueta: 'Llamadas API', alinear: 'der' },
-  { clave: 'logins', etiqueta: 'Logins', alinear: 'der' },
+  { clave: 'logins', etiqueta: 'Inicios de sesión de API', alinear: 'der' },
   { clave: 'mediciones', etiqueta: 'Mediciones', alinear: 'der' },
   { clave: 'vehiculos', etiqueta: 'Vehículos', alinear: 'der' },
   { clave: 'dispositivos', etiqueta: 'Dispositivos', alinear: 'der' },
   { clave: 'usuarios', etiqueta: 'Usuarios', alinear: 'der' },
-  { clave: 'ultimoIngreso', etiqueta: 'Último ingreso' },
+  { clave: 'ultimoIngreso', etiqueta: 'Último ingreso al panel' },
 ];
 
 // Filas de uso_clientes_listar -> filas ya formateadas para la tabla. Un mes sin ingresos de usuarios queda como «Sin ingresos»,

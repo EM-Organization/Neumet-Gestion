@@ -26,7 +26,11 @@ export default defineConfig({
   ],
   resolve: {
     // domain/ es lógica pura compartida con el panel viejo: una sola copia (docs/19 §5.6).
-    alias: { '@domain': ruta('./assets/js/domain') },
+    alias: {
+      '@domain': ruta('./assets/js/domain'),
+      // Solo en pruebas: el panel viejo importa /panel/islas.js, que no existe sin build (ver src/core-islas.test.js).
+      ...(process.env.VITEST ? { '/panel/islas.js': ruta('./src/pruebas/panel-islas-simulado.js') } : {}),
+    },
     // Vitest necesita la build de navegador de Svelte para mount() en jsdom.
     conditions: process.env.VITEST ? ['browser'] : undefined,
   },

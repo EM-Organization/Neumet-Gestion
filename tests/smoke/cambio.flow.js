@@ -1,4 +1,4 @@
-// Recorrido de humo del cambio de neumático en el taller (admin y cliente). Lo invoca harness.html:
+// Recorrido de humo del cambio de neumático en el taller (cliente). Lo invoca harness.html:
 // await window.cambioFlow(w, d, sleep, fail, log). Usa el contrato del botón del detalle de vehículo:
 // data-action="neumatico-cambiar" data-vehiculo-id data-posicion (aquí un botón sintético).
 window.cambioFlow = async function(w, d, sleep, fail, log){

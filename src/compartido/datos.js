@@ -11,7 +11,7 @@ export const MENSAJE_DUPLICADO = 'Ya existe un registro con esos datos';
 export const MENSAJE_EN_USO = 'El registro está en uso y no se puede eliminar';
 
 // PostgREST: 42501 = privilegio o política RLS denegados (el rol no puede); PGRST301 y mensaje «JWT expired» = sesión vencida;
-// 23505 = clave duplicada; 23503 = referencia en uso. Un TypeError de fetch es una falla de red.
+// 23505 = clave duplicada; 23503 = referencia en uso. Una falla de red de fetch llega como TypeError con un mensaje conocido.
 export function mensajeDeError(error) {
   if (!error) return '';
   const codigo = String(error.code ?? '');
@@ -20,7 +20,9 @@ export function mensajeDeError(error) {
   if (codigo === 'PGRST301' || /jwt expired/i.test(texto)) return MENSAJE_SESION;
   if (codigo === '23505') return MENSAJE_DUPLICADO;
   if (codigo === '23503') return MENSAJE_EN_USO;
-  if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(texto)) return MENSAJE_SIN_CONEXION;
+  // Solo el mensaje propio de fetch (Chrome «Failed to fetch», Firefox «NetworkError…», Safari «Load failed») es una falla de red: un
+  // TypeError cualquiera (un bug nuestro, «Cannot read properties of undefined») no debe esconderse como «Sin conexión».
+  if (/failed to fetch|networkerror|load failed/i.test(texto)) return MENSAJE_SIN_CONEXION;
   return MENSAJE_GENERICO;
 }
 

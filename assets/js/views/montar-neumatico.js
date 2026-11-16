@@ -238,7 +238,10 @@ async function confirmarRetirar() {
 }
 
 // ── Acciones ────────────────────────────────────────────────────────────────────────────────────────────────────
+// El equipo Neumet no opera dentro de una empresa (docs/17 P1): la acción no se ofrece en la interfaz y además se rechaza aquí,
+// porque un botón ajeno con este data-action (o una vista que no filtre) no debe abrir el modal.
 ACTIONS['neumatico-montar'] = async function (vehiculoId, posicion) {
+  if (esAdmin()) return;
   await abrirMontar(Number(vehiculoId), posicion === undefined || posicion === null ? null : Number(posicion));
 };
 ACTIONS['neumatico-montar-cerrar'] = function () { cerrarMontar(); };
@@ -252,7 +255,7 @@ ACTIONS['neumatico-montar-tab'] = function (origen) {
 };
 ACTIONS['neumatico-montar-confirmar'] = confirmarMontar;
 
-ACTIONS['neumatico-retirar'] = async function (vehiculoId, posicion) { await abrirRetirar(Number(vehiculoId), Number(posicion)); };
+ACTIONS['neumatico-retirar'] = async function (vehiculoId, posicion) { if (esAdmin()) return; await abrirRetirar(Number(vehiculoId), Number(posicion)); };
 ACTIONS['neumatico-retirar-cerrar'] = function () { cerrarRetirar(); };
 ACTIONS['neumatico-retirar-resumen'] = function () { if (ret) actualizarRetirar(); };
 ACTIONS['neumatico-retirar-confirmar'] = confirmarRetirar;
