@@ -161,6 +161,10 @@ echo "== migración de uso mensual por cliente (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261119500000_uso_cliente_mensual.sql"
 echo "== migración de uso mensual por cliente (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261119500000_uso_cliente_mensual.sql"
+echo "== migración del precio mensual por RPC (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120000000_precio_mensual_rpc.sql"
+echo "== migración del precio mensual por RPC (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120000000_precio_mensual_rpc.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
