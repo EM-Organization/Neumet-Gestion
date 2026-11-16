@@ -40,10 +40,10 @@ export function crearEntorno() {
     [U_CLI, { email: 'cli@x.cl', clave: 'clave-cli' }],
   ]);
   const perfiles = new Map<string, PerfilApi>([
-    [U_DAC, { rol: 'api', cliente_id: 1 }],
-    [U_OTRO, { rol: 'api', cliente_id: 2 }],
-    [U_ADMIN, { rol: 'admin', cliente_id: null }],
-    [U_CLI, { rol: 'cliente', cliente_id: 1 }],
+    [U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true }],
+    [U_OTRO, { rol: 'api', cliente_id: 2, cliente_activo: true }],
+    [U_ADMIN, { rol: 'admin', cliente_id: null, cliente_activo: true }],
+    [U_CLI, { rol: 'cliente', cliente_id: 1, cliente_activo: true }],
   ]);
   const vehiculos: Veh[] = [
     { id: 10, cliente_id: 1, patente_norm: 'ABCD12', numero: '123' },
@@ -168,7 +168,7 @@ export function crearEntorno() {
     },
   };
   const handler = createHandler(deps);
-  return { deps, handler, vehiculos, neumaticos, mediciones, logs, llamadas, estado };
+  return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, estado };
 }
 
 const BASE = 'https://x.supabase.co/functions/v1/api-proveedor';

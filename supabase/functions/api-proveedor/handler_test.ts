@@ -576,3 +576,77 @@ Deno.test('dato no medido sigue siendo nulo: una lectura parcial no se convierte
   assertEquals(r.data.guardados, [{ posicion: 1, guardado: false }]);
   assertEquals(e.mediciones.length, antes);
 });
+
+// ------------------------------------------- cliente dado de baja y log de login (F10 PR 5)
+Deno.test('login: cuenta api de cliente dado de baja -> 401 idéntico y sin fila de log', async () => {
+  const e = crearEntorno();
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: false });
+  const mala = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'mala', tipoLogin: 2 }));
+  const r = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }));
+  assertEquals(r.status, 401);
+  assertEquals(await j(r), await j(mala));
+  assertEquals(e.logs.length, 0);
+});
+
+Deno.test('token emitido antes de la baja del cliente -> 401 en 2 y 3, sin tocar la base; al reactivar vuelve a funcionar', async () => {
+  const e = crearEntorno();
+  const login = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }));
+  const token = (await j(login)).access_token;
+  assertEquals((await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token }))).status, 200);
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: false }); // baja del cliente
+  const antes = e.logs.length;
+  const o = await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token }));
+  const g = await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }]), { token }));
+  assertEquals([o.status, g.status], [401, 401]);
+  assertEquals(await j(o), { code: 401, message: 'No autorizado' });
+  assertEquals([e.llamadas.obtener, e.llamadas.guardar], [1, 0]);
+  assertEquals(e.logs.length, antes);
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true });
+  assertEquals((await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token }))).status, 200);
+});
+
+Deno.test('cuenta de otro cliente vigente sigue funcionando aunque otro esté dado de baja', async () => {
+  const e = crearEntorno();
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: false });
+  const r = await e.handler(post(R_OBT, { matricula: 'ZZZZ99', numero: '' }, { token: 'tok-' + U_OTRO }));
+  assertEquals(r.status, 200);
+});
+
+Deno.test('perfil sin dato de cliente_activo falla cerrado', async () => {
+  const e = crearEntorno();
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1 });
+  assertEquals((await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }))).status, 401);
+  assertEquals((await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T }))).status, 401);
+});
+
+Deno.test('login exitoso inserta una fila en ingesta_log; el fallido no', async () => {
+  const e = crearEntorno();
+  await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'mala', tipoLogin: 2 }));
+  await e.handler(post(R_LOGIN, { email: 'admin@x.cl', clave: 'clave-admin', tipoLogin: 2 }));
+  assertEquals(e.logs.length, 0);
+  const r = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }));
+  assertEquals(e.logs.length, 1);
+  const l = e.logs[0];
+  assertEquals([l.endpoint, l.cuenta, l.cliente_id, l.status, l.http_code, l.motivo, l.device_id], [
+    'login',
+    U_DAC,
+    1,
+    'ok',
+    200,
+    null,
+    'api:' + U_DAC,
+  ]);
+  assertEquals(l.request_id, r.headers.get('x-request-id'));
+  const texto = JSON.stringify(e.logs);
+  assertFalse(texto.includes('tok-'));
+  assertFalse(texto.includes('clave-dac'));
+  assertFalse(texto.includes('dac@x.cl'));
+});
+
+Deno.test('login: si falla el registro del log, el login igual responde 200 con su token', async () => {
+  const e = crearEntorno();
+  e.estado.fallaLog = true;
+  const r = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }));
+  assertEquals(r.status, 200);
+  assertEquals(await j(r), { code: 200, access_token: T });
+});

@@ -129,7 +129,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       if (req.method !== 'POST') {
         return respuesta({ code: 405, message: 'Método no permitido' }, 405, ctx.requestId, { Allow: 'POST' });
       }
-      if (path === '/auth/login') return await login(req, ctx);
+      if (path === '/auth/login') return await login(req, ctx, ahora);
       return await autenticado(req, ctx, path, ahora);
     } catch (e) {
       if (e instanceof HttpError) {
@@ -141,7 +141,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
   };
 
   // ---------------------------------------------------------------- login
-  async function login(req: Request, c: Contexto): Promise<Response> {
+  async function login(req: Request, c: Contexto, ahora: () => number): Promise<Response> {
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'desconocida';
     // x-forwarded-for solo como pista: el cliente puede falsearla (docs/07 §4.5).
     if (!(await c.deps.db.rateLimit(await uuidDeTexto(ip), RATE_LOGIN_IP_POR_MIN))) {
@@ -157,7 +157,31 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     if (!sesion) return invalido();
     // La cuenta debe ser de tipo 'api' con cliente; si no, misma respuesta (sin revelar el motivo).
     const perfil = await c.deps.db.getPerfil(sesion.user_id);
-    if (!perfil || perfil.rol !== 'api' || perfil.cliente_id == null) return invalido();
+    // Un cliente dado de baja (deleted_at) corta la cuenta: mismo 401, sin revelar el motivo.
+    if (!perfil || perfil.rol !== 'api' || perfil.cliente_id == null || perfil.cliente_activo !== true) {
+      return invalido();
+    }
+    // Login exitoso -> una fila en ingesta_log (cuenta el uso mensual de logins). No bloquea
+    // el login si falla el registro (docs/07 §4.5: un fallo al escribir el log no rompe la respuesta).
+    try {
+      await c.deps.db.log({
+        request_id: c.requestId,
+        endpoint: 'login',
+        device_id: 'api:' + sesion.user_id,
+        cuenta: sesion.user_id,
+        cliente_id: perfil.cliente_id,
+        vehiculo_id: null,
+        status: 'ok',
+        http_code: 200,
+        motivo: null,
+        payload_resumen: {},
+        n_guardados: null,
+        n_fallidos: null,
+        duracion_ms: ahora() - c.inicio,
+      });
+    } catch {
+      console.warn(JSON.stringify({ level: 'warn', request_id: c.requestId, event: 'log_login_fallido' }));
+    }
     return respuesta({ code: 200, access_token: sesion.access_token }, 200, c.requestId);
   }
 
@@ -170,7 +194,10 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     if (!user) return no401();
     const perfil = await c.deps.db.getPerfil(user.id);
     // cliente_id SOLO del perfil, nunca del cuerpo.
-    if (!perfil || perfil.rol !== 'api' || perfil.cliente_id == null) return no401();
+    // cliente_activo: el cliente dado de baja también corta los tokens ya emitidos.
+    if (!perfil || perfil.rol !== 'api' || perfil.cliente_id == null || perfil.cliente_activo !== true) {
+      return no401();
+    }
     const cuenta = user.id;
     const clienteId = perfil.cliente_id;
     const endpoint = path.endsWith('obtener_montaje') ? 'obtener_montaje' : 'guardar_montaje_mm';
