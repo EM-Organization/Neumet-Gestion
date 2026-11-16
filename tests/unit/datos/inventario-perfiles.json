@@ -57,7 +57,7 @@
  {
   "archivo": "supabase/functions/api-proveedor/supabase_deps.ts",
   "linea": 81,
-  "texto": "const q = `${cfg.url}/rest/v1/perfiles?user_id=eq.${encodeURIComponent(userId)}&select=rol,cliente_id&limit=1`;"
+  "texto": "const q = `${cfg.url}/rest/v1/perfiles?user_id=eq.${"
  },
  {
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
@@ -68,6 +68,11 @@
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
   "linea": 88,
   "texto": "getPerfil: (id) => Promise.resolve(perfiles.get(id) ?? null),"
+ },
+ {
+  "archivo": "supabase/functions/api-proveedor/testkit.ts",
+  "linea": 171,
+  "texto": "return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, estado };"
  },
  {
   "archivo": "supabase/functions/crear-cliente/handler.ts",
