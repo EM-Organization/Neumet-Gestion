@@ -142,7 +142,7 @@ export function registrar(env) {
       assert.equal(await selVisible(), true, 'el selector se ve en Vehículos');
       await irA(p, 'alertas'); assert.equal(await selVisible(), true, 'el selector se ve en Alertas');
       await irA(p, 'stock'); assert.equal(await selVisible(), false, 'el selector no se ve en Stock');
-      await irA(p, 'recauchutado'); assert.equal(await selVisible(), false, 'el selector no se ve en Recauchutado');
+      await p.eval(`document.querySelector('#view-stock [data-neu-tab="recauchutado"]').click()`); assert.equal(await selVisible(), false, 'el selector no se ve en Recauchutado');
     });
   });
 }
