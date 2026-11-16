@@ -6,7 +6,10 @@
   import EstadoVacio from './EstadoVacio.svelte';
 
   // columnas: [{ clave, etiqueta, alinear?: 'der' }]; filas: objetos planos; `celda` (opcional) pinta una celda con marcado propio.
-  let { columnas, filas, leyenda, clave = (f, i) => f.id ?? i, vacio = { titulo: 'Sin registros' }, celda } = $props();
+  let { columnas, filas: filasProp, leyenda, clave = (f, i) => f.id ?? i, vacio = { titulo: 'Sin registros' }, celda } = $props();
+
+  // `ejecutar` devuelve datos null ante un error: la pantalla puede pasar ese valor tal cual.
+  const filas = $derived(filasProp ?? []);
 
   let estrecho = $state(false);
   onMount(() => {

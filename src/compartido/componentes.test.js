@@ -109,6 +109,10 @@ describe('Tabla', () => {
     expect(t.querySelector('table')).toBeNull();
     expect(t.querySelector('[role="status"]').textContent).toContain('Sin vehículos registrados');
   });
+  it('filas null (ejecutar devuelve datos null ante un error) muestra el estado vacío y no lanza', () => {
+    const t = montar(Tabla, { columnas, filas: null, vacio: { titulo: 'Sin vehículos registrados' } });
+    expect(t.querySelector('[role="status"]').textContent).toContain('Sin vehículos registrados');
+  });
   it('escapa el contenido: un valor con HTML se muestra como texto', () => {
     const t = montar(Tabla, { columnas, filas: [{ id: 1, m: '<img src=x onerror=alert(1)>', n: 1 }] });
     expect(t.querySelector('img')).toBeNull();

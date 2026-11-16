@@ -48,6 +48,7 @@
 3. (Opcional) MFA para administradores.
 
 ### Desarrollo
+- Pulido de la ola 0 de F11 (sugerencias del revisor del PR 85, no bloqueantes): otras elusiones del lint de un solo cliente en `src/`; `datos.js` debe tratar un `TypeError` de red como «Sin conexión»; revisar `Avisos`, `Boton` y `Modal`; `islas.js`: `desmontar`; `tests/e2e/lib/web.mjs`: `finally` al detener el servidor.
 | Ítem | Notas |
 |---|---|
 | Cuenta con rol `api` para la app | Crearla desde la ficha del cliente (runbook §2) |

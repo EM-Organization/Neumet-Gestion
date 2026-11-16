@@ -17,6 +17,13 @@ const estado = p => p.eval(`({
   alertas: (document.querySelector('[data-alertas]') || {}).textContent || ''
 })`);
 
+// Escrituras reales desde `desde`. Inicio (la vista de arranque de `salto`) lee con POST /rpc/ultimas_mediciones, que es una LECTURA
+// aunque sea POST; si llega después de fijar `desde` (el orden depende de la velocidad del runner) contaba como escritura y el test
+// era inestable. Lista explícita de RPC de lectura en vez de esperar a que Inicio termine: no depende de tiempos.
+const RPC_DE_LECTURA = ['ultimas_mediciones'];
+const escrituras = (env, desde) => env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD'
+  && !RPC_DE_LECTURA.some((n) => r.path.split('?')[0] === `/rpc/${n}`));
+
 export function registrar(env) {
   test('islas: bandera apagada, el panel viejo queda igual y no se monta nada', async () => {
     await flujo(env, 'islas-apagada', 'admin', async (p) => {
@@ -55,7 +62,7 @@ export function registrar(env) {
         assert.equal(e.relleno, '16px', 'la hoja cargó: p-4 de Tailwind aplica');
         const lecturas = env.peticiones.slice(desde).filter((r) => r.path.startsWith('/v_alertas'));
         assert.ok(lecturas.length >= 1 && lecturas.every((r) => r.method === 'HEAD' || r.method === 'GET'), 'la isla solo lee');
-        assert.equal(env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD').length, 0, 'la isla no escribe');
+        assert.deepEqual(escrituras(env, desde).map((r) => `${r.method} ${r.path}`), [], 'la isla no escribe');
 
         // Cambiar de vista desmonta la isla y devuelve el panel viejo.
         await irA(p, 'inicio');
@@ -75,6 +82,24 @@ export function registrar(env) {
       });
     });
   }
+
+  // Reproduce el orden que rompía el CI: la lectura RPC de Inicio llega DESPUÉS de fijar `desde`. Sin el filtro de lecturas conocidas
+  // el contador de escrituras da 1.
+  test('islas: una lectura RPC de Inicio que llega tarde no cuenta como escritura de la isla', async () => {
+    env.web.demorar('/rpc/ultimas_mediciones', 1500);
+    try {
+      await flujo(env, 'islas-lectura-tardia', 'salto', async (p) => {
+        await forzar(p, 'on:hola');
+        const desde = env.peticiones.length;
+        await irA(p, 'hola');
+        await p.esperar(`document.querySelector('[data-isla="hola"]')`, { que: 'la isla montada' });
+        const t0 = Date.now();
+        while (!env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/ultimas_mediciones')) && Date.now() - t0 < 8000) await new Promise((ok) => setTimeout(ok, 100));
+        assert.ok(env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/ultimas_mediciones')), 'la lectura de Inicio llegó después de fijar desde');
+        assert.deepEqual(escrituras(env, desde).map(r => `${r.method} ${r.path}`), [], 'una lectura RPC no es escritura');
+      });
+    } finally { env.web.restaurar(); }
+  });
 
   test('islas: salir de la vista antes de que cargue cancela el montaje', async () => {
     await flujo(env, 'islas-cancelar', 'admin', async (p) => {
