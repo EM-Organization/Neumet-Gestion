@@ -17,6 +17,13 @@ const estado = p => p.eval(`({
   alertas: (document.querySelector('[data-alertas]') || {}).textContent || ''
 })`);
 
+// Escrituras reales desde `desde`. Inicio (la vista de arranque de `salto`) lee con POST /rpc/ultimas_mediciones, que es una LECTURA
+// aunque sea POST; si llega después de fijar `desde` (el orden depende de la velocidad del runner) contaba como escritura y el test
+// era inestable. Lista explícita de RPC de lectura en vez de esperar a que Inicio termine: no depende de tiempos.
+const RPC_DE_LECTURA = ['ultimas_mediciones'];
+const escrituras = (env, desde) => env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD'
+  && !RPC_DE_LECTURA.some((n) => r.path.split('?')[0] === `/rpc/${n}`));
+
 export function registrar(env) {
   test('islas: bandera apagada, el panel viejo queda igual y no se monta nada', async () => {
     await flujo(env, 'islas-apagada', 'admin', async (p) => {
@@ -55,7 +62,7 @@ export function registrar(env) {
         assert.equal(e.relleno, '16px', 'la hoja cargó: p-4 de Tailwind aplica');
         const lecturas = env.peticiones.slice(desde).filter((r) => r.path.startsWith('/v_alertas'));
         assert.ok(lecturas.length >= 1 && lecturas.every((r) => r.method === 'HEAD' || r.method === 'GET'), 'la isla solo lee');
-        assert.equal(env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD').length, 0, 'la isla no escribe');
+        assert.deepEqual(escrituras(env, desde).map((r) => `${r.method} ${r.path}`), [], 'la isla no escribe');
 
         // Cambiar de vista desmonta la isla y devuelve el panel viejo.
         await irA(p, 'inicio');
@@ -75,6 +82,24 @@ export function registrar(env) {
       });
     });
   }
+
+  // Reproduce el orden que rompía el CI: la lectura RPC de Inicio llega DESPUÉS de fijar `desde`. Sin el filtro de lecturas conocidas
+  // el contador de escrituras da 1.
+  test('islas: una lectura RPC de Inicio que llega tarde no cuenta como escritura de la isla', async () => {
+    env.web.demorar('/rpc/ultimas_mediciones', 1500);
+    try {
+      await flujo(env, 'islas-lectura-tardia', 'salto', async (p) => {
+        await forzar(p, 'on:hola');
+        const desde = env.peticiones.length;
+        await irA(p, 'hola');
+        await p.esperar(`document.querySelector('[data-isla="hola"]')`, { que: 'la isla montada' });
+        const t0 = Date.now();
+        while (!env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/ultimas_mediciones')) && Date.now() - t0 < 8000) await new Promise((ok) => setTimeout(ok, 100));
+        assert.ok(env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/ultimas_mediciones')), 'la lectura de Inicio llegó después de fijar desde');
+        assert.deepEqual(escrituras(env, desde).map(r => `${r.method} ${r.path}`), [], 'una lectura RPC no es escritura');
+      });
+    } finally { env.web.restaurar(); }
+  });
 
   test('islas: salir de la vista antes de que cargue cancela el montaje', async () => {
     await flujo(env, 'islas-cancelar', 'admin', async (p) => {
@@ -124,6 +149,121 @@ export function registrar(env) {
       });
     });
   }
+
+  // ---- Pruebas del panel viejo contra un /panel/islas.js distinto (el servidor sirve `js` en su lugar; lib/web.mjs) ----
+  // Se usa la vista ya existente «flota» (con contenido propio, como `.page-header`) para comprobar cómo convive la isla con una vista vieja.
+  async function conIslaFalsa(js, nombre, rol, fn) {
+    env.web.reemplazar('/panel/islas.js', js);
+    try {
+      await flujo(env, nombre, rol, async (p) => {
+        await p.eval(`import('/assets/js/core/islas.js').then(m => { window.__viejo = 0; m.registrarIsla('flota', 'Flota', { viejo: async () => { window.__viejo++; } }); return true; })`);
+        await fn(p);
+      });
+    } finally { env.web.restaurar(); }
+  }
+  const montaIsla = `export const API_ISLAS = 1; export function desmontar() {}
+    export async function montar(n, el) { el.dataset.isla = n; el.textContent = 'Isla de prueba'; return true; }`;
+  const hacerFlota = p => p.eval(`import('/assets/js/core/nav.js').then(m => { m.switchView('flota'); return true; })`);
+  const pausa = (p, ms) => p.eval(`new Promise(ok => setTimeout(ok, ${ms}))`);
+
+  test('islas: la vista vieja existente queda realmente oculta al montar (no basta el atributo hidden) y se restaura al salir', async () => {
+    await conIslaFalsa(montaIsla, 'islas-oculta', 'admin', async (p) => {
+      await hacerFlota(p);
+      await p.esperar(`document.querySelector('#view-flota [data-isla="flota"]')`, { que: 'la isla montada sobre la vista flota' });
+      const e = await p.eval(`({
+        encabezado: getComputedStyle(document.querySelector('#view-flota .page-header')).display,
+        hijosVisibles: [...document.querySelector('#view-flota').children].filter(el => !el.dataset.islaHost && getComputedStyle(el).display !== 'none').length,
+        isla: getComputedStyle(document.querySelector('#view-flota [data-isla="flota"]')).display
+      })`);
+      assert.equal(e.encabezado, 'none', '.page-header es display:flex: sin la regla acotada el atributo hidden no lo oculta');
+      assert.equal(e.hijosVisibles, 0, 'ningún elemento de la vista vieja queda visible bajo la isla');
+      assert.notEqual(e.isla, 'none');
+      await irA(p, 'inicio');
+      await p.esperar(`!document.querySelector('[data-isla="flota"]')`, { que: 'la isla desmontada' });
+      const f = await p.eval(`({ marcados: document.querySelectorAll('[data-isla-oculto]').length, ocultos: document.querySelectorAll('#view-flota [hidden]').length,
+        flex: document.querySelector('#view-flota .page-header').hidden })`);
+      assert.deepEqual(f, { marcados: 0, ocultos: 0, flex: false }, 'al desmontar, la vista vieja vuelve tal cual estaba');
+    });
+  });
+
+  test('islas: con la bandera apagada la regla de ocultación no coincide con nada del panel viejo', async () => {
+    await flujo(env, 'islas-regla-inerte', 'admin', async (p) => {
+      assert.equal(await p.eval(`document.querySelectorAll('[data-isla-oculto]').length`), 0);
+    });
+  });
+
+  test('islas: un ctx de otra versión muestra el aviso de recarga y cae a la vista vieja', async () => {
+    const otraVersion = `export const API_ISLAS = 99; export function desmontar() {} export async function montar() { throw new Error('no debe llamarse'); }`;
+    await conIslaFalsa(otraVersion, 'islas-version', 'admin', async (p) => {
+      await hacerFlota(p);
+      await p.esperar(`document.getElementById('toast').classList.contains('show')`, { que: 'el aviso de versión' });
+      const e = await p.eval(`({ aviso: document.getElementById('toast-msg').textContent, error: document.getElementById('toast').classList.contains('error'),
+        isla: document.querySelectorAll('[data-isla]').length, viejo: window.__viejo })`);
+      assert.match(e.aviso, /versión nueva del panel.*Recargar/);
+      assert.equal(e.error, true);
+      assert.equal(e.isla, 0);
+      assert.equal(e.viejo, 1, 'la vista vieja sigue funcionando');
+    });
+  });
+
+  test('islas: si mod.montar lanza, se cae a la vista vieja sin rechazo sin atender ni console.error', async () => {
+    const lanza = `export const API_ISLAS = 1; export function desmontar() {} export async function montar() { throw new Error('falla al montar'); }`;
+    await conIslaFalsa(lanza, 'islas-montar-lanza', 'admin', async (p) => {
+      await hacerFlota(p);
+      await p.esperar(`window.__viejo === 1`, { que: 'la vista vieja como respaldo' });
+      const e = await p.eval(`({ hosts: document.querySelectorAll('[data-isla-host]').length, ocultos: document.querySelectorAll('[data-isla-oculto]').length,
+        encabezado: getComputedStyle(document.querySelector('#view-flota .page-header')).display })`);
+      assert.deepEqual(e, { hosts: 0, ocultos: 0, encabezado: 'flex' }, 'la vista vieja queda visible y sin restos de la isla');
+      // flujo() falla por sí solo ante una excepción no capturada (unhandledrejection) o un console.error.
+    });
+  });
+
+  test('islas: un montaje superado que devuelve false no dispara la vista vieja', async () => {
+    const lento = `export const API_ISLAS = 1; export function desmontar() {} let n = 0;
+      export async function montar(nombre, el) {
+        if (++n === 1) { window.__dentro = true; await new Promise(ok => setTimeout(ok, 300)); return false; } // queda superado por la recarga
+        el.dataset.isla = nombre; return true;
+      }`;
+    await conIslaFalsa(lento, 'islas-superado-false', 'admin', async (p) => {
+      await hacerFlota(p);
+      await p.esperar(`window.__dentro === true`, { que: 'el primer montaje ya dentro de mod.montar' });
+      await p.eval(`import('/assets/js/core/nav.js').then(m => { m.reloadActiveView(); return true; })`);
+      await p.esperar(`document.querySelector('#view-flota [data-isla="flota"]')`, { que: 'el segundo montaje' });
+      await pausa(p, 500);
+      assert.equal(await p.eval(`window.__viejo`), 0, 'el primero estaba superado: no puede mostrar la vista vieja bajo la isla vigente');
+    });
+  });
+
+  test('islas: cerrar sesión invalida un montaje en vuelo', async () => {
+    const lento = `export const API_ISLAS = 1; export function desmontar() {}
+      export async function montar(nombre, el) { await new Promise(ok => setTimeout(ok, 400)); el.dataset.isla = nombre; return true; }`;
+    await conIslaFalsa(lento, 'islas-logout', 'admin', async (p) => {
+      await hacerFlota(p);
+      await p.eval(`document.getElementById('logout-btn').click()`);
+      await pausa(p, 900);
+      assert.equal(await p.eval(`document.querySelectorAll('[data-isla]').length`), 0, 'no queda montada una isla tras cerrar sesión');
+      assert.equal(await p.eval(`document.querySelectorAll('[data-isla-host]').length`), 0);
+    });
+  });
+
+  test('islas: un oyente de cambio de sucursal que lanza no impide recargar la vista ni avisar a los demás', async () => {
+    await flujo(env, 'islas-oyente-lanza', 'global', async (p) => {
+      const r = await p.eval(`(async () => {
+        const seccional = await import('/assets/js/core/seccional.js');
+        const nav = await import('/assets/js/core/nav.js');
+        const act = await import('/assets/js/core/actions.js');
+        window.__recargas = 0; window.__otro = 0;
+        nav.registerView('prueba-oyente', 'Prueba', () => { window.__recargas++; });
+        nav.switchView('prueba-oyente');
+        seccional.onCambioSucursal(() => { throw new Error('falla de una isla'); });
+        seccional.onCambioSucursal(() => { window.__otro++; });
+        const antes = window.__recargas;
+        act.ACTIONS.seccionalCambiar('');
+        return { recargas: window.__recargas - antes, otro: window.__otro };
+      })()`);
+      assert.deepEqual(r, { recargas: 1, otro: 1 });
+    });
+  });
 
   test('islas: el servidor entrega /panel/ con la CSP de vercel.json y las hojas con caché inmutable', async () => {
     await flujo(env, 'islas-cabeceras', 'admin', async (p) => {

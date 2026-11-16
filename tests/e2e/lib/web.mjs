@@ -14,6 +14,11 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 export async function startWeb({ postgrestBase }) {
   const peticiones = [];
+  // Archivos servidos en lugar de los de dist/ (ruta -> cuerpo JS): permite probar al panel viejo contra un /panel/islas.js
+  // distinto (versión de `ctx` ajena, `montar` que lanza, que tarda...) sin tocar el build. Siempre se restaura al terminar.
+  const reemplazos = new Map();
+  // Demoras (ruta de PostgREST -> ms) para reproducir un orden de llegada concreto de las peticiones. Se restauran con restaurar().
+  const demoras = new Map();
   // Cabeceras de vercel.json: cada bloque cuyo `source` (una expresión regular de ruta) coincide, en orden; el último gana.
   const bloques = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')).headers
     .map(b => ({ re: new RegExp(`^${b.source}$`), headers: b.headers }));
@@ -23,12 +28,19 @@ export async function startWeb({ postgrestBase }) {
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
-    if (url.pathname.startsWith('/rest/v1/') || url.pathname === '/rest/v1') return proxy(req, res, url);
+    if (url.pathname.startsWith('/rest/v1/') || url.pathname === '/rest/v1') {
+      const ms = demoras.get(url.pathname.replace(/^\/rest\/v1/, ''));
+      return ms ? setTimeout(() => proxy(req, res, url), ms) : proxy(req, res, url);
+    }
     if (url.pathname === '/__e2e/supabase.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); return res.end(supabaseUmd); }
     if (url.pathname.startsWith('/auth/v1/')) return auth(req, res, url);
     if (url.pathname === '/__e2e/config.js') {
       res.writeHead(200, { 'content-type': MIME['.js'] });
       return res.end(`window.NEUMET_CONFIG = { SUPABASE_URL: location.origin, SUPABASE_KEY: 'clave-publica-de-prueba' };`);
+    }
+    if (reemplazos.has(url.pathname)) {
+      res.writeHead(200, { 'cache-control': 'no-store', ...cabecerasDe(url.pathname), 'content-type': MIME['.js'] });
+      return res.end(reemplazos.get(url.pathname));
     }
     estatico(url.pathname, res);
   });
@@ -95,6 +107,9 @@ export async function startWeb({ postgrestBase }) {
   return {
     origin, peticiones,
     setTag: t => { server.tag = t; },
+    reemplazar: (ruta, cuerpo) => reemplazos.set(ruta, cuerpo),
+    demorar: (ruta, ms) => demoras.set(ruta, ms),
+    restaurar: () => { reemplazos.clear(); demoras.clear(); },
     stop: () => new Promise(ok => { server.closeAllConnections?.(); server.close(ok); })
   };
 }
