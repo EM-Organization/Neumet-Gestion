@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  posicionesLibres, siguienteLibre, etiquetaPosicion, cubiertasParaMontar, validarMontaje, validarRetiro,
+  posicionesLibres, siguienteLibre, etiquetaPosicion, resumenLibres, cubiertasParaMontar, validarMontaje, validarRetiro,
   traducirErrorMontaje, traducirErrorRetiro, DESTINOS_RETIRO, MAX_LISTA,
 } from '../../assets/js/domain/montaje.js';
 import { layoutRuedas } from '../../assets/js/domain/vehiculo-diagrama.js';
@@ -45,7 +45,10 @@ test('siguienteLibre: avanza a la siguiente, da la vuelta y devuelve null sin li
 });
 
 test('etiquetaPosicion: nombre en las listas y auxilio', () => {
-  assert.equal(etiquetaPosicion({ posicion: 3, etiqueta: 'Eje 2 · izquierda externa', auxilio: false }), 'P3 · Eje 2 · izquierda externa');
+  // Sin «P3»: el número solo vive en el diagrama (docs/14 §3).
+  assert.equal(etiquetaPosicion({ posicion: 3, auxilio: false }, 10), 'Eje 2 izquierda exterior');
+  assert.equal(etiquetaPosicion({ posicion: 1, auxilio: false }, 6), 'Delantera izquierda');
+  assert.doesNotMatch(etiquetaPosicion({ posicion: 3, auxilio: false }, 10), /P\d/);
   assert.equal(etiquetaPosicion({ posicion: 99, etiqueta: 'Auxilio', auxilio: true }), 'Auxilio');
 });
 
@@ -69,13 +72,14 @@ test('cubiertasParaMontar: solo almacenadas sin vehículo, filtradas por quema, 
 // ── Validar montaje ──
 const libres = posicionesLibres([1], 10);
 const base = { vehiculoId: 7, posicion: 3, libres, origen: 'nuevo', marca: 'Bridgestone', modelo: '', quema: '', kmPrevios: '0',
-  fechaCompra: '', precio: '', vida: '0', odometro: '', odometroActual: 1000, cubiertas: cubs, cubiertaId: '', hoy: '2026-11-10' };
+  fechaCompra: '', precio: '', vida: '0', odometro: '', odometroActual: 1000, tipoRuedas: 10, cubiertas: cubs, cubiertaId: '', hoy: '2026-11-10' };
 
 test('validarMontaje: cubierta nueva con solo la marca', () => {
   const r = validarMontaje(base);
   assert.equal(r.ok, true);
   assert.deepEqual(r.params, { p_vehiculo_id: 7, p_posicion: 3, p_cubierta_id: null, p_nuevo: { marca: 'Bridgestone', vida: 0, km_previos: 0 }, p_odometro_km: null });
-  assert.match(r.resumen, /^P3: entra Bridgestone/);
+  assert.match(r.resumen, /^Eje 2 izquierda exterior: entra Bridgestone/);
+  assert.doesNotMatch(r.resumen, /P\d/);
 });
 
 test('validarMontaje: todos los datos, recortados y tipados', () => {
@@ -106,7 +110,7 @@ test('validarMontaje: posición no libre, inexistente o sin elegir', () => {
   assert.match(validarMontaje({ ...base, posicion: '' }).error, /posición libre/);
   assert.match(validarMontaje({ ...base, posicion: 'x' }).error, /posición libre/);
   assert.equal(validarMontaje({ ...base, posicion: 99 }).ok, true, 'el auxilio está libre');
-  assert.match(validarMontaje({ ...base, posicion: 99 }).resumen, /^auxilio: entra/);
+  assert.match(validarMontaje({ ...base, posicion: 99 }).resumen, /^Auxilio: entra/);
   assert.match(validarMontaje({ ...base, libres: [] }).error, /posición libre/);
 });
 
@@ -141,13 +145,13 @@ test('validarMontaje: odómetro no menor al actual y origen desconocido', () => 
 
 // ── Validar retiro ──
 const neum = { numero_quema: 'Q-1', marca: 'Michelin', modelo: 'X' };
-const ret = { vehiculoId: 7, posicion: 3, neum, destino: 'almacenado', motivo: '', sucursalStock: '4', quema: '', odometro: '', odometroActual: 1000, puedeStock: true };
+const ret = { vehiculoId: 7, posicion: 3, neum, destino: 'almacenado', motivo: '', sucursalStock: '4', quema: '', odometro: '', odometroActual: 1000, puedeStock: true, tipoRuedas: 10 };
 
 test('validarRetiro: a stock en una sucursal', () => {
   const r = validarRetiro(ret);
   assert.equal(r.ok, true);
   assert.deepEqual(r.params, { p_vehiculo_id: 7, p_posicion: 3, p_destino: 'almacenado', p_motivo: null, p_odometro_km: null, p_sucursal_stock: 4, p_quema: null });
-  assert.match(r.resumen, /^P3: sale Michelin X \(stock\)/);
+  assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X \(stock\)/);
   assert.equal(validarRetiro({ ...ret, sucursalStock: '' }).params.p_sucursal_stock, null, 'sin sucursal');
 });
 
@@ -206,4 +210,13 @@ test('traducirErrorRetiro: mensajes de negocio y genérico', () => {
   assert.match(traducirErrorRetiro({ code: '53400', message: 'no hay posición libre para guardar el neumático retirado' }), /No hay lugar/);
   assert.match(traducirErrorRetiro({ code: '23505', message: 'el número de quema ya está registrado en otro neumático' }), /quema ya está registrado/);
   assert.match(traducirErrorRetiro({ message: 'boom' }), /No se pudo retirar/);
+});
+
+test('resumenLibres: cuenta solo ruedas y el auxilio aparte, como el diagrama', () => {
+  const rueda = n => ({ posicion: n, auxilio: false });
+  const aux = { posicion: 99, auxilio: true };
+  assert.equal(resumenLibres([rueda(1), rueda(2), aux]), '2 posiciones libres · auxilio libre');
+  assert.equal(resumenLibres([rueda(1)]), '1 posición libre');
+  assert.equal(resumenLibres([aux]), 'Auxilio libre');
+  assert.equal(resumenLibres([]), '0 posiciones libres');
 });

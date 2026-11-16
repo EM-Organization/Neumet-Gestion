@@ -76,7 +76,7 @@ function cabecera() {
   const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
-    <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${chipEstado(sem)}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}</div>
+    <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? chipEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}</div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
       ${veh.numero && String(veh.numero) !== String(veh.nombre) ? dato('Número de coche', veh.numero) : ''}

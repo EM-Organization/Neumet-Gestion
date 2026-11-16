@@ -214,7 +214,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#suc-buscar').value = ''; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true }));
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
   $('#btn-veh-agregar').click(); await sleep(200);
-  if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || nv('cargar').checked) fail('vehiculos: falta la opción «Cargar neumáticos ahora» (sin marcar por defecto)');
+  if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || !nv('cargar').checked) fail('vehiculos: «Cargar neumáticos ahora» debe venir marcada por defecto');
   nv('numero').value = '322'; nv('cargar').checked = true;
   $('#veh-nuevo-guardar').click(); await sleep(1200);
   // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).

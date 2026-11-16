@@ -8,6 +8,8 @@ import { etiquetaCoche } from '../domain/coche.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { traerPrecios, conValor } from '../core/precios.js';
 import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
+import { VIDA_MAXIMA } from '../domain/recauchutado.js';
+import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import {
   CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarCubierta, validarEdicion,
   argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock, ERROR_GENERICO
@@ -34,7 +36,7 @@ export async function loadStockAssignments(){
 // Cada cubierta es una fila de `neumaticos` sin vehículo. La escritura pasa solo por las RPC stock_cubierta_*: la
 // autorización (admin o perfil global del propio cliente) se verifica en la base. El perfil de sucursal no ve el stock.
 const $=id=>document.getElementById(id);
-let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0;
+let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0, guardandoCb=false;
 
 // Solo el administrador de la empresa escribe cubiertas (docs/17 PR 9); el equipo Neumet mira.
 const puedeGestionar=()=>esAdminEmpresa();
@@ -70,6 +72,8 @@ function renderCubiertas(){
   const lista=filtrarCubiertas(ordenarCubiertas(cubiertas),filtros());
   const r=resumenCubiertas(lista);
   const alta=puedeGestionar();
+  // «Enviar a recauchutar» solo para quien ve la pestaña Recauchutado (la acción vive en views/recauchutado.js).
+  const puedeReca=alta&&pestanasVisibles({admin:esAdmin(),adminEmpresa:esAdminEmpresa()}).includes(PESTANA_RECAUCHUTADO);
   $('btn-cubierta-nueva').style.display=alta?'':'none';
   $('stk-resumen').textContent=!cubiertas.length?'':`${plural(r.total,'cubierta')}${r.porCondicion.length?' · '+r.porCondicion.map(c=>`${c.label} ${c.n}`).join(' · '):''}`;
   if(!cubiertas.length){
@@ -95,7 +99,8 @@ function renderCubiertas(){
         <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
         <span class="stk-acc">${alta?html`
           <button type="button" class="btn ghost stk-btn" data-action="cubiertaEditar" data-args="[${c.id}]" aria-label="Editar la cubierta ${etq}">Editar</button>
-          ${reca?'':html`<button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Mover la cubierta ${etq}">Mover</button>`}
+          ${reca?'':html`<button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Cambiar de sucursal la cubierta ${etq}">Cambiar sucursal</button>`}
+          ${reca||!puedeReca||(c.vida??0)>=VIDA_MAXIMA?'':html`<button type="button" class="btn ghost stk-btn" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
           <button type="button" class="btn ghost stk-btn stk-del" data-action="cubiertaEliminar" data-args="[${c.id}]" aria-label="Eliminar la cubierta ${etq}">Eliminar</button>`:''}</span>
       </li>`;
     })}</ul>`);
@@ -118,7 +123,7 @@ async function traerCubiertas(){
 export async function loadStock(){
   const mio=++cargaN;
   const tbody=$('tbody-stock');
-  setHtml(tbody, html`<tr><td colspan="7"><div class="loading-state"><div class="spinner"></div></div></td></tr>`);
+  setHtml(tbody, html`<tr><td colspan="${isClienteMode()?6:7}"><div class="loading-state"><div class="spinner"></div></div></td></tr>`);
   let sq=db.from('stock_neumaticos')
     .select('id,marca,modelo,cliente_id,precio_unidad,fecha_compra,cantidad,notas,clientes(nombre)')
     .order('created_at',{ascending:false});
@@ -153,8 +158,12 @@ function renderStock(){
   });
   // Los lotes anteriores (legado, solo lectura) se muestran solo si existen.
   $('stock-lotes').style.display=stockItems.length?'':'none';
+  // El rol cliente ve un solo cliente: la columna Cliente no aporta.
+  const verCli=!isClienteMode();
+  $('th-stock-cliente').hidden=!verCli;
+  const cols=verCli?7:6;
   if(!filtered.length){
-    setHtml(tbody, html`<tr><td colspan="7"><div class="empty-state"><div class="empty-title">Sin lotes registrados</div></div></td></tr>`);
+    setHtml(tbody, html`<tr><td colspan="${cols}"><div class="empty-state"><div class="empty-title">Sin lotes registrados</div></div></td></tr>`);
     return;
   }
   setHtml(tbody, joinHtml(filtered.map(s=>{
@@ -171,14 +180,14 @@ function renderStock(){
     return html`<tr data-srow="${s.id}">
       <td><strong>${s.marca}</strong></td>
       <td>${s.modelo?s.modelo:html`<span style="color:var(--text-tertiary)">—</span>`}</td>
-      <td>${s.clientes?s.clientes.nombre:'—'}</td>
+      ${verCli?html`<td>${s.clientes?s.clientes.nombre:'—'}</td>`:''}
       <td>${s.precio_unidad!=null?'$'+parseFloat(s.precio_unidad).toLocaleString('es-AR',{minimumFractionDigits:2}):'—'}</td>
       <td>${s.fecha_compra?new Date(s.fecha_compra+'T00:00:00').toLocaleDateString('es-AR'):'—'}</td>
       <td>${asigBadge}</td>
       <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary);font-size:12px">${s.notas?s.notas:'—'}</td>
     </tr>
     <tr class="stock-asig-detail" data-detail="${s.id}" style="display:none">
-      <td colspan="8" style="padding:0">
+      <td colspan="${cols}" style="padding:0">
         <div class="stock-asig-expand">
           <div class="stock-asig-expand-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -255,6 +264,7 @@ ACTIONS.cubiertaNueva=function(){
   err('cb-error','');
   $('cb-guardar').textContent='Guardar';
   $('modal-cubierta').classList.add('show');
+  setTimeout(()=>$('cb-quema').focus(),60); // modal-a11y enfoca de forma asíncrona: el foco propio va después
 };
 ACTIONS.cubiertaCliente=function(){ setHtml($('cb-sucursal'), opcionesSucursal($('cb-cliente').value)); };
 
@@ -278,7 +288,7 @@ ACTIONS.cubiertaEditar=function(id){
 ACTIONS.cubiertaCerrar=function(){ $('modal-cubierta').classList.remove('show'); cubiertaModal=null; };
 
 ACTIONS.cubiertaGuardar=async function(){
-  if(!cubiertaModal||!puedeGestionar()) return;
+  if(!cubiertaModal||guardandoCb||!puedeGestionar()) return; // guardandoCb: un segundo Enter no repite el envío
   const btn=$('cb-guardar');
   const campos={ marca:$('cb-marca').value, modelo:$('cb-modelo').value, fechaCompra:$('cb-fecha').value, precio:$('cb-precio').value };
   let nombre,args,ok;
@@ -292,9 +302,9 @@ ACTIONS.cubiertaGuardar=async function(){
     if(!r.ok){ err('cb-error',r.error); return; }
     nombre='stock_cubierta_editar'; args=r.args; ok='Cubierta actualizada';
   }
-  btn.disabled=true; btn.textContent='Guardando…';
+  btn.disabled=true; btn.textContent='Guardando…'; guardandoCb=true;
   try{ if(await rpcStock(nombre,args,ok,'cb-error')) ACTIONS.cubiertaCerrar(); }
-  finally{ btn.disabled=false; btn.textContent='Guardar'; }
+  finally{ btn.disabled=false; btn.textContent='Guardar'; guardandoCb=false; }
 };
 
 ACTIONS.cubiertaMover=function(id){
@@ -312,7 +322,7 @@ ACTIONS.cubiertaMoverGuardar=async function(){
   const destino=$('cbm-sucursal').value;
   if(String(c.sucursal_id??'')===destino){ err('cbm-error','La cubierta ya está en esa ubicación'); return; }
   const btn=$('cbm-guardar'); btn.disabled=true;
-  try{ if(await rpcStock('stock_cubierta_mover',argsMoverCubierta(c.id,destino),'Cubierta movida','cbm-error')) ACTIONS.cubiertaMoverCerrar(); }
+  try{ if(await rpcStock('stock_cubierta_mover',argsMoverCubierta(c.id,destino),'Sucursal actualizada','cbm-error')) ACTIONS.cubiertaMoverCerrar(); }
   finally{ btn.disabled=false; }
 };
 
@@ -346,6 +356,8 @@ export const load=loadStock;
 registerView('stock','Neumáticos',loadStock); // pestaña Stock; la otra pestaña es `recauchutado` (views/neumaticos.js)
 
 export function init(){
+  // «Enter» en cualquier campo guarda (docs/14 §5, regla 3).
+  $('cubierta-form').addEventListener('submit',e=>{ e.preventDefault(); ACTIONS.cubiertaGuardar(); });
   $('search-stock').addEventListener('input',renderStock);
   // Cambiar el cliente reduce las sucursales ofrecidas en el filtro.
   $('filter-cliente-stock').addEventListener('change',()=>{ opcionesFiltros(); renderStock(); });

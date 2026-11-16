@@ -75,24 +75,28 @@ export function registrar(env) {
       await p.esperar(`document.querySelectorAll('#mont-lista .mont-fila').length === 1`, { que: 'una cubierta filtrada' });
       assert.deepEqual(await lista(), ['E2EM-S1']);
       await p.click('#mont-lista input[name="mont-cubierta"]');
-      await p.esperar(`/^P1: entra cubierta E2EM-S1/.test(document.querySelector('#mont-resumen').textContent)`, { que: 'resumen' });
+      await p.esperar(`/^Delantera izquierda: entra cubierta E2EM-S1/.test(document.querySelector('#mont-resumen').textContent)`, { que: 'resumen' });
       await p.click('#mont-confirmar');
-      await enEstado(p, /Montado en P1\. Siguiente posición libre: P2/);
+      await enEstado(p, /Montado: Delantera izquierda\. Siguiente posición libre: Delantera derecha/);
       assert.equal(await p.eval(`document.querySelector('#mont-pos').value`), '2', 'ofrece la siguiente libre sin cerrar el flujo');
       assert.equal(await p.eval(`document.querySelector('#modal-montar').classList.contains('show')`), true);
       // Cubierta nueva en P2 (con quema, km previos, vida y odómetro)
       await p.click('#mont-tab-nuevo');
       await p.escribir('#mont-marca', 'Goodyear'); await p.escribir('#mont-modelo', 'G661'); await p.escribir('#mont-quema', 'E2EM-N1');
-      await p.escribir('#mont-km-previos', '1500'); await elegir(p, '#mont-vida', 1); await p.escribir('#mont-odo', '2500');
-      await p.click('#mont-confirmar');
-      await enEstado(p, /Montado en P2\. Siguiente posición libre: P3/);
+      assert.equal(await visible(p, '#mont-tabs'), true, 'con stock hay dos orígenes: se ven las pestañas');
+      await p.escribir('#mont-km-previos', '1500'); await elegir(p, '#mont-vida', 1); await p.eval(`document.querySelector('#mont-fecha').value = '2026-03-04'`); await p.escribir('#mont-odo', '2500');
+      // «Enter» en el último campo envía el formulario (docs/14 §5, regla 3): sin hacer clic en «Montar».
+      await p.enter();
+      await enEstado(p, /Montado: Delantera derecha\. Siguiente posición libre: Eje 2 izquierda exterior/);
+      // Marca, modelo y fecha de compra pasan a la siguiente posición; quema, km previos y odómetro se borran.
+      assert.deepEqual(await p.eval(`['#mont-marca', '#mont-modelo', '#mont-fecha', '#mont-quema', '#mont-km-previos', '#mont-odo'].map(s => document.querySelector(s).value)`), ['Goodyear', 'G661', '2026-03-04', '', '0', '']);
       // Otra del stock en P3 (reparada) y terminar
       await p.click('#mont-tab-stock');
       await p.escribir('#mont-buscar', 'E2EM-S2');
       await p.esperar(`document.querySelectorAll('#mont-lista .mont-fila').length === 1`, { que: 'S2 filtrada' });
       await p.click('#mont-lista input[name="mont-cubierta"]');
       await p.click('#mont-confirmar');
-      await enEstado(p, /Montado en P3\. Siguiente posición libre: P4/);
+      await enEstado(p, /Montado: Eje 2 izquierda exterior\. Siguiente posición libre: Eje 2 izquierda interior/);
       await p.click('#mont-cerrar');
       await p.esperar(`!document.querySelector('#modal-montar').classList.contains('show') && /3 neumáticos/.test(document.querySelector('#vd-resumen').textContent)`, { que: 'detalle con 3 neumáticos' });
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-vacia').length`), 7);
@@ -129,7 +133,7 @@ export function registrar(env) {
       assert.equal(await visible(p, '#ret-quema-wrap'), false, 'tiene quema: no la pide');
       await elegir(p, '#ret-suc', salto);
       await p.click('#ret-confirmar');
-      await toast(p, /Neumático retirado de P1/);
+      await toast(p, /Neumático retirado: Delantera izquierda/);
       await p.esperar(`!!document.querySelector('#vd-diagrama .vd-vacia[data-pos="1"]') && !document.querySelector('#vd-panel').classList.contains('abierto')`, { que: 'P1 vacía y panel cerrado' });
       // P2 (cubierta nueva): baja con motivo obligatorio
       await p.click('#vd-diagrama .vd-rueda[data-pos="2"]');
@@ -141,7 +145,7 @@ export function registrar(env) {
       await p.esperar(`/Falta el motivo de la baja/.test(document.querySelector('#ret-error').textContent)`, { que: 'motivo obligatorio' });
       await p.escribir('#ret-motivo', 'Montaje equivocado');
       await p.click('#ret-confirmar');
-      await toast(p, /Neumático retirado de P2/);
+      await toast(p, /Neumático retirado: Delantera derecha/);
       await p.esperar(`!!document.querySelector('#vd-diagrama .vd-vacia[data-pos="2"]')`, { que: 'P2 vacía' });
     }, { http: RECHAZO });
 
@@ -159,10 +163,9 @@ export function registrar(env) {
     await flujo(env, 'alta-cargar', 'global', async p => {
       await irA(p, 'vehiculos');
       await p.click('#btn-veh-agregar');
-      assert.equal(await p.eval(`document.querySelector('#veh-nuevo-cargar').checked`), false, 'la opción empieza desmarcada');
+      assert.equal(await p.eval(`document.querySelector('#veh-nuevo-cargar').checked`), true, 'la opción empieza marcada');
       await p.escribir('#veh-nuevo-numero', '8801');
       await p.escribir('#veh-nuevo-patente', 'e2e 8801');
-      await p.eval(`document.querySelector('#veh-nuevo-cargar').click()`);
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Coche 8801/.test(document.querySelector('#vd-cab').textContent) && !!document.querySelector('#vd-resumen .vd-vacio')`, { que: 'detalle del vehículo nuevo, vacío' });
       assert.match(await texto(p, '#vd-volver'), /Volver a Vehículos/);
@@ -171,11 +174,12 @@ export function registrar(env) {
     const v = json(env, `select id, nombre, tipo_ruedas, cliente_id from public.vehiculos where patente = 'e2e 8801'`)[0];
     assert.deepEqual([v.nombre, v.tipo_ruedas], ['Coche 8801', 10]);
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id = ${v.id}`)), 0);
-    // Sin marcar la opción, el alta no navega
+    // Desmarcada la opción, el alta no navega
     await flujo(env, 'alta-sin-cargar', 'global', async p => {
       await irA(p, 'vehiculos');
       await p.click('#btn-veh-agregar');
       await p.escribir('#veh-nuevo-numero', '8802');
+      await p.eval(`document.querySelector('#veh-nuevo-cargar').click()`);
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/Coche 8802/.test(document.querySelector('#veh-lista').textContent)`, { que: 'vehículo en la lista' });
       assert.equal(await p.eval(`document.querySelector('#view-vehiculos').classList.contains('active')`), true);
@@ -208,10 +212,11 @@ export function registrar(env) {
         await p.click('#vd-resumen [data-action="neumatico-montar"]');
         await p.esperar(`document.querySelector('#modal-montar').classList.contains('show')`, { que: 'modal de montar' });
         assert.equal(await visible(p, '#mont-tab-stock'), false, 'el perfil de sucursal no usa el stock');
+        assert.equal(await visible(p, '#mont-tabs'), false, 'con un solo origen no hay pestañas');
         assert.equal(await visible(p, '#mont-panel-nuevo'), true, 'empieza en «Cubierta nueva»');
         await p.escribir('#mont-marca', 'Pirelli');
         await p.click('#mont-confirmar');
-        await enEstado(p, /Montado en P1\. Siguiente posición libre: P2/);
+        await enEstado(p, /Montado: Delantera izquierda\. Siguiente posición libre: Delantera derecha/);
         await p.click('#mont-cerrar');
         await p.esperar(`/1 neumático/.test(document.querySelector('#vd-resumen').textContent) && !document.querySelector('#modal-montar').classList.contains('show')`, { que: 'detalle con 1 neumático' });
         // Retirar: sin «Stock» entre los destinos
@@ -222,7 +227,7 @@ export function registrar(env) {
         assert.equal(await p.eval(`[...document.querySelectorAll('input[name="ret-destino"]')].map(i => i.value).join()`), 'reparacion,baja');
         await p.eval(`document.querySelector('input[name="ret-destino"][value="reparacion"]').click()`);
         await p.click('#ret-confirmar');
-        await toast(p, /Neumático retirado de P1/);
+        await toast(p, /Neumático retirado: Delantera izquierda/);
       }, { http: RECHAZO });
       const vid = Number(env.sql(`select id from public.vehiculos where patente = '${pat}'`));
       const filas = montados(env, vid);

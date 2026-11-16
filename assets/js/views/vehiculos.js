@@ -1,7 +1,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, avatarFor } from '../core/ui.js';
-import { chipEstado, estadoVacio, estadoError } from '../core/componentes.js';
+import { chip, chipEstado, estadoVacio, estadoError } from '../core/componentes.js';
 import { isClienteMode, currentClienteId, esAdminEmpresa } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
@@ -14,7 +14,7 @@ import { etiquetaCoche } from '../domain/coche.js';
 import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
-let vehiculos=[], resumenes=new Map();
+let vehiculos=[], resumenes=new Map(), resumenesListos=false;
 // Solo lectura para el equipo Neumet (docs/17 PR 9). El administrador de la empresa agrega vehículos desde aquí (RPC
 // vehiculo_crear; la base rechaza al resto) y los mueve entre sucursales en Sucursales (menú Empresa).
 
@@ -35,7 +35,7 @@ export async function loadVehiculos(){
   if(mi!==cargaId) return;
   if(error){ setStatus(false); showToast(userError(error),true); setHtml(document.getElementById('veh-lista'), estadoError('','loadVehiculos')); return; }
   vehiculos=rows;
-  resumenes=new Map();
+  resumenes=new Map(); resumenesListos=false;
   setStatus(true);
   const filterSel=document.getElementById('filter-cliente-veh');
   const clientSet=new Map();
@@ -46,6 +46,7 @@ export async function loadVehiculos(){
     const est=await fetchAll((from,to)=>db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from,to),{pageSize:PAGE_SIZE,max:20000});
     if(mi!==cargaId||est.error) return; // sin estado se sigue mostrando la lista, sin chips
     resumenes=new Map(agruparVehiculos(filtrarFilas(est.rows)).map(g=>[g.vehiculo_id,g]));
+    resumenesListos=true;
     renderVehiculos();
   }
 }
@@ -76,7 +77,7 @@ function renderLista(){
     return html`<li><button type="button" class="veh-fila" data-action="verVehiculoDetalle" data-args="${JSON.stringify([v.id])}">
       <span class="veh-fila-main"><span class="veh-fila-nombre">${etiquetaCoche(v.nombre)}</span>
         <span class="veh-fila-meta">${v.patente||'Sin matrícula'}</span></span>
-      <span class="veh-fila-estado">${txt}${chipEstado(g?g.semaforo:'sin_datos')}</span></button></li>`;
+      <span class="veh-fila-estado">${txt}${g?chipEstado(g.semaforo):(resumenesListos?chip('gray','Sin neumáticos','–'):'')}</span></button></li>`;
   })));
 }
 const activosOrden=g=>({critico:0,bajo:1,sin_datos:2,ok:3}[g.semaforo]??2);
@@ -132,7 +133,7 @@ registerActions({
   vehiculoAgregarAbrir(){
     if(!esAdminEmpresa()) return;
     ['veh-nuevo-numero','veh-nuevo-patente'].forEach(id=>{ $(id).value=''; });
-    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=false; errNuevo('');
+    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo errNuevo('');
     // Sucursal por defecto: la que está elegida en la barra superior (si hay una).
     setHtml($('veh-nuevo-sucursal'), joinHtml([html`<option value="">Sin sucursal</option>`,
       listaSucursales().map(s=>html`<option value="${s.id}">${s.nombre}</option>`)]));

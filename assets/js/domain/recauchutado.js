@@ -10,6 +10,9 @@ export const ESTADOS = [
 export const etiquetaEstado = id => (ESTADOS.find(e => e.id === id) || {}).label || String(id ?? '—');
 export const estaAbierto = estado => estado === 'enviado' || estado === 'apto';
 export const VIDA_MAXIMA = 3;
+
+// La «vida» es jerga de base de datos (docs/14 §5, regla 8): el operario ve la banda. 0 = banda original; N = recauchutado nº N.
+export const etiquetaBanda = vida => (Number(vida) > 0 ? `Recauchutado nº ${Number(vida)}` : 'Banda original');
 export const MAX_PROVEEDOR = 80;
 export const MAX_MOTIVO = 300;
 export const MAX_PROFUNDIDAD_MM = 30;
@@ -17,7 +20,7 @@ export const MAX_PROFUNDIDAD_MM = 30;
 // Acciones posibles de un proceso según su estado: enviado -> dictamen; apto -> aceptar o rechazar.
 export function accionesDe(estado) {
   if (estado === 'enviado') return [{ id: 'dictamen', label: 'Registrar dictamen' }];
-  if (estado === 'apto') return [{ id: 'aceptar', label: 'Aceptar' }, { id: 'rechazar', label: 'Rechazar' }];
+  if (estado === 'apto') return [{ id: 'aceptar', label: 'Aceptar recauchutado' }, { id: 'rechazar', label: 'Rechazar recauchutado' }];
   return [];
 }
 
