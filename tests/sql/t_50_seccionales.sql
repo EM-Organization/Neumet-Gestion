@@ -71,12 +71,11 @@ select test.eq('sucursal MVD: ve la fila de su cliente', (select count(*) from p
 select test.eq('sucursal MVD: no ve gastos', (select count(*) from public.gastos), 0::bigint);
 select test.eq('sucursal MVD: lee su perfil (con su sucursal)', (select sucursal_id from public.perfiles), 101::bigint);
 -- No puede editar umbrales, ni reasignarse, ni escribir
-update public.clientes set umbral_bajo_mm = 9 where id = 1;
-select test.eq('sucursal MVD no edita umbrales', (select umbral_bajo_mm from public.clientes where id = 1), 8::numeric);
-update public.perfiles set sucursal_id = null;
-select test.eq('sucursal MVD no se vuelve global', (select sucursal_id from public.perfiles), 101::bigint);
-update public.vehiculos set sucursal_id = 102 where id = 1;
-select test.eq('sucursal MVD no mueve vehículos', (select sucursal_id from public.vehiculos where id = 1), 101::bigint);
+-- (desde C2 el UPDATE directo falla por privilegio, ya no afecta 0 filas)
+select test.denied('sucursal MVD no edita umbrales', $$update public.clientes set umbral_bajo_mm = 9 where id = 1$$);
+select test.denied('sucursal MVD no se vuelve global', $$update public.perfiles set sucursal_id = null$$);
+select test.denied('sucursal MVD no mueve vehículos', $$update public.vehiculos set sucursal_id = 102 where id = 1$$);
+select test.eq('sucursal MVD: sigue en su sucursal', (select sucursal_id from public.perfiles), 101::bigint);
 select test.denied('sucursal MVD no inserta vehículos', $$insert into public.vehiculos (cliente_id, nombre, sucursal_id) values (1,'x',101)$$);
 select test.denied('sucursal MVD no inserta sucursales', $$insert into public.sucursales (cliente_id, nombre) values (1,'Otra')$$);
 select test.denied('sucursal MVD no rota vehículos de otra sucursal', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
@@ -105,8 +104,14 @@ reset role;
 select test.become('authenticated', test.u_admin());
 select test.eq('admin ve las 3 sucursales', (select count(*) from public.sucursales), 3::bigint);
 select test.eq('admin ve los 4 vehículos', (select count(*) from public.vehiculos), 4::bigint);
+-- C2: el equipo Neumet no escribe directo; las restricciones de integridad se prueban como dueño (reset role
+-- conserva el JWT del admin).
+select test.denied('admin: ya no asigna vehículos a sucursal por UPDATE directo (C2)', $$update public.vehiculos set sucursal_id = 102 where id = 4$$);
+select test.denied('admin: ya no inserta sucursales (C2)', $$insert into public.sucursales (cliente_id, nombre) values (1, 'Nueva')$$);
+select test.denied('admin: ya no borra perfiles (C2)', $$delete from public.perfiles where sucursal_id = 101$$);
+reset role;
 update public.vehiculos set sucursal_id = 102 where id = 4;
-select test.eq('admin asigna vehículo a sucursal', (select sucursal_id from public.vehiculos where id = 4), 102::bigint);
+select test.eq('integridad: vehículo asignado a sucursal', (select sucursal_id from public.vehiculos where id = 4), 102::bigint);
 update public.vehiculos set sucursal_id = null where id = 4;
 select test.denied('admin: vehículo de A no puede ir a sucursal de B (FK compuesta)',
   $$update public.vehiculos set sucursal_id = 103 where id = 1$$, '23503');
@@ -126,7 +131,7 @@ select test.denied('no se borra una sucursal con usuarios (RESTRICT: nadie pasa 
   $$delete from public.sucursales where id = 101$$, '23503');
 delete from public.perfiles where sucursal_id = 101;
 delete from public.sucursales where id = 101;
-select test.eq('admin borra una sucursal vacía', (select count(*) from public.sucursales where id = 101), 0::bigint);
+select test.eq('integridad: se borra una sucursal vacía', (select count(*) from public.sucursales where id = 101), 0::bigint);
 reset role;
 
 -- anon: nada

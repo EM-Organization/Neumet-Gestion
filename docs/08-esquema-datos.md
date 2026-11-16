@@ -944,4 +944,30 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 
 ## P.4 Límites
 
-No cambia privilegios ni políticas. Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. Balance usa estas RPC desde el PR 9b (solo front); con eso C2 puede retirar el privilegio de la columna.
+No cambia privilegios ni políticas (los cierra C2, apéndice Q). Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. Balance usa estas RPC desde el PR 9b (solo front); con eso C2 puede retirar el privilegio de la columna.
+
+---
+
+# Apéndice Q · Cierre de escrituras del equipo Neumet (migración C2 del plan de roles)
+
+Migración `20261120500000_cerrar_escrituras_neumet.sql` (F10 PR 11, docs/17 §4.1 y §4.3). Idempotente, sin `begin/commit`. El perfil `admin` (equipo Neumet, `is_admin()`) pasa a solo lectura sobre los datos de los clientes.
+
+## Q.1 Qué cambia
+
+- **RPC:** se quita la rama de `admin` de las 26 RPC de escritura de docs/17 §4.1 y de sus siete helpers de autorización (`neumatico_autorizar_vehiculo`, `sucursal_autorizar_gestion`, `sucursal_autorizar_por_id`, `stock_cubierta_autorizar_por_id`, `recauchutado_autorizar`, `medicion_autorizar`, `alerta_cargar`). El equipo Neumet recibe `42501` de forma uniforme, también con ids inexistentes (antes `P0002` o `22004`).
+- **Políticas:** `*_admin_all` pasa a `*_admin_select` (`FOR SELECT`, `is_admin()`) en `clientes`, `neumaticos`, `eventos_neumatico`, `perfiles`, `stock_neumaticos`, `sucursales` y `vehiculos`. Se agrega `clientes_admin_update` (`FOR UPDATE`).
+- **Privilegios:** `revoke insert, update, delete, truncate` de `authenticated` sobre esas siete tablas y sobre todas las vistas, vistas materializadas y tablas foráneas de `public` (también de `anon`).
+- **`clientes`:** `authenticated` pierde `select` y `update` de tabla; recibe `select` de todas las columnas salvo `precio_mensual` y `update (nombre)`. `auth_user_id` tampoco se escribe por la API: la reasignación de la cuenta dueña de un cliente ya no se hace desde el panel ni por API (si hiciera falta, se desarrollará una acción específica y auditada; mientras tanto, a mano desde Supabase). `precio_mensual` solo se lee y escribe por las RPC de C1 (apéndice P).
+- **Se conservan:** `dispositivos_admin_all`, `gastos_admin_all`, `asignar_dispositivo_a_cliente`, `cliente_eliminar_suave` y el camino de la Edge Function `crear-cliente` (clave de servicio).
+
+## Q.2 Consecuencias
+
+- Un `UPDATE`/`DELETE` directo sin privilegio da `42501` (antes afectaba 0 filas).
+- Una medición sin cliente (dispositivo sin asignar) ya no se puede invalidar ni revalidar: solo lo hacía el equipo Neumet. Salida: asignar el dispositivo a un cliente con `asignar_dispositivo_a_cliente` (el admin la conserva) y que la invalide el administrador de empresa.
+- `select=*` sobre `clientes` da `42501` (incluye `precio_mensual`): hay que pedir columnas. **Regla de revisión:** en el front, `select('*')` sobre `clientes` (también con `.update(...).select()` sin columnas) falla con `42501` para todos los roles por los privilegios por columna; revisar que cada lectura de `clientes` nombre sus columnas.
+
+## Q.3 Pruebas
+
+- `tests/sql/t_96_cerrar_escrituras_neumet.sql`: catálogo (privilegios, políticas, grupos de funciones; una guarda falla si aparece una función `SECURITY DEFINER` ejecutable sin clasificar), matriz por rol generada desde `pg_proc`, lo que el admin conserva, escrituras directas denegadas y columnas de `clientes` por rol. Las pruebas `t_10` a `t_95` se adaptaron: el actor es el cliente global y el admin recibe `42501`.
+- `tests/e2e/specs/cerrar-escrituras-neumet.mjs`: PostgREST real con el JWT de cada rol.
+

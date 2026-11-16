@@ -178,8 +178,11 @@ select test.become('anon', null);
 select test.denied('C: anon sin execute en alerta_configurar', $$select public.alerta_configurar(1::bigint, 7.0)$$);
 reset role;
 select test.become('authenticated', test.u_admin());
-select test.denied('C: admin debe indicar el cliente', $$select public.alerta_configurar(null::bigint, 7.0)$$, '22004');
-select test.eq('C: admin configura el cliente 2 (umbral 7,0 entre 4 y 10)',
+select test.denied('C: admin no configura (C2), con o sin cliente', $$select public.alerta_configurar(null::bigint, 7.0)$$, '42501');
+select test.denied('C: admin no configura el cliente 2 (C2)', $$select public.alerta_configurar(2::bigint, 7.0)$$, '42501');
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select test.eq('C: global B configura su cliente (umbral 7,0 entre 4 y 10)',
   (public.alerta_configurar(2::bigint, 7.0) ->> 'umbral_critico_mm'), '7.0');
 select public.alerta_configurar(2::bigint, 6.0);
 reset role;
@@ -246,8 +249,11 @@ select test.eq('D: tras resolver a mano, la siguiente medición bajo el umbral a
   test.nal91('A91-3') || '|' || (test.aid91('A91-3') > :a_n)::text || '|' || test.al91('A91-3'), '2|true|abierta|3.80|3.80|3.80|0');
 
 select test.become('authenticated', test.u_admin());
-select test.denied('D: admin con alerta inexistente: P0002', $$select public.alerta_reconocer(999999)$$, 'P0002');
-select test.eq('D: admin reconoce cualquiera (otro cliente)', public.alerta_reconocer(:a_b) ->> 'estado', 'reconocida');
+select test.denied('D: admin con alerta inexistente: 42501 uniforme (C2)', $$select public.alerta_reconocer(999999)$$, '42501');
+select test.denied('D: admin no reconoce (C2)', format($$select public.alerta_reconocer(%s)$$, :a_b), '42501');
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select test.eq('D: global B reconoce la suya', public.alerta_reconocer(:a_b) ->> 'estado', 'reconocida');
 reset role;
 
 -- ---------------------------------------------------------------------------------------------

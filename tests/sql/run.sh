@@ -165,6 +165,10 @@ echo "== migración del precio mensual por RPC (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120000000_precio_mensual_rpc.sql"
 echo "== migración del precio mensual por RPC (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120000000_precio_mensual_rpc.sql"
+echo "== migración C2: cerrar escrituras del equipo Neumet (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120500000_cerrar_escrituras_neumet.sql"
+echo "== migración C2: cerrar escrituras del equipo Neumet (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120500000_cerrar_escrituras_neumet.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

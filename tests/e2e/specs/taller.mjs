@@ -291,7 +291,7 @@ export function registrar(env) {
   });
 
   // ---- Odómetro --------------------------------------------------------------------------------------------------
-  test('Odómetro: el cliente no puede bajarlo (la base lo rechaza); sí subirlo; el admin puede corregirlo', async () => {
+  test('Odómetro: el cliente no puede bajarlo (la base lo rechaza); sí subirlo; el admin ya no (C2)', async () => {
     const id = vehId(env, 'DEMO007');
     const odo = () => Number(env.sql(`select odometro_km from public.vehiculos where id = ${id}`));
     const inicial = odo();
@@ -309,15 +309,16 @@ export function registrar(env) {
       const negativo = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: -5 });
       assert.equal(negativo.error && negativo.error.code, '23514');
     }, { http: [{ ruta: /rpc\/vehiculo_registrar_odometro/, status: 400 }] });
+    // Desde C2 (20261120500000) el equipo Neumet ya no corrige odómetros: 42501 y no cambia nada
     await flujo(env, 'odometro-admin', 'admin', async p => {
       const r = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: inicial - 100 });
-      assert.equal(r.error, null, 'el admin puede corregir a la baja (cambio de tablero)');
-      assert.equal(odo(), inicial - 100);
-    });
+      assert.equal(r.error && r.error.code, '42501', 'el admin no escribe odómetros (C2)');
+      assert.equal(odo(), inicial + 700);
+    }, { http: [{ ruta: /rpc\/vehiculo_registrar_odometro/, status: 403 }] });
     await flujo(env, 'odometro-ajeno', 'salto', async p => {
       const r = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: inicial + 5000 });
       assert.equal(r.error && r.error.code, '42501', 'una sucursal no toca el odómetro de otra');
-      assert.equal(odo(), inicial - 100);
+      assert.equal(odo(), inicial + 700);
     }, { http: [{ ruta: /rpc\/vehiculo_registrar_odometro/, status: 403 }] });
   });
 

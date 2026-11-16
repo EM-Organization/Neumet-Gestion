@@ -131,7 +131,8 @@ select test.eq('dispositivo d4: 0 mediciones y días null',
 select test.eq('dispositivo d2: dias_sin_actividad = 8', (select dias_sin_actividad from v_salud_dispositivos where nombre='d2'), 8);
 select test.eq('dispositivo d1: total_mediciones', (select total_mediciones from v_salud_dispositivos where nombre='d1'), 1::bigint);
 
--- Odómetro y umbrales: restricciones
+-- Odómetro y umbrales: restricciones (CHECK de la tabla, probadas como dueño: el admin ya no escribe directo, C2)
+reset role;
 select test.denied('odómetro negativo en vehículos', $$update public.vehiculos set odometro_km=-5 where id=1$$, '23514');
 select test.denied('umbrales incoherentes (retiro >= crítico)',
   $$update public.clientes set umbral_retiro_mm=6 where id=1$$, '23514');

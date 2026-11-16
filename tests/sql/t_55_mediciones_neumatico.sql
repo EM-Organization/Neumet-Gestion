@@ -1,5 +1,6 @@
 -- Las mediciones siguen al NEUMÁTICO (no a la posición): cambio, rotación, histórico sin idneumatico,
 -- neumáticos fuera de servicio, aislamiento por cliente/seccional, API de proveedor y forma de las vistas.
+-- C2: las RPC de escritura ya no autorizan al equipo Neumet; los flujos corren como el administrador de empresa (cliente 1).
 -- Todo ocurre en una transacción que se revierte; cada escenario vuelve a un savepoint.
 -- Los intervalos van en horas (no 'días'): un cambio de horario del servidor desplazaría las tasas.
 -- now() es fijo dentro de la transacción: las mediciones usan fechas explícitas relativas a now().
@@ -102,7 +103,7 @@ savepoint s0;
 -- -----------------------------------------------------------------------------
 -- 1. Estado inicial (la regla por neumático no cambia lo que ya funcionaba)
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('V11 P1 crítico 4.2', test.prom(11, 1::smallint), 4.20);
 select test.eq('V11 P1 estado crítico', test.est(11, 1::smallint), 'critico');
 select test.eq('V11 P2 ok', test.est(11, 2::smallint), 'ok');
@@ -120,11 +121,11 @@ reset role;
 -- -----------------------------------------------------------------------------
 -- 2. Cambio de un neumático crítico: la rueda nueva NO hereda la medición del viejo
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select (public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Desgaste', 5000, null,
    '{"marca":"Nuevo","modelo":"Z","precio":900}'::jsonb)->>'idneumatico_nuevo') as nuevo_idn \gset
 reset role;
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('tras el cambio P1 es sin_datos', test.est(11, 1::smallint), 'sin_datos');
 select test.eq('tras el cambio P1 sin promedio (no hereda 4.2)', test.prom(11, 1::smallint) is null, true);
 select test.eq('tras el cambio P1 figura el idneumatico del nuevo', test.idn(11, 1::smallint), :'nuevo_idn');
@@ -160,7 +161,7 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, m
 -- Una medición TARDÍA etiquetada con el neumático viejo no cambia la posición.
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at)
   values (11, 1, 1, 'N-11-1', 2, 2, 2, now() + interval '2 hours');
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('el nuevo medido: P1 ok con su valor 11', test.est(11, 1::smallint) || '|' || test.prom(11, 1::smallint), 'ok|11.00');
 select test.eq('una medición tardía del viejo no pisa al nuevo', test.prom(11, 1::smallint), 11.00);
 select test.eq('la tasa del nuevo no mezcla puntos del viejo (1 punto)',
@@ -172,7 +173,7 @@ reset role;
 rollback to s0;
 
 -- 2b. Cambio donde el viejo va a 'almacenado' y el nuevo se mide solo por posición (sin idneumatico)
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(11::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N2"}'::jsonb);
 reset role;
 select test.eq('P2 (cambio, viejo almacenado) sin_datos', (select test.est(11, 2::smallint)), 'sin_datos');
@@ -184,7 +185,7 @@ select test.eq('medición de posición posterior al montaje se atribuye al nuevo
 rollback to s0;
 
 -- 2c. P3 tenía solo una medición histórica: tras el cambio el nuevo NO la hereda
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(11::bigint, 3::smallint, 'reparacion', null, null, null, '{"marca":"N3"}'::jsonb);
 select test.eq('P3 tras cambio: la medición histórica del viejo no se hereda (evento posterior)', test.est(11, 3::smallint), 'sin_datos');
 reset role;
@@ -193,7 +194,7 @@ rollback to s0;
 -- -----------------------------------------------------------------------------
 -- 3. Rotación 1 <-> 2 (V12): las mediciones acompañan al neumático
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('V12 antes: P1 ok 9.0 (A), P2 bajo 6.5 (B)',
   test.est(12, 1::smallint) || test.prom(12, 1::smallint) || '|' || test.est(12, 2::smallint) || test.prom(12, 2::smallint), 'ok9.00|bajo6.50');
 select test.eq('V12 antes: tasas A 1.000 y B 0.500',
@@ -228,7 +229,7 @@ reset role;
 rollback to s0;
 
 -- 3b. Rotación de neumáticos con SOLO histórico sin idneumatico (V13 P1 y P3 intercambian)
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('V13 antes: P1 6.0 (histórica), P3 6.5 (neumático sin idneumatico)',
   test.prom(13, 1::smallint) || '|' || test.prom(13, 3::smallint), '6.00|6.50');
 select public.neumatico_rotar(13::bigint, 1::smallint, 3::smallint, null);
@@ -240,7 +241,7 @@ rollback to s0;
 -- -----------------------------------------------------------------------------
 -- 4. Mediciones históricas con idneumatico NULL (V13)
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('P1: solo histórica, sin eventos => cuenta (6.0, bajo)', test.est(13, 1::smallint) || test.prom(13, 1::smallint), 'bajo6.00');
 select test.eq('P2: con etiquetada manda la etiquetada (9.0), no la histórica 5.0', test.prom(13, 2::smallint), 9.00);
 select test.eq('P2: la histórica no entra ni en el historial del neumático',
@@ -260,7 +261,7 @@ reset role;
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values
   (14, 1, 1, 'N-14-1', 6, 6, 6, now()),
   (14, 1, 1, 'N-14-1', 7, 7, 7, now());
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('empate exacto de created_at: gana la de mayor id (7.0)', test.prom(14, 1::smallint), 7.00);
 reset role;
 rollback to s0;
@@ -268,7 +269,7 @@ rollback to s0;
 -- -----------------------------------------------------------------------------
 -- 5. Neumáticos que no están montados (V14)
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('V14: solo el montado figura en el estado', (select count(*) from public.v_estado_neumaticos where vehiculo_id=14), 1::bigint);
 select test.eq('V14: almacenado/baja/reparación no figuran en v_ultima_medicion',
   (select count(*) from public.v_ultima_medicion where vehiculo_id=14), 1::bigint);
@@ -327,7 +328,7 @@ rollback to s0;
 select test.eq('API: V11 devuelve los 4 neumáticos montados con la medición de cada uno',
   (select string_agg((e->>'posicion') || ':' || coalesce(e->>'mm1', 'null'), ',' order by (e->>'posicion')::int)
      from jsonb_array_elements(public.api_obtener_montaje(1, 'TT1100', null)->'data') e), '1:4.20,2:9.00,3:7.00,4:null');
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb) is not null as _x \gset
 reset role;
 select test.eq('API tras el cambio: P1 es el neumático nuevo sin medición (no hereda 4.2) y el viejo no se ofrece',
@@ -350,7 +351,7 @@ select test.eq('API guardar: el aparcado (posición de estacionamiento) se recha
     gen_random_uuid(), 'k80-b', 'h2')->'resultados'->0->>'motivo', 'posicion');
 select test.eq('API: otro cliente no ve el vehículo', public.api_obtener_montaje(2, 'TT1100', null)->>'encontrado', 'false');
 -- Rotación en la API
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, null);
 reset role;
 select test.eq('API tras rotar V12: los mm acompañan al neumático (P1=B 6.5, P2=A 9)',
@@ -358,7 +359,7 @@ select test.eq('API tras rotar V12: los mm acompañan al neumático (P1=B 6.5, P
      from jsonb_array_elements(public.api_obtener_montaje(1, 'TT1200', null)->'data') e), 'N-12-B=6.50,N-12-A=9.00');
 select test.eq('API: consulta por número de coche sin patente sigue funcionando (vehículo inexistente => no encontrado)',
   public.api_obtener_montaje(1, null, 'no-existe')->>'encontrado', 'false');
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.denied('la API no es ejecutable por authenticated', $$select public.api_obtener_montaje(1, 'TT1100', null)$$);
 reset role;
 rollback to s0;
@@ -366,7 +367,7 @@ rollback to s0;
 -- -----------------------------------------------------------------------------
 -- 8. Forma de las vistas: mismas columnas, tipos, orden, security_invoker y grants que antes
 -- -----------------------------------------------------------------------------
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.eq('v_ultima_medicion: columnas',
   (select string_agg(column_name || ':' || data_type, ',' order by ordinal_position) from information_schema.columns
     where table_schema='public' and table_name='v_ultima_medicion'),
@@ -402,7 +403,7 @@ select test.eq('api_obtener_montaje / api_guardar_montaje: solo service_role eje
 reset role;
 
 -- El resumen de flota hereda: tras cambiar un crítico el contador de críticos baja
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select n_critico as crit_antes, n_sin_datos as sd_antes from public.v_resumen_flota_cliente where cliente_id = 1 \gset
 select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb) is not null as _y \gset
 select test.eq('resumen: un crítico menos tras el cambio',

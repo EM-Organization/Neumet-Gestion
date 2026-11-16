@@ -309,7 +309,7 @@ select test.denied('K: sin perfil', $$select public.alerta_configurar(null::bigi
 select test.become('anon', null);
 select test.denied('K: anon', $$select public.alerta_configurar(null::bigint, 5.0)$$);
 select test.become('authenticated', test.u_admin());
-select test.eq('K: la rama del equipo Neumet sigue hasta la migración C2', public.alerta_configurar(2, 6.0) ->> 'cliente_id', '2');
+select test.denied('K: el equipo Neumet ya no configura (C2)', $$select public.alerta_configurar(2, 6.0)$$, '42501');
 
 -- ---- audit_row: rótulo por alcance ---------------------------------------------------------------------------------
 reset role;
@@ -321,10 +321,8 @@ reset role;
 select test.eq('L: usuario de sucursal queda como «sucursal»',
   (select actor_rol from public.audit_log where entidad = 'vehiculos' and entidad_id = '931' and (despues ->> 'odometro_km') = '4500'), 'sucursal');
 select test.become('authenticated', test.u_admin());
-select public.vehiculo_registrar_odometro(931, 4600);
+select test.denied('L: el equipo Neumet ya no registra odómetro (C2)', $$select public.vehiculo_registrar_odometro(931, 4600)$$, '42501');
 reset role;
-select test.eq('L: el equipo Neumet sigue como «admin»',
-  (select actor_rol from public.audit_log where entidad = 'vehiculos' and entidad_id = '931' and (despues ->> 'odometro_km') = '4600'), 'admin');
 
 -- ---- empresa dada de baja (clientes.deleted_at): su administrador ya no opera ------------------------------------
 reset role;

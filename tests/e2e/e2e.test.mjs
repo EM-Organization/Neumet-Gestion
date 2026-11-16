@@ -26,6 +26,7 @@ import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
 import { registrar as empresaPanel } from './specs/empresa-panel.mjs';
 import { registrar as usoCliente } from './specs/uso-cliente.mjs';
 import { registrar as precioMensual } from './specs/precio-mensual.mjs';
+import { registrar as cerrarEscriturasNeumet } from './specs/cerrar-escrituras-neumet.mjs';
 import { registrar as islas } from './specs/islas.mjs';
 import { registrar as usoIsla } from './specs/uso-isla.mjs';
 
@@ -55,6 +56,7 @@ adminEmpresa(env);
 empresaPanel(env);
 usoCliente(env);
 precioMensual(env);
+cerrarEscriturasNeumet(env);
 islas(env);
 usoIsla(env);
 contrato(env);

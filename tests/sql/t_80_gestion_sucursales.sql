@@ -104,23 +104,22 @@ select test.eq('ya no existe', (select count(*) from public.sucursales where nom
 select test.denied('no elimina la sucursal de otro cliente', $$select public.sucursal_eliminar(303::bigint)$$);
 reset role;
 select test.eq('la sucursal ajena sigue', (select count(*) from public.sucursales where id = 303), 1::bigint);
--- Con un usuario de sucursal también se rechaza (un perfil de sucursal quedaría global)
+-- C2: el admin (Neumet) ya no elimina sucursales; el global elimina la vacía y no una con usuarios
+select test.become('authenticated', test.u_cli_a());
+select test.eq('global: elimina vacía', (public.sucursal_eliminar(302::bigint)->>'id'), '302');
+reset role;
 select test.become('authenticated', test.u_admin());
-select test.eq('admin: elimina vacía', (public.sucursal_eliminar(302::bigint)->>'id'), '302');
-select test.denied('admin: con usuarios no elimina', $$select public.sucursal_eliminar(303::bigint)$$, '23503');
+select test.denied('admin: sucursal_eliminar denegado (C2)', $$select public.sucursal_eliminar(303::bigint)$$);
 reset role;
 rollback to s0;
 
--- ADMIN: debe indicar el cliente; actúa sobre cualquiera
+-- ADMIN (C2): sin escritura sobre ningún cliente, con o sin p_cliente_id; 42501 uniforme
 select test.become('authenticated', test.u_admin());
-select test.denied('admin sin p_cliente_id', $$select public.sucursal_crear('Admin Suc')$$, '22004');
-select test.denied('admin con cliente inexistente', $$select public.sucursal_crear('Admin Suc', 999::bigint)$$, 'P0002');
-select test.eq('admin crea en el cliente B', (public.sucursal_crear('Admin Suc', 2::bigint)->>'cliente_id'), '2');
-select test.eq('admin mueve el vehículo de B a su sucursal', (public.vehiculo_mover_sucursal(3::bigint, 303::bigint)->>'movido'), 'true');
-select test.denied('admin no cruza clientes al mover', $$select public.vehiculo_mover_sucursal(3::bigint, 301::bigint)$$);
-select test.eq('admin crea vehículo en B', (public.vehiculo_crear('900', 'AD9000', 10::smallint, 303::bigint, 2::bigint)->>'cliente_id'), '2');
-select test.denied('admin: vehículo con sucursal de otro cliente', $$select public.vehiculo_crear('901', null, 10::smallint, 301::bigint, 2::bigint)$$);
-select test.eq('auditoría con actor admin', (select count(*) from public.audit_log where accion = 'MOVER_SUCURSAL' and actor_rol = 'admin'), 1::bigint);
+select test.denied('admin sin p_cliente_id: sucursal_crear', $$select public.sucursal_crear('Admin Suc')$$, '42501');
+select test.denied('admin con cliente inexistente: sucursal_crear', $$select public.sucursal_crear('Admin Suc', 999::bigint)$$, '42501');
+select test.denied('admin: sucursal_crear en el cliente B', $$select public.sucursal_crear('Admin Suc', 2::bigint)$$, '42501');
+select test.denied('admin: vehiculo_mover_sucursal', $$select public.vehiculo_mover_sucursal(3::bigint, 303::bigint)$$, '42501');
+select test.denied('admin: vehiculo_crear en B', $$select public.vehiculo_crear('900', 'AD9000', 10::smallint, 303::bigint, 2::bigint)$$, '42501');
 reset role;
 rollback to s0;
 

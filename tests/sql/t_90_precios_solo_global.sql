@@ -163,22 +163,10 @@ select test.eq('admin: costos de todos los clientes (incluye el de B)',
   (select count(*) from public.eventos_costos() where costo = 400.00), 1::bigint);
 select test.eq('admin: costos de un vehículo de otro cliente', (select string_agg(costo::text, ',') from public.eventos_costos(3)), '400.00');
 select test.eq('admin: no devuelve filas sin valor', (select count(*) from public.neumaticos_precios() p where p.precio_unidad is null) , 0::bigint);
--- Escrituras del admin: INSERT / UPDATE / upsert siguen funcionando (privilegios de escritura, no de lectura)
-insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, precio_unidad) values (901, 1, 60, 'AdminIns', 50.5);
-update public.neumaticos set precio_unidad = 51.5 where vehiculo_id = 901 and posicion = 60;
-select test.eq('admin: insert y update con precio_unidad', (select p.precio_unidad from public.neumaticos_precios(901) p join public.neumaticos n on n.id = p.id and n.posicion = 60), 51.50);
--- Upsert (forma de PostgREST, onConflict: vehiculo_id,posicion): ON CONFLICT DO UPDATE que LEE excluded.precio_unidad
--- exige SELECT sobre la columna, por eso el panel del admin ya no usa upsert: actualiza por id o inserta.
-select test.denied('admin: upsert que lee excluded.precio_unidad', $$insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, precio_unidad)
-  select vehiculo_id, cliente_id, posicion, marca, precio_unidad from json_populate_recordset(null::public.neumaticos,
-    '[{"vehiculo_id":901,"cliente_id":1,"posicion":60,"marca":"AdminUps","precio_unidad":52.5}]'::json) _
-  on conflict (vehiculo_id, posicion) do update set marca = excluded.marca, precio_unidad = excluded.precio_unidad$$);
-update public.neumaticos set marca = 'AdminUpd', precio_unidad = 52.5 where id = (select id from public.neumaticos where vehiculo_id = 901 and posicion = 60);
-select test.eq('admin: ...marca y precio', (select n.marca || '|' || p.precio_unidad from public.neumaticos_precios(901) p join public.neumaticos n on n.id = p.id and n.posicion = 60), 'AdminUpd|52.50');
-insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo, costo, notas) values (1, 901, 'reparacion', 7.25, 'p90');
-select test.eq('admin: insert de evento con costo', (select count(*) from public.eventos_costos(901) where costo = 7.25), 1::bigint);
-select test.denied('admin: RETURNING de la columna sensible', $$update public.neumaticos set marca = 'x' where vehiculo_id = 901 and posicion = 60 returning precio_unidad$$);
-update public.neumaticos set marca = 'AdminUpd' where vehiculo_id = 901 and posicion = 60 returning id;
+-- Escrituras del admin: desde C2 (20261120500000) no tiene INSERT/UPDATE/DELETE sobre estas tablas (solo lee)
+select test.denied('admin: insert directo de neumático (C2)', $$insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca, precio_unidad) values (901, 1, 60, 'AdminIns', 50.5)$$, '42501');
+select test.denied('admin: update directo de neumático (C2)', $$update public.neumaticos set marca = 'x' where vehiculo_id = 901$$, '42501');
+select test.denied('admin: insert de evento con costo (C2)', $$insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo, costo, notas) values (1, 901, 'reparacion', 7.25, 'p90')$$, '42501');
 select test.eq('admin: vistas', (select count(*) > 0 from public.v_estado_neumaticos), true);
 select test.eq('admin: v_alertas', (select count(*) >= 0 from public.v_alertas), true);
 select test.eq('admin: v_km_cubierta', (select count(*) >= 4 from public.v_km_cubierta where idneumatico like 'P90-%'), true);

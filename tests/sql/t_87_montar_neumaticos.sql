@@ -70,7 +70,7 @@ select test.eq('los rechazos no montaron nada (871, 872)', (select count(*) from
 select test.eq('...ni tocaron la cubierta del stock', (select estado from public.neumaticos where idneumatico = 'CB-87-a'), 'almacenado');
 select test.eq('...ni registraron eventos', (select count(*) from public.eventos_neumatico), :ev0::bigint);
 select test.become('authenticated', test.u_admin());
-select test.denied('admin: vehículo inexistente', $$select public.neumatico_montar(99999::bigint, 1::smallint, null, '{"marca":"X"}')$$, 'P0002');
+select test.denied('admin: vehículo inexistente (C2: 42501 uniforme)', $$select public.neumatico_montar(99999::bigint, 1::smallint, null, '{"marca":"X"}')$$, '42501');
 reset role;
 rollback to s0;
 
@@ -78,7 +78,7 @@ rollback to s0;
 -- B. Roles permitidos: admin, global y sucursal propia (solo ingreso a mano)
 -- ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_admin());
-select test.eq('admin monta en cualquier vehículo', (public.neumatico_montar(872::bigint, 1::smallint, null, '{"marca":"Adm"}')->>'posicion'), '1');
+select test.denied('admin no monta (C2)', $$select public.neumatico_montar(872::bigint, 1::smallint, null, '{"marca":"Adm"}')$$, '42501');
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('global monta en su vehículo', (public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"Glob"}')->>'posicion'), '1');
@@ -88,7 +88,7 @@ select test.eq('sucursal propia monta ingresando a mano', (public.neumatico_mont
 select test.denied('sucursal propia no usa el stock', format('select public.neumatico_montar(871::bigint, 3::smallint, %s)', (select id from pg_temp._c where k = 'S87-A1')));
 reset role;
 select test.eq('la cubierta del stock sigue en stock tras el rechazo', (select estado from public.neumaticos where idneumatico = 'CB-87-a'), 'almacenado');
-select test.eq('montados: 1 en 872 y 2 en 871', (select count(*) from public.neumaticos where vehiculo_id in (871, 872) and estado = 'montado'), 3::bigint);
+select test.eq('montados: 0 en 872 (el admin no monta) y 2 en 871', (select count(*) from public.neumaticos where vehiculo_id in (871, 872) and estado = 'montado'), 2::bigint);
 rollback to s0;
 
 -- ---------------------------------------------------------------------------------------------
@@ -216,10 +216,12 @@ reset role;
 select test.eq('la cubierta reparada conserva su condición y no imputa costo',
   (select n.condicion || '|' || coalesce(test.cu(e.id)::text, 'sin costo') from public.neumaticos n join public.eventos_neumatico e on e.neumatico_id = n.id and e.tipo = 'montaje' where n.numero_quema = 'S87-A2'), 'reparado|sin costo');
 select test.eq('la cubierta de B no se tocó', (select estado || '|' || (vehiculo_id is null) from public.neumaticos where numero_quema = 'S87-B1'), 'almacenado|true');
--- Admin: la cubierta debe ser del cliente del vehículo
-select test.become('authenticated', test.u_admin());
-select test.denied('admin: cubierta de otro cliente que el vehículo', format('select public.neumatico_montar(871::bigint, 6::smallint, %s)', (select id from pg_temp._c where k = 'S87-B1')), 'P0002');
-select test.eq('admin monta la cubierta de B en un vehículo de B', (public.neumatico_montar(873::bigint, 3::smallint, (select id from pg_temp._c where k = 'S87-B1'))->>'posicion'), '3');
+-- La cubierta debe ser del cliente del vehículo (administrador de cada empresa; el admin Neumet ya no opera, C2)
+select test.become('authenticated', test.u_cli_a());
+select test.denied('global: cubierta de otro cliente que el vehículo', format('select public.neumatico_montar(871::bigint, 6::smallint, %s)', (select id from pg_temp._c where k = 'S87-B1')), 'P0002');
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select test.eq('global B monta la cubierta de B en un vehículo de B', (public.neumatico_montar(873::bigint, 3::smallint, (select id from pg_temp._c where k = 'S87-B1'))->>'posicion'), '3');
 reset role;
 rollback to s0;
 
@@ -299,8 +301,8 @@ select test.denied('un neumático dado de baja ya no está montado en su posici�
 reset role;
 rollback to s0;
 
--- Desmontar: perfil de sucursal propia, otro cliente y admin
-select test.become('authenticated', test.u_admin());
+-- Desmontar: perfil de sucursal propia, otro cliente, global (el admin Neumet ya no, C2)
+select test.become('authenticated', test.u_cli_a());
 select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"X","numero_quema":"NQ-S1"}');
 select public.neumatico_montar(871::bigint, 2::smallint, null, '{"marca":"X"}');
 select public.neumatico_montar(871::bigint, 3::smallint, null, '{"marca":"X"}');
@@ -315,7 +317,10 @@ select test.become('authenticated', test.u_cli_b());
 select test.denied('otro cliente no desmonta', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'baja', 'x')$$);
 reset role;
 select test.become('authenticated', test.u_admin());
-select test.eq('admin desmonta a stock de cualquier cliente', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint)->>'en_stock'), 'true');
+select test.denied('admin no desmonta (C2)', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint)$$, '42501');
+reset role;
+select test.become('authenticated', test.u_cli_a());
+select test.eq('global desmonta a stock', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint)->>'en_stock'), 'true');
 reset role;
 rollback to s0;
 

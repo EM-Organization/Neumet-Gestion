@@ -34,9 +34,14 @@ select test.denied('el helper interno no es invocable por authenticated', $$sele
 reset role;
 rollback to s0;
 
--- Admin: baja + stock
+-- C2: el equipo Neumet (admin) ya no cambia neumáticos
 select test.become('authenticated', test.u_admin());
-select test.eq('admin: cambio con stock devuelve el nuevo',
+select test.denied('admin: neumatico_cambiar denegado (C2)', $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', 2000, 701)$$);
+reset role;
+
+-- Cliente global: baja + stock
+select test.become('authenticated', test.u_cli_a());
+select test.eq('global: cambio con stock devuelve el nuevo',
   (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte lateral', 2000, 701)->>'stock_restante')::int, 1);
 select test.eq('viejo en baja con motivo y fecha',
   (select estado || '|' || motivo_baja || '|' || (fecha_baja is not null) from public.neumaticos where idneumatico='T-1-1'), 'baja|Corte lateral|true');
@@ -45,8 +50,8 @@ select test.eq('nuevo montado en P1 con marca/modelo/precio del stock',
   (select marca||'|'||modelo||'|'||test.pu(id)||'|'||estado||'|'||vida||'|'||stock_id from public.neumaticos where vehiculo_id=1 and posicion=1), 'Marca X|Modelo Y|1500.50|montado|0|701');
 select test.eq('stock descontado', (select cantidad from public.stock_neumaticos where id=701), 1);
 select test.eq('eventos: baja + montaje con odómetro',
-  (select string_agg(tipo || ':' || odometro_km, ',' order by id) from public.eventos_neumatico where created_by = test.u_admin()), 'baja:2000,montaje:2000');
-select test.eq('costo del montaje = precio', (select test.cu(id) from public.eventos_neumatico where tipo='montaje' and created_by = test.u_admin()), 1500.50);
+  (select string_agg(tipo || ':' || odometro_km, ',' order by id) from public.eventos_neumatico where created_by = test.u_cli_a()), 'baja:2000,montaje:2000');
+select test.eq('costo del montaje = precio', (select test.cu(id) from public.eventos_neumatico where tipo='montaje' and created_by = test.u_cli_a()), 1500.50);
 select test.eq('odómetro del vehículo sube', (select odometro_km from public.vehiculos where id=1), 2000);
 select test.eq('idneumatico generado único', (select count(distinct idneumatico) from public.neumaticos where vehiculo_id=1), 10::bigint);
 reset role;
@@ -77,8 +82,8 @@ select test.eq('almacenado: destino del viejo',
 -- el cliente no escribe tablas directamente
 select test.denied('cliente no inserta neumáticos directo', $$insert into public.neumaticos (vehiculo_id, cliente_id, posicion) values (1,1,50)$$);
 select test.denied('cliente no inserta eventos directo', $$insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo) values (1,1,'baja')$$);
-update public.vehiculos set odometro_km = 5 where id = 1;
-select test.eq('cliente no actualiza vehículos directo (RLS: sin efecto)', (select odometro_km from public.vehiculos where id=1), 1500);
+select test.denied('cliente no actualiza vehículos directo (sin privilegio, C2)', $$update public.vehiculos set odometro_km = 5 where id = 1$$);
+select test.eq('odómetro intacto', (select odometro_km from public.vehiculos where id=1), 1500);
 -- rotación abierta al mismo alcance
 select test.eq('cliente global rota en su vehículo',
   (public.neumatico_rotar(1::bigint, 5::smallint, 6::smallint)->>'intercambio')::boolean, true);

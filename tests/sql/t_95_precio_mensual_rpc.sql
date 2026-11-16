@@ -24,11 +24,11 @@ select test.eq('PUBLIC no ejecuta las RPC',
 select test.eq('anon no ejecuta las RPC',
   has_function_privilege('anon', 'public.cliente_precios_mensuales()', 'execute')
   or has_function_privilege('anon', 'public.cliente_precio_mensual_fijar(bigint, numeric)', 'execute'), false);
--- Retrocompatible: C1 no revoca nada; el front vigente (Balance) sigue usando la columna directa.
-select test.eq('retrocompatible: authenticated sigue leyendo clientes.precio_mensual',
-  has_column_privilege('authenticated', 'public.clientes', 'precio_mensual', 'select'), true);
-select test.eq('retrocompatible: authenticated sigue actualizando clientes.precio_mensual',
-  has_column_privilege('authenticated', 'public.clientes', 'precio_mensual', 'update'), true);
+-- Desde C2 (20261120500000) authenticated no lee ni escribe la columna: solo estas RPC (SECURITY DEFINER).
+select test.eq('C2: authenticated no lee clientes.precio_mensual',
+  has_column_privilege('authenticated', 'public.clientes', 'precio_mensual', 'select'), false);
+select test.eq('C2: authenticated no actualiza clientes.precio_mensual',
+  has_column_privilege('authenticated', 'public.clientes', 'precio_mensual', 'update'), false);
 
 -- ---- equipo Neumet ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_admin());
@@ -38,8 +38,8 @@ select test.eq('admin: lee todos los clientes',
   (select count(*) from public.cliente_precios_mensuales()), (select count(*) from public.clientes));
 select test.eq('admin: fijar devuelve el valor guardado (redondeado a 2 decimales)',
   (select public.cliente_precio_mensual_fijar(1, 200.126)), 200.13::numeric);
-select test.eq('admin: el precio quedó escrito', (select precio_mensual from public.clientes where id = 1), 200.13::numeric);
-select test.eq('admin: no tocó otros clientes', (select precio_mensual from public.clientes where id = 2), 0::numeric);
+select test.eq('admin: el precio quedó escrito', (select precio_mensual from public.cliente_precios_mensuales() where cliente_id = 1), 200.13::numeric);
+select test.eq('admin: no tocó otros clientes', (select precio_mensual from public.cliente_precios_mensuales() where cliente_id = 2), 0::numeric);
 select test.eq('admin: cero es válido', (select public.cliente_precio_mensual_fijar(2, 0)), 0::numeric);
 select test.eq('admin: el cambio queda en la auditoría con el actor',
   (select count(*) from public.audit_log where entidad = 'clientes' and entidad_id = '1' and accion = 'UPDATE'
@@ -51,7 +51,7 @@ select test.denied('admin: redondea a 10^10 (9999999999.999) y es fuera de rango
 select test.eq('admin: el máximo válido tras redondear', (select public.cliente_precio_mensual_fijar(2, 9999999999.994)), 9999999999.99::numeric);
 select test.eq('admin: restaurar cliente 2', (select public.cliente_precio_mensual_fijar(2, 0)), 0::numeric);
 select test.denied('admin: cliente inexistente', $$select public.cliente_precio_mensual_fijar(999999, 10)$$, 'P0002');
-select test.eq('admin: un precio inválido no cambió nada', (select precio_mensual from public.clientes where id = 1), 200.13::numeric);
+select test.eq('admin: un precio inválido no cambió nada', (select precio_mensual from public.cliente_precios_mensuales() where cliente_id = 1), 200.13::numeric);
 
 -- ---- el resto: 42501 ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());

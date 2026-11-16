@@ -8,9 +8,9 @@ const TABLAS = ['vehiculos', 'neumaticos', 'mediciones', 'dispositivos', 'client
   'sucursales', 'eventos_neumatico', 'v_estado_neumaticos', 'v_alertas', 'v_salud_dispositivos', 'v_resumen_flota_cliente'];
 
 // Cuenta las filas que la API devuelve a la sesión (JWT del panel) para una tabla o vista.
-// neumaticos y eventos_neumatico: sin `*` (precio_unidad y costo no tienen SELECT para nadie; la prueba de eso está en precios-solo-global.mjs).
+// neumaticos, eventos_neumatico y clientes: sin `*` (precio_unidad, costo y clientes.precio_mensual no tienen SELECT para nadie; la prueba de eso está en precios-solo-global.mjs).
 const CONTAR = `async tabla => {
-  const cols = tabla === 'neumaticos' || tabla === 'eventos_neumatico' ? 'id' : '*';
+  const cols = tabla === 'neumaticos' || tabla === 'eventos_neumatico' || tabla === 'clientes' ? 'id' : '*';
   const r = await fetch('/rest/v1/' + tabla + '?select=' + cols + '&limit=1000', { headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x' } });
   const f = r.ok ? await r.json() : null;
   return { status: r.status, filas: Array.isArray(f) ? f.length : null };

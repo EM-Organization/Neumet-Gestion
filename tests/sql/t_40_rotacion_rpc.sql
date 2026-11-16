@@ -19,10 +19,16 @@ select test.become('anon', null);
 select test.denied('anon sin execute en neumatico_rotar', $$select public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)$$);
 rollback;
 
--- Admin: intercambio
+-- El equipo Neumet (admin) ya no rota: 42501 aunque el vehículo exista (C2)
 begin;
 select test.become('authenticated', test.u_admin());
-select test.eq('admin: intercambio P1<->P2',
+select test.denied('admin no puede rotar (C2)', $$select public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)$$);
+rollback;
+
+-- Cliente global de la empresa (el equipo Neumet ya no opera, C2): intercambio
+begin;
+select test.become('authenticated', test.u_cli_a());
+select test.eq('cliente global: intercambio P1<->P2',
   (public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint, 12345)->>'intercambio')::boolean, true);
 select test.eq('T-1-1 queda en P2', (select posicion from public.neumaticos where idneumatico='T-1-1'), 2::smallint);
 select test.eq('T-1-2 queda en P1', (select posicion from public.neumaticos where idneumatico='T-1-2'), 1::smallint);
@@ -32,14 +38,14 @@ select test.eq('evento de T-1-1: 1 -> 2',
   (select posicion_origen*10+posicion_destino from public.eventos_neumatico where idneumatico='T-1-1' and tipo='rotacion'), 12);
 select test.eq('evento de T-1-2: 2 -> 1',
   (select posicion_origen*10+posicion_destino from public.eventos_neumatico where idneumatico='T-1-2' and tipo='rotacion'), 21);
-select test.eq('created_by = admin',
-  (select count(*) from public.eventos_neumatico where tipo='rotacion' and created_by = test.u_admin()), 2::bigint);
+select test.eq('created_by = cliente global',
+  (select count(*) from public.eventos_neumatico where tipo='rotacion' and created_by = test.u_cli_a()), 2::bigint);
 rollback;
 
--- Admin: mover a posición libre (un solo evento)
+-- Cliente global: mover a posición libre (un solo evento)
 begin;
-select test.become('authenticated', test.u_admin());
-select test.eq('admin: mover a posición libre',
+select test.become('authenticated', test.u_cli_a());
+select test.eq('cliente global: mover a posición libre',
   (public.neumatico_rotar(1::bigint, 1::smallint, 20::smallint)->>'intercambio')::boolean, false);
 select test.eq('T-1-1 en P20', (select posicion from public.neumaticos where idneumatico='T-1-1'), 20::smallint);
 select test.eq('un solo evento', (select count(*) from public.eventos_neumatico where tipo='rotacion' and vehiculo_id=1), 1::bigint);
@@ -48,7 +54,7 @@ rollback;
 
 -- Validaciones: ante error no cambia nada (cada denied corre en su subtransacción)
 begin;
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.denied('posición origen inexistente', $$select public.neumatico_rotar(1::bigint, 50::smallint, 2::smallint)$$, 'P0002');
 select test.denied('vehículo sin neumáticos', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$, 'P0002');
 select test.denied('posiciones iguales', $$select public.neumatico_rotar(1::bigint, 1::smallint, 1::smallint)$$, '22023');
@@ -62,14 +68,14 @@ rollback;
 
 -- Atomicidad: si el evento no se puede registrar, el intercambio se revierte
 begin;
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 -- odómetro fuera de rango de integer no cabe; usamos un trigger que falla al insertar el evento de rotación
 reset role;
 create function pg_temp.falla_evento() returns trigger language plpgsql as $$
 begin raise exception 'fallo simulado' using errcode = 'P0001'; end $$;
 create trigger trg_falla_evento before insert on public.eventos_neumatico
   for each row when (new.tipo = 'rotacion') execute function pg_temp.falla_evento();
-select test.become('authenticated', test.u_admin());
+select test.become('authenticated', test.u_cli_a());
 select test.denied('fallo al registrar el evento', $$select public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)$$, 'P0001');
 select test.eq('intercambio revertido: T-1-1 en P1', (select posicion from public.neumaticos where idneumatico='T-1-1'), 1::smallint);
 select test.eq('intercambio revertido: T-1-2 en P2', (select posicion from public.neumaticos where idneumatico='T-1-2'), 2::smallint);

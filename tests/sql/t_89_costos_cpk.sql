@@ -264,11 +264,14 @@ select test.eq('auditoría: INSERT con actor y rol',
   (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'INSERT' and actor_id = test.u_cli_a() and actor_rol = 'admin_empresa'), 3::bigint);
 
 select test.become('authenticated', test.u_admin());
-select test.eq('admin registra un costo en cualquier cliente',
-  (public.costo_registrar((select id from _ids89 where idn = 'C89-X1'), 'compra', 20, current_date, 'Ajuste')->>'neumatico_id')::bigint, (select id from _ids89 where idn = 'C89-X1'));
-select test.denied('admin: cubierta inexistente', $$select public.costo_registrar(999999, 'otro', 1, current_date)$$, 'P0002');
-select test.denied('admin: costo inexistente', $$select public.costo_eliminar(999999)$$, 'P0002');
+select test.denied('admin no registra costos (C2)', $$select public.costo_registrar((select id from pg_temp._ids89 where idn = 'C89-X1'), 'compra', 20, current_date, 'Ajuste')$$, '42501');
+select test.denied('admin: cubierta inexistente, 42501 uniforme (C2)', $$select public.costo_registrar(999999, 'otro', 1, current_date)$$, '42501');
+select test.denied('admin: costo inexistente, 42501 uniforme (C2)', $$select public.costo_eliminar(999999)$$, '42501');
 select test.denied('admin tampoco escribe directo', $$insert into public.costos_neumatico (cliente_id, neumatico_id, concepto, monto) values (1, 1, 'otro', 1)$$, '42501');
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select test.eq('global B registra un costo en su cliente',
+  (public.costo_registrar((select id from _ids89 where idn = 'C89-X1'), 'compra', 20, current_date, 'Ajuste')->>'neumatico_id')::bigint, (select id from _ids89 where idn = 'C89-X1'));
 reset role;
 select test.eq('X1: la compra manual de 20 reemplaza al precio de 300', test.c89('C89-X1'), '20.00|0.005000|NULL|false|true');
 
@@ -303,11 +306,14 @@ select test.eq('tras eliminar el total baja', test.c89('C89-P5'), '260.50|0.0260
 select test.eq('auditoría: DELETE con actor y rol',
   (select count(*) from public.audit_log where entidad = 'costos_neumatico' and accion = 'DELETE' and actor_id = test.u_cli_a() and actor_rol = 'admin_empresa'), 1::bigint);
 select test.become('authenticated', test.u_admin());
-select test.eq('admin elimina cualquier costo', (public.costo_eliminar((select min(id) from _cost89))->>'neumatico_id')::bigint, (select id from _ids89 where idn = 'C89-P1'));
+select test.denied('admin no elimina costos (C2)', $$select public.costo_eliminar((select min(id) from pg_temp._cost89))$$, '42501');
+reset role;
+select test.become('authenticated', test.u_cli_a());
+select test.eq('global elimina un costo de su cliente', (public.costo_eliminar((select min(id) from _cost89))->>'neumatico_id')::bigint, (select id from _ids89 where idn = 'C89-P1'));
 reset role;
 select test.eq('P1 sin la entrada manual', test.c89('C89-P1'), '1200.00|0.120000|NULL|false|true');
-select test.eq('auditoría: el actor admin queda registrado',
-  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and actor_rol = 'admin'), 2::bigint);
+select test.eq('auditoría: el equipo Neumet ya no deja escrituras de costo (C2)',
+  (select count(*) from public.audit_log where entidad = 'costos_neumatico' and actor_rol = 'admin'), 0::bigint);
 
 -- Borrar la cubierta borra sus costos (cascada) y queda en la auditoría
 create temp table _antes89 as select count(*) n from public.audit_log where entidad = 'costos_neumatico' and accion = 'DELETE';
