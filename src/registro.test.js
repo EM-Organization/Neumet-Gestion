@@ -122,3 +122,24 @@ describe('montaje (bandera encendida para admin)', () => {
 });
 
 it('API_ISLAS es 1', () => expect(API_ISLAS).toBe(1));
+
+// «Uso» es la primera pantalla real: solo `admin` (equipo Neumet). Que el resto no la vea lo decide la base; la bandera solo evita
+// montar una pantalla que respondería 42501.
+describe('bandera de uso', () => {
+  it('solo el rol admin la enciende, con la configuración real', () => {
+    const reg = crearRegistro();
+    expect(reg.activa('uso', 'admin')).toBe(true);
+    for (const rol of ['cliente', 'sin_acceso', null, undefined]) expect(reg.activa('uso', rol)).toBe(false);
+    expect(ISLAS.uso.roles).toEqual(['admin']);
+  });
+
+  it('no es forzable: on:uso no la enciende para el cliente', () => {
+    localStorage.setItem('neumet_islas', 'on:uso');
+    expect(crearRegistro().activa('uso', 'cliente')).toBe(false);
+  });
+
+  it('neumet_islas=off la apaga también para admin (caída segura)', () => {
+    localStorage.setItem('neumet_islas', 'off');
+    expect(crearRegistro().activa('uso', 'admin')).toBe(false);
+  });
+});

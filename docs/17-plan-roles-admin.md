@@ -276,6 +276,8 @@ Para cada cliente y mes: vehículos activos; dispositivos activos (asignados y c
 
 *Estado del PR 6 (implementado, migración `20261119500000` sin aplicar; docs/08 apéndice O):* definiciones elegidas por ser las más simples y conservadoras: mes calendario UTC; las llamadas a la API excluyen `endpoint = 'login'` (se cuenta aparte en `logins`, para no duplicar lo que registra el PR 5); vehículos, dispositivos, usuarios y último ingreso son fotos del primer cierre que un re-cierre no pisa; solo se cierra un mes terminado; la RPC `uso_clientes_listar` autoriza únicamente al equipo Neumet (como dice este apartado), y el administrador de empresa no lee su uso. `pg_cron` está disponible pero no instalado: el cierre se programa en el paso operativo de `docs/11` §3.2.1. Definiciones elegidas por el autor, pendientes de confirmar: `mediciones` cuenta también las de `calidad <> 'valida'`; `dispositivos_activos` usa el `cliente_id` y el `activo` actuales del dispositivo (no los del mes); en un cierre retroactivo `ultimo_ingreso_at` puede caer después del mes. Pendientes de negocio: zona horaria del mes y si el administrador de empresa verá su propio uso.
 
+*Pantalla (F11, piloto de la ola 1):* «Uso» en el panel, solo para el equipo Neumet, lee `uso_clientes_listar` y muestra solo meses cerrados (el mes en curso no tiene fila; se avisa en pantalla). Que el administrador de empresa vea su propio uso sigue sin decidir: hoy la base le responde 42501 (pendiente de confirmar).
+
 Retención de `ingesta_log` (detalle operativo, propuesta): 13 meses, sin borrar un mes que aún no esté cerrado en `uso_cliente_mensual`.
 
 ## 6. Migración de usuarios

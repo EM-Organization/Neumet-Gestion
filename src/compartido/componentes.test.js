@@ -90,6 +90,7 @@ describe('Tabla', () => {
     await tick();
     expect(t.querySelector('table')).toBeNull();
     const lista = t.querySelector('ul[aria-label="Vehículos"]');
+    expect(lista.className).toContain('tw:list-none'); // sin esto el reinicio de estilos no alcanza y cada tarjeta lleva una viñeta suelta
     expect(lista.querySelectorAll('li')).toHaveLength(2);
     expect([...lista.querySelector('li').querySelectorAll('dt')].map((x) => x.textContent)).toEqual(['Matrícula', 'Neumáticos']);
     expect([...lista.querySelector('li').querySelectorAll('dd')].map((x) => x.textContent)).toEqual(['AB123', '6']);
