@@ -288,9 +288,16 @@ export function registrar(env) {
     assert.equal(montados(env, v1).length + montados(env, v2).length, 1);
   });
 
-  test('Montar (admin): puede montar y retirar en cualquier vehículo; las posiciones inexistentes se rechazan', async () => {
+  test('Montar (admin): 42501 en montar y desmontar (C2); el global monta y retira; las posiciones inexistentes se rechazan', async () => {
     const vid = nuevoVehiculo(env, 'E2EM008', { tipo: 16 });
     await flujo(env, 'admin', 'admin', async p => {
+      const m = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 16, p_nuevo: { marca: 'Adm' } });
+      assert.equal(m.error && m.error.code, '42501', 'el equipo Neumet ya no monta (C2)');
+      const d = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 16, p_destino: 'reparacion' });
+      assert.equal(d.error && d.error.code, '42501');
+    }, { http: RECHAZO });
+    assert.deepEqual(montados(env, vid), []);
+    await flujo(env, 'global-montar', 'global', async p => {
       const ok = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 16, p_nuevo: { marca: 'Adm' } });
       assert.equal(ok.error, null, JSON.stringify(ok));
       const aux = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 99, p_nuevo: { marca: 'Aux' } });

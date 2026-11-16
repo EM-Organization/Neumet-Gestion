@@ -483,5 +483,40 @@
   "archivo": "supabase/migrations/20261119500000_uso_cliente_mensual.sql",
   "linea": 107,
   "texto": "(select max(au.last_sign_in_at) from public.perfiles p"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 36,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 45,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 71,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 77,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 178,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 186,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
+  "linea": 767,
+  "texto": "public.clientes, public.neumaticos, public.eventos_neumatico, public.perfiles,"
  }
 ]

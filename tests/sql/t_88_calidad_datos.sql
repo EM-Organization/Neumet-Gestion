@@ -416,7 +416,7 @@ select test.eq('D: los rechazos no cambiaron nada',
 select test.eq('D: ni dejaron auditoría',
   (select count(*) from public.audit_log where entidad = 'mediciones' and accion in ('INVALIDAR_MEDICION', 'REVALIDAR_MEDICION')), :aud_d0::bigint);
 select test.become('authenticated', test.u_admin());
-select test.denied('D: admin, medición inexistente', $$select public.medicion_invalidar(99999999::bigint, 'motivo valido')$$, 'P0002');
+select test.denied('D: admin, medición inexistente (C2: 42501 uniforme)', $$select public.medicion_invalidar(99999999::bigint, 'motivo valido')$$, '42501');
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('D: global A no ve la medición de B (RLS)', (select count(*) from public.mediciones where id = :dm_b), 0::bigint);
@@ -463,16 +463,23 @@ select test.eq('D: revalidar una ya válida es idempotente', (:'d3d'::jsonb ->> 
 select test.eq('D: auditoría de revalidación: rol cliente, antes invalidada y después válida',
   (select actor_rol || '|' || (antes ->> 'calidad') || '|' || (despues ->> 'calidad') from public.audit_log
     where accion = 'REVALIDAR_MEDICION' and entidad_id = :dm_s::text order by id desc limit 1), 'cliente|invalidada|valida');
--- Admin: cualquier cliente; revalidar una sospechosa del sistema
+-- Admin (C2): el equipo Neumet ya no invalida ni revalida; cada empresa lo hace con su perfil
 select test.become('authenticated', test.u_admin());
-select public.medicion_invalidar(:dm_b, 'Admin invalida de otro cliente') as d4 \gset
-select public.medicion_invalidar(:dm_dev, 'Admin invalida device-first') as d4b \gset
+select test.denied('D: admin no invalida (C2)', format('select public.medicion_invalidar(%s::bigint, ''motivo valido'')', :dm_b), '42501');
+select test.denied('D: admin no invalida device-first (C2)', format('select public.medicion_invalidar(%s::bigint, ''motivo valido'')', :dm_dev), '42501');
+select test.denied('D: admin no revalida (C2)', format('select public.medicion_revalidar(%s::bigint)', :b2b), '42501');
+reset role;
+select test.become('authenticated', test.u_cli_b());
+select public.medicion_invalidar(:dm_b, 'Global B invalida lo suyo') as d4 \gset
+reset role;
+select test.become('authenticated', test.u_cli_a());
 select public.medicion_revalidar(:b2b) as d5 \gset
 reset role;
-select test.eq('D: admin invalida de cualquier cliente y device-first', pg_temp.cal(:dm_b) || '/' || pg_temp.cal(:dm_dev), 'invalidada/invalidada');
-select test.eq('D: admin revalida una sospechosa del sistema', pg_temp.cal(:b2b), 'valida');
-select test.eq('D: auditoría del admin: rol admin',
-  (select actor_rol from public.audit_log where accion = 'REVALIDAR_MEDICION' and entidad_id = :b2b::text), 'admin');
+select test.eq('D: global B invalida su medición', pg_temp.cal(:dm_b), 'invalidada');
+select test.eq('D: la medición device-first sin cliente nadie la invalida ya', pg_temp.cal(:dm_dev), 'valida');
+select test.eq('D: global A revalida una sospechosa del sistema', pg_temp.cal(:b2b), 'valida');
+select test.eq('D: auditoría de la revalidación: rol cliente',
+  (select actor_rol from public.audit_log where accion = 'REVALIDAR_MEDICION' and entidad_id = :b2b::text), 'cliente');
 select test.eq('D: la revalidación conserva el hallazgo original en auditoría',
   (select antes ->> 'motivo' from public.audit_log where accion = 'REVALIDAR_MEDICION' and entidad_id = :b2b::text), 'Aumento sin recauchutado');
 -- La cuenta del perfil del cliente eliminado no puede actuar

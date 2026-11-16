@@ -49,14 +49,14 @@ update public.neumaticos set numero_quema = null where idneumatico in ('T-1-2', 
 select test.eq('varias quemas nulas conviven', (select count(*) from public.neumaticos where cliente_id = 1 and numero_quema is null), (select count(*) from public.neumaticos where cliente_id = 1) - 1);
 rollback to s0;
 
--- Admin: cambio con quema y km previos desde el stock
-select test.become('authenticated', test.u_admin());
-select test.eq('admin: cambio con quema y km previos',
+-- Cliente global (C2: el admin ya no opera): cambio con quema y km previos desde el stock
+select test.become('authenticated', test.u_cli_a());
+select test.eq('global: cambio con quema y km previos',
   (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte', 1200, 751, null, ' Q-7 ', 35000)->>'numero_quema'), 'Q-7');
 select test.eq('nuevo neumático guarda quema recortada y km previos',
   (select numero_quema||'|'||km_previos||'|'||estado from public.neumaticos where vehiculo_id = 1 and posicion = 1), 'Q-7|35000|montado');
 select test.eq('el evento de montaje deja constancia de la quema y los km previos',
-  (select notas like '%quema Q-7%' and notas like '%35000 km previos%' from public.eventos_neumatico where tipo = 'montaje' and created_by = test.u_admin()), true);
+  (select notas like '%quema Q-7%' and notas like '%35000 km previos%' from public.eventos_neumatico where tipo = 'montaje' and created_by = test.u_cli_a()), true);
 select test.eq('el viejo conserva su (ausencia de) quema', (select numero_quema is null from public.neumaticos where idneumatico = 'T-1-1'), true);
 reset role;
 rollback to s0;
@@ -110,8 +110,8 @@ select test.denied('quema repetida en otro vehículo del mismo cliente',
 select test.eq('el rechazo no consumió el neumático viejo',
   (select estado from public.neumaticos where idneumatico = 'T-1-2'), 'montado');
 reset role;
-select test.become('authenticated', test.u_admin());
-select test.denied('admin: quema repetida en otro vehículo del mismo cliente',
+select test.become('authenticated', test.u_cli_a());
+select test.denied('global: quema repetida en otro vehículo del mismo cliente',
   $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-DUP',0)$$, '23505');
 reset role;
 select test.become('authenticated', test.u_cli_b());

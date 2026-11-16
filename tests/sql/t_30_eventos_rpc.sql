@@ -3,6 +3,13 @@
 -- Auditoría de eventos y escritura
 begin;
 select test.become('authenticated', test.u_admin());
+-- C2: el equipo Neumet ya no escribe directo (insert/update/delete revocados); la auditoría y las restricciones
+-- se prueban con la identidad del admin pero como dueño de la tabla (reset role conserva el JWT simulado).
+select test.denied('admin: INSERT directo en eventos_neumatico (C2)',
+  $$insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo) values (1, 1, 'inspeccion')$$);
+select test.denied('admin: UPDATE directo en eventos_neumatico (C2)', $$update public.eventos_neumatico set notas='x'$$);
+select test.denied('admin: DELETE directo en eventos_neumatico (C2)', $$delete from public.eventos_neumatico$$);
+reset role;
 insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo, costo, notas)
   values (1, 1, 'inspeccion', 0, 'nuevo');
 select test.eq('created_by = auth.uid() del admin',
@@ -32,10 +39,8 @@ begin;
 select test.become('authenticated', test.u_cli_a());
 select test.denied('cliente A no puede insertar eventos',
   $$insert into public.eventos_neumatico (cliente_id, tipo) values (1,'baja')$$);
-update public.eventos_neumatico set notas='hack';
-select test.eq('cliente A no modifica eventos (0 filas)',
-  (select count(*) from public.eventos_neumatico where notas='hack'), 0::bigint);
-delete from public.eventos_neumatico;
+select test.denied('cliente A no modifica eventos (UPDATE sin privilegio, C2)', $$update public.eventos_neumatico set notas='hack'$$);
+select test.denied('cliente A no borra eventos (DELETE sin privilegio, C2)', $$delete from public.eventos_neumatico$$);
 select test.eq('cliente A sigue viendo sus 2 eventos tras DELETE intentado',
   (select count(*) from public.eventos_neumatico), 2::bigint);
 rollback;
@@ -103,7 +108,7 @@ select test.eq('sus alertas desaparecen', (select count(*) from public.v_alertas
 select test.eq('idempotente: segunda llamada OK',
   (public.cliente_eliminar_suave(2)->>'vehiculos_desactivados')::int, 0);
 select test.denied('cliente inexistente', $$select public.cliente_eliminar_suave(999)$$, '23503');
-select test.denied('el DELETE directo sigue fallando (RESTRICT)', $$delete from public.clientes where id=2$$, '23503');
+select test.denied('el DELETE directo de clientes falla (sin privilegio tras C2)', $$delete from public.clientes where id=2$$);
 select test.eq('auditoría del soft delete en clientes',
   (select count(*) from public.audit_log where entidad='clientes' and accion='UPDATE'
      and despues->>'deleted_at' is not null and antes->>'deleted_at' is null), 1::bigint);

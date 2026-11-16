@@ -257,6 +257,8 @@ La firma exacta de la API de Auth se confirma contra la versión de `supabase-js
 
 ### 4.3 Panel
 
+*Estado del PR 11 (migración C2 implementada, SIN APLICAR):* inventario de la sección 2.5 regenerado: suma 7 líneas de `20261120500000` (tres helpers que releen `perfiles` solo para la rama `rol = 'cliente'`, igual que antes, y la lista de tablas del `revoke`; ninguna agrega una ruta de autorización nueva). `20261120500000_cerrar_escrituras_neumet.sql` (apéndice Q de docs/08). Quita la rama de admin de las 26 RPC y sus helpers, convierte `*_admin_all` en `FOR SELECT` en siete tablas (más `clientes_admin_update`), revoca la escritura sobre tablas y vistas y cierra `clientes.precio_mensual` por privilegios de columna. Riesgos: el equipo Neumet ya no corrige datos de clientes; una medición sin cliente (dispositivo sin asignar) ya no se puede invalidar; `select=*` sobre `clientes` da `42501`. Recomendado `neumet-dba` antes de aplicar (toca políticas y privilegios de siete tablas).
+
 *Estado del PR 10 (implementado, solo front y Edge Function, sin migración, función sin desplegar):* el equipo Neumet no ve ni dispara (guarda `esAdmin()` en cada acción, además de ocultar el botón) las escrituras de `recauchutado.js`, `montar-neumatico.js`, `cambio-neumatico.js`, Alertas y Calidad de datos. Las RPC siguen permitidas para `admin` en la base hasta C2 (no se prueban como rechazadas). Qué RPC de escritura de la lista de 4.1 quedan sin llamador del equipo Neumet y cuáles conservan uno, para el PR 11:
 
 | RPC de escritura | Llamador del equipo Neumet tras el PR 10 |

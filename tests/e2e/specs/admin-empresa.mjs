@@ -137,8 +137,8 @@ export function registrar(env) {
       assert.equal((await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_huella_absurda_mm: 41 })).status, 400);
       assert.equal((await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_umbral_retiro_mm: 6 })).status, 400, 'retiro sobre el crítico');
       denegado(await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: Number(env.sql(`select ${OTRA}`)), p_umbral_critico_mm: 5 }), 'otra empresa por parámetro');
-      // La rama del equipo Neumet sigue hasta la migración C2
-      assert.equal((await rpc(env, 'admin', 'alerta_configurar', { p_cliente_id: Number(env.sql(`select ${DEMO}`)), p_huella_absurda_mm: 25 })).status, 200);
+      // Desde C2 (20261120500000) el equipo Neumet ya no configura umbrales de una empresa
+      denegado(await rpc(env, 'admin', 'alerta_configurar', { p_cliente_id: Number(env.sql(`select ${DEMO}`)), p_huella_absurda_mm: 25 }), 'configurar como equipo Neumet (C2)');
     } finally {
       env.sql(`update public.clientes set umbral_bajo_mm = ${previo.umbral_bajo_mm}, umbral_critico_mm = ${previo.umbral_critico_mm}, umbral_retiro_mm = ${previo.umbral_retiro_mm}, dias_sin_medir_alerta = ${previo.dias_sin_medir_alerta}, irregularidad_mm = ${previo.irregularidad_mm}, alerta_histeresis_mm = ${previo.alerta_histeresis_mm}, huella_absurda_mm = ${previo.huella_absurda_mm} where id = ${DEMO}`);
     }

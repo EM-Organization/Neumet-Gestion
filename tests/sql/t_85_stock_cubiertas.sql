@@ -73,15 +73,14 @@ reset role;
 select test.eq('la agregada por B quedó en el cliente 2', (select cliente_id from public.neumaticos where numero_quema = 'ZZ'), 2::bigint);
 rollback to s0;
 
--- Admin: debe indicar el cliente; actúa sobre cualquiera
+-- Admin (C2): el equipo Neumet ya no escribe stock; 42501 uniforme, también con cliente inexistente
 select test.become('authenticated', test.u_admin());
-select test.denied('admin sin p_cliente_id', $$select public.stock_cubierta_agregar('ADM', 'M')$$, '22004');
-select test.denied('admin con cliente inexistente', $$select public.stock_cubierta_agregar('ADM', 'M', null, null, null, null, 999::bigint)$$, 'P0002');
-select test.eq('admin agrega al cliente A', (public.stock_cubierta_agregar('ADM', 'M', null, null, null, 401::bigint, 1::bigint)->>'cliente_id'), '1');
-select test.denied('admin no cruza clientes (sucursal de B para A)', $$select public.stock_cubierta_agregar('ADM2', 'M', null, null, null, 403::bigint, 1::bigint)$$);
-select test.eq('admin mueve la cubierta de B a su sucursal', (public.stock_cubierta_mover((select id from pg_temp._c where k = 'S-B1'), null)->>'movido'), 'true');
-select test.denied('admin: cubierta inexistente', $$select public.stock_cubierta_editar(99999::bigint, '{"marca":"X"}')$$, 'P0002');
-select test.eq('admin elimina una cubierta nueva de cualquier cliente', (public.stock_cubierta_eliminar((select id from pg_temp._c where k = 'S-B1'))->>'numero_quema'), 'S-B1');
+select test.denied('admin sin p_cliente_id', $$select public.stock_cubierta_agregar('ADM', 'M')$$, '42501');
+select test.denied('admin con cliente inexistente', $$select public.stock_cubierta_agregar('ADM', 'M', null, null, null, null, 999::bigint)$$, '42501');
+select test.denied('admin no agrega al cliente A', $$select public.stock_cubierta_agregar('ADM', 'M', null, null, null, 401::bigint, 1::bigint)$$, '42501');
+select test.denied('admin no mueve', $$select public.stock_cubierta_mover((select id from pg_temp._c where k = 'S-B1'), null)$$, '42501');
+select test.denied('admin no edita (ni siquiera una inexistente)', $$select public.stock_cubierta_editar(99999::bigint, '{"marca":"X"}')$$, '42501');
+select test.denied('admin no elimina', $$select public.stock_cubierta_eliminar((select id from pg_temp._c where k = 'S-B1'))$$, '42501');
 reset role;
 rollback to s0;
 
@@ -169,8 +168,8 @@ reset role;
 -- Escritura directa del cliente: sigue cerrada
 select test.become('authenticated', test.u_cli_a());
 select test.denied('el cliente no inserta directo', $$insert into public.neumaticos (cliente_id, estado, idneumatico, numero_quema) values (1, 'almacenado', 'DIR-1', 'DIR')$$);
-update public.neumaticos set marca = 'Hack' where vehiculo_id is null;
-delete from public.neumaticos where vehiculo_id is null;
+select test.denied('el cliente no actualiza directo (C2)', $$update public.neumaticos set marca = 'Hack' where vehiculo_id is null$$);
+select test.denied('el cliente no borra directo (C2)', $$delete from public.neumaticos where vehiculo_id is null$$);
 reset role;
 select test.eq('el cliente no actualiza ni borra directo', (select count(*) from public.neumaticos where vehiculo_id is null and cliente_id in (1, 2) and marca <> 'Hack'), 3::bigint);
 rollback to s0;

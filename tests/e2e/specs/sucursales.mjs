@@ -254,16 +254,17 @@ export function registrar(env) {
       'veh', (select json_agg(json_build_object('id', v.id, 'suc', v.sucursal_id) order by v.id) from public.vehiculos v where v.cliente_id = ${DEMO}))`), demoAntes, 'Demo Transportes quedó intacto');
   });
 
-  test('Sucursales (administrador): sin entrada en el panel del cliente y las RPC exigen indicar el cliente', async () => {
+  test('Sucursales (administrador): sin entrada en el panel del cliente y las RPC de escritura le dan 42501 (C2)', async () => {
     await flujo(env, 'admin', 'admin', async p => {
       assert.equal(await p.eval(`!!document.querySelector('.nav-item[data-view="sucursales"]').offsetParent`), false);
       const sinCliente = await rpc(p, 'sucursal_crear', { p_nombre: 'Admin sin cliente' });
-      assert.equal(sinCliente.error && sinCliente.error.code, '22004');
-      const ok = await rpc(p, 'sucursal_crear', { p_nombre: 'Admin E2E', p_cliente_id: Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`)) });
-      assert.equal(ok.error, null);
-      assert.equal(ok.data.nombre, 'Admin E2E');
-      const mover = await rpc(p, 'vehiculo_mover_sucursal', { p_vehiculo_id: Number(env.sql(`select id from public.vehiculos where patente = 'DEMO001'`)), p_sucursal_id: ok.data.id });
-      assert.equal(mover.error && mover.error.code, '42501', 'el admin tampoco cruza clientes');
+      assert.equal(sinCliente.error && sinCliente.error.code, '42501');
+      const otra = Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`));
+      const crear = await rpc(p, 'sucursal_crear', { p_nombre: 'Admin E2E', p_cliente_id: otra });
+      assert.equal(crear.error && crear.error.code, '42501', 'el equipo Neumet ya no crea sucursales de una empresa');
+      assert.equal(Number(env.sql(`select count(*) from public.sucursales where nombre = 'Admin E2E'`)), 0);
+      const mover = await rpc(p, 'vehiculo_mover_sucursal', { p_vehiculo_id: Number(env.sql(`select id from public.vehiculos where patente = 'DEMO001'`)), p_sucursal_id: 1 });
+      assert.equal(mover.error && mover.error.code, '42501');
     }, { http: RPC_RECHAZADA });
   });
 }

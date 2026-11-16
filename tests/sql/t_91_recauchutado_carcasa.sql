@@ -336,13 +336,17 @@ reset role;
 select test.eq('R4: la cubierta aparcada deja el vehículo', test.n91('R91-4'), 'almacenado|0|NULL|NULL');
 select test.eq('R4: sin posición', (select posicion is null and not auxilio from public.neumaticos where idneumatico = 'R91-4'), true);
 
--- Admin: envía una cubierta de cualquier cliente; inexistente da P0002
+-- Admin (C2): el equipo Neumet ya no opera; 42501 uniforme, también ante ids inexistentes
 select test.become('authenticated', test.u_admin());
-select test.eq('admin envía', (select public.recauchutado_enviar(test.id91('R91-X'), 'Prov X') ->> 'estado'), 'enviado');
-select test.denied('admin: cubierta inexistente P0002', 'select public.recauchutado_enviar(999999, ''Prov'')', 'P0002');
-select test.denied('admin: proceso inexistente P0002', 'select public.recauchutado_dictaminar(999999, true)', 'P0002');
-select test.eq('admin dictamina y acepta', (select public.recauchutado_dictaminar(test.pid91('R91-X'), true) ->> 'estado'), 'apto');
-select test.eq('admin acepta con costo en USD', (select public.recauchutado_aceptar(test.pid91('R91-X'), 14.5, 'Otra', 'O1', 120, 'USD') ->> 'vida'), '1');
+select test.denied('admin no envía (C2)', format('select public.recauchutado_enviar(%s, ''Prov X'')', test.id91('R91-X')), '42501');
+select test.denied('admin: cubierta inexistente, 42501 uniforme', 'select public.recauchutado_enviar(999999, ''Prov'')', '42501');
+select test.denied('admin: proceso inexistente, 42501 uniforme', 'select public.recauchutado_dictaminar(999999, true)', '42501');
+reset role;
+-- Cada empresa opera lo suyo (cliente 2)
+select test.become('authenticated', test.u_cli_b());
+select test.eq('global B envía', (select public.recauchutado_enviar(test.id91('R91-X'), 'Prov X') ->> 'estado'), 'enviado');
+select test.eq('global B dictamina', (select public.recauchutado_dictaminar(test.pid91('R91-X'), true) ->> 'estado'), 'apto');
+select test.eq('global B acepta con costo en USD', (select public.recauchutado_aceptar(test.pid91('R91-X'), 14.5, 'Otra', 'O1', 120, 'USD') ->> 'vida'), '1');
 reset role;
 select test.eq('R-X: costo en USD en la vida 1', (select monto || '|' || moneda || '|' || vida from public.costos_neumatico where neumatico_id = test.id91('R91-X')), '120.00|USD|1');
 
