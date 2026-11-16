@@ -65,7 +65,8 @@ export function registrar(env) {
         });
         const mias = env.peticiones.slice(desde).filter(r => r.tag === 'global/alertas-sin-umbral');
         assert.ok(mias.length > 0, 'el flujo registró peticiones');
-        assert.ok(mias.every(r => !/alerta_configurar/.test(r.path) && r.method !== 'PATCH'), 'Alertas no escribe umbrales');
+        assert.ok(mias.every(r => !/alerta_configurar/.test(r.path) && !/\/clientes\b.*(umbral|histeresis)/.test(r.path) && r.method !== 'PATCH'), 'Alertas no escribe ni lee umbrales');
+        // Los GET /clientes?select=id,nombre del arranque (core/auth.js) son del perfil, no de Alertas: se filtra por columnas de umbral.
       });
     }
 

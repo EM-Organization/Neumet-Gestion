@@ -15,7 +15,7 @@ const SECCION = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos']
 
 export function registrar(env) {
   test('Empresa (panel): el administrador de empresa ve usuarios, edita umbrales y ve dispositivos de solo lectura', async () => {
-    const previo = json(env, `select umbral_bajo_mm, umbral_critico_mm, umbral_retiro_mm, dias_sin_medir_alerta, irregularidad_mm from public.clientes where id = ${DEMO}`)[0];
+    const previo = json(env, `select umbral_bajo_mm, umbral_critico_mm, umbral_retiro_mm, dias_sin_medir_alerta, irregularidad_mm, alerta_histeresis_mm from public.clientes where id = ${DEMO}`)[0];
     const desde = env.peticiones.length;
     try {
       await flujo(env, 'empresa', 'global', async p => {
@@ -34,17 +34,27 @@ export function registrar(env) {
 
         // Umbrales: editar y guardar con Enter
         await irA(p, 'empresa-umbrales');
-        await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === 5 && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
+        await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === 6 && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
+        assert.equal(Number(await p.eval(`document.querySelector('#eu-alerta_histeresis_mm').value`)), Number(previo.alerta_histeresis_mm), 'la histéresis actual viene de la base');
         const nuevo = Number(previo.umbral_bajo_mm) + 0.5;
+        const nuevaHist = Number(previo.alerta_histeresis_mm) === 1.2 ? 1.4 : 1.2;
         await p.escribir('#eu-umbral_bajo_mm', String(nuevo));
+        await p.escribir('#eu-alerta_histeresis_mm', String(nuevaHist).replace('.', ','));
         await p.enter();
         await p.esperar(`/Umbrales actualizados/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de guardado' });
         assert.equal(Number(env.sql(`select umbral_bajo_mm from public.clientes where id = ${DEMO}`)), nuevo, 'la base guardó el umbral');
+        assert.equal(Number(env.sql(`select alerta_histeresis_mm from public.clientes where id = ${DEMO}`)), nuevaHist, 'la base guardó la histéresis');
         // Valores inválidos: el panel avisa y no cambia nada
         await p.escribir('#eu-umbral_bajo_mm', '1');
         await p.enter();
         await p.esperar(`document.querySelector('#emp-umb-error').classList.contains('show')`, { que: 'error de validación' });
         assert.equal(Number(env.sql(`select umbral_bajo_mm from public.clientes where id = ${DEMO}`)), nuevo);
+        // Histéresis fuera de rango: el panel avisa de la histéresis y la base conserva el valor
+        await p.escribir('#eu-umbral_bajo_mm', String(nuevo));
+        await p.escribir('#eu-alerta_histeresis_mm', '3,5');
+        await p.enter();
+        await p.esperar(`/histéresis/i.test(document.querySelector('#emp-umb-error').textContent)`, { que: 'error de histéresis' });
+        assert.equal(Number(env.sql(`select alerta_histeresis_mm from public.clientes where id = ${DEMO}`)), nuevaHist, 'la histéresis inválida no llegó a la base');
 
         // Dispositivos: solo los de la empresa, sin acciones de escritura
         await irA(p, 'empresa-dispositivos');
@@ -58,7 +68,7 @@ export function registrar(env) {
       assert.ok(mias.some(r => /rpc\/alerta_configurar/.test(r.path)), 'los umbrales se guardan con alerta_configurar');
       assert.ok(mias.every(r => !(r.method === 'PATCH' && /\/clientes/.test(r.path))), 'ningún UPDATE directo sobre clientes');
     } finally {
-      env.sql(`update public.clientes set umbral_bajo_mm = ${previo.umbral_bajo_mm}, umbral_critico_mm = ${previo.umbral_critico_mm}, umbral_retiro_mm = ${previo.umbral_retiro_mm}, dias_sin_medir_alerta = ${previo.dias_sin_medir_alerta}, irregularidad_mm = ${previo.irregularidad_mm} where id = ${DEMO}`);
+      env.sql(`update public.clientes set umbral_bajo_mm = ${previo.umbral_bajo_mm}, umbral_critico_mm = ${previo.umbral_critico_mm}, umbral_retiro_mm = ${previo.umbral_retiro_mm}, dias_sin_medir_alerta = ${previo.dias_sin_medir_alerta}, irregularidad_mm = ${previo.irregularidad_mm}, alerta_histeresis_mm = ${previo.alerta_histeresis_mm} where id = ${DEMO}`);
     }
   });
 

@@ -110,12 +110,12 @@ export async function load() {
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
     fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas')).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
   ]);
+  pintarAviso(); // antes del retorno por error: el aviso no depende de que la lista cargue
   if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(6, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
   tipos = vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas]));
   porVeh = est.error ? new Map() : agruparPorVehiculo(est.rows);
   clientes = res.data || [];
-  pintarAviso();
   fillFiltros();
   $('alert-msg').textContent = al.truncated ? `Se muestran las primeras ${MAX_FILAS} alertas: la lista está incompleta.` : '';
   render();

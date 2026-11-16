@@ -4,6 +4,8 @@
 export const CAMPOS_UMBRAL = [
   { key: 'umbral_bajo_mm', lbl: 'Umbral bajo (mm)', ayuda: 'Por debajo: estado "bajo" (naranja)', mm: true },
   { key: 'umbral_critico_mm', lbl: 'Umbral crítico (mm)', ayuda: 'Por debajo: estado "crítico" (rojo)', mm: true },
+  // Histéresis: puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los umbrales en mm (mm: false, hist: true).
+  { key: 'alerta_histeresis_mm', lbl: 'Histéresis (mm)', ayuda: 'Margen sobre el umbral crítico: la alerta se da por resuelta al superar el crítico más este margen (0 a 3 mm)', mm: false, hist: true },
   { key: 'umbral_retiro_mm', lbl: 'Umbral de retiro (mm)', ayuda: 'Profundidad mínima para retirar el neumático', mm: true },
   { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para alertar', ayuda: 'Alerta "sin medir" pasado este plazo', mm: false },
   { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true }
@@ -19,6 +21,13 @@ export function aNumero(v) {
   return s === '' ? NaN : Number(s);
 }
 
+// Histéresis en mm: de 0 a 3 con un decimal (acepta coma). Es la regla que tenía la tarjeta de Alertas antes del PR 9c.
+export function validarHisteresis(raw) {
+  const s = String(raw ?? '').trim().replace(',', '.');
+  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: 'La histéresis va de 0 a 3 mm, con un decimal' };
+  return { ok: true, valor: Number(s) };
+}
+
 // raw: valores del formulario (string o number). Devuelve {ok:true, valores} | {ok:false, error, campo}.
 export function validarUmbrales(raw = {}) {
   const v = {};
@@ -27,6 +36,8 @@ export function validarUmbrales(raw = {}) {
     if (!Number.isFinite(n)) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser un número` };
     v[c.key] = n;
   }
+  const h = validarHisteresis(raw.alerta_histeresis_mm);
+  if (!h.ok) return { ok: false, campo: 'alerta_histeresis_mm', error: h.error };
   for (const c of CAMPOS_UMBRAL.filter(c => c.mm)) {
     const n = v[c.key];
     if (n <= 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser mayor que 0 y hasta ${MM_MAX}` };

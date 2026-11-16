@@ -107,9 +107,9 @@ test('mensajeCrearUsuarioEmpresa: 409 acceso_quitado remite a Reponer acceso', (
   assert.ok(mensajeCrearUsuarioEmpresa(500, { error: 'x' }).length > 0);
 });
 
-test('argsAlertaConfigurar: mapea los cinco umbrales a los parámetros de la RPC', () => {
-  const a = argsAlertaConfigurar('7', { umbral_bajo_mm: 4, umbral_critico_mm: 3, umbral_retiro_mm: 1.6, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
-  assert.deepEqual(a, { p_cliente_id: 7, p_umbral_bajo_mm: 4, p_umbral_critico_mm: 3, p_umbral_retiro_mm: 1.6, p_dias_sin_medir: 30, p_irregularidad_mm: 2 });
+test('argsAlertaConfigurar: mapea los umbrales y la histéresis a los parámetros de la RPC', () => {
+  const a = argsAlertaConfigurar('7', { umbral_bajo_mm: 4, umbral_critico_mm: 3, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 1.6, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
+  assert.deepEqual(a, { p_cliente_id: 7, p_umbral_bajo_mm: 4, p_umbral_critico_mm: 3, p_histeresis_mm: 0.5, p_umbral_retiro_mm: 1.6, p_dias_sin_medir: 30, p_irregularidad_mm: 2 });
 });
 
 test('mensajeErrorConfigurar', () => {
