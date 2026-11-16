@@ -23,6 +23,7 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
   if(rol === 'sucursal'){
     if(visible || esVisible(tablist)) fail('reca(sucursal): ve la pestaña Recauchutado o un tablist de una sola pestaña');
     var f0 = d.createElement('button'); f0.type = 'button'; f0.setAttribute('data-action', 'irA'); f0.setAttribute('data-args', '["recauchutado"]'); d.body.appendChild(f0); f0.click(); await sleep(500); f0.remove();
+    if(!$('#view-stock').classList.contains('active') || $('#view-recauchutado').classList.contains('active')) fail('reca(sucursal): irA(recauchutado) no redirigió a Stock');
     log.push('reca(sucursal): sin pestaña');
     $('.nav-item[data-view="inicio"]').click(); await sleep(300);
     return;
@@ -40,6 +41,7 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
   // Clic: una sola pestaña a Recauchutado y una de vuelta
   $('#view-stock [data-neu-tab="recauchutado"]').click(); await sleep(700);
   if(!$('#view-recauchutado').classList.contains('active')) fail('reca('+rol+'): el clic en la pestaña no abrió Recauchutado');
+  if(d.activeElement !== $('#view-recauchutado [data-neu-tab="recauchutado"]')) fail('reca('+rol+'): tras el clic el foco no quedó en la pestaña activa');
   $('#view-recauchutado [data-neu-tab="stock"]').click(); await sleep(700);
   if(!$('#view-stock').classList.contains('active')) fail('reca('+rol+'): el clic en Stock no volvió');
   await irA(); // Recauchutado queda abierto para lo que sigue

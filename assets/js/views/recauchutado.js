@@ -3,10 +3,11 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
-import { isClienteMode, currentClienteId, esAdminEmpresa, onLogout } from '../core/auth.js';
+import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
+import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   etiquetaEstado, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo, validarAceptacion,
@@ -161,7 +162,7 @@ registerActions({
 });
 
 // Cuelga del menú Neumáticos (pestaña Recauchutado): el ítem resaltado es `stock`.
-registerView('recauchutado', 'Recauchutado', loadRecauchutado, { menu: 'stock' });
+registerView('recauchutado', 'Recauchutado', loadRecauchutado, { menu: 'stock', vetoA: { vista: 'stock', cuando: () => !pestanasVisibles({ admin: esAdmin(), adminEmpresa: esAdminEmpresa() }).includes(PESTANA_RECAUCHUTADO) } });
 onLogout(() => { procesos = []; cubiertas = []; sucursales = []; modal = null; });
 
 export function init() { /* todo va por data-action */ }
