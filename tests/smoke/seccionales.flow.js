@@ -129,14 +129,24 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if ($('#view-sucursales .ficha-card-title').textContent === 'Sucursales') fail('sucursales: el título «Sucursales» está repetido en la tarjeta');
   $('#suc-nombre').value = '  '; $('#suc-form').requestSubmit(); await sleep(100);
   if ($('#suc-error').textContent.indexOf('nombre') === -1 || fx.rpcs.length) fail('sucursales: falta validación de nombre vacío');
-  $('#suc-nombre').value = 'Rivera'; $('#suc-form').requestSubmit(); await sleep(400);
+  // Doble envío: dos submit seguidos crean una sola sucursal (el segundo daría 23505 tras «Sucursal creada»)
+  $('#suc-nombre').value = 'Rivera'; $('#suc-form').requestSubmit(); $('#suc-form').requestSubmit(); await sleep(500);
+  if (fx.rpcs.filter(function(r){ return r.name === 'sucursal_crear'; }).length !== 1) fail('sucursales: dos envíos seguidos llamaron más de una vez a sucursal_crear');
+  if (toast().indexOf('Ya existe') !== -1) fail('sucursales: el segundo envío mostró el duplicado tras crear');
   if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_crear' && r.args.p_nombre === 'Rivera'; })) fail('sucursales: no llamó a sucursal_crear');
   if (filas() !== 3) fail('sucursales: la lista no creció (' + filas() + ')');
   if (all('#sec-select option').length !== 4) fail('sucursales: el selector de la barra no se actualizó (' + all('#sec-select option').length + ' opciones)');
   $('#suc-nombre').value = 'rivera'; $('#suc-form').requestSubmit(); await sleep(400);
   if (toast().indexOf('Ya existe una sucursal') === -1) fail('sucursales: sin mensaje de duplicado: ' + toast());
 
-  // Renombrar
+  // Renombrar: tres Enter seguidos en el nombre guardan una sola vez
+  var nRen0 = fx.rpcs.filter(function(r){ return r.name === 'sucursal_renombrar'; }).length;
+  $('#suc-n-1').value = 'Montevideo Centro';
+  for (var k = 0; k < 3; k++) $('#suc-n-1').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  await sleep(500);
+  if (fx.rpcs.filter(function(r){ return r.name === 'sucursal_renombrar'; }).length !== nRen0 + 1) fail('sucursales: tres Enter seguidos llamaron más de una vez a sucursal_renombrar');
+
+  // Renombrar con el botón
   $('#suc-n-1').value = 'Montevideo Centro'; $('#suc-lista tr[data-sucursal="1"] [data-action="sucursalRenombrar"]').click(); await sleep(400);
   if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_renombrar' && r.args.p_sucursal_id === 1 && r.args.p_nombre === 'Montevideo Centro'; })) fail('sucursales: renombrar incorrecto');
 

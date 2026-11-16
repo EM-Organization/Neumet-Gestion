@@ -77,19 +77,26 @@ async function recargar() {
 }
 
 // Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
+// Una sola a la vez: con Enter repetido cada envío lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»).
+// Un envío mientras hay otra en curso se descarta; al terminar la primera la vista se recarga con el estado real.
+let ocupado = false;
 async function rpc(nombre, args, okMsg) {
-  err('');
-  const { data, error } = await db.rpc(nombre, args);
-  if (error) {
-    const m = mensajeErrorGestion(error);
-    if (m.startsWith('No se pudo')) userError(error);
-    err(m); showToast(m, true);
-    await loadSucursales(); // deja el select en el valor real
-    return false;
-  }
-  if (okMsg) showToast(okMsg);
-  await recargar();
-  return data || true;
+  if (ocupado) return false;
+  ocupado = true;
+  try {
+    err('');
+    const { data, error } = await db.rpc(nombre, args);
+    if (error) {
+      const m = mensajeErrorGestion(error);
+      if (m.startsWith('No se pudo')) userError(error);
+      err(m); showToast(m, true);
+      await loadSucursales(); // deja el select en el valor real
+      return false;
+    }
+    if (okMsg) showToast(okMsg);
+    await recargar();
+    return data || true;
+  } finally { ocupado = false; }
 }
 
 const ACCIONES = {
