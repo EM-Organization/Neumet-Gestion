@@ -19,17 +19,23 @@ select test.eq('catálogo: sin INSERT ni DELETE de tabla para authenticated fuer
       and c.relname not in ('dispositivos', 'gastos')
       and (has_table_privilege('authenticated', c.oid, 'insert') or has_table_privilege('authenticated', c.oid, 'delete')
         or has_table_privilege('authenticated', c.oid, 'truncate'))), '');
-select test.eq('catálogo: ninguna columna con INSERT o UPDATE para authenticated salvo dispositivos, gastos y clientes(nombre, auth_user_id)',
+select test.eq('catálogo: ninguna columna con INSERT o UPDATE para authenticated salvo dispositivos, gastos y clientes(nombre)',
   (select coalesce(string_agg(c.relname || '.' || a.attname, ',' order by c.relname, a.attname), '')
      from pg_class c join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
     where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p', 'v', 'm', 'f')
       and c.relname not in ('dispositivos', 'gastos')
-      and not (c.relname = 'clientes' and a.attname in ('nombre', 'auth_user_id'))
+      and not (c.relname = 'clientes' and a.attname = 'nombre')
       and (has_column_privilege('authenticated', c.oid, a.attnum, 'update') or has_column_privilege('authenticated', c.oid, a.attnum, 'insert'))), '');
-select test.eq('catálogo: clientes solo otorga UPDATE de columna a nombre y auth_user_id',
+select test.eq('catálogo: clientes solo otorga UPDATE de columna a nombre',
   (select string_agg(a.attname, ',' order by a.attname) from pg_attribute a
     where a.attrelid = 'public.clientes'::regclass and a.attnum > 0 and not a.attisdropped
-      and has_column_privilege('authenticated', 'public.clientes'::regclass, a.attnum, 'update')), 'auth_user_id,nombre');
+      and has_column_privilege('authenticated', 'public.clientes'::regclass, a.attnum, 'update')), 'nombre');
+-- Una columna nueva de clientes debe otorgarse a propósito (la migración C2 otorgó la lista vigente en su momento):
+-- si este test falla, falta `grant select (columna)` en la migración que la creó. Única excepción: precio_mensual.
+select test.eq('clientes: todas las columnas salvo precio_mensual son legibles para authenticated',
+  (select coalesce(string_agg(a.attname, ','), '') from pg_attribute a
+    where a.attrelid = 'public.clientes'::regclass and a.attnum > 0 and not a.attisdropped and a.attname <> 'precio_mensual'
+      and not has_column_privilege('authenticated', a.attrelid, a.attnum, 'select')), '');
 select test.eq('catálogo: anon no escribe en ninguna relación de public',
   (select coalesce(string_agg(c.relname, ',' order by c.relname), '') from pg_class c
     where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p', 'v', 'm', 'f')
@@ -193,8 +199,11 @@ select test.eq('admin: asignar_dispositivo_a_cliente sigue ejecutable',
   (public.asignar_dispositivo_a_cliente('96:00:00:00:00:02', 1, 'D96 nuevo') is not null), true);
 select test.eq('admin: cliente_eliminar_suave sigue ejecutable (baja lógica)',
   (public.cliente_eliminar_suave(2) is not null), true);
-update public.clientes set nombre = 'Cliente B 96', auth_user_id = auth_user_id where id = 2;
+update public.clientes set nombre = 'Cliente B 96' where id = 2;
 select test.eq('admin: el nombre quedó guardado', (select nombre from public.clientes where id = 2), 'Cliente B 96');
+-- auth_user_id no se reasigna por la API (decisión del dueño, docs/17 §4.1): sin grant de columna.
+select test.denied('admin: no reasigna clientes.auth_user_id', $$update public.clientes set auth_user_id = test.u_sinperfil() where id = 2$$);
+select test.eq('admin: el cliente 2 sigue sin cuenta reasignada', (select count(*) from public.perfiles where user_id = test.u_sinperfil()), 0::bigint);
 reset role;
 
 -- ---------------------------------------------------------------------------------------------
@@ -249,6 +258,13 @@ select test.denied('global: no borra clientes', $$delete from public.clientes wh
 reset role;
 -- (el UPDATE de nombre del global afecta 0 filas: sin política UPDATE para la empresa)
 select test.eq('el nombre del cliente 1 no cambió', (select nombre from public.clientes where id = 1), 'Cliente A');
+select test.become('authenticated', test.u_cli_a());
+select test.denied('global: no reasigna auth_user_id', $$update public.clientes set auth_user_id = test.u_sinperfil() where id = 1$$);
+reset role;
+select test.become('authenticated', test.u_e6());
+select test.denied('sucursal: no reasigna auth_user_id', $$update public.clientes set auth_user_id = test.u_sinperfil() where id = 1$$);
+reset role;
+select test.eq('auth_user_id del cliente 1 no cambió', (select auth_user_id from public.clientes where id = 1), test.u_cli_a());
 select test.become('authenticated', test.u_e6());
 select test.denied('sucursal: no lee precio_mensual', $$select precio_mensual from public.clientes$$);
 select test.denied('sucursal: no escribe precio_mensual', $$update public.clientes set precio_mensual = 1 where id = 1$$);
