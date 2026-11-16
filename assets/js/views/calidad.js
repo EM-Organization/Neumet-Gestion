@@ -87,6 +87,7 @@ function abrirInvalidar(id) {
   $('modal-calidad').classList.add('show');
 }
 
+// Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 async function confirmarInvalidar() {
   if (pendiente === null || ocupado || esAdmin()) return;
   const v = validarMotivo($('cal-motivo').value);

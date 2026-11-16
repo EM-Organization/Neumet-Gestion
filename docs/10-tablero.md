@@ -69,6 +69,7 @@
 | Destino «reparación» del neumático retirado | F1 y F5 cubren «almacenar» y el flujo de recauchutado; **[confirmar]** que «reparación» devuelve la cubierta al stock como «Reparado» |
 
 ### Sugerencias del revisor (sin resolver)
+- PR 91 (pendiente, fuera de su alcance): guardas de rol de `seccionales-admin.js` sin test; prueba de la carga de 50 000 cubiertas para el equipo Neumet; test del cuerpo de la respuesta 403 de `crear-usuario-seccional`; aserción del estado vacío de Recauchutado para `admin` (el fixture del smoke trae procesos).
 - Límite de altas de `crear-usuario-seccional` (20 por hora por llamante) es en memoria de la instancia; un contador durable por llamante, que cuente también los 409, necesita una tabla (migración futura).
 - `x-forwarded-for` es falseable en el límite de intentos de login.
 - Las RPC no comprueban `clientes.deleted_at`.

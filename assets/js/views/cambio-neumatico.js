@@ -127,6 +127,7 @@ ACTIONS['neumatico-cambiar'] = async function (vehiculoId, posicion) { if (esAdm
 ACTIONS['neumatico-cambiar-resumen'] = function () { if (ctx) actualizar(); };
 ACTIONS['neumatico-cambiar-cerrar'] = function () { $('modal-cambio').classList.remove('show'); ctx = null; };
 
+// Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   if (!ctx || ocupado || esAdmin()) return;
   const r = validarCambio(estado());

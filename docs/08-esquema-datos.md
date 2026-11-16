@@ -176,7 +176,7 @@ Un perfil por usuario (`perfiles.user_id`). Helpers `SECURITY DEFINER`: `is_admi
 
 | Rol | Representación | Datos y operaciones |
 |---|---|---|
-| `admin` | `rol = 'admin'`, `cliente_id` nulo | Lectura y escritura entre todos los clientes. Exclusivas hoy: crear usuarios (Edge `crear-usuario-seccional`), editar umbrales por UPDATE directo sobre `clientes`, cuentas de API, escritura sobre dispositivos, edición de Balance y de `precio_mensual`, lectura de `ingesta_log` y `audit_log`. No son exclusivas del router: la ficha de cliente, Balance y Clientes no usan `soloAdmin` (solo Dispositivos); las protege el menú y la RLS |
+| `admin` | `rol = 'admin'`, `cliente_id` nulo | Lectura y escritura entre todos los clientes. Exclusivas hoy: editar umbrales por UPDATE directo sobre `clientes`, cuentas de API, escritura sobre dispositivos, edición de Balance y de `precio_mensual`, lectura de `ingesta_log` y `audit_log`. No son exclusivas del router: la ficha de cliente, Balance y Clientes no usan `soloAdmin` (solo Dispositivos); las protege el menú y la RLS |
 | Cliente global | `rol = 'cliente'`, `sucursal_id` nulo | Todo su cliente: sucursales, stock, precios y costos, recauchutado, montaje y cambio de neumático, nivel crítico de alertas (`alerta_configurar`). Lee también `precio_mensual` de su cliente (ver nota) |
 | Cliente de sucursal | `rol = 'cliente'` con `sucursal_id` | Solo su sucursal; sin stock, precios ni costos de neumáticos (`precio_mensual` sí lo lee, ver nota); umbrales solo lectura |
 | `api` | `rol = 'api'` | Sin política ni acceso por PostgREST; solo vía `api-proveedor` con service role |
@@ -317,7 +317,7 @@ Políticas reescritas (solo `SELECT` del cliente): `vehiculos`, `dispositivos`, 
 ## B.2 Panel
 - **Cliente global con sucursales**: selector "Todas las sucursales / …" en la barra superior (`core/seccional.js`). Filtra Inicio, Flota, Alertas, Reportes, Vehículos, Dispositivos, Salud y Mediciones por `vehiculos.sucursal_id` / `dispositivos.sucursal_id`. Inicio, Reportes, Vehículos, Dispositivos y Mediciones filtran en el servidor; Flota, Alertas y Salud filtran en el navegador (las vistas v_* no traen la sucursal) y Flota recalcula los KPI desde las filas filtradas.
 - **Perfil de sucursal**: no ve el selector (la RLS ya limita todo); el rol se muestra como "Sucursal".
-- **Admin** (Ficha de cliente > "Sucursales y usuarios"): alta/renombrar/eliminar sucursales, asignar vehículos y dispositivos, y crear usuarios globales o de sucursal con la función `crear-usuario-seccional` (invitación por email o contraseña de 12+ caracteres). No se vincula un usuario Auth ya existente: la API de Auth no permite buscarlo por email de forma fiable; se invita a uno nuevo.
+- **Administrador de empresa** (rol `cliente` sin sucursal; vistas Empresa y Sucursales): crea usuarios de sucursal de su empresa con la función `crear-usuario-seccional` (invitación por email o contraseña de 12+ caracteres); el equipo Neumet (`admin`) recibe 403 en esa función y ve «Sucursales y usuarios» de la Ficha de cliente solo en lectura (salvo asignar un dispositivo a una sucursal). No se vincula un usuario Auth ya existente: la API de Auth no permite buscarlo por email de forma fiable; se invita a uno nuevo.
 - La detección de rol usa ahora `perfiles` (un usuario de sucursal no figura en `clientes.auth_user_id`) con el vínculo `clientes.auth_user_id` como respaldo.
 
 ## B.3 Datos de demo

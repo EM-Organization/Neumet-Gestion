@@ -127,6 +127,7 @@ function cerrarMontar() {
   mont = null;
 }
 
+// Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 async function confirmarMontar() {
   if (!mont || ocupado || esAdmin()) return;
   const r = validarMontaje(estadoMontar());
