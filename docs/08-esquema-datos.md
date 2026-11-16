@@ -910,7 +910,7 @@ Mes calendario en UTC (no se toma la zona de Chile: es una decisión de presenta
 
 ## O.4 Funciones
 
-- `uso_cerrar_mes(p_mes date default null) returns integer` (`SECURITY DEFINER`, `search_path` vacío): `p_mes` nulo = mes anterior; rechaza el mes en curso o futuro (`22023`); bloqueo consultivo (advisory lock) para no solaparse; `insert ... on conflict do update` solo de las columnas recalculables, por lo que es **idempotente y reejecutable**. `revoke` a `public`, `anon` y `authenticated`; `execute` solo a `service_role` (y el rol dueño, que es el que usa pg_cron). **No se programa en la migración** (runbook §3.4).
+- `uso_cerrar_mes(p_mes date default null) returns integer` (`SECURITY DEFINER`, `search_path` vacío): `p_mes` nulo = mes anterior; rechaza el mes en curso o futuro (`22023`); bloqueo consultivo (advisory lock) para no solaparse; `insert ... on conflict do update` solo de las columnas recalculables, por lo que es **idempotente y reejecutable**. `revoke` a `public`, `anon` y `authenticated`; `execute` solo a `service_role` (y el rol dueño, que es el que usa pg_cron). **No se programa en la migración** (runbook §3.2.1).
 - `uso_clientes_listar(p_desde, p_hasta, p_cliente_id) returns table(...)` (`SECURITY DEFINER`): `is_admin()` o `42501`; con nombre del cliente, ordenado por mes descendente. `execute` solo a `authenticated` (el `42501` interno cubre a quien no es `admin`).
 
 ## O.5 Pruebas

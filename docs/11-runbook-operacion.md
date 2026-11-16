@@ -50,7 +50,7 @@ Las migraciones están en `supabase/migrations/` y deben ser idempotentes (el jo
 Paso operativo **posterior** a aplicar la migración; no va en ella. Estado al 2026-11-16: `pg_cron` está disponible en el proyecto pero **no instalado** (`list_extensions`). Habilitarlo es acción del dueño o del director desde el dashboard (Database > Extensions), no una migración.
 1. Habilitar `pg_cron` y comprobar con `list_extensions` que `installed_version` no es nulo.
 2. Programar (SQL editor, una sola vez; día 1 de cada mes a las 03:00 UTC, cierra el mes anterior): `select cron.schedule('uso-cerrar-mes', '0 3 1 * *', $$select public.uso_cerrar_mes()$$);`
-3. Cierre inicial de meses pasados con datos (idempotente, reejecutable): `select public.uso_cerrar_mes('2026-10-01');` por cada mes. Los vehículos, dispositivos y usuarios de esos cierres reflejan el estado del día en que se corren; los logins previos a 2026-11-16 dan 0.
+3. Cierre inicial de meses pasados con datos (idempotente, reejecutable): `select public.uso_cerrar_mes('2026-10-01');` por cada mes. Para rehacer una foto equivocada (vehículos, dispositivos, usuarios, último ingreso) un re-cierre no basta: borrar antes la fila del mes como dueño (`delete from public.uso_cliente_mensual where mes = '2026-10-01';`) y volver a cerrar. Los vehículos, dispositivos y usuarios de esos cierres reflejan el estado del día en que se corren; los logins previos a 2026-11-16 dan 0.
 4. Verificar: `select * from cron.job where jobname = 'uso-cerrar-mes'` y, tras la primera ejecución, `cron.job_run_details`.
 Si `pg_cron` no se habilita, el cierre se invoca con una Edge Function programada que llame a la RPC con la clave de servicio (docs/17 §8).
 

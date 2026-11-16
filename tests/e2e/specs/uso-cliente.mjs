@@ -22,9 +22,11 @@ const denegado = (r, msg) => assert.ok([401, 403].includes(r.status) && r.datos 
 export function registrar(env) {
   test('Uso mensual (API): solo el equipo Neumet lee; nadie cierra por la API; la tabla no es accesible', async () => {
     const demo = Number(env.sql(`select ${DEMO}`));
+    // El cierre solo incluye clientes ya existentes en el mes: se adelanta created_at y se restaura al terminar.
+    const creado = env.sql(`select created_at from public.clientes where id = ${demo}`).trim();
     try {
       env.sql(`insert into public.ingesta_log (recibido_at, endpoint, status, cliente_id) values
-        ('2026-03-03 12:00+00', 'guardar-montaje-mm', 'ok', ${demo}),
+        ('2026-03-03 12:00+00', 'guardar_montaje_mm', 'ok', ${demo}),
         ('2026-03-04 12:00+00', 'login', 'ok', ${demo})`);
       env.sql(`update public.clientes set created_at = '2026-01-01+00' where id = ${demo}`);
       assert.ok(Number(env.sql(`select public.uso_cerrar_mes('2026-03-15')`)) >= 1, 'cierre como dueño de la base (pg_cron)');
@@ -34,7 +36,7 @@ export function registrar(env) {
       assert.equal(r.datos.length, 1);
       assert.equal(r.datos[0].api_llamadas, 1, 'el login no cuenta como llamada');
       assert.equal(r.datos[0].logins, 1);
-      assert.deepEqual(r.datos[0].api_por_endpoint, { 'guardar-montaje-mm': { ok: 1 } });
+      assert.deepEqual(r.datos[0].api_por_endpoint, { guardar_montaje_mm: { ok: 1 } });
 
       for (const rol of [...ROLES, null]) {
         denegado(await rpc(env, rol, 'uso_clientes_listar'), `listar como ${rol}`);
@@ -48,6 +50,7 @@ export function registrar(env) {
         assert.ok([401, 403].includes(w.status), `escribir la tabla como ${rol}: ${w.status}`);
       }
     } finally {
+      env.sql(`update public.clientes set created_at = '${creado}' where id = ${demo}`);
       env.sql(`delete from public.uso_cliente_mensual where mes = '2026-03-01'`);
       env.sql(`delete from public.ingesta_log where recibido_at >= '2026-03-01+00' and recibido_at < '2026-04-01+00'`);
     }

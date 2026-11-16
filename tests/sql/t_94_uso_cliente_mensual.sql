@@ -19,16 +19,16 @@ update public.clientes set created_at = '2026-01-01+00' where id in (1, 2);
 insert into public.dispositivos (id, mac_address, nombre, cliente_id, activo) overriding system value values
   (941, '94:00:00:00:00:01', 'D941', 1, true), (942, '94:00:00:00:00:02', 'D942 sin medir', 1, true);
 insert into public.ingesta_log (recibido_at, endpoint, status, cliente_id) values
-  ('2026-08-03 12:00+00', 'guardar-montaje-mm', 'ok', 1),
-  ('2026-08-04 12:00+00', 'guardar-montaje-mm', 'ok', 1),
-  ('2026-08-05 12:00+00', 'guardar-montaje-mm', 'rechazado', 1),
+  ('2026-08-03 12:00+00', 'guardar_montaje_mm', 'ok', 1),
+  ('2026-08-04 12:00+00', 'guardar_montaje_mm', 'ok', 1),
+  ('2026-08-05 12:00+00', 'guardar_montaje_mm', 'rechazado', 1),
   ('2026-08-06 12:00+00', 'login', 'ok', 1),
   ('2026-08-07 12:00+00', 'login', 'ok', 1),
-  ('2026-08-31 23:59:59+00', 'neumaticos', 'ok', 1),
-  ('2026-09-01 00:00:00+00', 'neumaticos', 'ok', 1),     -- fuera del mes
-  ('2026-07-31 23:59:59+00', 'neumaticos', 'ok', 1),     -- fuera del mes
-  ('2026-08-10 12:00+00', 'neumaticos', 'error', 2),
-  ('2026-08-11 12:00+00', 'neumaticos', 'ok', null);     -- sin cliente: no se cuenta
+  ('2026-08-31 23:59:59+00', 'obtener_montaje', 'ok', 1),
+  ('2026-09-01 00:00:00+00', 'obtener_montaje', 'ok', 1),     -- fuera del mes
+  ('2026-07-31 23:59:59+00', 'obtener_montaje', 'ok', 1),     -- fuera del mes
+  ('2026-08-10 12:00+00', 'obtener_montaje', 'error', 2),
+  ('2026-08-11 12:00+00', 'obtener_montaje', 'ok', null);     -- sin cliente: no se cuenta
 insert into public.mediciones (vehiculo_id, cliente_id, device_id, posicion, mm1, mm2, mm3, promedio, created_at) values
   (1, 1, '94:00:00:00:00:01', 1, 8, 8, 8, 8, '2026-08-15 10:00+00'),
   (1, 1, '94:00:00:00:00:01', 2, 8, 8, 8, 8, '2026-08-16 10:00+00'),
@@ -54,7 +54,7 @@ reset role;
 select test.eq('A: llamadas a la API sin login ni otros meses', (select api_llamadas from public.uso_cliente_mensual where cliente_id = 1 and mes = '2026-08-01'), 4);
 select test.eq('A: por endpoint y estado',
   (select api_por_endpoint from public.uso_cliente_mensual where cliente_id = 1 and mes = '2026-08-01'),
-  '{"neumaticos": {"ok": 1}, "guardar-montaje-mm": {"ok": 2, "rechazado": 1}}'::jsonb);
+  '{"obtener_montaje": {"ok": 1}, "guardar_montaje_mm": {"ok": 2, "rechazado": 1}}'::jsonb);
 select test.eq('A: el login no está en las llamadas', (select api_por_endpoint ? 'login' from public.uso_cliente_mensual where cliente_id = 1 and mes = '2026-08-01'), false);
 select test.eq('A: logins aparte', (select logins from public.uso_cliente_mensual where cliente_id = 1 and mes = '2026-08-01'), 2);
 select test.eq('A: mediciones del mes', (select mediciones from public.uso_cliente_mensual where cliente_id = 1 and mes = '2026-08-01'),
@@ -74,7 +74,7 @@ select public.uso_cerrar_mes('2026-08-01');
 reset role;
 select test.eq('B: reejecutar deja las mismas filas',
   (select count(*) from (select * from public.uso_cliente_mensual where mes = '2026-08-01' except select * from _antes) x), 0::bigint);
-insert into public.ingesta_log (recibido_at, endpoint, status, cliente_id) values ('2026-08-20 12:00+00', 'neumaticos', 'ok', 1);
+insert into public.ingesta_log (recibido_at, endpoint, status, cliente_id) values ('2026-08-20 12:00+00', 'obtener_montaje', 'ok', 1);
 update public.vehiculos set activo = false where cliente_id = 1;
 select test.become('service_role', null);
 select public.uso_cerrar_mes('2026-08-01');
@@ -88,9 +88,13 @@ select test.eq('B: sigue habiendo una sola fila por cliente y mes', (select coun
 
 -- mes en curso y futuro: rechazados; el valor por omisión es el mes anterior
 select test.become('service_role', null);
-select test.denied('C: mes en curso', $$select public.uso_cerrar_mes(current_date)$$, '22023');
-select test.denied('C: mes futuro', $$select public.uso_cerrar_mes((current_date + interval '40 days')::date)$$, '22023');
-select test.eq('C: sin parámetro cierra el mes anterior', (select public.uso_cerrar_mes()) >= 0, true);
+select test.denied('C: mes en curso', $$select public.uso_cerrar_mes((now() at time zone 'UTC')::date)$$, '22023');
+select test.denied('C: mes futuro', $$select public.uso_cerrar_mes(((now() at time zone 'UTC')::date + interval '40 days')::date)$$, '22023');
+select public.uso_cerrar_mes();
+reset role;
+select test.eq('C: sin parámetro cierra el mes anterior (UTC)',
+  (select count(*) from public.uso_cliente_mensual where cliente_id = 1
+     and mes = (date_trunc('month', now() at time zone 'UTC') - interval '1 month')::date), 1::bigint);
 
 -- ---- quién puede cerrar ----------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_admin());
