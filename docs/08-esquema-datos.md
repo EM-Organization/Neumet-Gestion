@@ -934,7 +934,7 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 ## P.2 Funciones
 
 - `cliente_precios_mensuales()` devuelve `(cliente_id, precio_mensual)` de todos los clientes. Solo `is_admin()`; el resto recibe `42501`.
-- `cliente_precio_mensual_fijar(p_cliente_id, p_precio)` fija el precio y devuelve el valor guardado (`numeric(12,2)`, redondeado). Solo `is_admin()`. Errores: `22023` si el precio es nulo, negativo o igual o mayor a 10^10; `P0002` si el cliente no existe.
+- `cliente_precio_mensual_fijar(p_cliente_id, p_precio)` fija el precio y devuelve el valor guardado (`numeric(12,2)`, redondeado). Solo `is_admin()`. Errores: `22023` si el precio es nulo, negativo o, una vez redondeado a 2 decimales, igual o mayor a 10^10; `P0002` si el cliente no existe.
 - Ambas son `SECURITY DEFINER` con `search_path` vacío, sin `execute` para `public` ni `anon`. El `UPDATE` dispara `trg_audit_clientes`, así que cada cambio queda en `audit_log` con el actor.
 
 ## P.3 Pruebas

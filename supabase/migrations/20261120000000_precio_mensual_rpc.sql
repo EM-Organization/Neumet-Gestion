@@ -46,7 +46,8 @@ begin
   if not (select public.is_admin()) then
     raise exception 'no autorizado' using errcode = '42501';
   end if;
-  if p_precio is null or p_precio < 0 or p_precio >= 10000000000 then
+  -- Se valida el valor ya redondeado: 9999999999.999 pasaría `< 1e10` y desbordaría numeric(12,2) (22003) al guardarse.
+  if p_precio is null or p_precio < 0 or round(p_precio, 2) >= 10000000000 then
     raise exception 'precio inválido' using errcode = '22023';
   end if;
   update public.clientes set precio_mensual = p_precio

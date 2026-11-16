@@ -47,6 +47,9 @@ select test.eq('admin: el cambio queda en la auditoría con el actor',
 select test.denied('admin: precio negativo', $$select public.cliente_precio_mensual_fijar(1, -1)$$, '22023');
 select test.denied('admin: precio nulo', $$select public.cliente_precio_mensual_fijar(1, null)$$, '22023');
 select test.denied('admin: precio fuera de rango', $$select public.cliente_precio_mensual_fijar(1, 10000000000)$$, '22023');
+select test.denied('admin: redondea a 10^10 (9999999999.999) y es fuera de rango, no desborda', $$select public.cliente_precio_mensual_fijar(1, 9999999999.999)$$, '22023');
+select test.eq('admin: el máximo válido tras redondear', (select public.cliente_precio_mensual_fijar(2, 9999999999.994)), 9999999999.99::numeric);
+select test.eq('admin: restaurar cliente 2', (select public.cliente_precio_mensual_fijar(2, 0)), 0::numeric);
 select test.denied('admin: cliente inexistente', $$select public.cliente_precio_mensual_fijar(999999, 10)$$, 'P0002');
 select test.eq('admin: un precio inválido no cambió nada', (select precio_mensual from public.clientes where id = 1), 200.13::numeric);
 
