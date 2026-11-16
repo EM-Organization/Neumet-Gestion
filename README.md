@@ -62,7 +62,7 @@ Las operaciones de escritura del cliente (cambio de neumático, rotación, odóm
 
 ## 4. Mapa de funcionalidades del panel
 
-Menú del cliente: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado), Alertas, Reportes y, con perfil global, Sucursales dentro de Empresa. El administrador añade Dispositivos y la sección Administración (Estado de la flota, Mediciones, Clientes, Balance). Flujos y destinos de cada click en [`docs/12-mapa-navegacion.md`](docs/12-mapa-navegacion.md).
+Menú del cliente: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado; el usuario de sucursal solo ve Stock), Alertas, Reportes y, con perfil global, Sucursales dentro de Empresa. El administrador añade Dispositivos y la sección Administración (Estado de la flota, Mediciones, Clientes, Balance). Flujos y destinos de cada click en [`docs/12-mapa-navegacion.md`](docs/12-mapa-navegacion.md).
 
 | Pantalla | Qué ofrece |
 |---|---|

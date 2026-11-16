@@ -8,7 +8,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 |---|---|
 | Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos críticos |
 | El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Inicio y en Vehículos lo reemplaza el buscador propio de la pantalla |
-| Stock era una pestaña escondida en Vehículos | Entrada propia del menú: **Stock**. El perfil global agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
+| Stock era una pestaña escondida en Vehículos | Pestaña **Stock** del ítem **Neumáticos** del menú. El perfil global agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
 | «Estado de la flota» duplicaba a Inicio para el cliente | El cliente no la ve: su equivalente es **Vehículos**, ordenado por urgencia con el estado de cada uno. El administrador la conserva en Administración como vista entre clientes |
 | Clientes y Ficha de cliente eran dos entradas | Una sola entrada, **Clientes**. El nombre de un cliente abre su ficha, con «Volver a Clientes» y migas «Clientes › Nombre» |
 | Vehículos mencionados sin enlace al detalle | Todo vehículo de Inicio, Alertas, Estado de la flota y Reportes abre el detalle |
@@ -30,12 +30,15 @@ flowchart TD
   M[Menú lateral] --> I
   M --> V[Vehículos]
   M --> A[Alertas]
-  M --> S[Stock]
+  M --> N[Neumáticos]
+  N --> S[Pestaña Stock]
+  N -->|solo perfil global| RC[Pestaña Recauchutado]
   S -->|perfil global: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
   M -->|Empresa: solo perfil global| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
-  SU -->|agregar vehículo, mover con confirmación| SU
+  SU -->|mover vehículo con confirmación| SU
+  V -->|solo perfil global: Agregar vehículo| VA[Diálogo Agregar vehículo]
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   B -->|quema de una cubierta en stock| S
   I -->|buscador de Inicio| VD
@@ -70,7 +73,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Pantalla | Elemento | Destino | Menú resaltado |
 |---|---|---|---|
 | Barra superior (todas menos Inicio y Vehículos) | Buscador: Enter con una coincidencia, o elegir un resultado | Detalle de vehículo | Vehículos |
-| Barra superior e Inicio | Buscador con la quema de una cubierta que está en stock (resultado «Quema S-001 · En stock · …») | Stock filtrado por esa quema | Stock |
+| Barra superior e Inicio | Buscador con la quema de una cubierta que está en stock (resultado «Quema S-001 · En stock · …») | Stock filtrado por esa quema | Neumáticos (pestaña Stock) |
 | Cambio de neumático | «Cubierta del stock» (opción por defecto si hay) o «Lote del stock»; destino «Almacenar» con la sucursal donde queda | Detalle del vehículo (se refresca) | Vehículos |
 | Inicio | Buscador | Detalle (una coincidencia) o lista de resultados | Inicio → Vehículos |
 | Inicio | «Ver coche N» de «Requieren atención» | Detalle de vehículo (rueda señalada seleccionada) | Vehículos |
@@ -79,6 +82,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo | Vehículos |
 | Alertas | «Ver vehículo» | Detalle de vehículo (rueda de la alerta seleccionada) | Vehículos |
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
+| Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta; al guardar, la lista se recarga | Vehículos |
 | Reportes | «Ver vehículo» (con un vehículo elegido) | Detalle de vehículo | Vehículos |
 | Detalle | «Volver a …» | Pantalla desde la que se abrió | La de esa pantalla |
 | Detalle | Miga «Vehículos» | Vehículos | Vehículos |
@@ -91,8 +95,8 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Vehículos | Encontrar un camión | Buscar por matrícula o número de coche, abrir el detalle |
 | Detalle de vehículo | Ver el estado de cada rueda | Elegir una rueda, ver mediciones y gráfico, cambiar neumático, rotar, registrar odómetro |
 | Alertas | Lista de problemas activos | Filtrar por severidad y tipo, abrir el vehículo |
-| Stock (perfil global) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
-| Stock (perfil de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el perfil global |
+| Neumáticos › Stock (perfil global) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
+| Neumáticos › Stock (perfil de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el perfil global. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
 | Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 
@@ -107,7 +111,9 @@ flowchart TD
   M[Menú lateral] --> I[Inicio]
   M --> V[Vehículos]
   M --> A[Alertas]
-  M --> S[Stock]
+  M --> N[Neumáticos]
+  N --> S[Pestaña Stock]
+  N -->|solo lectura| RC[Pestaña Recauchutado]
   M --> R[Reportes]
   M --> D[Dispositivos]
   M --> AD{Administración}
@@ -135,7 +141,8 @@ flowchart TD
 | Pantalla | Qué hace el administrador además | Menú resaltado |
 |---|---|---|
 | Vehículos | Filtro por cliente; ver detalle y ciclo de vida, ambos en solo lectura (sin alta, edición, baja ni acciones sobre neumáticos o costos) | Vehículos |
-| Stock | Filtro por cliente; cubiertas y lotes anteriores en solo lectura (sin alta ni edición) | Stock |
+| Neumáticos › Stock | Filtro por cliente; cubiertas y lotes anteriores en solo lectura (sin alta ni edición) | Neumáticos |
+| Neumáticos › Recauchutado | Procesos de recauchutado en solo lectura (sin acciones) | Neumáticos |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
 | Ficha de cliente | Editar umbrales; sucursales y usuarios en solo lectura (crearlos es del administrador de empresa; Neumet solo asigna dispositivos a una sucursal); crear cuentas de API | Clientes |
@@ -173,8 +180,9 @@ La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada
 - Inicio añade `v_salud_dispositivos`, la cuenta de vehículos activos y la función `ultimas_mediciones`.
 - Dispositivos (solo administración) usa `v_salud_dispositivos`.
 - El buscador usa su propio catálogo: tabla `vehiculos` (`id`, `nombre`, `patente`, `numero`, `activo`, `cliente_id`, `sucursal_id`), paginada. No depende de `v_estado_neumaticos`.
+- Vehículos escribe con `vehiculo_crear` (diálogo «Agregar vehículo», solo administrador de empresa).
 - Detalle de vehículo usa `v_estado_neumaticos`, `v_ultima_medicion`, `mediciones` y `eventos_neumatico`.
-- Sucursales usa las tablas `sucursales` y `vehiculos` (lectura, filtradas por cliente) y escribe solo con `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar`, `vehiculo_crear` y `vehiculo_mover_sucursal`. Mover un vehículo solo cambia `vehiculos.sucursal_id`: mediciones, neumáticos y eventos siguen asociados al vehículo y el movimiento queda en `audit_log` (acción `MOVER_SUCURSAL`).
+- Sucursales usa las tablas `sucursales` y `vehiculos` (lectura, filtradas por cliente) y escribe solo con `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar` y `vehiculo_mover_sucursal`. Mover un vehículo solo cambia `vehiculos.sucursal_id`: mediciones, neumáticos y eventos siguen asociados al vehículo y el movimiento queda en `audit_log` (acción `MOVER_SUCURSAL`).
 - Todas las escrituras del cliente pasan por operaciones acotadas (`neumatico_cambiar`, `neumatico_rotar`, `vehiculo_registrar_odometro` y las de sucursales); el cliente no escribe tablas directamente.
 
 ## 6. Reglas de navegación

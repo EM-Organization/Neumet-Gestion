@@ -130,7 +130,7 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
   de carga o al perder la red (`setStatus(false)` / evento `offline`). Nunca «Conectando…».
 - **Copy**: si un texto no ayuda a decidir o actuar, se elimina. Títulos cortos, sin subtítulos de relleno; los vacíos dicen
   qué pasa y, si existe, ofrecen la acción concreta.
-- **Menú del cliente**: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado), Alertas, Reportes. Dispositivos es solo de administración (sin ítem para el cliente y rechazada por el router). Se quitan «Mi panel» (duplicaba Inicio),
+- **Menú del cliente**: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado; el usuario de sucursal solo ve Stock), Alertas, Reportes. Dispositivos es solo de administración (sin ítem para el cliente y rechazada por el router). Se quitan «Mi panel» (duplicaba Inicio),
   «Mi resumen» (la ficha es de administración), «Mediciones» (el detalle por vehículo y el export viven en Vehículos y Reportes)
   y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
   Clientes (la ficha se abre desde la lista) y Balance bajo «Administración». Mapa completo: `docs/12-mapa-navegacion.md`.
