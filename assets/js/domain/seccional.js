@@ -50,9 +50,9 @@ export function mostrarSelector({ esSeccional, sucursales }) {
 export function mensajeErrorSeccional(err) {
   const code = err && err.code;
   if (code === '23505') return 'Ya existe una sucursal con ese nombre en este cliente';
-  if (code === '23503') return 'No se puede: la sucursal tiene vehículos, dispositivos o usuarios asociados (reasígnalos antes)';
+  if (code === '23503') return 'No se puede: la sucursal tiene vehículos, dispositivos o usuarios asociados. Reasignarlos antes';
   if (code === '23514') return 'Nombre de sucursal inválido (1 a 100 caracteres)';
-  if (code === '42501') return 'No tienes permiso para gestionar sucursales';
+  if (code === '42501') return 'Sin permiso para gestionar sucursales';
   return 'No se pudo completar la operación';
 }
 
@@ -66,7 +66,7 @@ export function validarNombreSeccional(nombre) {
 // Mensaje de la función crear-usuario-seccional.
 export function mensajeErrorCrearUsuario(status, serverMsg) {
   if (status === 409) return 'Ya existe un usuario con ese email';
-  if (status === 401 || status === 403) return 'No tienes permiso para crear usuarios';
+  if (status === 401 || status === 403) return 'Sin permiso para crear usuarios';
   if (status === 404) return 'El cliente o la sucursal ya no existe';
   if (status === 400 && serverMsg) return String(serverMsg);
   return 'No se pudo crear el usuario';

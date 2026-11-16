@@ -1,13 +1,16 @@
 // Umbrales por cliente (columnas de `clientes`) y resumen de flota. Puro, sin DOM ni supabase.
 // En la BD existe el check umbral_retiro_mm < umbral_critico_mm < umbral_bajo_mm; aquí se valida igual para avisar antes
 // de enviar, y mensajeErrorUmbrales traduce el error que igualmente devuelva la BD. Tests: tests/unit/umbrales.test.mjs
+// Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
+// Los textos hablan de «bajo» y «crítico» como nombres de estado, sin el color (el color no es el mensaje, docs/14).
 export const CAMPOS_UMBRAL = [
-  { key: 'umbral_bajo_mm', lbl: 'Umbral bajo (mm)', ayuda: 'Por debajo: estado "bajo" (naranja)', mm: true },
-  { key: 'umbral_critico_mm', lbl: 'Umbral crítico (mm)', ayuda: 'Por debajo: estado "crítico" (rojo)', mm: true },
-  // Histéresis: puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los umbrales en mm (mm: false, hist: true).
-  { key: 'alerta_histeresis_mm', lbl: 'Histéresis (mm)', ayuda: 'Margen sobre el crítico para dar la alerta por resuelta (0 a 3 mm)', mm: false, hist: true },
+  { key: 'umbral_bajo_mm', lbl: 'Umbral bajo (mm)', ayuda: 'Por debajo: estado «bajo»', mm: true },
+  { key: 'umbral_critico_mm', lbl: 'Umbral crítico (mm)', ayuda: 'Por debajo: estado «crítico»', mm: true },
   { key: 'umbral_retiro_mm', lbl: 'Umbral de retiro (mm)', ayuda: 'Profundidad mínima para retirar el neumático', mm: true },
-  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para alertar', ayuda: 'Alerta "sin medir" pasado este plazo', mm: false },
+  // Margen de la alerta (columna alerta_histeresis_mm): puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los
+  // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
+  { key: 'alerta_histeresis_mm', lbl: 'Alerta resuelta cuando supera el crítico por (mm)', ayuda: 'Margen sobre el crítico para dar la alerta por resuelta (0 a 3 mm)', mm: false, hist: true },
+  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para alertar', ayuda: 'Alerta «sin medir» pasado este plazo', mm: false },
   { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true }
 ];
 
@@ -21,10 +24,10 @@ export function aNumero(v) {
   return s === '' ? NaN : Number(s);
 }
 
-// Histéresis en mm: de 0 a 3 con un decimal (acepta coma). Es la regla que tenía la tarjeta de Alertas antes del PR 9c.
+// Margen de la alerta (histéresis) en mm: de 0 a 3 con un decimal (acepta coma). Es la regla que tenía la tarjeta de Alertas antes del PR 9c.
 export function validarHisteresis(raw) {
   const s = String(raw ?? '').trim().replace(',', '.');
-  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: 'La histéresis va de 0 a 3 mm, con un decimal' };
+  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: 'El margen para resolver la alerta va de 0 a 3 mm, con un decimal' };
   return { ok: true, valor: Number(s) };
 }
 
@@ -47,7 +50,7 @@ export function validarUmbrales(raw = {}) {
     return { ok: false, campo: 'dias_sin_medir_alerta', error: `${lblDe('dias_sin_medir_alerta')}: entero entre 1 y 3650` };
   }
   if (!(v.umbral_retiro_mm < v.umbral_critico_mm && v.umbral_critico_mm < v.umbral_bajo_mm)) {
-    return { ok: false, campo: 'umbral_critico_mm', error: 'Los umbrales deben cumplir: retiro < crítico < bajo' };
+    return { ok: false, campo: 'umbral_critico_mm', error: 'El umbral de retiro debe ser menor que el crítico, y el crítico menor que el bajo' };
   }
   return { ok: true, valores: v };
 }
@@ -56,7 +59,7 @@ export function validarUmbrales(raw = {}) {
 export function mensajeErrorUmbrales(err) {
   const msg = String(err?.message ?? err ?? '').trim();
   if (err?.code === '23514' || /check constraint|violates check/i.test(msg)) {
-    return `La base de datos rechazó los umbrales (retiro < crítico < bajo): ${msg}`;
+    return `Los umbrales no son válidos: el retiro debe ser menor que el crítico, y el crítico menor que el bajo. ${msg}`;
   }
   if (err?.code === '42501' || /permission denied|row-level security/i.test(msg)) return 'Sin permiso para editar los umbrales';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';

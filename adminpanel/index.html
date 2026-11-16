@@ -411,16 +411,14 @@
         </div>
         <div class="login-error" id="suc-error" role="alert"></div>
         <div class="ficha-card">
-          <div class="ficha-card-title">Sucursales</div>
-          <div class="sec-alta">
+          <form class="sec-alta" id="suc-form" novalidate>
             <input type="text" id="suc-nombre" maxlength="100" placeholder="Nombre de la sucursal" aria-label="Nombre de la sucursal nueva"/>
-            <button type="button" class="btn primary" data-action="sucursalCrear">Agregar sucursal</button>
-          </div>
+            <button type="submit" class="btn primary" id="suc-agregar">Agregar sucursal</button>
+          </form>
           <div class="table-wrap" id="suc-lista"></div>
         </div>
         <div class="ficha-card">
           <div class="ficha-card-title">Vehículos</div>
-          <div class="sec-sub">Asignación</div>
           <div class="toolbar">
             <div class="search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -499,6 +497,17 @@
           <h2 class="page-title">Usuarios</h2>
           <div class="page-actions"><button type="button" class="btn ghost" data-action="loadEmpresaUsuarios">Actualizar</button></div>
         </div>
+        <form class="ficha-card" id="emp-user-form" novalidate>
+          <div class="ficha-card-title">Nuevo usuario</div>
+          <div class="ficha-sub">Sin contraseña se envía una invitación por email.</div>
+          <div class="ficha-umbrales">
+            <div class="field"><label for="emp-user-email">Email</label><input type="email" id="emp-user-email" autocomplete="off"/></div>
+            <div class="field"><label for="emp-user-sucursal">Sucursal</label><select id="emp-user-sucursal" class="flota-select"><option value="">Elegir sucursal</option></select></div>
+            <div class="field"><label for="emp-user-password">Contraseña (opcional, mínimo 12 caracteres)</label><input type="password" id="emp-user-password" autocomplete="new-password"/></div>
+          </div>
+          <div class="login-error" id="emp-user-error" role="alert"></div>
+          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-user-crear">Crear usuario</button></div>
+        </form>
         <div class="table-wrap">
           <table>
             <thead><tr>
@@ -512,17 +521,6 @@
             </tbody>
           </table>
         </div>
-        <form class="ficha-card" id="emp-user-form" novalidate>
-          <div class="ficha-card-title">Nuevo usuario</div>
-          <div class="ficha-sub">Sin contraseña se envía una invitación por email.</div>
-          <div class="ficha-umbrales">
-            <div class="field"><label for="emp-user-email">Email</label><input type="email" id="emp-user-email" autocomplete="off"/></div>
-            <div class="field"><label for="emp-user-sucursal">Alcance</label><select id="emp-user-sucursal" class="flota-select"><option value="">Toda la empresa</option></select></div>
-            <div class="field"><label for="emp-user-password">Contraseña (opcional, mínimo 12 caracteres)</label><input type="password" id="emp-user-password" autocomplete="new-password"/></div>
-          </div>
-          <div class="login-error" id="emp-user-error" role="alert"></div>
-          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-user-crear">Crear usuario</button></div>
-        </form>
       </div>
 
       <!-- EMPRESA: UMBRALES -->
@@ -533,7 +531,7 @@
         </div>
         <form class="ficha-card" id="emp-umb-form" novalidate>
           <div class="ficha-card-title">Umbrales de desgaste</div>
-          <div class="ficha-sub">Se aplican a los estados y alertas de la empresa. Deben cumplir retiro &lt; crítico &lt; bajo.</div>
+          <div class="ficha-sub">Se aplican a los estados y alertas de la empresa. Cada umbral debe ser menor que el anterior: bajo, crítico y retiro, de mayor a menor.</div>
           <div class="ficha-umbrales" id="emp-umb-campos"></div>
           <div class="login-error" id="emp-umb-error" role="alert"></div>
           <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button></div>

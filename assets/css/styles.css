@@ -831,3 +831,16 @@
 .cal-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .cal-acciones .btn { min-height: 36px; }
 #view-calidad .cal-lista { max-width: 760px; }
+
+/* Empresa > Sucursales en móvil: cada fila de las dos tablas pasa a tarjeta apilada, así el selector y las acciones quedan a la vista
+   sin desplazar la tabla (la etiqueta de cada dato sale de data-label). */
+@media (max-width: 640px) {
+  #view-sucursales .sec-tabla, #view-sucursales .sec-tabla tbody, #view-sucursales .sec-tabla tr, #view-sucursales .sec-tabla td { display: block; width: 100%; box-sizing: border-box; }
+  #view-sucursales .sec-tabla thead { display: none; }
+  #view-sucursales .sec-tabla tr { padding: 8px 0; border-top: 1px solid var(--border); }
+  #view-sucursales .sec-tabla td { border-top: 0; padding: 3px 0; }
+  #view-sucursales .sec-tabla td[data-label]::before { content: attr(data-label) ': '; color: var(--text-secondary); font-size: 12px; }
+  #view-sucursales .sec-tabla td[data-label="Sucursal"]::before { display: block; margin-bottom: 2px; }
+  #view-sucursales .sec-tabla input[type="text"], #view-sucursales .sec-tabla select { max-width: none; width: 100%; }
+  #view-sucursales .sec-tabla .sec-acciones { padding-top: 6px; }
+}

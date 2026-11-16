@@ -124,13 +124,16 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (vrows().some(function(r){ return r.dataset.vehiculo === '17'; })) fail('sucursales: aparece un vehículo de otro cliente');
 
   // Alta (validación de nombre vacío, alta, duplicado)
-  $('#suc-nombre').value = '  '; $('[data-action="sucursalCrear"]').click(); await sleep(100);
+  if (!$('#suc-form') || $('#suc-agregar').type !== 'submit') fail('sucursales: «Agregar sucursal» debe enviar con Enter (form/submit)');
+  if (/Asignación/.test($('#view-sucursales').textContent)) fail('sucursales: sobra la etiqueta suelta «Asignación»');
+  if ($('#view-sucursales .ficha-card-title').textContent === 'Sucursales') fail('sucursales: el título «Sucursales» está repetido en la tarjeta');
+  $('#suc-nombre').value = '  '; $('#suc-form').requestSubmit(); await sleep(100);
   if ($('#suc-error').textContent.indexOf('nombre') === -1 || fx.rpcs.length) fail('sucursales: falta validación de nombre vacío');
-  $('#suc-nombre').value = 'Rivera'; $('[data-action="sucursalCrear"]').click(); await sleep(400);
+  $('#suc-nombre').value = 'Rivera'; $('#suc-form').requestSubmit(); await sleep(400);
   if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_crear' && r.args.p_nombre === 'Rivera'; })) fail('sucursales: no llamó a sucursal_crear');
   if (filas() !== 3) fail('sucursales: la lista no creció (' + filas() + ')');
   if (all('#sec-select option').length !== 4) fail('sucursales: el selector de la barra no se actualizó (' + all('#sec-select option').length + ' opciones)');
-  $('#suc-nombre').value = 'rivera'; $('[data-action="sucursalCrear"]').click(); await sleep(400);
+  $('#suc-nombre').value = 'rivera'; $('#suc-form').requestSubmit(); await sleep(400);
   if (toast().indexOf('Ya existe una sucursal') === -1) fail('sucursales: sin mensaje de duplicado: ' + toast());
 
   // Renombrar
@@ -188,20 +191,22 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
   if (vrows().length !== 4) fail('sucursales: el vehículo nuevo no aparece (' + vrows().length + ')');
 
-  // Mover: confirmar y cancelar
+  // Mover: sin diálogo de confirmación (es reversible, docs/14 §5 regla 5); el vehículo se nombra como en Vehículos
   var selFila = function(id){ return $('#suc-vehiculos tr[data-vehiculo="' + id + '"] select'); };
-  setSel(selFila(15), '1'); await sleep(150);
-  if (!$('#modal-confirm').classList.contains('show') || $('#confirm-title').textContent !== 'Mover vehículo') fail('sucursales: mover no pidió confirmación');
-  if ($('#confirm-ok').textContent !== 'Mover' || $('#confirm-ok').classList.contains('danger')) fail('sucursales: el botón de mover no debe ser de borrado');
-  $('#confirm-cancel').click(); await sleep(200);
-  if (selFila(15).value !== '') fail('sucursales: cancelar no restableció el select');
-  if (fx.rpcs.some(function(r){ return r.name === 'vehiculo_mover_sucursal'; })) fail('sucursales: movió pese a cancelar');
-  setSel(selFila(15), '1'); await sleep(150); $('#confirm-ok').click(); await sleep(400);
+  setSel(selFila(15), '1'); await sleep(400);
+  if ($('#modal-confirm').classList.contains('show')) fail('sucursales: mover no debe pedir confirmación');
   var mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
   if (!mv || mv.args.p_vehiculo_id !== 15 || mv.args.p_sucursal_id !== 1) fail('sucursales: mover con argumentos incorrectos: ' + JSON.stringify(mv));
-  if (selFila(15).value !== '1' || toast().indexOf('movido') === -1) fail('sucursales: el movimiento no se reflejó');
+  if (selFila(15).value !== '1' || toast().indexOf('movido a «') === -1) fail('sucursales: el movimiento no se reflejó: ' + toast());
+  // Reversible: volver a la sucursal anterior es otro cambio de select, sin pasos intermedios
+  setSel(selFila(15), ''); await sleep(400);
+  mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
+  if (!mv || mv.args.p_vehiculo_id !== 15 || mv.args.p_sucursal_id !== null) fail('sucursales: deshacer el movimiento falló: ' + JSON.stringify(mv));
+  setSel(selFila(15), '1'); await sleep(400);
+  if (!all('#suc-vehiculos td[data-label="Sucursal"]').length) fail('sucursales: falta data-label para la vista apilada en móvil');
   // A "sin sucursal"
-  setSel(selFila(10), ''); await sleep(150); $('#confirm-ok').click(); await sleep(400);
+  setSel(selFila(10), ''); await sleep(400);
+  if ($('#modal-confirm').classList.contains('show')) fail('sucursales: mover a «sin sucursal» no debe pedir confirmación');
   mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
   if (!mv || mv.args.p_vehiculo_id !== 10 || mv.args.p_sucursal_id !== null) fail('sucursales: mover a «sin sucursal» incorrecto: ' + JSON.stringify(mv));
   // Buscador del listado

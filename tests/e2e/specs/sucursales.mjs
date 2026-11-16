@@ -50,7 +50,7 @@ export function registrar(env) {
     await flujo(env, 'crud', 'global', async p => {
       await abrirSucursales(p);
       await p.escribir('#suc-nombre', 'Rivera E2E');
-      await p.click('[data-action="sucursalCrear"]');
+      await p.click('#suc-agregar');
       await p.esperar(`/Sucursal creada/.test(document.querySelector('#toast-msg').textContent) && [...document.querySelectorAll('#suc-lista input')].some(i => i.value === 'Rivera E2E')`, { que: 'sucursal creada' });
       const fila = filas(env, `select id, cliente_id from public.sucursales where nombre = 'Rivera E2E'`);
       assert.equal(fila.length, 1);
@@ -61,7 +61,7 @@ export function registrar(env) {
 
       // Duplicado (sin distinguir mayúsculas)
       await p.escribir('#suc-nombre', 'rivera e2e');
-      await p.click('[data-action="sucursalCrear"]');
+      await p.click('#suc-agregar');
       await p.esperar(`/Ya existe una sucursal/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de nombre repetido' });
 
       // Renombrar
@@ -137,18 +137,10 @@ export function registrar(env) {
     const montevideo = Number(env.sql(`select ${sucDemo('montevideo')}`));
     await flujo(env, 'mover', 'global', async p => {
       await abrirSucursales(p);
-      // Cancelar: nada cambia y el select vuelve a su valor
+      // Mover no pide confirmación (reversible, docs/14 §5 regla 5): el cambio del select ya lo aplica
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${veh.id}"] select`, salto);
-      await confirmar(p, 'Mover vehículo');
-      assert.match(await texto(p, '#confirm-msg'), /historial de mediciones se conserva/);
-      await p.click('#confirm-cancel');
-      await p.esperar(`document.querySelector('#suc-vehiculos tr[data-vehiculo="${veh.id}"] select').value === '${montevideo}'`, { que: 'select restablecido' });
-      assert.equal(Number(env.sql(`select sucursal_id from public.vehiculos where id = ${veh.id}`)), montevideo);
-      // Confirmar
-      await elegir(p, `#suc-vehiculos tr[data-vehiculo="${veh.id}"] select`, salto);
-      await confirmar(p, 'Mover vehículo');
-      await p.click('#confirm-ok');
-      await p.esperar(`/Vehículo movido/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido' });
+      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido' });
+      assert.equal(await p.eval(`document.querySelector('#modal-confirm').classList.contains('show')`), false, 'mover no abre diálogo de confirmación');
     });
     assert.equal(Number(env.sql(`select sucursal_id from public.vehiculos where id = ${veh.id}`)), salto);
     assert.equal(huella(), antes, 'mediciones, neumáticos, eventos y estado se conservan');
@@ -169,9 +161,7 @@ export function registrar(env) {
     await flujo(env, 'mover-sin-sucursal', 'global', async p => {
       await abrirSucursales(p);
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${veh.id}"] select`, '');
-      await confirmar(p, 'Mover vehículo');
-      await p.click('#confirm-ok');
-      await p.esperar(`/Vehículo movido/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido a sin sucursal' });
+      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido a sin sucursal' });
     });
     assert.equal(env.sql(`select coalesce(sucursal_id::text, 'null') from public.vehiculos where id = ${veh.id}`), 'null');
     assert.equal(huella(), antes);
@@ -243,13 +233,11 @@ export function registrar(env) {
     await flujo(env, 'otra-propia', 'otra', async p => {
       await abrirSucursales(p);
       await p.escribir('#suc-nombre', 'Sucursal Ajena');
-      await p.click('[data-action="sucursalCrear"]');
+      await p.click('#suc-agregar');
       await p.esperar(`[...document.querySelectorAll('#suc-lista input')].some(i => i.value === 'Sucursal Ajena')`, { que: 'sucursal propia' });
       const id = Number(env.sql(`select id from public.sucursales where nombre = 'Sucursal Ajena'`));
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${otraVeh}"] select`, id);
-      await confirmar(p, 'Mover vehículo');
-      await p.click('#confirm-ok');
-      await p.esperar(`/Vehículo movido/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo propio movido' });
+      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo propio movido' });
       assert.equal(Number(env.sql(`select sucursal_id from public.vehiculos where id = ${otraVeh}`)), id);
       assert.equal(Number(env.sql(`select cliente_id from public.sucursales where id = ${id}`)), Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`)));
     });

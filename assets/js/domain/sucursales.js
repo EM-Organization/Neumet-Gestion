@@ -1,6 +1,8 @@
 // Dominio: gestión de sucursales y alta/movimiento de vehículos del cliente con perfil global.
 // Funciones PURAS (sin DOM ni supabase) para node:test. La autorización real vive en las RPC de la base.
 
+import { etiquetaCoche } from './coche.js';
+
 const vacio = v => v === null || v === undefined || String(v).trim() === '';
 
 export function validarNombreSucursal(nombre) {
@@ -52,12 +54,10 @@ export function filtrarVehiculos(vehiculos, texto) {
 export const textoSucursal = (id, sucursales) =>
   vacio(id) ? 'Sin sucursal' : ((sucursales || []).find(s => String(s.id) === String(id)) || {}).nombre || 'Sin sucursal';
 
-export function confirmacionMover(vehiculo, destinoNombre) {
-  const quien = vehiculo.numero ? `el coche ${vehiculo.numero}` : `«${vehiculo.nombre}»`;
-  return {
-    titulo: 'Mover vehículo',
-    mensaje: `¿Mover ${quien} a «${destinoNombre}»? El historial de mediciones se conserva.`,
-  };
+// Aviso tras mover un vehículo. Mover no pide confirmación: es reversible (solo cambia vehiculos.sucursal_id, el historial no
+// se toca; docs/14 §5 regla 5). Se nombra el vehículo con la misma etiqueta que la vista Vehículos.
+export function avisoMovido(vehiculo, destinoNombre) {
+  return `${etiquetaCoche(vehiculo.nombre)} movido a «${destinoNombre}»`;
 }
 
 export function confirmacionEliminar(nombre, nVehiculos) {

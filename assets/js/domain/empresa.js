@@ -10,6 +10,28 @@ export const ESTADO_QUITADO = 'quitado';
 // Texto del alcance de un usuario (fila de usuarios_empresa_listar).
 export const textoAlcance = u => (u.alcance === 'sucursal' ? (u.sucursal_nombre || 'Sucursal') : 'Toda la empresa');
 
+// Alcance del usuario nuevo. El campo «Sucursal» NO tiene valor por defecto que dé acceso amplio: «Toda la empresa» es una
+// opción explícita (valor ALCANCE_EMPRESA) y el valor vacío («Elegir sucursal») no se envía. Así escribir solo el email y
+// pulsar Enter no crea por descuido un usuario con acceso a toda la empresa.
+export const ALCANCE_EMPRESA = 'empresa';
+
+// Valor inicial del campo: la sucursal elegida en la barra superior si existe; sin sucursales en la empresa, «Toda la empresa»
+// (no hay otra cosa que elegir); en cualquier otro caso vacío (obliga a decidir).
+export function alcanceInicial(sucursales, seleccionada) {
+  const lista = sucursales || [];
+  if (!lista.length) return ALCANCE_EMPRESA;
+  const sel = seleccionada === null || seleccionada === undefined ? '' : String(seleccionada);
+  return sel !== '' && lista.some(s => String(s.id) === sel) ? sel : '';
+}
+
+// Valida el valor del campo «Sucursal» y devuelve el sucursalId que espera cuerpoCrearUsuario ('' = toda la empresa).
+export function validarAlcanceUsuario(valor) {
+  const v = valor === null || valor === undefined ? '' : String(valor).trim();
+  if (v === ALCANCE_EMPRESA) return { ok: true, sucursalId: '' };
+  if (/^\d+$/.test(v)) return { ok: true, sucursalId: v };
+  return { ok: false, error: 'Elegir la sucursal del usuario, o «Toda la empresa»' };
+}
+
 // Orden de la lista: vigentes primero (la base ya los entrega así; se asegura aquí), luego alcance y email.
 export function ordenarUsuarios(lista) {
   return [...(lista || [])].sort((a, b) =>
@@ -20,8 +42,12 @@ export function ordenarUsuarios(lista) {
 
 // Acciones que ofrece cada fila. `propio`: el usuario de la sesión no se quita a sí mismo (la base responde 22023).
 // `suprimir`: acción que el contrato de la función prohíbe mientras haya un pendiente ('reponer' | 'quitar' | null).
-export function accionesFila(u, { propio = false, suprimir = null } = {}) {
-  const a = u.estado === ESTADO_QUITADO ? { reponer: true, quitar: true } : { reponer: false, quitar: !propio };
+// `reintentarBaja`: hay un pendiente que pide repetir la baja (Auth sin bloquear). En una fila ya quitada «Quitar» no se ofrece
+// salvo en ese caso o si la base marca el bloqueo de Auth pendiente: quitar a quien ya está quitado confunde al operario.
+export function accionesFila(u, { propio = false, suprimir = null, reintentarBaja = false } = {}) {
+  const a = u.estado === ESTADO_QUITADO
+    ? { reponer: true, quitar: !!u.bloqueo_auth_pendiente || reintentarBaja }
+    : { reponer: false, quitar: !propio };
   if (suprimir === 'reponer') a.reponer = false;
   if (suprimir === 'quitar') a.quitar = false;
   return a;
@@ -121,6 +147,6 @@ export function mensajeErrorConfigurar(err) {
   const code = err && err.code;
   const msg = String((err && err.message) || '').trim();
   if (code === '42501') return 'Sin permiso para editar los umbrales';
-  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : 'Los umbrales no son válidos (retiro < crítico < bajo)';
+  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : 'Los umbrales no son válidos: el retiro debe ser menor que el crítico, y el crítico menor que el bajo';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';
 }

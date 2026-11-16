@@ -31,6 +31,7 @@ export function registrar(env) {
         const otros = await p.eval(`document.querySelectorAll('#tbody-empresa-usuarios [data-action="empresaQuitar"]').length`);
         assert.equal(otros, esperados - 1, 'Quitar en cada usuario vigente salvo el propio');
         assert.match(await texto(p, '#emp-user-sucursal'), /Toda la empresa/);
+        assert.equal(await p.eval(`document.querySelector('#emp-user-sucursal').value`), '', 'el campo Sucursal empieza sin elegir (no da acceso amplio por omisión)');
 
         // Umbrales: editar y guardar con Enter
         await irA(p, 'empresa-umbrales');
@@ -53,7 +54,7 @@ export function registrar(env) {
         await p.escribir('#eu-umbral_bajo_mm', String(nuevo));
         await p.escribir('#eu-alerta_histeresis_mm', '3,5');
         await p.enter();
-        await p.esperar(`/histéresis/i.test(document.querySelector('#emp-umb-error').textContent)`, { que: 'error de histéresis' });
+        await p.esperar(`/margen para resolver la alerta/i.test(document.querySelector('#emp-umb-error').textContent)`, { que: 'error del margen de la alerta' });
         assert.equal(Number(env.sql(`select alerta_histeresis_mm from public.clientes where id = ${DEMO}`)), nuevaHist, 'la histéresis inválida no llegó a la base');
 
         // Dispositivos: solo los de la empresa, sin acciones de escritura

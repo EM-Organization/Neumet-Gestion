@@ -68,6 +68,12 @@ describe('mensajes y validación del ABM', () => {
     assert.match(mensajeErrorSeccional({ code: '42501' }), /permiso/);
     assert.match(mensajeErrorSeccional(null), /No se pudo/);
   });
+  test('sin segunda persona (docs/14): infinitivo o forma impersonal', () => {
+    const textos = [23505, 23503, 23514, 42501].map(code => mensajeErrorSeccional({ code }))
+      .concat([401, 403, 404, 409].map(s => mensajeErrorCrearUsuario(s)));
+    for (const t of textos) assert.doesNotMatch(t, /reasígnalos|\bNo tienes\b|\btienes\b/i, t);
+    assert.match(mensajeErrorSeccional({ code: '23503' }), /Reasignarlos antes/);
+  });
   test('validarNombreSeccional', () => {
     assert.equal(validarNombreSeccional('  ').ok, false);
     assert.equal(validarNombreSeccional('x'.repeat(101)).ok, false);
