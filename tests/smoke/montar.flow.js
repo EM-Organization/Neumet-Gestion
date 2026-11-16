@@ -116,6 +116,16 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if($('#mont-marca').value !== 'Pirelli' || $('#mont-modelo').value !== 'FR85' || $('#mont-fecha').value !== '2026-05-01') fail('montar: marca, modelo y fecha deben conservarse');
   if($('#mont-quema').value !== '' || $('#mont-km-previos').value !== '0' || $('#mont-odo').value !== '') fail('montar: quema, km previos y odómetro deben limpiarse para la siguiente posición');
 
+  // Neumáticos fantasma: tras montar, el formulario conserva marca y modelo; Enter mantenido, doble Enter o clic inmediato no montan otro.
+  var enter = function(rep){ var ev = new w.KeyboardEvent('keydown', {key: 'Enter', repeat: rep, bubbles: true, cancelable: true}); $('#mont-marca').dispatchEvent(ev); if(!ev.defaultPrevented) $('#mont-form').requestSubmit(); };
+  for(var i = 0; i < 12; i++) enter(true);
+  enter(false); enter(false); $('#mont-confirmar').click(); await sleep(400);
+  if(rpcs('neumatico_montar').length !== 3) fail('montar: Enter mantenido, doble Enter o clic inmediato montaron de más: ' + rpcs('neumatico_montar').length);
+  if(!/Completar la quema/.test(txt('#mont-error'))) fail('montar: el envío bloqueado debe explicar qué completar: ' + txt('#mont-error'));
+  if(d.activeElement !== $('#mont-quema')) fail('montar: el foco debe ir a la quema');
+  poner('#mont-quema', 'N-78');
+  if(txt('#mont-error') !== '') fail('montar: al editar la quema debe limpiarse el aviso');
+
   // Terminar: cierra; el detalle muestra 2 neumáticos y ya no el estado vacío
   $('#mont-cerrar').click(); await sleep(400);
   if($('#modal-montar').classList.contains('show')) fail('montar: «Terminar» no cerró el modal');

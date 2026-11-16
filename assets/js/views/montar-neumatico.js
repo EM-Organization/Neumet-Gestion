@@ -136,9 +136,20 @@ function cerrarMontar() {
   mont = null;
 }
 
+const ESPERA_CLIC_MS = 1500;
+const MSG_BLOQUEADO = 'Completar la quema de esta posición para montar la siguiente';
+
 // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
-async function confirmarMontar() {
+// `viaClic`: el envío vino de un clic real del puntero (no de Enter, que llega con detail 0): único gesto deliberado que
+// desbloquea el formulario sin editar nada (para una cubierta sin quema). Se exige que haya pasado un momento desde el montaje anterior.
+async function confirmarMontar({ viaClic = false } = {}) {
   if (!mont || ocupado || esAdmin()) return;
+  // Tras montar una «Cubierta nueva» el formulario conserva marca y modelo para la siguiente posición: un Enter mantenido, un doble
+  // Enter o un clic seguido de Enter montaría neumáticos fantasma. Hasta que se edite algún campo (o se haga clic en Montar) no envía.
+  if (mont.origen === 'nuevo' && mont.bloqueado) {
+    if (!(viaClic && Date.now() - mont.montadoEn > ESPERA_CLIC_MS)) { $('mont-error').textContent = MSG_BLOQUEADO; enfocar('mont-quema'); return; }
+    mont.bloqueado = false;
+  }
   const r = validarMontaje(estadoMontar());
   if (!r.ok) { $('mont-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('mont-confirmar').disabled = true;
@@ -159,6 +170,7 @@ async function confirmarMontar() {
     const sig = siguienteLibre(mont.libres, pos);
     if (!sig) { cerrarMontar(); showToast('Todas las posiciones tienen un neumático montado'); return; }
     const eraNuevo = mont.origen === 'nuevo';
+    mont.bloqueado = eraNuevo; mont.montadoEn = Date.now();
     pintarPosiciones(sig.posicion);
     limpiarFormulario({ conservar: eraNuevo });
     pintarLista();
@@ -273,7 +285,14 @@ ACTIONS['neumatico-retirar-confirmar'] = confirmarRetirar;
 
 export function init() {
   // «Enter» en cualquier campo envía (docs/14 §5, regla 3); confirmarMontar ignora un segundo envío mientras guarda.
-  $('mont-form').addEventListener('submit', e => { e.preventDefault(); confirmarMontar(); });
+  // El clic en «Montar» llega primero como click y luego como submit: se anota si fue un clic real del puntero.
+  let clicReal = false;
+  $('mont-confirmar').addEventListener('click', e => { clicReal = e.detail > 0; });
+  $('mont-form').addEventListener('submit', e => { e.preventDefault(); const v = clicReal; clicReal = false; confirmarMontar({ viaClic: v }); });
+  // Enter mantenido (autorepetición): solo cuenta la primera pulsación.
+  $('mont-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
+  // Editar cualquier campo es la señal de que el formulario ya se revisó para la nueva posición.
+  for (const ev of ['input', 'change']) $('mont-form').addEventListener(ev, () => { if (mont) mont.bloqueado = false; });
   // El buscador filtra mientras se escribe (data-change solo dispara al salir del campo).
   $('mont-buscar').addEventListener('input', () => { if (mont) { pintarLista(); actualizarMontar(); } });
   // Pestañas: flechas izquierda y derecha cambian de origen (patrón de tabs).
