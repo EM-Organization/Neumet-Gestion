@@ -17,9 +17,17 @@
 --  3. Privilegios: revoke insert/update/delete/truncate a authenticated en esas siete tablas y en las vistas de
 --     public (defensa en profundidad: una política futura mal escrita no reabre la escritura).
 --  4. `clientes` por columna: sin `precio_mensual` en el SELECT (se lee y fija con las RPC de C1, solo admin) y
---     UPDATE solo de `nombre` y `auth_user_id`. Los umbrales los escribe únicamente `alerta_configurar`.
+--     UPDATE solo de `nombre` (`auth_user_id` no: la cuenta dueña no se reasigna por la API). Los umbrales los escribe únicamente `alerta_configurar`.
 --  Las Edge Functions con clave de servicio y las RPC SECURITY DEFINER no pasan por estas políticas ni grants.
 -- =============================================================================
+
+-- Tiempo máximo de espera de bloqueos: revoke, DROP POLICY y CREATE POLICY toman ACCESS EXCLUSIVE sobre siete tablas en
+-- producción (única base). Sin tope, una transacción larga ajena haría esperar la migración y, detrás de ella, a todas
+-- las lecturas de la API. Con 5 s la migración falla limpiamente (se revierte entera) y se reintenta.
+-- `set local` solo rige dentro de una transacción explícita (fuera de ella avisa y no hace nada); este archivo no lleva
+-- begin/commit y lo ejecutan por igual el runner (`psql -1`) y `supabase db push`, así que se usa `set` de sesión y se
+-- devuelve con `reset` al final (si algo falla, el rollback de la transacción también revierte el `set`).
+set lock_timeout = '5s';
 
 -- -----------------------------------------------------------------------------
 -- 1. RPC: se quita la rama de admin de escritura (cuerpos tomados de la última versión de cada función)
@@ -796,8 +804,10 @@ begin
    where a.attrelid = 'public.clientes'::regclass and a.attnum > 0 and not a.attisdropped
      and a.attname <> 'precio_mensual';
   execute format('grant select (%s) on public.clientes to authenticated', v_cols);
-  grant update (nombre, auth_user_id) on public.clientes to authenticated;
+  grant update (nombre) on public.clientes to authenticated;
 end $$;
 
 comment on column public.clientes.precio_mensual is
   'Sin SELECT ni UPDATE para authenticated (privilegios por columna): solo las RPC cliente_precios_mensuales() y cliente_precio_mensual_fijar() (equipo Neumet). docs/08 apéndice Q.';
+
+reset lock_timeout;
