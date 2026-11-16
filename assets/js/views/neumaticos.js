@@ -29,7 +29,7 @@ export function init() {
   document.querySelectorAll('[data-neu-tabs]').forEach(tablist => {
     tablist.addEventListener('click', e => {
       const tab = e.target.closest('[role="tab"]');
-      if (tab && tab.getAttribute('aria-selected') !== 'true') switchView(tab.dataset.neuTab);
+      if (tab && tab.getAttribute('aria-selected') !== 'true') ir(tab.dataset.neuTab);
     });
     tablist.addEventListener('keydown', e => {
       const tab = e.target.closest('[role="tab"]');
