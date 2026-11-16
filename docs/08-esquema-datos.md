@@ -891,3 +891,34 @@ Reglas:
 ## N.6 Límites
 
 Las Edge Functions que usan estas RPC (`quitar-acceso-usuario`, `reponer-acceso-usuario`, PR 3) no cambian la base: llaman a las RPC con el JWT del llamante y a `accesos_quitados_marcar_auth` con la clave de servicio. Sin panel (PR 4 en adelante), sin cambios en `api-proveedor`, sin migraciones B (uso) ni C1/C2 (recorte de `admin`), sin MFA. Las RPC existentes que insertan en `audit_log` y `vehiculo_registrar_odometro` no cambian.
+
+## O.1 Regla de producto
+
+Migración B del plan de roles (`20261119500000_uso_cliente_mensual.sql`, docs/17 §5, F10 PR 6): el uso de cada cliente mes a mes se guarda de forma permanente. **No es para facturar** (docs/17 P5). Solo el equipo Neumet lo lee; el administrador de empresa y el resto reciben `42501` (docs/17 §5 dice que las RPC «solo autorizan al equipo Neumet»; abrirlo al administrador de empresa sobre su propio cliente es un cambio de una línea en `uso_clientes_listar`, pero es decisión de producto).
+
+## O.2 Esquema
+
+- Índice `ingesta_log (cliente_id, recibido_at)` para agregar por cliente y mes. `mediciones` no recibe índice nuevo: el cierre usa `mediciones_cliente_fecha_idx (cliente_id, created_at desc)` (migración `20261106020000`), y un tercer B-tree encarecería cada inserción de la tabla más escrita.
+- `uso_cliente_mensual (cliente_id, mes)`, clave primaria compuesta, `mes` = primer día del mes UTC (con `check`). Columnas: `api_llamadas`, `api_por_endpoint` (jsonb `{endpoint: {ok, rechazado, error}}`), `logins`, `mediciones`, `vehiculos_activos`, `dispositivos_activos`, `usuarios`, `ultimo_ingreso_at`, `cerrado_at`. RLS activada, **sin políticas y sin ningún grant** para `anon` ni `authenticated` (los privilegios por defecto de `public` se revocan explícitamente). No hay costos ni precios: no requiere privilegios por columna.
+
+## O.3 Definición de lo que cuenta
+
+Mes calendario en UTC (no se toma la zona de Chile: es una decisión de presentación pendiente).
+- **Recalculables** (salen de `ingesta_log` y `mediciones`; volver a cerrar el mes los reescribe): `api_llamadas` y `api_por_endpoint` cuentan las filas de `ingesta_log` con `cliente_id` del mes **excluyendo `endpoint = 'login'`** (se cuenta aparte; si no, el login se contaría dos veces), `logins` cuenta `endpoint = 'login'` (el PR 5 solo registra los exitosos y desde 2026-11-16, así que los meses anteriores dan 0), `mediciones` cuenta las filas con `cliente_id` del mes. Las filas sin `cliente_id` (401 sin cuenta) no se atribuyen a nadie.
+- **Fotos del primer cierre** (no se pisan al re-cerrar): `vehiculos_activos` (`activo`), `dispositivos_activos` (activos y con alguna medición en el mes), `usuarios` (perfiles `cliente`, no `api`) y `ultimo_ingreso_at` (máximo de `auth.users.last_sign_in_at` de esos usuarios, a la fecha del cierre; solo lo lee la función de cierre).
+- Clientes incluidos: los creados antes del fin del mes y no dados de baja antes de su inicio.
+
+## O.4 Funciones
+
+- `uso_cerrar_mes(p_mes date default null) returns integer` (`SECURITY DEFINER`, `search_path` vacío): `p_mes` nulo = mes anterior; rechaza el mes en curso o futuro (`22023`); bloqueo consultivo (advisory lock) para no solaparse; `insert ... on conflict do update` solo de las columnas recalculables, por lo que es **idempotente y reejecutable**. `revoke` a `public`, `anon` y `authenticated`; `execute` solo a `service_role` (y el rol dueño, que es el que usa pg_cron). **No se programa en la migración** (runbook §3.2.1).
+- `uso_clientes_listar(p_desde, p_hasta, p_cliente_id) returns table(...)` (`SECURITY DEFINER`): `is_admin()` o `42501`; con nombre del cliente, ordenado por mes descendente. `execute` solo a `authenticated` (el `42501` interno cubre a quien no es `admin`).
+
+## O.5 Pruebas
+
+- `tests/sql/t_94_uso_cliente_mensual.sql`: conteos (sin login, por endpoint y estado, bordes de mes, filas sin cliente), idempotencia y fotos que no se pisan, mes en curso y futuro, y la matriz por rol (equipo Neumet, administrador de empresa, usuario de sucursal, `api`, sin perfil, `anon`, servicio) para cerrar, leer por RPC y acceso directo a la tabla.
+- `tests/e2e/specs/uso-cliente.mjs`: las RPC y la tabla por la API real con el JWT de cada rol.
+- `tests/sql/00_stub_auth.sql` suma `auth.users.last_sign_in_at` (existe en Supabase real).
+
+## O.6 Límites
+
+Sin pantalla (la construye la pista de migración, docs/19 §7.2.1). Sin programar el cierre y sin retención de `ingesta_log` (docs/17 §5, propuesta de 13 meses): ambos son pasos operativos posteriores. Sin umbrales ni reglas de facturación.

@@ -493,5 +493,15 @@
   "archivo": "supabase/migrations/20261119000000_admin_empresa.sql",
   "linea": 563,
   "texto": "select p.rol, p.sucursal_id into v_rol, v_suc from public.perfiles p where p.user_id = v_uid;"
+ },
+ {
+  "archivo": "supabase/migrations/20261119500000_uso_cliente_mensual.sql",
+  "linea": 106,
+  "texto": "(select count(*)::integer from public.perfiles p where p.cliente_id = cm.id and p.rol = 'cliente'),"
+ },
+ {
+  "archivo": "supabase/migrations/20261119500000_uso_cliente_mensual.sql",
+  "linea": 107,
+  "texto": "(select max(au.last_sign_in_at) from public.perfiles p"
  }
 ]
