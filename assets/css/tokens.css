@@ -123,7 +123,7 @@
 /* ── Stock de cubiertas individuales ── */
 .stk-resumen { color: var(--text-secondary); font-size: 13px; margin: 0 0 12px; min-height: 1em; }
 .stk-lista { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(80px, .8fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) 236px; gap: 12px; align-items: center; padding: 11px 16px; }
+.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(80px, .8fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) minmax(236px, 430px); gap: 12px; align-items: center; padding: 11px 16px; }
 .stk-cab { font-size: 12px; font-weight: 600; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
 .stk-fila { border-bottom: 1px solid var(--border); font-size: 14px; }
 .stk-fila:last-child { border-bottom: 0; }

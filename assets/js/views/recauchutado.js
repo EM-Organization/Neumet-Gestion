@@ -71,12 +71,13 @@ export async function loadRecauchutado() {
     esAdmin() ? db.from('clientes').select('id,nombre').is('deleted_at', null).order('nombre') : Promise.resolve({ data: [] }),
   ]);
   if (mio !== cargaN) return;
-  if (rp.error || rc.error) { showToast(userError(rp.error || rc.error), true); return; }
+  if (rp.error || rc.error) { showToast(userError(rp.error || rc.error), true); return false; }
   procesos = rp.rows || [];
   cubiertas = rc.rows || [];
   sucursales = rs.error ? [] : (rs.data || []);
   clientes = rcl.error ? [] : (rcl.data || []);
   render();
+  return true;
 }
 
 const opcionesSucursal = clienteId => joinHtml([
@@ -106,7 +107,8 @@ registerActions({
     if (!puedeGestionar()) return;
     const elegida = cubiertaId === undefined || cubiertaId === null ? null : Number(cubiertaId);
     // Desde Stock la pestaña Recauchutado puede no haberse abierto: se leen cubiertas y procesos antes de ofrecer el modal.
-    if (elegida !== null) await loadRecauchutado();
+    // Si la lectura falla ya avisó con su propio mensaje: no se suma un segundo aviso («ya no se puede enviar»).
+    if (elegida !== null && await loadRecauchutado() === false) return;
     const libres = cubiertasEnviables(cubiertas, procesos);
     modal = { modo: 'enviar' };
     $('reca-title').textContent = TITULOS.enviar; $('reca-sub').textContent = '';

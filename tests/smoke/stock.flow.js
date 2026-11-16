@@ -128,6 +128,17 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(!$('#modal-reca').classList.contains('show') || $('#reca-cubierta').value !== '31') fail('stock: «Enviar a recauchutar» no abrió el modal con la cubierta elegida: ' + $('#reca-cubierta').value);
   $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200);
 
+  // Si no se pueden leer los recauchutados, «Enviar a recauchutar» avisa una vez del fallo y no abre el modal (sin segundo aviso engañoso).
+  var ceR = w.console.error; w.console.error = function(){};
+  fx.failTable = 'recauchutados';
+  fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
+  fx.failTable = null; w.console.error = ceR;
+  if($('#modal-reca').classList.contains('show') || /ya no se puede enviar/.test($('#toast-msg').textContent)) fail('stock: con la lectura caída «Enviar a recauchutar» no debe abrir el modal ni avisar «ya no se puede»: ' + $('#toast-msg').textContent);
+
+  // Con la vida máxima (S-011, recauchutada 3 veces) no se ofrece «Enviar a recauchutar»: no hay más recauchutados posibles.
+  var textos34 = all('[data-cubierta="34"] .stk-acc button').map(function(b){ return b.textContent.trim(); }).join('|');
+  if(textos34 !== 'Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 no debe ofrecer «Enviar a recauchutar»: ' + textos34);
+
   // Cambiar sucursal: destino distinto; mismo destino no llama a la RPC
   d.querySelector('[data-cubierta="31"] [data-action="cubiertaMover"]').click(); await sleep(300);
   if($('#cubierta-mover-title').textContent !== 'Cambiar sucursal') fail('stock: título del traslado: ' + $('#cubierta-mover-title').textContent);
