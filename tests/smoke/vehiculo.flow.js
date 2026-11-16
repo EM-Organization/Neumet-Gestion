@@ -230,5 +230,17 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   // Sigue viendo lo que le corresponde: el costo del neumático
   if(panel.indexOf('UYU 1.500,00') === -1) fail('detalle(admin): dejó de ver el costo: ' + panel.replace(/\s+/g,' ').slice(0,200));
   if(w.__cicloFx.rpcs.length) fail('detalle(admin): llamó RPC: ' + JSON.stringify(w.__cicloFx.rpcs));
+  // Guardas propias: aunque otro botón o una vista nueva emita estas acciones, el equipo Neumet no abre ningún modal de escritura.
+  // (cicloRegistrarCosto además la rechaza costos.js: es una segunda barrera, así que ese caso no distingue la guarda propia.)
+  var falsos = [['neumatico-cambiar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['neumatico-montar', { 'data-vehiculo-id': '10' }],
+    ['neumatico-retirar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['cicloRegistrarCosto', { 'data-args': '[1]' }]];
+  for(var i = 0; i < falsos.length; i++){
+    var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i][0]);
+    Object.keys(falsos[i][1]).forEach(function(k){ f.setAttribute(k, falsos[i][1][k]); });
+    d.body.appendChild(f); f.click(); await sleep(600); f.remove();
+    ['#modal-cambio', '#modal-montar', '#modal-retirar', '#modal-costo'].forEach(function(sel){
+      if($(sel) && $(sel).classList.contains('show')) fail('detalle(admin): ' + falsos[i][0] + ' abrió ' + sel + ' para el equipo Neumet');
+    });
+  }
   log.push('detalle-admin: solo lectura');
 };

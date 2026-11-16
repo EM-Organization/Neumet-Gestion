@@ -105,6 +105,33 @@ describe('Tabla', () => {
     expect(t.querySelector('table')).toBeNull();
     expect(t.querySelectorAll('li')).toHaveLength(2);
   });
+  it('vuelve a la tabla al ensancharse y consulta el punto de corte de 768 px', async () => {
+    let alCambiar;
+    const consultas = [];
+    globalThis.matchMedia = (q) => { consultas.push(q); return { matches: true, addEventListener: (_, fn) => { alCambiar = fn; }, removeEventListener() {} }; };
+    const t = montar(Tabla, { columnas, filas });
+    await tick();
+    expect(consultas).toEqual(['(max-width: 767px)']);
+    expect(t.querySelector('table')).toBeNull();
+    alCambiar({ matches: false });
+    await tick();
+    expect(t.querySelector('table')).not.toBeNull();
+  });
+  it('al desmontar suelta el oyente de matchMedia que registró (no queda uno por montaje)', async () => {
+    const alta = [], baja = [];
+    globalThis.matchMedia = () => ({ matches: false, addEventListener: (e, fn) => alta.push([e, fn]), removeEventListener: (e, fn) => baja.push([e, fn]) });
+    const inst = mount(Tabla, { target: document.body.appendChild(document.createElement('div')), props: { columnas, filas } });
+    flushSync();
+    expect(alta).toHaveLength(1);
+    expect(baja).toHaveLength(0);
+    unmount(inst);
+    expect(baja).toEqual(alta);
+  });
+  it('sin matchMedia (entorno sin la API) queda la tabla y no lanza', () => {
+    const t = montar(Tabla, { columnas, filas });
+    expect(globalThis.matchMedia).toBeUndefined();
+    expect(t.querySelector('table')).not.toBeNull();
+  });
   it('sin filas muestra el estado vacío, no una tabla de encabezados sueltos', () => {
     const t = montar(Tabla, { columnas, filas: [], vacio: { titulo: 'Sin vehículos registrados' } });
     expect(t.querySelector('table')).toBeNull();

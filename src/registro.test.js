@@ -1,10 +1,10 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 import { crearRegistro, ISLAS, API_ISLAS } from './registro.js';
 import Hola from './componentes/Hola.svelte';
 
 const svelte = { mount, unmount };
-const componentes = { hola: Hola };
+const componentes = { hola: async () => ({ default: Hola }) }; // cargador como el real: () => import(...)
 const contenedor = () => document.body.appendChild(document.createElement('div'));
 
 // ctx mínimo: la lectura de v_alertas devuelve `count` filas, o un error si se pide.
@@ -24,9 +24,9 @@ describe('banderas', () => {
     expect(ISLAS.hola.roles).toEqual([]);
   });
 
-  it('apagada: montar no toca el DOM', () => {
+  it('apagada: montar no toca el DOM', async () => {
     const el = contenedor();
-    expect(crearRegistro().montar('hola', el, ctxDe('admin'), componentes, svelte)).toBe(false);
+    expect(await crearRegistro().montar('hola', el, ctxDe('admin'), componentes, svelte)).toBe(false);
     expect(el.innerHTML).toBe('');
   });
 
@@ -67,27 +67,52 @@ describe('override de soporte', () => {
 describe('montaje (bandera encendida para admin)', () => {
   const islas = { hola: { roles: ['admin'] } };
 
-  it('monta con el dominio compartido (@domain) y desmonta sin dejar nada', () => {
+  it('monta con el dominio compartido (@domain) y desmonta sin dejar nada', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    expect(reg.montar('hola', el, ctxDe('admin'), componentes, svelte)).toBe(true);
+    expect(await reg.montar('hola', el, ctxDe('admin'), componentes, svelte)).toBe(true);
     expect(el.querySelector('[data-isla="hola"]').textContent).toMatch(/1\.234,5|1,234\.5|1234,5/);
     reg.desmontar('hola');
     expect(el.innerHTML).toBe('');
   });
 
-  it('montar dos veces no duplica', () => {
+  it('montar dos veces no duplica', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
-    reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
+    await reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
+    await reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
     expect(el.querySelectorAll('[data-isla="hola"]')).toHaveLength(1);
   });
 
-  it('desmontarTodas limpia todo lo montado', () => {
+  it('dos montajes en vuelo a la vez tampoco duplican', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
+    await Promise.all([1, 2].map(() => reg.montar('hola', el, ctxDe('admin'), componentes, svelte)));
+    expect(el.querySelectorAll('[data-isla="hola"]')).toHaveLength(1);
+    expect(reg.montadas()).toEqual(['hola']);
+  });
+
+  it('el componente se carga recién al montar: con la bandera apagada el cargador no corre', async () => {
+    const cargador = vi.fn(componentes.hola);
+    await crearRegistro({ hola: { roles: [] } }).montar('hola', contenedor(), ctxDe('admin'), { hola: cargador }, svelte);
+    expect(cargador).not.toHaveBeenCalled();
+    await crearRegistro(islas).montar('hola', contenedor(), ctxDe('admin'), { hola: cargador }, svelte);
+    expect(cargador).toHaveBeenCalledTimes(1);
+  });
+
+  it('si la carga del chunk falla (404, sin red) montar rechaza y no deja nada montado', async () => {
+    const reg = crearRegistro(islas);
+    const el = contenedor();
+    const roto = { hola: () => Promise.reject(new TypeError('Failed to fetch dynamically imported module')) };
+    await expect(reg.montar('hola', el, ctxDe('admin'), roto, svelte)).rejects.toThrow('dynamically imported');
+    expect(el.innerHTML).toBe('');
+    expect(reg.montadas()).toEqual([]);
+  });
+
+  it('desmontarTodas limpia todo lo montado', async () => {
+    const reg = crearRegistro(islas);
+    const el = contenedor();
+    await reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
     reg.desmontarTodas();
     expect(el.innerHTML).toBe('');
     expect(reg.montadas()).toEqual([]);
@@ -96,7 +121,7 @@ describe('montaje (bandera encendida para admin)', () => {
   it('lee v_alertas por ctx.db y muestra el conteo', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    reg.montar('hola', el, ctxDe('admin', { count: 7 }), componentes, svelte);
+    await reg.montar('hola', el, ctxDe('admin', { count: 7 }), componentes, svelte);
     expect(el.querySelector('[data-alertas]').textContent).toContain('Cargando');
     await espera(); flushSync();
     expect(el.querySelector('[data-alertas]').textContent).toContain('Alertas visibles: 7');
@@ -105,7 +130,7 @@ describe('montaje (bandera encendida para admin)', () => {
   it('un error de lectura se muestra sin romper (sin mensaje técnico)', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    reg.montar('hola', el, ctxDe('admin', { error: { code: '42501', message: 'permission denied for view v_alertas' } }), componentes, svelte);
+    await reg.montar('hola', el, ctxDe('admin', { error: { code: '42501', message: 'permission denied for view v_alertas' } }), componentes, svelte);
     await espera(); flushSync();
     expect(el.querySelector('[data-alertas]').textContent).toContain('Sin lectura de alertas');
     expect(el.textContent).not.toContain('42501');
@@ -114,7 +139,7 @@ describe('montaje (bandera encendida para admin)', () => {
   it('si se desmonta antes de que responda la consulta no falla ni escribe', async () => {
     const reg = crearRegistro(islas);
     const el = contenedor();
-    reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
+    await reg.montar('hola', el, ctxDe('admin'), componentes, svelte);
     reg.desmontar('hola');
     await espera();
     expect(el.innerHTML).toBe('');

@@ -72,17 +72,22 @@ function vistaDe(nombre) {
   return { vista, creada: true };
 }
 
+// mod.desmontar de una isla puede lanzar (un componente que falla al destruirse): nunca debe saltarse la limpieza del DOM ni salir como
+// excepción de un hook de navegación o de cierre de sesión (donde nadie la atendería). Se anota con console.warn y se sigue.
+function desmontarModulo(mod, nombre) {
+  try { mod.desmontar(nombre); } catch (e) { console.warn(`La isla ${nombre} falló al desmontarse; se limpia igual.`, e?.message ?? e); }
+}
+
 function desmontarIsla(nombre) {
   turnos.set(nombre, (turnos.get(nombre) ?? 0) + 1); // cancela un montaje que aún esté esperando
   const m = montadas.get(nombre);
   if (!m) return;
   montadas.delete(nombre);
-  try { m.mod.desmontar(nombre); } finally {
-    m.limpiezas.splice(0).forEach((baja) => baja());
-    m.host.remove();
-    m.ocultos.forEach(mostrarVieja);
-    if (m.creada) m.vista.remove();
-  }
+  desmontarModulo(m.mod, nombre);
+  m.limpiezas.splice(0).forEach((baja) => baja());
+  m.host.remove();
+  m.ocultos.forEach(mostrarVieja);
+  if (m.creada) m.vista.remove();
 }
 
 // Los montajes de una misma isla corren de a uno: `mod.montar` desmonta por nombre la instancia anterior, así que dos en vuelo
@@ -126,12 +131,15 @@ async function montarSerial(nombre, turno) {
     // La isla falló al montar: no se deja la vista vacía ni un rechazo sin atender; se cae a la vista vieja (false) y se anota
     // con console.warn (no es un error del flujo del panel). Si ya hay otro montaje en cola, este es null y no toca nada.
     console.warn(`La isla ${nombre} no se pudo montar; se muestra la vista actual.`, e?.message ?? e);
+    // Si el componente alcanzó a montarse antes de fallar, sigue vivo en el registro del paquete: se desmonta por nombre
+    // (no hace nada si no había nada montado).
+    desmontarModulo(mod, nombre);
   } finally {
     if (!montada) { limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove(); }
   }
   if (!montada) return sinMontar();
   if (!vigente()) { // salió de la vista, o pidieron otro montaje, mientras se cargaban las hojas de estilo
-    mod.desmontar(nombre); limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove();
+    desmontarModulo(mod, nombre); limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove();
     return null;
   }
   // La vista vieja (si la hay) se oculta mientras la isla está montada y se restaura al desmontar.

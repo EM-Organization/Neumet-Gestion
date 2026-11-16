@@ -21,6 +21,10 @@ describe('mensajeDeError', () => {
     expect(mensajeDeError(new TypeError('Failed to fetch'))).toBe(MENSAJE_SIN_CONEXION);
     expect(mensajeDeError({ message: 'NetworkError when attempting to fetch resource.' })).toBe(MENSAJE_SIN_CONEXION);
   });
+  it('un TypeError que no es de red es un error inesperado, no «Sin conexión»', () => {
+    expect(mensajeDeError(new TypeError("Cannot read properties of undefined (reading 'x')"))).toBe(MENSAJE_GENERICO);
+    expect(mensajeDeError(new TypeError('Load failed'))).toBe(MENSAJE_SIN_CONEXION); // Safari
+  });
   it('lo desconocido es genérico y no repite el mensaje del servidor', () => {
     const m = mensajeDeError({ code: 'XX000', message: 'relation "secreta" does not exist' });
     expect(m).toBe(MENSAJE_GENERICO);

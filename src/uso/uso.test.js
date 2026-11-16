@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mesEnCurso, sumarMeses, ultimoMesCerrado, mesesElegibles, rangoPorDefecto, etiquetaMes, normalizarRango, filasDeUso } from './uso.js';
+import { mesEnCurso, sumarMeses, ultimoMesCerrado, mesesElegibles, rangoPorDefecto, etiquetaMes, rangoDeSeleccion, SELECCION_ULTIMOS, ETIQUETA_ULTIMOS, COLUMNAS, filasDeUso } from './uso.js';
 
 describe('meses UTC', () => {
   it('el mes en curso se lee en UTC, no en la zona local', () => {
@@ -28,15 +28,17 @@ describe('meses UTC', () => {
   });
 });
 
-describe('normalizarRango', () => {
-  it('un rango válido no cambia', () => {
-    expect(normalizarRango({ desde: '2026-01-01', hasta: '2026-03-01' }, 'desde')).toEqual({ desde: '2026-01-01', hasta: '2026-03-01' });
+describe('rangoDeSeleccion', () => {
+  const AHORA = new Date('2026-11-16T00:00:00Z');
+  it('«Últimos 12 meses» es el rango por defecto', () => {
+    expect(rangoDeSeleccion(SELECCION_ULTIMOS, AHORA)).toEqual({ desde: '2025-11-01', hasta: '2026-10-01' });
+    expect(ETIQUETA_ULTIMOS).toBe('Últimos 12 meses');
   });
-  it('si «desde» pasa a «hasta», arrastra «hasta»', () => {
-    expect(normalizarRango({ desde: '2026-05-01', hasta: '2026-03-01' }, 'desde')).toEqual({ desde: '2026-05-01', hasta: '2026-05-01' });
+  it('un mes puntual es desde = hasta', () => {
+    expect(rangoDeSeleccion('2026-03-01', AHORA)).toEqual({ desde: '2026-03-01', hasta: '2026-03-01' });
   });
-  it('si «hasta» queda antes de «desde», arrastra «desde»', () => {
-    expect(normalizarRango({ desde: '2026-05-01', hasta: '2026-03-01' }, 'hasta')).toEqual({ desde: '2026-03-01', hasta: '2026-03-01' });
+  it('un valor que no es un mes (vacío, basura, mes 13) cae al rango por defecto', () => {
+    for (const v of ['', null, undefined, 'x', '2026-13-01', '2026-03-15']) expect(rangoDeSeleccion(v, AHORA)).toEqual(rangoPorDefecto(AHORA));
   });
 });
 
@@ -58,5 +60,14 @@ describe('filasDeUso', () => {
     const base = { cliente_id: 1, cliente_nombre: 'A', mes: '2026-03-01' };
     expect(filasDeUso([{ ...base, ultimo_ingreso_at: '2026-04-01T00:30:00Z' }])[0].ultimoIngreso).toBe('01/04/2026');
     expect(filasDeUso([{ ...base, ultimo_ingreso_at: null }])[0].ultimoIngreso).toBe('Sin ingresos');
+  });
+});
+
+describe('columnas', () => {
+  it('las etiquetas dicen qué se cuenta: los logins son de la cuenta de API y el ingreso es al panel', () => {
+    const etiquetas = Object.fromEntries(COLUMNAS.map((c) => [c.clave, c.etiqueta]));
+    expect(etiquetas.logins).toBe('Inicios de sesión de API');
+    expect(etiquetas.ultimoIngreso).toBe('Último ingreso al panel');
+    expect(COLUMNAS.map((c) => c.etiqueta).join(' ')).not.toContain('Logins');
   });
 });

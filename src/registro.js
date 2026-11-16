@@ -42,11 +42,15 @@ export function crearRegistro(islas = ISLAS) {
 
   const desmontarTodas = () => { for (const nombre of [...montadas.keys()]) desmontar(nombre); };
 
+  // `cargadores[nombre]` es un `() => import('./componentes/X.svelte')`: cada isla es su propio chunk y solo se descarga al montarla
+  // (con la bandera apagada no se baja nada). Si la carga falla, `montar` rechaza y el panel viejo cae a su vista.
   // `svelte` ({mount, unmount}) se inyecta para que el registro no dependa del runtime en las pruebas de banderas.
-  const montar = (nombre, el, ctx, componentes, svelte) => {
-    if (!activa(nombre, ctx?.rol) || !componentes[nombre]) return false;
+  const montar = async (nombre, el, ctx, cargadores, svelte) => {
+    if (!activa(nombre, ctx?.rol) || !cargadores[nombre]) return false;
+    const { default: Componente } = await cargadores[nombre]();
+    // `desmontar` y `mount` van juntos y sin `await` entre ambos: dos montajes seguidos no dejan dos instancias.
     desmontar(nombre);
-    const instancia = svelte.mount(componentes[nombre], { target: el, props: { ctx } });
+    const instancia = svelte.mount(Componente, { target: el, props: { ctx } });
     montadas.set(nombre, () => svelte.unmount(instancia));
     return true;
   };
