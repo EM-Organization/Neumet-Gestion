@@ -3,14 +3,15 @@
 import { db } from './supabase.js';
 import { html, setHtml, joinHtml } from './html.js';
 import { onLogin, onLogout, isClienteMode, currentClienteId, esUsuarioSucursal } from './auth.js';
-import { reloadActiveView } from './nav.js';
+import { reloadActiveView, onEntrarVista } from './nav.js';
 import { registerActions } from './actions.js';
-import { idsVehiculosDeSucursal, filtrarPorVehiculos, mostrarSelector } from '../domain/seccional.js';
+import { idsVehiculosDeSucursal, filtrarPorVehiculos, mostrarSelector, selectorEnVista, seleccionAplica } from '../domain/seccional.js';
 
 let sucursales = [];      // [{id, nombre}] visibles para el usuario (RLS)
 let vehiculos = [];       // [{id, sucursal_id}]
 let seleccion = '';       // '' = todas
 let listo = Promise.resolve();
+let vista = null;         // vista activa: el selector solo se muestra donde filtra (domain/seccional.js)
 
 const $ = id => document.getElementById(id);
 
@@ -21,7 +22,8 @@ export function onCambioSucursal(fn) { oyentes.add(fn); return () => oyentes.del
 export const sucursalSeleccionada = () => seleccion;
 export const listaSucursales = () => sucursales.slice();
 export const nombreSucursal = id => (sucursales.find(s => String(s.id) === String(id)) || {}).nombre || '';
-export const hayFiltroSeccional = () => isClienteMode() && seleccion !== '';
+// Solo filtra en las vistas donde el selector se ve (domain/seccional.js: seleccionAplica); en las demás la selección se ignora.
+export const hayFiltroSeccional = () => isClienteMode() && seleccionAplica(vista, seleccion);
 // Espera a que el contexto (sucursales y vehículos) esté cargado tras el login.
 export const contextoListo = () => listo;
 
@@ -34,9 +36,10 @@ export const filtrarConsulta = q => (hayFiltroSeccional() ? q.eq('sucursal_id', 
 function render() {
   const wrap = $('sec-selector');
   if (!wrap) return;
-  const ver = isClienteMode() && mostrarSelector({ esSeccional: esUsuarioSucursal(), sucursales });
-  wrap.style.display = ver ? '' : 'none';
-  if (!ver) return;
+  const hay = isClienteMode() && mostrarSelector({ esSeccional: esUsuarioSucursal(), sucursales });
+  wrap.style.display = hay && selectorEnVista(vista) ? '' : 'none';
+  if (!hay) return;
+  // Las opciones se mantienen al día también con el selector oculto (p. ej. tras crear una sucursal en su vista).
   setHtml($('sec-select'), joinHtml([html`<option value="">Todas las sucursales</option>`,
     ...sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
   $('sec-select').value = seleccion;
@@ -57,6 +60,8 @@ async function cargar(conservar = false) {
   if (!sucursales.some(x => String(x.id) === String(seleccion))) seleccion = '';
   render();
 }
+
+onEntrarVista(v => { vista = v; render(); });
 
 // Recarga sucursales y vehículos tras gestionarlos (alta, baja, movimiento) sin perder la selección vigente.
 export function refrescarSucursales() { listo = cargar(true); return listo; }

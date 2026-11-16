@@ -4,6 +4,7 @@ import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { registerView, switchView } from '../core/nav.js';
+import { sucursalSeleccionada } from '../core/seccional.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { traerPrecios, conValor } from '../core/precios.js';
@@ -13,6 +14,7 @@ import {
   argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock, ERROR_GENERICO
 } from '../domain/stock-cubiertas.js';
 
+let sucIni=''; // última sucursal de la barra aplicada como valor inicial del filtro
 let stockItems=[]; // lotes anteriores: solo lectura (docs/17 PR 9: el equipo Neumet ya no los escribe)
 let stockAssignMap={}; // stock_id → [{vehiculo_nombre, count}]
 
@@ -136,6 +138,10 @@ export async function loadStock(){
   sucursales=rs.error?[]:(rs.data||[]);
   clientes=rcl.error?[]:(rcl.data||[]);
   opcionesFiltros();
+  // Valor inicial del filtro de sucursal: la elegida en la barra (Inicio, Vehículos...). Solo al cambiar esa elección;
+  // después manda el filtro propio de Stock, que se puede volver a «Todas».
+  const ini=isClienteMode()?sucursalSeleccionada():'';
+  if(ini!==sucIni){ sucIni=ini; const f=$('filter-sucursal-stock'); if(!ini) f.value=''; else if([...f.options].some(o=>o.value===String(ini))) f.value=String(ini); }
   await loadStockAssignments();
   if(mio!==cargaN) return;
   renderStock();
