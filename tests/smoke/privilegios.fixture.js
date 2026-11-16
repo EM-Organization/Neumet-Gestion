@@ -3,11 +3,16 @@
 //   * select() sin columnas, select('*') o con precio_unidad / costo en neumaticos / eventos_neumatico => error 42501
 //     (como la base real: permiso denegado para la columna). Cada intento queda en __preciosFx.violaciones.
 //   * Las filas devueltas nunca llevan esos campos (la base no los entrega).
+//   * Desde el PR 9b (docs/17, migración C2): clientes.precio_mensual tampoco se lee ni se escribe directo. Un select con esa columna
+//     (o con '*'), o un update que la incluya, queda en __preciosFx.violaciones y el select falla con 42501. El precio llega por
+//     cliente_precios_mensuales y se fija con cliente_precio_mensual_fijar (registradas en __preciosFx.balance; __preciosFx.falla
+//     = código SQLSTATE con el que la próxima llamada a fijar responde un error, para probar los avisos de Balance).
 //   * rpc neumaticos_precios / eventos_costos devuelven los valores (registrados en __preciosFx.rpcs); la base real
 //     responde vacío al perfil de sucursal, pero el panel no debe ni llamarlas (el flujo lo comprueba).
 (function(){
-  var fx = window.__preciosFx = { violaciones: [], rpcs: [] };
-  var PRIV = { neumaticos: 'precio_unidad', eventos_neumatico: 'costo' };
+  var fx = window.__preciosFx = { violaciones: [], rpcs: [], balance: [], falla: null };
+  var PRIV = { neumaticos: 'precio_unidad', eventos_neumatico: 'costo', clientes: 'precio_mensual' };
+  var PRECIOS_MENSUALES = { 1: 50000, 2: 75000 }; // mismos importes que los clientes del stub
   // Mismos importes que el stub: neumáticos del vehículo 10 y cubiertas de stock (31, 33); costo del montaje del evento 2.
   var PRECIOS = [{id:1,precio_unidad:450000},{id:2,precio_unidad:450000},{id:3,precio_unidad:450000},{id:31,precio_unidad:455},{id:33,precio_unidad:410.5},{id:1003,precio_unidad:230000}];
   var COSTOS = [{id:2,costo:230.5}];
@@ -33,6 +38,16 @@
         fx.rpcs.push({ name: name, args: args });
         return respuesta(PRECIOS, function(f){ return !(args && args.p_solo_stock) || STOCK.indexOf(f.id) !== -1; });
       }
+      if(name === 'cliente_precios_mensuales'){
+        fx.balance.push({ name: name, args: args });
+        return Promise.resolve({ data: Object.keys(PRECIOS_MENSUALES).map(function(id){ return { cliente_id: Number(id), precio_mensual: PRECIOS_MENSUALES[id] }; }), error: null });
+      }
+      if(name === 'cliente_precio_mensual_fijar'){
+        fx.balance.push({ name: name, args: args });
+        if(fx.falla){ var code = fx.falla; fx.falla = null; return Promise.resolve({ data: null, error: { code: code, message: 'simulado ' + code } }); }
+        PRECIOS_MENSUALES[args.p_cliente_id] = Math.round(args.p_precio * 100) / 100;
+        return Promise.resolve({ data: PRECIOS_MENSUALES[args.p_cliente_id], error: null });
+      }
       if(name === 'eventos_costos'){ fx.rpcs.push({ name: name, args: args }); return respuesta(COSTOS); }
       return rpc.apply(c, arguments);
     };
@@ -42,7 +57,11 @@
       var os = q.select, th = q.then, cols, escribe = false, selecciona = false;
       ['insert', 'update', 'upsert', 'delete'].forEach(function(op){
         var o = q[op]; if(!o) return;
-        q[op] = function(){ escribe = true; return o.apply(q, arguments); };
+        q[op] = function(v){
+          escribe = true;
+          if(op === 'update' && v && typeof v === 'object' && campo in v) fx.violaciones.push(t + ': update(' + campo + ')');
+          return o.apply(q, arguments);
+        };
       });
       q.select = function(c_){ cols = c_ === undefined ? '*' : String(c_); selecciona = true; return os.apply(q, arguments); };
       q.then = function(res, rej){
