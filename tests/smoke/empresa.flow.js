@@ -163,6 +163,14 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if ($('#emp-umb-error').textContent.indexOf('Sin permiso') === -1) fail('empresa: 42501 sin mensaje: ' + $('#emp-umb-error').textContent);
   fx.errAlerta = null;
 
+  // Alertas: sin tarjeta de nivel crítico ni escritura de umbrales; solo un aviso hacia Empresa > Umbrales
+  var nCfgAl = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length;
+  $('.nav-item[data-view="alertas"]').click(); await sleep(500);
+  if (!$('#view-alertas').classList.contains('active')) fail('empresa: vista alertas no activa');
+  if ($('#alert-config') || $('#alert-umbral') || $('[data-action="alertasGuardarConfig"]')) fail('empresa: Alertas conserva la tarjeta de nivel crítico');
+  if (!visible($('#alert-umbral-aviso')) || !/Empresa > Umbrales/.test($('#alert-umbral-aviso').textContent)) fail('empresa: Alertas sin el aviso hacia Empresa > Umbrales');
+  if (fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length !== nCfgAl) fail('empresa: Alertas llamó a alerta_configurar');
+
   // Dispositivos: solo lectura
   $('.nav-item[data-view="empresa-dispositivos"]').click(); await sleep(500);
   if (all('#tbody-empresa-dispositivos tr[data-estado]').length !== 2) fail('empresa: se esperaban 2 dispositivos del cliente 1, hay ' + all('#tbody-empresa-dispositivos tr[data-estado]').length);

@@ -29,8 +29,8 @@ export function registrar(env) {
         // Cada alerta lleva al vehículo (acción) y ofrece resolver.
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), filas.length);
-        // El bloque del nivel crítico solo lo ve el cliente global.
-        assert.equal(await p.eval(`!document.querySelector('#alert-config').hidden`), rol === 'global', 'nivel crítico editable solo para el cliente global');
+        // El aviso hacia Empresa > Umbrales solo lo ve el administrador de empresa (cliente global).
+        assert.equal(await p.eval(`!document.querySelector('#alert-umbral-aviso').hidden`), rol === 'global', 'aviso solo para el administrador de empresa');
       });
     });
 
@@ -54,33 +54,18 @@ export function registrar(env) {
     }
 
     if (rol === 'global') {
-      test('Alertas (global): editar el nivel crítico reevalúa las alertas del cliente', async () => {
-        const cli = env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`);
-        const orig = json(env, `select umbral_critico_mm, umbral_bajo_mm, umbral_retiro_mm from public.clientes where id = ${cli}`)[0];
-        const nuevo = Number(orig.umbral_bajo_mm) - 0.5;
-        try {
-          await flujo(env, 'alertas', rol, async p => {
-            await irA(p, 'alertas');
-            await p.esperar(`!document.querySelector('#alert-config').hidden && document.querySelector('#alert-umbral').value`, { que: 'nivel crítico cargado' });
-            await p.eval(`(() => { const i = document.querySelector('#alert-umbral'); i.value = '${String(nuevo).replace('.', ',')}'; })()`);
-            await p.click('#alert-config-guardar');
-            await p.esperar(`/${String(nuevo).replace('.', ',')}/.test(document.querySelector('#alert-umbral').value)`, { que: 'nivel guardado' });
-          });
-          assert.equal(Number(env.sql(`select umbral_critico_mm from public.clientes where id = ${cli}`)), nuevo);
-          assert.equal(
-            Number(env.sql(`select count(*) from public.v_estado_neumaticos e where e.cliente_id = ${cli} and e.estado = 'critico' and not exists (select 1 from public.alertas a where a.neumatico_id = e.neumatico_id and a.estado <> 'resuelta')`)), 0,
-            'todo neumático crítico con el nivel nuevo tiene su alerta');
-          // Valor inválido: el panel lo rechaza sin llamar a la base.
-          await flujo(env, 'alertas', rol, async p => {
-            await irA(p, 'alertas');
-            await p.esperar(`!document.querySelector('#alert-config').hidden && document.querySelector('#alert-umbral').value`);
-            await p.eval(`(() => { document.querySelector('#alert-umbral').value = '99'; })()`);
-            await p.click('#alert-config-guardar');
-            await p.esperar(`/debe quedar entre/.test(document.querySelector('#alert-config-error').textContent)`, { que: 'error de rango' });
-          });
-        } finally {
-          env.sql(`update public.clientes set umbral_critico_mm = ${orig.umbral_critico_mm} where id = ${cli}`);
-        }
+      // El nivel crítico se edita solo en Empresa > Umbrales (cubierto en empresa-panel); Alertas no escribe umbrales.
+      test('Alertas (global): sin tarjeta de nivel crítico, con aviso hacia Empresa > Umbrales y sin alerta_configurar', async () => {
+        const desde = env.peticiones.length;
+        await flujo(env, 'alertas-sin-umbral', rol, async p => {
+          await irA(p, 'alertas');
+          await p.esperar(`document.querySelectorAll('#alert-tbody tr').length > 0`, { que: 'lista de alertas' });
+          assert.equal(await p.eval(`!!document.querySelector('#alert-config, #alert-umbral, #alert-histeresis, [data-action="alertasGuardarConfig"]')`), false, 'no debe quedar la tarjeta');
+          assert.equal(await p.eval(`/Empresa > Umbrales/.test(document.querySelector('#alert-umbral-aviso').innerText)`), true, 'aviso hacia Empresa > Umbrales');
+        });
+        const mias = env.peticiones.slice(desde).filter(r => r.tag === 'global/alertas-sin-umbral');
+        assert.ok(mias.length > 0, 'el flujo registró peticiones');
+        assert.ok(mias.every(r => !/alerta_configurar/.test(r.path) && r.method !== 'PATCH'), 'Alertas no escribe umbrales');
       });
     }
 

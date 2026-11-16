@@ -2,7 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, sinReconocer, hastaSilencio,
-  validarNota, validarUmbralCritico, validarHisteresis, traducirErrorAlerta,
+  validarNota, traducirErrorAlerta,
 } from '../../assets/js/domain/alertas.js';
 
 const AHORA = Date.parse('2026-06-10T12:00:00Z');
@@ -42,23 +42,6 @@ describe('validaciones', () => {
     assert.equal(validarNota(null).ok, false);
     assert.equal(validarNota('x'.repeat(201)).ok, false);
     assert.deepEqual(validarNota(' Retirado '), { ok: true, nota: 'Retirado' });
-  });
-  const lim = { retiro: 3, bajo: 8 };
-  test('nivel crítico entre retiro y bajo, un decimal, acepta coma', () => {
-    assert.deepEqual(validarUmbralCritico('5,5', lim), { ok: true, valor: 5.5 });
-    assert.equal(validarUmbralCritico('7', lim).ok, true);
-    assert.equal(validarUmbralCritico('3', lim).ok, false);
-    assert.equal(validarUmbralCritico('8.0', lim).ok, false);
-    assert.equal(validarUmbralCritico('5.55', lim).ok, false);
-    assert.equal(validarUmbralCritico('', lim).ok, false);
-    assert.equal(validarUmbralCritico('abc', lim).ok, false);
-    assert.match(validarUmbralCritico('9', lim).error, /entre 3 mm \(retiro\) y 8 mm/);
-  });
-  test('histéresis de 0 a 3', () => {
-    assert.equal(validarHisteresis('0').ok, true);
-    assert.deepEqual(validarHisteresis('0,5'), { ok: true, valor: 0.5 });
-    assert.equal(validarHisteresis('3.5').ok, false);
-    assert.equal(validarHisteresis('-1').ok, false);
   });
 });
 
