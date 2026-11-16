@@ -40,7 +40,7 @@ export function registrar(env) {
   // ---- Rotar: cada rol permitido, sobre un camión de su alcance --------------------------------------------------
   for (const [rol, patente, a, b, intercambio] of [
     ['global', 'DEMO010', 5, 1, true], ['salto', 'DEMO011', 1, 2, true], ['montevideo', 'DEMO002', 1, 4, true],
-    ['admin', 'DEMO001', 3, 9, true], ['global', 'DEMO003', 1, 9, false] // P9 está libre en el camión de 6 neumáticos: mueve sin intercambiar
+    ['global', 'DEMO003', 1, 9, false] // P9 está libre en el camión de 6 neumáticos: mueve sin intercambiar
   ]) {
     test(`Taller (${rol}): rotar P${a} con P${b} de ${patente} por la interfaz queda en la base`, async () => {
       const id = vehId(env, patente);
@@ -60,6 +60,23 @@ export function registrar(env) {
       assert.equal(nEventos(env, id, 'rotacion'), ev0 + (intercambio ? 2 : 1), 'eventos de rotación registrados');
     });
   }
+
+  // El equipo Neumet (admin interno) solo mira (docs/17 PR 9a): el detalle no ofrece rotar, cambiar, retirar, montar ni registrar costo.
+  test('Taller (admin): el detalle de DEMO001 no ofrece acciones de escritura y la base no cambia', async () => {
+    const id = vehId(env, 'DEMO001');
+    const antes = foto(env, id);
+    const desde = env.peticiones.length;
+    await flujo(env, 'detalle-admin-solo-lectura', 'admin', async p => {
+      await abrirDetallePorMatricula(p, 'DEMO001');
+      await p.click('#vd-diagrama .vd-rueda[data-pos="3"]');
+      await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto')`, { que: 'panel de la rueda 3' });
+      const sel = '[data-action="neumatico-cambiar"],[data-action="neumatico-rotar-pos"],[data-action="neumatico-retirar"],[data-action="neumatico-montar"],[data-action="detalleRegistrarCosto"]';
+      assert.equal(await p.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`), 0, 'sin botones de escritura');
+      assert.equal(await p.eval(`document.querySelectorAll('#vd-rotar-btn, #vd-rotar-destino').length`), 0);
+    });
+    assert.equal(rpcsDesde(env, desde, 'neumatico_rotar').length, 0);
+    assert.equal(foto(env, id), antes);
+  });
 
   test('Taller (global): tras rotar, el historial muestra la rotación y la rueda crítica sigue al neumático a su nueva posición', async () => {
     // Las mediciones son del NEUMÁTICO: el crítico de DEMO010 estaba en P5 y la rotación 5<->1 lo llevó a P1.
