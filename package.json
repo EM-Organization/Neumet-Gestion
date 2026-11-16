@@ -2,20 +2,33 @@
   "name": "neumet",
   "version": "0.0.0",
   "private": true,
+  "engines": { "node": ">=22.12.0" },
   "description": "Neumet: sitio estático + panel (tooling de calidad)",
   "scripts": {
-    "lint": "eslint assets tests",
+    "lint": "eslint assets tests src scripts vite.config.mjs",
     "check": "node tests/check-modules.mjs",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/*.test.mjs\"",
     "build": "node scripts/build.mjs",
     "serve": "npx serve -p 3000 .",
-    "e2e": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/e2e/e2e.test.mjs"
+    "e2e": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/e2e/e2e.test.mjs",
+    "test:front": "vitest run",
+    "dev:front": "vite",
+    "test:lint": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/lint/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@supabase/supabase-js": "2.118.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@tailwindcss/vite": "4.3.5",
     "eslint": "9.39.5",
     "eslint-plugin-no-unsanitized": "4.1.5",
-    "globals": "17.13.0"
+    "eslint-plugin-svelte": "3.24.1",
+    "globals": "17.13.0",
+    "jsdom": "31.0.1",
+    "svelte": "5.57.3",
+    "svelte-eslint-parser": "1.10.1",
+    "tailwindcss": "4.3.5",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
   }
 }

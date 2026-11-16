@@ -1,0 +1,5 @@
+/* Tailwind 4 sin preflight: el reset global cambiaría el panel viejo cuando una isla se monte dentro de él
+   (docs/19 §4.3). Solo tema y utilidades; el contenedor de cada isla lleva la clase `neumet-isla`. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);

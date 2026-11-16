@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Validar vercel.json
         run: python3 -m json.tool vercel.json > /dev/null
       - name: Sintaxis de los módulos del panel
@@ -59,9 +59,11 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run check
+      # reglas propias de src/ (un solo cliente supabase, sin {@html}); usan ESLint, por eso van aquí y no en `test`
+      - run: npm run test:lint
 
   build:
-    # Build neutro: dist/ debe ser una copia idéntica de lo publicable (docs/19 §5.1).
+    # dist/ = copia idéntica de lo publicable (docs/19 §5.1) + dist/panel/ del front nuevo (Vite, §5.2).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +72,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Pruebas del front nuevo (Vitest)
+        run: npm run test:front
       - run: npm run build
       - run: node tests/build/verificar-dist.mjs
 

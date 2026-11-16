@@ -1,5 +1,5 @@
-// Comprueba que dist/ contiene exactamente lo publicable y que cada archivo es
-// idéntico byte a byte a su origen. Correr tras `npm run build`.
+// Comprueba que dist/ contiene exactamente lo publicable (lo viejo idéntico byte a byte a su origen, más
+// dist/panel/** que genera Vite) y que el front nuevo cumple la CSP de vercel.json. Correr tras `npm run build`.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +23,10 @@ if (!existsSync(DIST)) {
 
 const errores = [];
 const esperados = PUBLICADOS.flatMap((p) => archivos(RAIZ, p)).sort();
-const obtenidos = readdirSync(DIST).flatMap((n) => archivos(DIST, n)).sort();
+const todos = readdirSync(DIST).flatMap((n) => archivos(DIST, n)).sort();
+// dist/panel/** es lo único nuevo permitido (salida de Vite, docs/19 §5.2); lo demás debe coincidir con la lista vieja.
+const panel = todos.filter((f) => f.startsWith('panel/'));
+const obtenidos = todos.filter((f) => !f.startsWith('panel/'));
 
 for (const f of esperados) if (!obtenidos.includes(f)) errores.push(`falta en dist: ${f}`);
 for (const f of obtenidos) if (!esperados.includes(f)) errores.push(`sobra en dist: ${f}`);
@@ -39,8 +42,32 @@ for (const f of obtenidos) {
   }
 }
 
+// Front nuevo: sin código ni estilo en línea (la CSP de vercel.json no los admite), sin eval, sin secretos, con tope de tamaño.
+const TOPE_PANEL_BYTES = 1024 * 1024; // se sube a conciencia cuando lleguen pantallas reales; hoy el humo pesa unos 26 kB
+for (const f of ['panel/index.html', 'panel/islas.js']) {
+  if (!panel.includes(f)) errores.push(`obligatorio ausente: ${f}`);
+}
+let bytesPanel = 0;
+for (const f of panel) {
+  const buf = readFileSync(join(DIST, f));
+  bytesPanel += buf.length;
+  const texto = buf.toString('utf8');
+  if (f.endsWith('.html')) {
+    if (/<script(?![^>]*\ssrc=)[^>]*>/i.test(texto)) errores.push(`script en línea (la CSP lo bloquea): ${f}`);
+    if (/<style[\s>]/i.test(texto)) errores.push(`<style> en línea: ${f}`);
+    if (/\sstyle\s*=/i.test(texto)) errores.push(`atributo style en línea: ${f}`);
+    if (/\son[a-z]+\s*=/i.test(texto)) errores.push(`manejador de evento en línea: ${f}`);
+    for (const m of texto.matchAll(/\s(?:src|href)="([^"]+)"/g)) {
+      if (!m[1].startsWith('/panel/')) errores.push(`referencia fuera de /panel/ en ${f}: ${m[1]}`);
+    }
+  }
+  if (f.endsWith('.js') && /\beval\s*\(|new\s+Function\s*\(/.test(texto)) errores.push(`eval o new Function en ${f}`);
+  if (/sb_secret_|service_role/.test(texto)) errores.push(`posible secreto en ${f}`);
+}
+if (bytesPanel > TOPE_PANEL_BYTES) errores.push(`dist/panel pesa ${bytesPanel} bytes, sobre el tope de ${TOPE_PANEL_BYTES}`);
+
 if (errores.length) {
   console.error(errores.join('\n'));
   process.exit(1);
 }
-console.log(`dist/ ok: ${obtenidos.length} archivos idénticos al origen, sin vercel.json ni docs/tests/supabase.`);
+console.log(`dist/ ok: ${obtenidos.length} archivos idénticos al origen, dist/panel/ con ${panel.length} archivos (${bytesPanel} bytes), sin vercel.json ni docs/tests/supabase.`);
