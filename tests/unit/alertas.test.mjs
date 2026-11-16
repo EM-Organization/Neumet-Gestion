@@ -60,5 +60,7 @@ describe('chip de estado de la alerta', () => {
     for (const e of estados) assert.notEqual(CHIP_ESTADO_ALERTA[e][0], 'red', e);
     assert.equal(new Set(estados.map(e => CHIP_ESTADO_ALERTA[e][1])).size, 3, 'símbolos distintos');
     assert.notEqual(CHIP_ESTADO_ALERTA.abierta[0], CHIP_ESTADO_ALERTA.reconocida[0], 'abierta se distingue por color y por símbolo');
+    // «▲ N bajos» del detalle del vehículo (desgaste) usa ▲: el estado de una alerta no puede confundirse con él.
+    assert.notEqual(CHIP_ESTADO_ALERTA.abierta[1], '▲');
   });
 });

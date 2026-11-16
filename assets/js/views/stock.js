@@ -141,7 +141,7 @@ export async function loadStock(){
   // Valor inicial del filtro de sucursal: la elegida en la barra (Inicio, Vehículos...). Solo al cambiar esa elección;
   // después manda el filtro propio de Stock, que se puede volver a «Todas».
   const ini=isClienteMode()?sucursalSeleccionada():'';
-  if(ini!==sucIni){ sucIni=ini; const f=$('filter-sucursal-stock'); if(ini&&[...f.options].some(o=>o.value===String(ini))) f.value=String(ini); }
+  if(ini!==sucIni){ sucIni=ini; const f=$('filter-sucursal-stock'); if(!ini) f.value=''; else if([...f.options].some(o=>o.value===String(ini))) f.value=String(ini); }
   await loadStockAssignments();
   if(mio!==cargaN) return;
   renderStock();

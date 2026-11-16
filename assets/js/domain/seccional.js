@@ -52,6 +52,9 @@ export function mostrarSelector({ esSeccional, sucursales }) {
 // Mediciones y Dispositivos también filtran, pero son de administración y el selector solo existe para clientes.
 export const VISTAS_CON_SELECTOR = ['inicio', 'vehiculos', 'alertas', 'reportes', 'calidad', 'flota', 'mediciones', 'dispositivos'];
 export const selectorEnVista = vista => VISTAS_CON_SELECTOR.includes(vista);
+// La sucursal elegida solo filtra donde el selector se ve. Fuera de esas vistas (detalle de un vehículo, Stock, la búsqueda
+// de la barra desde ellas) un filtro invisible dejaría sin resultados a una búsqueda sin dar ninguna pista del motivo.
+export const seleccionAplica = (vista, seleccion) => !!seleccion && selectorEnVista(vista);
 
 // Traduce errores de la base al ABM de sucursales (mensajes en español para el admin).
 export function mensajeErrorSeccional(err) {

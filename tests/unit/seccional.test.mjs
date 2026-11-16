@@ -5,7 +5,7 @@ import {
   idsVehiculosDeSucursal, filtrarPorVehiculos, resumenDesdeFilas, mostrarSelector,
   mensajeErrorSeccional, validarNombreSeccional, mensajeErrorCrearUsuario, cuerpoCrearUsuario,
 } from '../../assets/js/domain/seccional.js';
-import { VISTAS_CON_SELECTOR, selectorEnVista } from '../../assets/js/domain/seccional.js';
+import { VISTAS_CON_SELECTOR, selectorEnVista, seleccionAplica } from '../../assets/js/domain/seccional.js';
 import { readdirSync, readFileSync } from 'node:fs';
 import { kpisFlota } from '../../assets/js/domain/flota.js';
 
@@ -103,8 +103,17 @@ describe('selector de sucursal de la barra: solo en las vistas que filtran', () 
       const m = src.match(/registerView\(\s*'([^']+)'/);
       if (usa && m) filtran.add(m[1]);
     }
-    // El detalle de un vehículo filtra solo para decidir si lo muestra; es de un único vehículo y no lleva selector.
+    // El detalle importa filtrarFilas solo para la referencia de tasas; es de un único vehículo, no lleva selector y
+    // fuera de las vistas con selector la selección se ignora (seleccionAplica), así que la referencia no la usa.
     filtran.delete('vehiculo-detalle');
     assert.deepEqual([...filtran].sort(), [...VISTAS_CON_SELECTOR].sort());
+  });
+});
+
+describe('la sucursal elegida solo filtra donde el selector se ve', () => {
+  test('seleccionAplica: false en el detalle, Stock y la búsqueda de la barra aunque haya sucursal elegida', () => {
+    for (const v of ['inicio', 'vehiculos', 'alertas', 'reportes']) assert.equal(seleccionAplica(v, '2'), true, v);
+    for (const v of ['vehiculo-detalle', 'stock', 'recauchutado', 'sucursales', 'empresa-usuarios', null, undefined]) assert.equal(seleccionAplica(v, '2'), false, String(v));
+    assert.equal(seleccionAplica('inicio', ''), false, 'sin elección no hay filtro');
   });
 });

@@ -5,7 +5,7 @@ import { html, setHtml, joinHtml } from './html.js';
 import { onLogin, onLogout, isClienteMode, currentClienteId, esUsuarioSucursal } from './auth.js';
 import { reloadActiveView, onEntrarVista } from './nav.js';
 import { registerActions } from './actions.js';
-import { idsVehiculosDeSucursal, filtrarPorVehiculos, mostrarSelector, selectorEnVista } from '../domain/seccional.js';
+import { idsVehiculosDeSucursal, filtrarPorVehiculos, mostrarSelector, selectorEnVista, seleccionAplica } from '../domain/seccional.js';
 
 let sucursales = [];      // [{id, nombre}] visibles para el usuario (RLS)
 let vehiculos = [];       // [{id, sucursal_id}]
@@ -22,7 +22,8 @@ export function onCambioSucursal(fn) { oyentes.add(fn); return () => oyentes.del
 export const sucursalSeleccionada = () => seleccion;
 export const listaSucursales = () => sucursales.slice();
 export const nombreSucursal = id => (sucursales.find(s => String(s.id) === String(id)) || {}).nombre || '';
-export const hayFiltroSeccional = () => isClienteMode() && seleccion !== '';
+// Solo filtra en las vistas donde el selector se ve (domain/seccional.js: seleccionAplica); en las demás la selección se ignora.
+export const hayFiltroSeccional = () => isClienteMode() && seleccionAplica(vista, seleccion);
 // Espera a que el contexto (sucursales y vehículos) esté cargado tras el login.
 export const contextoListo = () => listo;
 

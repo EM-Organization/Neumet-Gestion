@@ -4,7 +4,7 @@
 export const ESTADO_ALERTA_LABEL = { abierta: 'Abierta', reconocida: 'Reconocida', silenciada: 'Silenciada' };
 // Color del chip de estado: el rojo es de lo crítico (el neumático), no del estado de gestión de la alerta. «Abierta» pide
 // atención (naranja); las otras dos ya están atendidas o postergadas (gris). El texto y el símbolo dicen el estado igual.
-export const CHIP_ESTADO_ALERTA = { abierta: ['orange', '▲'], reconocida: ['gray', '✓'], silenciada: ['gray', '–'] };
+export const CHIP_ESTADO_ALERTA = { abierta: ['orange', '●'], reconocida: ['gray', '✓'], silenciada: ['gray', '–'] };
 export const DIAS_SILENCIO = 7;
 export const NOTA_MAX = 200;
 

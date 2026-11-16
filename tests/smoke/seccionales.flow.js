@@ -99,12 +99,25 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (visibleSel()) fail('selector: no debe verse en Recauchutado');
   await nav('inicio'); if (!visibleSel()) fail('selector: debe volver a verse al regresar a Inicio');
   // Stock toma la sucursal de la barra como valor inicial de su propio filtro (solo cuando cambia la elección).
+  // Fuera de las vistas con selector la sucursal elegida no filtra nada: con Salto elegida, la búsqueda de la barra
+  // (desde Stock y desde el detalle de un vehículo) sigue encontrando un camión de otra sucursal (Camión 01, Montevideo).
   setSel('#sec-select', '2'); await sleep(300);
+  await nav('stock'); await sleep(400);
+  var buscarBarra = async function(txt){ var bg = $('#busq-global-input'); bg.value = txt; bg.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(400); return all('#busq-global-res .busq-op').length; };
+  if (await buscarBarra('AB123CD') !== 1) fail('selector: la barra desde Stock no encontró un camión de otra sucursal; la sucursal elegida no debe filtrar fuera de las vistas con selector');
+  $('#busq-global-input').form.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true })); await sleep(800);
+  if (!$('#view-vehiculo-detalle').classList.contains('active')) fail('selector: Enter en la barra no abrió el detalle del camión de otra sucursal');
+  if (await buscarBarra('SAB-1234') !== 1) fail('selector: la barra desde el detalle no encontró un camión sin sucursal con Salto elegida');
+  $('#busq-global-input').value = ''; $('#busq-global-input').dispatchEvent(new w.Event('input', { bubbles: true }));
   await nav('stock'); await sleep(400);
   if ($('#filter-sucursal-stock').value !== '2') fail('selector: Stock no tomó la sucursal de la barra como valor inicial: ' + $('#filter-sucursal-stock').value);
   setSel('#filter-sucursal-stock', ''); await nav('stock'); await sleep(400);
   if ($('#filter-sucursal-stock').value !== '') fail('selector: Stock pisó el filtro propio sin que cambiara la sucursal de la barra');
-  await nav('inicio'); setSel('#sec-select', ''); await sleep(300);
+  // «Todas» en la barra también llega a Stock como valor inicial (quita el filtro de sucursal que traía de la elección anterior).
+  setSel('#filter-sucursal-stock', '2'); await nav('inicio'); setSel('#sec-select', ''); await sleep(300);
+  await nav('stock'); await sleep(400);
+  if ($('#filter-sucursal-stock').value !== '') fail('selector: «Todas» en la barra no llegó a Stock como valor inicial: ' + $('#filter-sucursal-stock').value);
+  await nav('inicio');
   log.push('selector-flow: ok, vehEqs=' + fx.vehEqs.join(','));
 };
 
