@@ -133,7 +133,8 @@ registerActions({
   vehiculoAgregarAbrir(){
     if(!esAdminEmpresa()) return;
     ['veh-nuevo-numero','veh-nuevo-patente'].forEach(id=>{ $(id).value=''; });
-    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo errNuevo('');
+    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo
+    errNuevo('');
     // Sucursal por defecto: la que está elegida en la barra superior (si hay una).
     setHtml($('veh-nuevo-sucursal'), joinHtml([html`<option value="">Sin sucursal</option>`,
       listaSucursales().map(s=>html`<option value="${s.id}">${s.nombre}</option>`)]));

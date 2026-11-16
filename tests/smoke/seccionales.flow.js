@@ -184,6 +184,10 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (toast().indexOf('número de coche') === -1 || nv('error').textContent.indexOf('número de coche') === -1 || !$('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: sin mensaje de número duplicado: ' + toast());
   $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   if ($('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: Cancelar no cerró el diálogo');
+  // Reabrir tras un error: el mensaje previo no debe quedar (regresión: errNuevo('') quedó dentro de un comentario)
+  $('#btn-veh-agregar').click(); await sleep(200);
+  if (nv('error').textContent !== '') fail('vehiculos: el diálogo reabierto conserva el error previo: ' + nv('error').textContent);
+  $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   // La sucursal elegida en la barra superior es la sucursal por defecto del alta
   $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
   if (vrows().length !== 4) fail('sucursales: el vehículo nuevo no aparece (' + vrows().length + ')');
