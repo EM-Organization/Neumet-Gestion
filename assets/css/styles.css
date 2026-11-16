@@ -836,6 +836,7 @@
    sin desplazar la tabla (la etiqueta de cada dato sale de data-label). */
 @media (max-width: 640px) {
   #view-sucursales .sec-tabla, #view-sucursales .sec-tabla tbody, #view-sucursales .sec-tabla tr, #view-sucursales .sec-tabla td { display: block; width: 100%; box-sizing: border-box; }
+  #view-sucursales .table-wrap table { min-width: 0; } /* anula el min-width:560px global: a 390 px la tabla y sus controles se cortaban */
   #view-sucursales .sec-tabla thead { display: none; }
   #view-sucursales .sec-tabla tr { padding: 8px 0; border-top: 1px solid var(--border); }
   #view-sucursales .sec-tabla td { border-top: 0; padding: 3px 0; }
