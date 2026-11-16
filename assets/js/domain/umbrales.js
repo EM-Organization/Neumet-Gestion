@@ -5,7 +5,7 @@ export const CAMPOS_UMBRAL = [
   { key: 'umbral_bajo_mm', lbl: 'Umbral bajo (mm)', ayuda: 'Por debajo: estado "bajo" (naranja)', mm: true },
   { key: 'umbral_critico_mm', lbl: 'Umbral crítico (mm)', ayuda: 'Por debajo: estado "crítico" (rojo)', mm: true },
   // Histéresis: puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los umbrales en mm (mm: false, hist: true).
-  { key: 'alerta_histeresis_mm', lbl: 'Histéresis (mm)', ayuda: 'Margen sobre el umbral crítico: la alerta se da por resuelta al superar el crítico más este margen (0 a 3 mm)', mm: false, hist: true },
+  { key: 'alerta_histeresis_mm', lbl: 'Histéresis (mm)', ayuda: 'Margen sobre el crítico para dar la alerta por resuelta (0 a 3 mm)', mm: false, hist: true },
   { key: 'umbral_retiro_mm', lbl: 'Umbral de retiro (mm)', ayuda: 'Profundidad mínima para retirar el neumático', mm: true },
   { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para alertar', ayuda: 'Alerta "sin medir" pasado este plazo', mm: false },
   { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true }
