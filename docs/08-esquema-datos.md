@@ -957,14 +957,14 @@ Migración `20261120500000_cerrar_escrituras_neumet.sql` (F10 PR 11, docs/17 §4
 - **RPC:** se quita la rama de `admin` de las 26 RPC de escritura de docs/17 §4.1 y de sus siete helpers de autorización (`neumatico_autorizar_vehiculo`, `sucursal_autorizar_gestion`, `sucursal_autorizar_por_id`, `stock_cubierta_autorizar_por_id`, `recauchutado_autorizar`, `medicion_autorizar`, `alerta_cargar`). El equipo Neumet recibe `42501` de forma uniforme, también con ids inexistentes (antes `P0002` o `22004`).
 - **Políticas:** `*_admin_all` pasa a `*_admin_select` (`FOR SELECT`, `is_admin()`) en `clientes`, `neumaticos`, `eventos_neumatico`, `perfiles`, `stock_neumaticos`, `sucursales` y `vehiculos`. Se agrega `clientes_admin_update` (`FOR UPDATE`).
 - **Privilegios:** `revoke insert, update, delete, truncate` de `authenticated` sobre esas siete tablas y sobre todas las vistas, vistas materializadas y tablas foráneas de `public` (también de `anon`).
-- **`clientes`:** `authenticated` pierde `select` y `update` de tabla; recibe `select` de todas las columnas salvo `precio_mensual` y `update (nombre, auth_user_id)`. `precio_mensual` solo se lee y escribe por las RPC de C1 (apéndice P).
+- **`clientes`:** `authenticated` pierde `select` y `update` de tabla; recibe `select` de todas las columnas salvo `precio_mensual` y `update (nombre)`. `auth_user_id` tampoco se escribe por la API: la reasignación de la cuenta dueña de un cliente ya no se hace desde el panel ni por API (si hiciera falta, se desarrollará una acción específica y auditada; mientras tanto, a mano desde Supabase). `precio_mensual` solo se lee y escribe por las RPC de C1 (apéndice P).
 - **Se conservan:** `dispositivos_admin_all`, `gastos_admin_all`, `asignar_dispositivo_a_cliente`, `cliente_eliminar_suave` y el camino de la Edge Function `crear-cliente` (clave de servicio).
 
 ## Q.2 Consecuencias
 
 - Un `UPDATE`/`DELETE` directo sin privilegio da `42501` (antes afectaba 0 filas).
-- Una medición sin cliente (dispositivo sin asignar) ya no se puede invalidar ni revalidar: solo lo hacía el equipo Neumet.
-- `select=*` sobre `clientes` da `42501` (incluye `precio_mensual`): hay que pedir columnas.
+- Una medición sin cliente (dispositivo sin asignar) ya no se puede invalidar ni revalidar: solo lo hacía el equipo Neumet. Salida: asignar el dispositivo a un cliente con `asignar_dispositivo_a_cliente` (el admin la conserva) y que la invalide el administrador de empresa.
+- `select=*` sobre `clientes` da `42501` (incluye `precio_mensual`): hay que pedir columnas. **Regla de revisión:** en el front, `select('*')` sobre `clientes` (también con `.update(...).select()` sin columnas) falla con `42501` para todos los roles por los privilegios por columna; revisar que cada lectura de `clientes` nombre sus columnas.
 
 ## Q.3 Pruebas
 
