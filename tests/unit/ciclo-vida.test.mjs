@@ -101,9 +101,10 @@ test('rutaOdometro: quién puede bajar el kilometraje (docs/17 §4.1)', () => {
   assert.deepEqual(rutaOdometro({ cliente: true, adminEmpresa: true, baja: true }), { accion: 'corregir', rpc: 'vehiculo_corregir_odometro' });
   // Usuario de sucursal: no baja, ve el aviso y no se llama a ninguna RPC.
   assert.deepEqual(rutaOdometro({ cliente: true, adminEmpresa: false, baja: true }), { accion: 'avisar', rpc: null });
-  // Sin baja el cliente sigue con la RPC que rechaza bajar; el equipo Neumet escribe directo como hasta ahora.
+  // Sin baja el cliente sigue con la RPC que rechaza bajar; el equipo Neumet ya no escribe: nunca hay ruta directa ni RPC (docs/17 PR 9).
   assert.equal(rutaOdometro({ cliente: true, adminEmpresa: true, baja: false }).rpc, 'vehiculo_registrar_odometro');
   assert.equal(rutaOdometro({ cliente: true, adminEmpresa: false, baja: false }).rpc, 'vehiculo_registrar_odometro');
-  assert.deepEqual(rutaOdometro({ cliente: false, baja: true }), { accion: 'confirmar_directo', rpc: null });
+  assert.deepEqual(rutaOdometro({ cliente: false, baja: true }), { accion: 'solo_lectura', rpc: null });
+  assert.deepEqual(rutaOdometro({ cliente: false, baja: false }), { accion: 'solo_lectura', rpc: null });
   assert.match(AVISO_ODOMETRO_SUCURSAL(1200), /1200 km.*administrador de empresa/);
 });

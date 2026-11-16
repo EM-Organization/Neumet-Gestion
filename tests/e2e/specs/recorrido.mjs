@@ -104,7 +104,7 @@ export function registrar(env) {
       assert.deepEqual(await p.eval(marcas()), lotes.map(l => l.marca));
       assert.match(await texto(p, '#tbody-stock'), new RegExp(`0 / ${lotes[0].cantidad} ud\\.`));
       assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'el cliente no edita ni elimina lotes');
-      assert.equal(await p.eval(`!!document.querySelector('#stock-lotes [data-action="openStockModal"]').offsetParent`), false, 'el cliente no agrega lotes');
+      assert.equal(await p.eval(`!!document.querySelector('[data-action="openStockModal"]')`), false, 'nadie agrega lotes desde el panel (legado, solo lectura)');
       await p.esperar(`document.querySelectorAll('#stk-lista .stk-fila').length > 0`, { que: 'cubiertas del cliente' });
     });
     await flujo(env, 'stock-seccional', 'salto', async p => {

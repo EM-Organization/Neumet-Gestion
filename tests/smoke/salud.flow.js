@@ -57,29 +57,12 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   var kpis = $('#ficha-kpis').textContent;
   if(!/Vehículos activos/.test(kpis) || !/Críticos/.test(kpis)) fail('ficha: faltan KPIs del resumen');
   if(!$('#fu-umbral_bajo_mm') || $('#fu-umbral_bajo_mm').value !== '8') fail('ficha: umbral bajo no cargado');
-  var sv = function(k, v){ $('#fu-'+k).value = v; };
-  var guardar = async function(){ $('#ficha-guardar').click(); await sleep(250); };
-  var errTxt = function(){ return $('#ficha-umbral-error').classList.contains('show') ? $('#ficha-umbral-error').textContent : ''; };
-  // validación local: no llega a la BD
-  sv('umbral_critico_mm', '9'); await guardar();
-  if(fx.updates.length !== 0) fail('ficha: umbrales inválidos llegaron a la BD');
-  if(errTxt().indexOf('retiro < crítico < bajo') === -1) fail('ficha: falta error de orden: '+errTxt());
-  // error de la BD (check) se muestra
-  sv('umbral_critico_mm', '5.5'); fx.error = {code:'23514', message:'violates check constraint "clientes_umbrales_check"'};
-  await guardar();
-  if(fx.updates.length !== 1) fail('ficha: no se envió el update');
-  if(errTxt().indexOf('clientes_umbrales_check') === -1) fail('ficha: no se muestra el error de la BD: '+errTxt());
-  // UPDATE que afecta 0 filas (RLS): error visible, nunca éxito silencioso
-  fx.error = null; fx.sinFilas = true; await guardar();
-  if(fx.updates.length !== 2) fail('ficha: no se envió el update sin filas');
-  if(errTxt().indexOf('No se guardó ningún cambio') === -1) fail('ficha: 0 filas sin error visible: '+errTxt());
-  if($('#toast-msg').textContent.indexOf('Umbrales actualizados') !== -1) fail('ficha: éxito mostrado con 0 filas afectadas');
-  // guardado correcto
-  fx.sinFilas = false; await guardar();
-  var u = fx.updates[fx.updates.length-1];
-  if(fx.updates.length !== 3 || u.umbral_critico_mm !== 5.5 || u.umbral_bajo_mm !== 8) fail('ficha: payload de umbrales: '+JSON.stringify(u));
-  if(errTxt()) fail('ficha: queda un error tras guardar bien: '+errTxt());
-  if($('#toast-msg').textContent.indexOf('Umbrales actualizados') === -1) fail('ficha: falta aviso de guardado');
+  // Umbrales de solo lectura para el equipo Neumet (docs/17 PR 9): los edita el administrador de la empresa en Empresa > Umbrales
+  var campos = d.querySelectorAll('#ficha-umbrales-campos input');
+  if(!campos.length) fail('ficha: no se muestran los umbrales');
+  Array.prototype.forEach.call(campos, function(c){ if(!c.disabled) fail('ficha: el umbral ' + c.id + ' es editable para el equipo Neumet'); });
+  if($('#ficha-guardar') || $('#ficha-umbral-error') || d.querySelector('[data-action="guardarUmbrales"]')) fail('ficha: queda el guardado de umbrales');
+  if(fx.updates.length !== 0) fail('ficha: el equipo Neumet escribió umbrales');
   // volver a Clientes y reabrir otra ficha
   $('#ficha-volver').click(); await sleep(400);
   if(!$('#view-clientes').classList.contains('active')) fail('ficha: "Volver" no regresa a Clientes');

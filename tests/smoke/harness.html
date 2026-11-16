@@ -110,6 +110,7 @@
       // Vehículos como cliente: buscador + detalle con diagrama (vehiculo.fixture.js): tests/smoke/vehiculo.flow.js
       // Con ?montar=1: coche sin neumáticos, montar y retirar (montar.fixture.js): tests/smoke/montar.flow.js
       if(/[?&]montar=1/.test(location.search)) await window.montarFlow(w,d,sleep,fail,log);
+      else if(!cliMode) await window.detalleAdminFlow(w,d,sleep,fail,log); // equipo Neumet: solo mira (tests/smoke/vehiculo.flow.js)
       else await window.detalleFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');
@@ -130,10 +131,9 @@
       if(!$('#view-'+views[i]).classList.contains('active')) fail('vista no activa: '+views[i]);
       log.push(views[i]+': filas='+d.querySelectorAll('#view-'+views[i]+' tbody tr, #view-'+views[i]+' .dash-fleet-card').length+' texto='+sig($('#view-'+views[i]).textContent.replace(/\s+/g,' ')));
     }
-    var modals=cliMode?[['vehiculos','openVehiculoModal','modal-vehiculo','closeVehiculoModal']]:[
+    var modals=cliMode?[]:[
       ['clientes','openClienteModal','modal-cliente','closeClienteModal'],
       ['balance','openGastoModal','modal-gasto','closeGastoModal'],
-      ['vehiculos','openVehiculoModal','modal-vehiculo','closeVehiculoModal'],
       ['dispositivos','openDispositivoModal','modal-dispositivo','closeDispositivoModal']
     ];
     for(var j=0;j<modals.length;j++){
@@ -141,37 +141,19 @@
       nav(m[0]); await sleep(400);
       if(click(act(m[1]),m[1])){ await sleep(400);
         if(!$('#'+m[2]).classList.contains('show')) fail('modal no abierto: '+m[2]);
-        if(m[2]==='modal-vehiculo'){
-          // El vehículo se identifica por su número de coche (vehiculos.nombre): un solo campo, sin "Nombre del vehículo".
-          var ln=$('#modal-vehiculo label[for="vf-nombre"]');
-          if(!ln||ln.textContent.trim()!=='Número de coche') fail('vehiculo: la etiqueta del campo debe ser "Número de coche": '+(ln&&ln.textContent));
-          if($('#vf-numero')) fail('vehiculo: sobra el campo separado de número');
-          if($('#vf-nombre').placeholder!=='106') fail('vehiculo: placeholder del número de coche: '+$('#vf-nombre').placeholder);
-          if(/Nombre del vehículo/.test($('#modal-vehiculo').textContent)) fail('vehiculo: aparece "Nombre del vehículo"');
-        }
         click(act(m[3]),m[3]); await sleep(100);
         if($('#'+m[2]).classList.contains('show')) fail('modal no cerrado: '+m[2]);
       }
     }
     nav('stock'); await sleep(500);
     log.push('stock filas='+d.querySelectorAll('#tbody-stock tr').length);
-    if(cliMode){
-      // Stock de solo lectura para el cliente: sin alta, edición ni baja
-      var stockAcc=Array.prototype.some.call(d.querySelectorAll('#view-stock [data-action="openStockModal"]'),function(b){ return b.getClientRects().length>0; });
-      if(stockAcc) fail('stock(cliente): ve el alta de compras');
-      if(d.querySelectorAll('#tbody-stock button[data-sa]').length) fail('stock(cliente): ve botones de editar/eliminar');
-    } else if(click(act('openStockModal'),'openStockModal')){ await sleep(400);
-      if(!$('#modal-stock').classList.contains('show')) fail('modal-stock no abierto');
-      click(act('closeStockModal'),'closeStockModal'); }
+    // Lotes anteriores de solo lectura para todos (docs/17 PR 9): ni alta de compras ni editar/eliminar, ni su modal.
+    if(d.querySelector('#view-stock [data-action="openStockModal"]')||$('#modal-stock')) fail('stock: queda el alta de compras (lotes)');
+    if(d.querySelectorAll('#tbody-stock button[data-sa]').length) fail('stock: ve botones de editar/eliminar lotes');
+    // Vehículos: sin alta, edición ni baja; el equipo Neumet solo abre detalle y ciclo de vida (tests/smoke/ciclo.flow.js)
     nav('vehiculos'); await sleep(500);
-    var nb=d.querySelector('#tbody-vehiculos [data-va="neum"],#tbody-vehiculos [data-action="openNeumaticosModal"], #tbody-vehiculos [onclick*="openNeumaticosModal"]');
-    if(nb){ nb.click(); await sleep(600);
-      if(!$('#modal-neumaticos').classList.contains('show')) fail('modal-neumaticos no abierto');
-      var tire=d.querySelector('#modal-neumaticos svg g[cursor="pointer"], #modal-neumaticos svg g[style*="cursor"]');
-      if(tire){ tire.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300); log.push('neum-panel-len='+$('#neum-detail-panel').innerHTML.length); }
-      else log.push('sin rueda clicable; svg-nodos='+d.querySelectorAll('#neum-assign-svg *').length);
-      click(act('closeNeumaticosModal'),'closeNeumaticosModal'); await sleep(100);
-    } else log.push('sin boton neumaticos en fila');
+    if(d.querySelector('#tbody-vehiculos [data-va="edit"],#tbody-vehiculos [data-va="del"],#tbody-vehiculos [data-va="neum"]')) fail('vehiculos: quedan botones de editar, eliminar o neumáticos');
+    if($('#modal-neumaticos')) fail('vehiculos: queda el editor de neumáticos del equipo Neumet');
     nav('mediciones'); await sleep(500);
     var dm=d.querySelector('[data-mode="device"],[data-mode="dispositivo"]');
     if(dm){ dm.click(); await sleep(600); } else log.push('sin tab modo dispositivo');

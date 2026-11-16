@@ -13,12 +13,14 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 let ctx = null;
 
 export const puedeVerCostos = () => puedeGestionarCostos({ admin: esAdmin(), cliente: isClienteMode(), sucursalId: currentSucursalId });
+// El equipo Neumet (admin interno) ve costos pero no los registra: costo_registrar escribe costos_neumatico, que la migración C2 le corta.
+export const puedeRegistrarCosto = () => puedeVerCostos() && !esAdmin();
 
 const err = msg => { const el = $('costo-error'); el.textContent = msg || ''; };
 
 // Abre el formulario para un neumático. `etiqueta`: texto que lo identifica (posición, marca, quema).
 export function abrirRegistroCosto({ neumaticoId, etiqueta = '', alGuardar = null }) {
-  if (!puedeVerCostos() || neumaticoId === null || neumaticoId === undefined) return;
+  if (!puedeRegistrarCosto() || neumaticoId === null || neumaticoId === undefined) return;
   ctx = { neumaticoId, alGuardar };
   $('costo-sub').textContent = etiqueta;
   setHtml($('costo-concepto'), joinHtml([html`<option value="">Elegir concepto</option>`, ...CONCEPTOS.map(c => html`<option value="${c.id}">${c.label}</option>`)]));

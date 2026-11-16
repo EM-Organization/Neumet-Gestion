@@ -6,17 +6,16 @@ import { showToast, setStatus, userError, relDate } from '../core/ui.js';
 import { isClienteMode, currentClienteId, onLogin, onLogout } from '../core/auth.js';
 import { registerView, switchView, setTitulo } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
-import { CAMPOS_UMBRAL, validarUmbrales, mensajeErrorUmbrales, resumenFlota } from '../domain/umbrales.js';
+import { CAMPOS_UMBRAL, resumenFlota } from '../domain/umbrales.js';
 import { cargarSeccionalesAdmin } from './seccionales-admin.js';
 import { contarPorEstado, infoEstado, ESTADOS } from '../domain/salud.js';
 
 // Ficha de cliente: resumen (v_resumen_flota_cliente), salud de sus dispositivos (v_salud_dispositivos) y umbrales
-// (columnas de clientes; edición solo admin, el cliente los ve de solo lectura).
+// (columnas de clientes). Los umbrales son de solo lectura: los edita el administrador de la empresa (Empresa > Umbrales, docs/17 PR 9).
 const COLS=CAMPOS_UMBRAL.map(c=>c.key).join(',');
 const MAX_CUENTAS_API=5;
 let activoId=null;
 
-const err=(msg)=>{ const el=document.getElementById('ficha-umbral-error'); el.textContent=msg||''; el.classList.toggle('show',!!msg); };
 
 // La ficha se abre desde Clientes (abrirFichaCliente): sin cliente elegido se vuelve a la lista.
 export async function loadFicha(){
@@ -27,7 +26,6 @@ export async function loadFicha(){
 }
 
 async function cargarCliente(){
-  err('');
   if(activoId===null){
     document.getElementById('ficha-nombre').textContent='Sin clientes';
     setHtml(document.getElementById('ficha-kpis'), html`<div class="empty-state"><div class="empty-title">No hay clientes para mostrar</div></div>`);
@@ -50,7 +48,7 @@ async function cargarCliente(){
   renderResumen((res.data||[])[0]||null);
   renderSalud(salud.data||[]);
   renderUmbrales(c);
-  cargarSeccionalesAdmin(id); // ABM de sucursales (solo admin; no hace nada en modo cliente)
+  cargarSeccionalesAdmin(id); // sucursales y usuarios en solo lectura (equipo Neumet; no hace nada en modo cliente)
   cargarCuentasApi();
 }
 
@@ -80,35 +78,14 @@ function renderSalud(rows){
 }
 
 function renderUmbrales(c){
-  const ro=isClienteMode();
   setHtml(document.getElementById('ficha-umbrales-campos'), joinHtml(CAMPOS_UMBRAL.map(f=>html`<div class="field">
     <label for="fu-${f.key}">${f.lbl}</label>
-    <input type="text" inputmode="decimal" id="fu-${f.key}" data-umbral="${f.key}" value="${c[f.key]??''}" ${ro?'disabled':''}/>
+    <input type="text" inputmode="decimal" id="fu-${f.key}" data-umbral="${f.key}" value="${c[f.key]??''}" disabled/>
     <div class="ficha-ayuda">${f.ayuda}</div>
   </div>`)));
-  document.getElementById('ficha-guardar').style.display=ro?'none':'';
 }
 
 ACTIONS.abrirFichaCliente=id=>{ activoId=id; switchView('ficha'); };
-ACTIONS.guardarUmbrales=async function(){
-  if(isClienteMode()||activoId===null) return;
-  const raw={};
-  document.querySelectorAll('#ficha-umbrales-campos [data-umbral]').forEach(i=>{ raw[i.dataset.umbral]=i.value; });
-  const v=validarUmbrales(raw);
-  if(!v.ok){ err(v.error); return; }
-  err('');
-  const btn=document.getElementById('ficha-guardar');
-  btn.disabled=true; btn.textContent='Guardando…';
-  try{
-    const {data,error}=await db.from('clientes').update(v.valores).eq('id',activoId).select('id,nombre,'+COLS);
-    if(error){ err(mensajeErrorUmbrales(error)); return; } // se muestra el error de la BD (p. ej. check retiro < crítico < bajo)
-    if(!data||!data.length){ err('No se guardó ningún cambio: no tienes permiso para editar este cliente o ya no existe'); return; }
-    renderUmbrales(data[0]);
-    showToast('Umbrales actualizados');
-    cargarCliente(); // las vistas SQL recalculan estados con los nuevos umbrales
-  } finally { btn.disabled=false; btn.textContent='Guardar umbrales'; }
-};
-
 // ── Cuenta de API (solo admin) ──
 let credenciales=null;
 const apiErr=(msg)=>{ const el=document.getElementById('ficha-api-error'); el.textContent=msg||''; el.classList.toggle('show',!!msg); };

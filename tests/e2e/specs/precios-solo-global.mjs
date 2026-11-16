@@ -195,7 +195,7 @@ export function registrar(env) {
     }
   });
 
-  test('Precios (admin): Ciclo de vida muestra el costo de cada evento y editar un neumático conserva y cambia los precios', async () => {
+  test('Precios (admin): Ciclo de vida muestra el costo de cada evento y el equipo Neumet ya no edita neumáticos (docs/17 PR 9)', async () => {
     // El vehículo de Demo con más eventos con costo (los del seed son los montajes de ciertos coches).
     const veh = json(env, `select v.id, v.patente from public.vehiculos v join public.eventos_neumatico e on e.vehiculo_id = v.id
       where v.cliente_id = ${DEMO} and e.costo is not null group by v.id, v.patente order by count(*) desc, v.id limit 1`)[0];
@@ -203,44 +203,24 @@ export function registrar(env) {
     const costos = json(env, `select e.id, e.costo::float8 as costo from public.eventos_neumatico e where e.vehiculo_id = ${veh.id} and e.costo is not null order by e.id`);
     assert.ok(costos.length >= 1);
     const antes = json(env, `select id, posicion, marca, modelo, fecha_compra, precio_unidad::float8 as precio, numero_quema, km_previos, estado, vida, stock_id, notas from public.neumaticos where vehiculo_id = ${veh.id} order by id`);
-    let pos = null;
     await flujo(env, 'ciclo-costos', 'admin', async p => {
       await irA(p, 'vehiculos');
       await p.esperar(`document.querySelectorAll('#tbody-vehiculos tr .mono-cell').length > 0`, { que: 'tabla de vehículos' });
       await p.escribir('#search-vehiculos', veh.patente);
       await p.esperar(`document.querySelectorAll('#tbody-vehiculos tr .mono-cell').length === 1`, { que: 'una fila' });
-      await p.click('#tbody-vehiculos [data-va="neum"]');
-      await p.esperar(`document.querySelector('#modal-neumaticos').classList.contains('show') && document.querySelectorAll('#neum-assign-svg g[cursor="pointer"]').length > 0`, { que: 'modal de neumáticos' });
-
+      assert.equal(await p.eval(`document.querySelectorAll('#tbody-vehiculos [data-va="neum"], #tbody-vehiculos [data-va="edit"], #tbody-vehiculos [data-va="del"]').length`), 0, 'sin botones de escritura');
       // Ciclo de vida: costo de cada evento, como en la base
-      await p.click('[data-action="cicloDesdeNeum"]');
+      await p.click('#tbody-vehiculos [data-va="ciclo"]');
       await p.esperar(`document.querySelector('#modal-ciclo').classList.contains('show') && document.querySelectorAll('#ciclo-timeline .ciclo-ev').length > 0`, { que: 'línea de tiempo' });
       const lineas = await p.eval(`[...document.querySelectorAll('#ciclo-timeline .ciclo-ev')].map(e => e.textContent)`);
       const conCosto = lineas.filter(t => / · costo /.test(t)).length;
       assert.equal(conCosto, costos.length, `eventos con costo en pantalla (${conCosto}) vs base (${costos.length})`);
       for (const c of costos) assert.ok(lineas.some(t => t.includes(`costo ${c.costo}`)), `falta «costo ${c.costo}»`);
+      assert.equal(await p.eval(`!!document.querySelector('#ciclo-form, #ciclo-odo-input')`), false, 'el ciclo de vida es de solo lectura para el equipo Neumet');
       await p.click('[data-action="closeCicloVida"]');
-
-      // Edición: se elige una rueda, el precio mostrado es el de la base y al guardar solo cambia esa rueda
-      await p.eval(`document.querySelector('#neum-assign-svg g[cursor="pointer"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
-      await p.esperar(`document.querySelector('#ndp-precio')`, { que: 'panel de la posición' });
-      pos = Number(await p.eval(`document.querySelector('.ndp-title strong').textContent.replace(/\\D/g, '')`));
-      const esperado = antes.find(n => n.posicion === pos);
-      assert.ok(esperado, `la posición ${pos} existe en la base`);
-      assert.equal(await p.eval(`document.querySelector('#ndp-precio').value`), esperado.precio === null ? '' : String(esperado.precio), 'el precio mostrado es el de la base');
-      await p.eval(`document.querySelector('#ndp-precio').value = '999.5'`);
-      await p.click('[data-action="neumApplyPos"]');
-      await p.click('#neum-save');
-      await p.esperar(`/Neumáticos guardados/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de guardado' });
     });
     const despues = json(env, `select id, posicion, marca, modelo, fecha_compra, precio_unidad::float8 as precio, numero_quema, km_previos, estado, vida, stock_id, notas from public.neumaticos where vehiculo_id = ${veh.id} order by id`);
-    assert.equal(despues.length, antes.length, 'no se crean ni se pierden neumáticos');
-    const cambiados = despues.filter((d, i) => JSON.stringify(d) !== JSON.stringify(antes[i]));
-    assert.equal(cambiados.length, 1, `solo debe cambiar la rueda editada: ${JSON.stringify(cambiados)}`);
-    assert.equal(cambiados[0].precio, 999.5);
-    assert.equal(cambiados[0].posicion, pos);
-    // Restaura el precio original
-    for (const a of antes) env.sql(`update public.neumaticos set precio_unidad = ${a.precio === null ? 'null' : a.precio} where id = ${a.id}`);
+    assert.deepEqual(despues, antes, 'el panel no modifica neumáticos');
     await dormir(50);
   });
 }

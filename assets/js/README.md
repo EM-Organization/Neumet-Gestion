@@ -38,7 +38,7 @@ domain/
 views/
   inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo administración)  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
-  neumaticos.js  stock.js  reportes.js
+  stock.js  reportes.js
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
   empresa-usuarios.js  empresa-umbrales.js  empresa-dispositivos.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
   uso.js (Uso mensual por cliente, solo administración: registra la isla Svelte `uso`; sin vista vieja, con la bandera apagada muestra un aviso estático)
@@ -46,7 +46,7 @@ views/
 
 Dependencias permitidas: `views/*` -> `core/*` y `domain/*`; `core/*` nunca importa `views/*` (usa los hooks
 `registerView`, `onLogin`, `onLogout`, `ACTIONS`); `domain/*` no importa nada del DOM. Entre vistas solo se importa lo
-estrictamente compartido (p. ej. `neumaticos.js` -> `getVehiculos()` de `vehiculos.js`);
+estrictamente compartido (p. ej. `ficha-cliente.js` -> `cargarSeccionalesAdmin()` de `seccionales-admin.js`);
 para el resto se usa `ACTIONS.<nombre>` (evita ciclos).
 
 ## Contrato de una vista
