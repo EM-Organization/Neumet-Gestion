@@ -100,7 +100,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 
 > **Nomenclatura planificada** ([docs/17](17-plan-roles-admin.md), estado: planificado, nada implementado): este rol pasa a llamarse «Equipo Neumet» (el valor `admin` de la base no cambia) y el cliente con perfil global (sección 2) pasa a llamarse «Administrador de empresa»; el perfil de sucursal será «Usuario de sucursal». Hasta que se fusionen los PR del plan, el menú y las pantallas de esta sección son los vigentes.
 
-Menú lateral: lo del cliente, **Dispositivos** (solo administración) y la sección **Administración**: Estado de la flota · Mediciones · Clientes · Balance.
+Menú lateral: lo del cliente, **Dispositivos** (solo administración) y la sección **Administración**: Estado de la flota · Mediciones · Clientes · Balance · Uso.
 
 ```mermaid
 flowchart TD
@@ -143,6 +143,7 @@ flowchart TD
 | Estado de la flota | Resumen por vehículo con prioridades, filtrable por cliente; abre el detalle | Estado de la flota |
 | Mediciones | Historial de mediciones por vehículo y dispositivo | Mediciones |
 | Balance | Gastos y valor del inventario | Balance |
+| Uso | Consumo mensual por cliente (llamadas API, vehículos, dispositivos, usuarios); solo meses cerrados, meses UTC | Uso |
 
 Inicio para el administrador añade el bloque «Clientes con más urgencias» (solo los que tienen neumáticos o alertas críticas); cada fila abre la ficha del cliente.
 
@@ -161,6 +162,7 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Mediciones (admin) | `mediciones` | |
 | Clientes (admin) | `clientes` | `ficha` |
 | Balance (admin) | `balance` | |
+| Uso (admin) | `uso` | |
 
 Las RPC de sucursales aceptan al administrador (indicando el cliente) y al perfil global de un cliente, solo sobre su propio cliente; el perfil de sucursal, otro cliente, el rol `api`, una sesión sin perfil y `anon` reciben «permiso denegado». La administración de sucursales del administrador sigue en la ficha de cliente.
 

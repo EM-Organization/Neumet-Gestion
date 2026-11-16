@@ -41,6 +41,7 @@ views/
   neumaticos.js  stock.js  reportes.js
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
   empresa-usuarios.js  empresa-umbrales.js  empresa-dispositivos.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
+  uso.js (Uso mensual por cliente, solo administración: registra la isla Svelte `uso`; sin vista vieja, con la bandera apagada muestra un aviso estático)
 ```
 
 Dependencias permitidas: `views/*` -> `core/*` y `domain/*`; `core/*` nunca importa `views/*` (usa los hooks
@@ -136,4 +137,5 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
 
 ## Front nuevo (`src/`, ola 0 de F11)
 - `src/compartido/`: sistema de diseño base en Svelte 5 (`Boton`, `Tabla`, `Modal`, `Avisos`, `EstadoVacio`, `Insignia`) y capa de datos `datos.js` sobre `ctx.db` (`userError`, 42501 como «Sin permiso», sin `console.error`). Las pruebas Vitest viven junto a cada componente (`npm run test:front`).
+- `src/componentes/Uso.svelte` y `src/uso/uso.js` (lógica pura, meses UTC): primera isla real (ola 1), bandera `uso` solo para el rol `admin` en `src/registro.js` (no forzable). `SelectorRango` en `src/compartido/` (dos selects nativos Desde/Hasta).
 - `core/islas.js` oculta la vista vieja de una pantalla migrada con `data-isla-oculto` (regla acotada en `assets/css/styles.css`); con las banderas apagadas el atributo no existe y el panel viejo no cambia.

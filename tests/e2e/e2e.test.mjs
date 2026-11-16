@@ -26,6 +26,7 @@ import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
 import { registrar as empresaPanel } from './specs/empresa-panel.mjs';
 import { registrar as usoCliente } from './specs/uso-cliente.mjs';
 import { registrar as islas } from './specs/islas.mjs';
+import { registrar as usoIsla } from './specs/uso-isla.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -53,4 +54,5 @@ adminEmpresa(env);
 empresaPanel(env);
 usoCliente(env);
 islas(env);
+usoIsla(env);
 contrato(env);

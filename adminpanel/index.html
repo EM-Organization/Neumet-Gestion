@@ -120,6 +120,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Balance
       </button>
+      <button type="button" class="nav-item" data-view="uso" data-admin-only>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/></svg>
+        Uso
+      </button>
     </nav>
     <div class="sidebar-footer">
       <div class="user-avatar" id="user-avatar">A</div>
@@ -562,6 +566,14 @@
               <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- USO (isla Svelte, solo equipo Neumet): el aviso se muestra solo si la pantalla nueva no está disponible (bandera apagada o panel nuevo sin cargar) -->
+      <div class="view" id="view-uso">
+        <div class="empty-state" id="uso-no-disponible" hidden>
+          <div class="empty-title">Uso no disponible</div>
+          <div class="empty-sub">Recargar la página. Si persiste, avisar al equipo Neumet.</div>
         </div>
       </div>
 

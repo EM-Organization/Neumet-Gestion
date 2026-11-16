@@ -921,4 +921,4 @@ Mes calendario en UTC (no se toma la zona de Chile: es una decisión de presenta
 
 ## O.6 Límites
 
-Sin pantalla (la construye la pista de migración, docs/19 §7.2.1). Sin programar el cierre y sin retención de `ingesta_log` (docs/17 §5, propuesta de 13 meses): ambos son pasos operativos posteriores. Sin umbrales ni reglas de facturación.
+La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses cerrados) consume `uso_clientes_listar`; no llama a `uso_cerrar_mes`. Sin programar el cierre y sin retención de `ingesta_log` (docs/17 §5, propuesta de 13 meses): ambos son pasos operativos posteriores. Sin umbrales ni reglas de facturación.

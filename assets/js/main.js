@@ -32,6 +32,7 @@ import * as empresaUsuarios from './views/empresa-usuarios.js';
 import * as empresaUmbrales from './views/empresa-umbrales.js';
 import * as empresaDispositivos from './views/empresa-dispositivos.js';
 import * as islaHumo from './views/isla-humo.js';
+import * as uso from './views/uso.js';
 
 initActions();
 initAuth();
@@ -39,5 +40,5 @@ initNav();
 initModales();
 initConexion();
 initBuscador();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos,islaHumo].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,neumaticos,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos,islaHumo,uso].forEach(v=>v.init());
 checkAuth();

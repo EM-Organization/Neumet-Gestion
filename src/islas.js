@@ -5,9 +5,10 @@ import { mount, unmount } from 'svelte';
 import { crearRegistro, API_ISLAS } from './registro.js';
 import { cargarHojas } from './estilos-isla.js';
 import Hola from './componentes/Hola.svelte';
+import Uso from './componentes/Uso.svelte';
 
 const registro = crearRegistro();
-const componentes = { hola: Hola };
+const componentes = { hola: Hola, uso: Uso };
 
 export { API_ISLAS };
 

@@ -11,7 +11,7 @@ const GLOBAL = ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'repo
 // Empresa (F10 PR 4): solo el administrador de empresa (cliente sin sucursal); el equipo Neumet no la ve.
 const EMPRESA = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
 const VISTAS = {
-  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance'],
+  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance', 'uso'],
   global: [...GLOBAL, 'sucursales', ...EMPRESA], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales', ...EMPRESA]
 };
 
