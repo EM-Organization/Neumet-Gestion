@@ -104,7 +104,7 @@ async function abrir(vehiculoId, posicion) {
   if (neum.estado === 'baja') { showToast(`El neumático de P${posicion} ya está dado de baja`, true); return; }
   const veh = rv.data || { id: vehiculoId };
   // El stock es del cliente del vehículo; la RLS ya limita qué ve cada perfil (el de sucursal no ve ninguno).
-  const puedeStock = esAdmin() || esAdminEmpresa();
+  const puedeStock = esAdminEmpresa();
   const [rs, rc, rsu] = await Promise.all([
     db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad').eq('cliente_id', neum.cliente_id).gte('cantidad', 1),
     puedeStock
@@ -128,7 +128,7 @@ ACTIONS['neumatico-cambiar-resumen'] = function () { if (ctx) actualizar(); };
 ACTIONS['neumatico-cambiar-cerrar'] = function () { $('modal-cambio').classList.remove('show'); ctx = null; };
 
 ACTIONS['neumatico-cambiar-confirmar'] = async function () {
-  if (!ctx || ocupado) return;
+  if (!ctx || ocupado || esAdmin()) return;
   const r = validarCambio(estado());
   if (!r.ok) { $('cambio-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('cambio-confirmar').disabled = true;
@@ -151,6 +151,7 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
 
 // Rotación desde un botón de posición: reutiliza la RPC atómica neumatico_rotar (ahora con el mismo alcance).
 ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
+  if (esAdmin()) return;
   const vid = Number(vehiculoId);
   const { data, error } = await db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vid);
   if (error) { console.error(error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }

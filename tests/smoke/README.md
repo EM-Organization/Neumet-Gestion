@@ -21,6 +21,7 @@ tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/núme
 tests/smoke/run.sh sinperfil  # sesión sin perfil: solo «Sin acceso», sin menú ni consultas de datos (sinacceso.flow.js)
 tests/smoke/run.sh api        # perfil de rol 'api': igual que sinperfil
 tests/smoke/run.sh montar     # coche sin neumáticos: estado vacío, montar del stock y cubierta nueva seguidas, retirar (montar.fixture.js, montar.flow.js)
+tests/smoke/run.sh alertas-cliente  # administrador de empresa en Alertas: conserva reconocer, silenciar y resolver (las RPC se registran en flota.fixture.js)
 tests/smoke/run.sh flota      # Flota con prioridades + Centro de alertas (vistas v_* simuladas en flota.fixture.js)
 ```
 
@@ -29,6 +30,8 @@ neumáticos medidos NO muestra «sin datos»), aviso de conexión oculto salvo p
 (el cliente ve Inicio, Vehículos, Alertas, Stock y Reportes, y Sucursales si es global; sin elementos `data-admin-only` ni Dispositivos; Stock sin botones de editar/eliminar) y accesibilidad básica (botones de menú, `th scope`, labels, modal con foco atrapado y Esc).
 
 El recorrido del stock de cubiertas (`stock.flow.js`, con `stock.fixture.js` y las cubiertas de `stub.js`) corre dentro de los modos `admin`, `cliente` y `secuser`: lista, filtros, alta con validación local y error de la base, edición, traslado, eliminación con confirmación, perfil de sucursal sin acciones y buscador global por quema. `cambio.flow.js` cubre además la cubierta del stock y la devolución del neumático retirado.
+
+El equipo Neumet (admin) queda en solo lectura en Alertas (`flota.flow.js`), Calidad de datos (`calidad.flow.js`) y Recauchutado (`reca.flow.js`, también para cliente y secuser): sin botones de escritura y, con botones falsos que llevan el `data-action`, sin modal ni RPC `alerta_*`, `medicion_*` o `recauchutado_*` (F10 PR 10).
 
 Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:
 

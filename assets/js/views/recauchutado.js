@@ -15,7 +15,9 @@ import {
 
 const $ = id => document.getElementById(id);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
-const puedeGestionar = () => esAdmin() || esAdminEmpresa();
+// El equipo Neumet no opera dentro de una empresa (docs/17 P1): ve los procesos en solo lectura. Las cuatro RPC
+// recauchutado_* pierden su rama de admin en el PR 11 (C2).
+const puedeGestionar = () => esAdminEmpresa();
 
 let procesos = [], cubiertas = [], sucursales = [], modal = null, cargaN = 0;
 
@@ -120,7 +122,7 @@ registerActions({
   recaDictamenCambio() { mostrarCampos('dictamen', $('reca-dictamen').value); },
   recaCerrar() { $('modal-reca').classList.remove('show'); modal = null; },
   async recaGuardar() {
-    if (!modal) return;
+    if (!modal || !puedeGestionar()) return;
     const f = { fecha: $('reca-fecha').value, sucursalId: $('reca-sucursal').value };
     let r, rpc;
     if (modal.modo === 'enviar') {
@@ -160,7 +162,7 @@ registerActions({
 registerView('recauchutado', 'Recauchutado', loadRecauchutado);
 onLogin(() => {
   const item = document.querySelector('.nav-item[data-view="recauchutado"]');
-  if (item) item.style.display = puedeGestionar() ? '' : 'none';
+  if (item) item.style.display = puedeGestionar() || esAdmin() ? '' : 'none'; // el equipo Neumet conserva la lista, en solo lectura
 });
 onLogout(() => {
   procesos = []; cubiertas = []; sucursales = []; modal = null;

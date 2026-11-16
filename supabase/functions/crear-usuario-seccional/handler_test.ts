@@ -56,7 +56,7 @@ function mk(over: Partial<Deps> = {}) {
 
 function req(body: unknown, opts: { token?: string | null; origin?: string; method?: string } = {}) {
   const h: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = opts.token === undefined ? 'admin-jwt' : opts.token;
+  const token = opts.token === undefined ? 'emp-jwt' : opts.token;
   if (token) h.Authorization = `Bearer ${token}`;
   if (opts.origin) h.Origin = opts.origin;
   const method = opts.method ?? 'POST';
@@ -83,9 +83,6 @@ Deno.test('no admin => 403 sin crear nada', async () => {
 });
 
 const invalid: Array<[string, Record<string, unknown>]> = [
-  ['sin cliente_id', { sucursal_id: 70, email: 'a@b.cl' }],
-  ['cliente_id negativo', { ...ok, cliente_id: -1 }],
-  ['cliente_id string', { ...ok, cliente_id: '7' }],
   ['sucursal_id inválido', { ...ok, sucursal_id: 'x' }],
   ['email inválido', { ...ok, email: 'no-es-email' }],
   ['email con salto de línea', { ...ok, email: 'a@b.cl\nbcc:x@y.cl' }],
@@ -106,9 +103,8 @@ Deno.test('JSON inválido => 400 y cuerpo grande => 413', async () => {
   assertEquals((await handle(req({ ...ok, pad: 'y'.repeat(11000) }), deps)).status, 413);
 });
 
-Deno.test('cliente inexistente => 404 y sucursal inexistente => 404 (sin crear usuario)', async () => {
+Deno.test('sucursal inexistente => 404 (sin crear usuario)', async () => {
   const { deps, calls } = mk();
-  assertEquals((await handle(req({ ...ok, cliente_id: 99 }), deps)).status, 404);
   const r = await handle(req({ ...ok, sucursal_id: 99 }), deps);
   assertEquals(r.status, 404);
   assertEquals((await r.json()).error, 'Sucursal inexistente'); // el mensaje usa el término de la interfaz
@@ -228,9 +224,28 @@ Deno.test('empresa dada de baja: su administrador recibe 403 y no crea nada', as
   assertEquals((await handle(req({ email: 'x@b.cl' }, emp), deps)).status, 403);
   assertEquals(none(calls), 0);
 });
-Deno.test('el equipo Neumet sigue pudiendo crear en cualquier cliente (la rama se retira en el PR 10)', async () => {
-  const { deps } = mk();
-  assertEquals((await handle(req({ ...ok, cliente_id: 8, sucursal_id: 80 }), deps)).status, 201);
+Deno.test('el equipo Neumet (admin) recibe 403 en cualquier cliente y no crea nada (PR 10)', async () => {
+  const { deps, calls } = mk();
+  const admin = { token: 'admin-jwt' };
+  for (const body of [ok, { ...ok, cliente_id: 8, sucursal_id: 80 }, { email: 'x@b.cl' }, { ...ok, cliente_id: 99 }]) {
+    assertEquals((await handle(req(body, admin), deps)).status, 403);
+  }
+  assertEquals(none(calls), 0);
+  assertEquals(calls.perfiles.length, 0);
+});
+Deno.test('el 403 del equipo Neumet llega antes que el tope de intentos y que la lectura del cuerpo', async () => {
+  const { deps } = mk({ permitirIntento: () => false });
+  assertEquals((await handle(req(ok, { token: 'admin-jwt' }), deps)).status, 403);
+});
+Deno.test('administrador de empresa: cliente_id inválido en el cuerpo => 403 (no es el suyo)', async () => {
+  const { deps, calls } = mk();
+  for (const cliente_id of [-1, '7', 99]) assertEquals((await handle(req({ ...ok, cliente_id }), deps)).status, 403);
+  assertEquals(none(calls), 0);
+});
+Deno.test('administrador de empresa: sin cliente_id usa el de su perfil', async () => {
+  const { deps, calls } = mk();
+  assertEquals((await handle(req({ sucursal_id: 70, email: 'a@b.cl' }), deps)).status, 201);
+  assertEquals(calls.perfiles[0][1], 7);
 });
 
 Deno.test('409 con acceso quitado de la misma empresa: orienta a «Reponer acceso»', async () => {
@@ -263,11 +278,10 @@ Deno.test('409: si la consulta de accesos_quitados falla, cae al mensaje genéri
   assertEquals((await r.json()).error, 'Ya existe un usuario con ese email');
 });
 
-Deno.test('límite de intentos: el administrador de empresa excedido recibe 429 sin crear; el equipo Neumet no se limita', async () => {
+Deno.test('límite de intentos: el administrador de empresa excedido recibe 429 sin crear', async () => {
   const { deps, calls } = mk({ permitirIntento: () => false });
   assertEquals((await handle(req(ok, emp), deps)).status, 429);
   assertEquals(none(calls), 0);
-  assertEquals((await handle(req(ok), deps)).status, 201);
 });
 Deno.test('crearLimite: tope por usuario en ventana deslizante', () => {
   let t = 0;

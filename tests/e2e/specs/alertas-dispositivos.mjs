@@ -26,9 +26,11 @@ export function registrar(env) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
         assert.ok(tabla.every(t => /Neumático crítico/.test(t)), 'solo críticas');
-        // Cada alerta lleva al vehículo (acción) y ofrece resolver.
+        // Cada alerta lleva al vehículo (acción). Resolver, reconocer y silenciar son de la empresa: el equipo Neumet (admin)
+        // no los ve (F10 PR 10; la RPC sigue permitida para admin hasta C2, por eso aquí solo se mira la interfaz).
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);
-        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), filas.length);
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), rol === 'admin' ? 0 : filas.length);
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody [data-action="alertasReconocer"], #alert-tbody [data-action="alertasSilenciar"], #alert-tbody [data-action="alertasQuitarSilencio"]').length`) > 0, rol !== 'admin');
         // El aviso hacia Empresa > Umbrales solo lo ve el administrador de empresa (cliente global).
         assert.equal(await p.eval(`!document.querySelector('#alert-umbral-aviso').hidden`), rol === 'global', 'aviso solo para el administrador de empresa');
       });

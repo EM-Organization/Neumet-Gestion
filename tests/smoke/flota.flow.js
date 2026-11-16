@@ -46,12 +46,15 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(!/Delantera izquierda/.test(rows()[0].textContent) || /(^|\s)P\d/.test(rows()[0].textContent)) fail('alertas: posición sin nombre: '+rows()[0].textContent);
   if(!/Posición/.test($('#view-alertas thead').textContent)) fail('alertas: falta la columna Posición');
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1 || d.body.innerHTML.indexOf('<Beta>') !== -1) fail('alertas: HTML sin escapar');
-  if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('[data-action="alertasResolver"]') && r.querySelector('[data-action="alertasSilenciar"], [data-action="alertasQuitarSilencio"]'); }).length !== 4) fail('alertas: cada alerta debe ofrecer reconocer/silenciar/resolver');
+  // F10 PR 10: el equipo Neumet no opera dentro de una empresa. Ve las alertas y puede ir al vehículo, sin reconocer, silenciar ni resolver.
+  var GESTION = '[data-action="alertasReconocer"],[data-action="alertasSilenciar"],[data-action="alertasQuitarSilencio"],[data-action="alertasResolver"]';
+  if(all('#view-alertas ' + GESTION.split(',').join(',#view-alertas ')).length) fail('alertas(admin): ofrece reconocer/silenciar/resolver al equipo Neumet');
+  if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('[data-action="verVehiculo"]'); }).length !== 4) fail('alertas(admin): cada alerta debe seguir ofreciendo «Ver vehículo»');
   if(rows()[0].querySelector('[data-action="verVehiculo"]').dataset.args !== '[12,1]') fail('alertas: el enlace debe llevar al vehículo y la posición');
   setSel('#alert-estado', 'reconocida'); await sleep(100);
   if(rows().length !== 1 || rows()[0].querySelector('[data-action="alertasReconocer"]')) fail('alertas: filtro reconocidas');
   setSel('#alert-estado', 'silenciada'); await sleep(100);
-  if(rows().length !== 1 || !rows()[0].querySelector('[data-action="alertasQuitarSilencio"]')) fail('alertas: filtro silenciadas');
+  if(rows().length !== 1 || rows()[0].querySelector('[data-action="alertasQuitarSilencio"]')) fail('alertas: filtro silenciadas');
   setSel('#alert-estado', ''); setSel('#alert-cliente', '1'); await sleep(100);
   if(rows().length !== 2) fail('alertas: filtro cliente');
   setSel('#alert-cliente', '');
@@ -66,7 +69,41 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if($('#alert-config') || $('#alert-umbral') || $('#alert-histeresis') || $('[data-action="alertasGuardarConfig"]')) fail('alertas: sigue la tarjeta de nivel crítico');
   if(!$('#alert-umbral-aviso') || !$('#alert-umbral-aviso').hidden) fail('alertas: el aviso de Empresa > Umbrales es solo para el administrador de empresa');
   if(fx.rpcs && fx.rpcs.some(function(r){ return r[0] === 'alerta_configurar'; })) fail('alertas: llamó a alerta_configurar');
+  // Guarda propia de cada acción: aunque otro botón emita la acción, el equipo Neumet no llama a la RPC ni abre el modal.
+  var falsos = ['alertasReconocer', 'alertasSilenciar', 'alertasQuitarSilencio', 'alertasResolver', 'alertasConfirmarResolver'];
+  for(var i = 0; i < falsos.length; i++){
+    var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i]); f.setAttribute('data-args', '[501]');
+    d.body.appendChild(f); f.click(); await sleep(400); f.remove();
+    if($('#modal-alerta').classList.contains('show')) fail('alertas(admin): ' + falsos[i] + ' abrió el modal de resolver');
+  }
+  var esc = (fx.rpcs || []).filter(function(r){ return /^alerta_(reconocer|silenciar|resolver)$/.test(r[0]); });
+  if(esc.length) fail('alertas(admin): el equipo Neumet llamó RPC de escritura: ' + JSON.stringify(esc));
   var qs = fx.queries.join(',');
   log.push('flota-consultas='+qs);
   if(qs.indexOf('v_estado_neumaticos') === -1 || qs.indexOf('v_alertas') === -1 || qs.indexOf('v_resumen_flota_cliente') === -1) fail('flota: no consulto las vistas SQL');
+};
+
+
+// Contraparte positiva (F10 PR 10): el cliente (administrador de empresa o global) conserva reconocer, silenciar y resolver.
+// Se corre con ?cliente=1&alertas=1; la RPC es simulada por flota.fixture.js, que registra la llamada en fx.rpcs.
+window.alertasClienteFlow = async function(w, d, sleep, fail, log){
+  var fx = w.__flotaFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
+  $('.nav-item[data-view="alertas"]').click(); await sleep(700);
+  if(!$('#view-alertas').classList.contains('active')) { fail('alertas(cliente): vista no activa'); return; }
+  var filas = all('#alert-tbody tr[data-severidad]');
+  if(!filas.length) { fail('alertas(cliente): sin filas'); return; }
+  var conAcciones = Array.prototype.filter.call(filas, function(r){ return r.querySelector('[data-action="alertasResolver"]') && r.querySelector('[data-action="alertasSilenciar"], [data-action="alertasQuitarSilencio"]'); });
+  if(conAcciones.length !== filas.length) fail('alertas(cliente): cada alerta debe ofrecer reconocer/silenciar/resolver (' + conAcciones.length + ' de ' + filas.length + ')');
+  var rec = $('#alert-tbody [data-action="alertasReconocer"]');
+  if(!rec) { fail('alertas(cliente): sin «Reconocer»'); return; }
+  rec.click(); await sleep(500);
+  if(!(fx.rpcs || []).some(function(r){ return r[0] === 'alerta_reconocer'; })) fail('alertas(cliente): Reconocer no llamó a alerta_reconocer');
+  if($('#toast-msg').textContent !== 'Alerta reconocida') fail('alertas(cliente): aviso tras reconocer: ' + $('#toast-msg').textContent);
+  var sil = $('#alert-tbody [data-action="alertasSilenciar"]');
+  if(sil){ sil.click(); await sleep(500); if(!(fx.rpcs || []).some(function(r){ return r[0] === 'alerta_silenciar'; })) fail('alertas(cliente): Silenciar no llamó a alerta_silenciar'); }
+  $('#alert-tbody [data-action="alertasResolver"]').click(); await sleep(300);
+  if(!$('#modal-alerta').classList.contains('show')) { fail('alertas(cliente): Resolver no abrió el modal'); return; }
+  $('#alerta-nota').value = 'Neumático cambiado'; $('#alerta-confirmar').click(); await sleep(600);
+  if(!(fx.rpcs || []).some(function(r){ return r[0] === 'alerta_resolver'; })) fail('alertas(cliente): Resolver no llamó a alerta_resolver');
+  log.push('alertas-cliente: reconocer, silenciar y resolver conservados');
 };

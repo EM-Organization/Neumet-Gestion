@@ -2,8 +2,9 @@
 // Crea un usuario Auth + su perfil 'cliente' de un cliente existente:
 //   * con sucursal_id => perfil de SUCURSAL (solo ve los vehículos de esa sucursal);
 //   * sin sucursal_id => perfil GLOBAL adicional (ve todo el cliente).
-// Lo llama el equipo Neumet (`admin`, cualquier cliente; la rama se retira en el PR 10 de docs/17) o el administrador de
-// empresa (`cliente` sin sucursal), que solo crea usuarios de SU empresa: el cliente_id sale de su perfil, nunca del cuerpo.
+// Lo llama solo el administrador de empresa (`cliente` sin sucursal), que crea usuarios de SU empresa: el cliente_id sale
+// de su perfil, nunca del cuerpo. El equipo Neumet (`admin`) no opera dentro de una empresa (docs/17 sección 4.2, PR 10):
+// recibe 403; el primer administrador de cada cliente lo crea `crear-cliente`.
 // La coherencia sucursal/cliente la garantiza además una FK compuesta en la base.
 
 export interface SucursalRow {
@@ -94,15 +95,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     log('error', 'role_check_failed');
     return fail('Error interno', 500, cors);
   }
-  const esAdmin = perfil?.rol === 'admin';
   // Administrador de empresa: perfil `cliente` sin sucursal. El usuario de sucursal y el global con sucursal no crean.
   const esAdminEmpresa = perfil?.rol === 'cliente' && perfil.sucursal_id === null && perfil.cliente_id !== null;
-  if (!esAdmin && !esAdminEmpresa) {
+  if (!esAdminEmpresa) {
     log('warn', 'forbidden', { actor: user.id });
     return fail('Acceso denegado', 403, cors);
   }
-  // Encarece la enumeración de cuentas por el 409: tope de intentos por llamante (el equipo Neumet no se limita).
-  if (esAdminEmpresa && !deps.permitirIntento(user.id)) {
+  // Encarece la enumeración de cuentas por el 409: tope de intentos por llamante.
+  if (!deps.permitirIntento(user.id)) {
     log('warn', 'rate_limited', { actor: user.id });
     return fail('Demasiados intentos de alta en la última hora. Repetir más tarde.', 429, cors);
   }
@@ -119,15 +119,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return fail('JSON inválido', 400, cors);
   }
   let clienteId = posInt(body.cliente_id);
-  if (esAdminEmpresa) {
-    // El administrador de empresa no elige empresa: si el cuerpo trae otra, se rechaza en lugar de ignorarla.
-    const propio = perfil!.cliente_id!;
-    if (body.cliente_id !== undefined && body.cliente_id !== null && clienteId !== propio) {
-      log('warn', 'cliente_ajeno', { actor: user.id, cliente_id: clienteId });
-      return fail('Acceso denegado', 403, cors);
-    }
-    clienteId = propio;
+  // El administrador de empresa no elige empresa: si el cuerpo trae otra, se rechaza en lugar de ignorarla.
+  const propio = perfil!.cliente_id!;
+  if (body.cliente_id !== undefined && body.cliente_id !== null && clienteId !== propio) {
+    log('warn', 'cliente_ajeno', { actor: user.id, cliente_id: clienteId });
+    return fail('Acceso denegado', 403, cors);
   }
+  clienteId = propio;
   if (clienteId === null) return fail('cliente_id inválido', 400, cors);
   let sucursalId: number | null = null;
   if (body.sucursal_id !== undefined && body.sucursal_id !== null && body.sucursal_id !== '') {
@@ -149,7 +147,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   try {
     if (!(await deps.clienteExiste(clienteId))) {
       // Empresa dada de baja: su administrador ya no opera (misma regla que las RPC, que responden 42501).
-      return esAdminEmpresa ? fail('Acceso denegado', 403, cors) : fail('Cliente inexistente', 404, cors);
+      return fail('Acceso denegado', 403, cors);
     }
     if (sucursalId !== null) {
       const s = await deps.getSucursal(sucursalId);

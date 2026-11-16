@@ -40,7 +40,7 @@ La regla «global = cliente sin sucursal» está repetida:
 
 ### 2.3 Qué solo puede hacer hoy el `admin`
 
-- Crear usuarios: la Edge Function `crear-usuario-seccional` admitía solo `rol = 'admin'`; desde el PR 3 admite también al administrador de empresa (perfil `cliente` sin sucursal, solo en su cliente) y al equipo Neumet hasta el PR 10 (`supabase/functions/crear-usuario-seccional/handler.ts`, comprobación de rol tras el `getPerfil`; `index.ts` solo inyecta las dependencias).
+- Crear usuarios: la Edge Function `crear-usuario-seccional` admitía solo `rol = 'admin'`; desde el PR 3 admite también al administrador de empresa (perfil `cliente` sin sucursal, solo en su cliente) y al equipo Neumet hasta el PR 10, que lo retira (`supabase/functions/crear-usuario-seccional/handler.ts`, comprobación de rol tras el `getPerfil`; `index.ts` solo inyecta las dependencias).
 - Editar umbrales bajo, retiro, días sin medir e irregularidad: UPDATE directo sobre `clientes` desde la ficha de cliente (`assets/js/views/ficha-cliente.js:103`), amparado por la política `clientes_admin_all` (`init_schema.sql:455`). El nivel crítico y la histéresis ya los puede cambiar el perfil global con `alerta_configurar` (`20261118500000_alerta_critica.sql:454`).
 - Ver Dispositivos: es la única vista registrada con `soloAdmin` (`assets/js/views/dispositivos.js:228`, mecanismo en `assets/js/core/nav.js:10`). **Estado anterior al PR 4 (hoy ya corregido: las tres llevan `soloAdmin`): la ficha de cliente (`ficha-cliente.js:183`), Balance (`balance.js:194`) y Clientes (`clientes.js:172`) se registraban sin `soloAdmin`**: las protege el menú y la RLS, no el router. La ficha se abre también en modo cliente (`ficha-cliente.js:23`, `activoId = currentClienteId`) y el cliente ve sus umbrales en solo lectura; la cuenta de API y las acciones de administración están dentro de esa misma ficha.
 - Leer `ingesta_log` (política `ingesta_log_admin_select`, `init_schema.sql:520`) y `audit_log`.
@@ -257,6 +257,23 @@ La firma exacta de la API de Auth se confirma contra la versión de `supabase-js
 
 ### 4.3 Panel
 
+*Estado del PR 10 (implementado, solo front y Edge Function, sin migración, función sin desplegar):* el equipo Neumet no ve ni dispara (guarda `esAdmin()` en cada acción, además de ocultar el botón) las escrituras de `recauchutado.js`, `montar-neumatico.js`, `cambio-neumatico.js`, Alertas y Calidad de datos. Las RPC siguen permitidas para `admin` en la base hasta C2 (no se prueban como rechazadas). Qué RPC de escritura de la lista de 4.1 quedan sin llamador del equipo Neumet y cuáles conservan uno, para el PR 11:
+
+| RPC de escritura | Llamador del equipo Neumet tras el PR 10 |
+|---|---|
+| `alerta_reconocer`, `alerta_silenciar`, `alerta_resolver` | Ninguno |
+| `neumatico_cambiar`, `neumatico_montar`, `neumatico_desmontar`, `neumatico_rotar` | Ninguno |
+| `recauchutado_enviar`, `recauchutado_dictaminar`, `recauchutado_aceptar`, `recauchutado_rechazar` | Ninguno |
+| `medicion_invalidar`, `medicion_revalidar` | Ninguno |
+| `vehiculo_crear`, `vehiculo_mover_sucursal`, `vehiculo_registrar_odometro` | Ninguno (PR 9a) |
+| `stock_cubierta_agregar`, `stock_cubierta_editar`, `stock_cubierta_eliminar`, `stock_cubierta_mover` | Ninguno (PR 9a) |
+| `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar` | Ninguno (PR 9a) |
+| `costo_registrar`, `costo_eliminar` | Ninguno (PR 9a) |
+| `alerta_configurar` | Ninguno (solo administrador de empresa, Empresa > Umbrales) |
+| `asignar_dispositivo_a_cliente` (`dispositivos.js:189`), `cliente_eliminar_suave` (`clientes.js:43`) | Se conservan: RPC de plataforma, no se recortan en C2 |
+
+Las 26 RPC de la lista quedan, pues, sin llamador de Neumet en el panel: C2 puede quitar su rama de admin. Las altas de cliente y de su primer administrador siguen por `crear-cliente` con la clave de servicio. Pendiente de contrato: desplegar `crear-usuario-seccional` tras fusionar.
+
 *Estado del PR 4 (implementado, solo front, sin migración):* `esAdminEmpresa()` en `domain/rol.js` es la regla única (cliente sin sucursal); las copias de «global» en `auth.js`, `costos.js`, `stock.js`, `recauchutado.js`, `cambio-neumatico.js`, `montar-neumatico.js`, `sucursales.js`, `seccional.js`, `buscador.js` y `alertas.js` la usan. El router tiene `soloEmpresa` junto a `soloAdmin` (ficha de cliente, Balance y Clientes son `soloAdmin`). Menú Empresa con Usuarios (`empresa-usuarios.js`: alta, quitar, reponer y los códigos `bloqueo_auth_pendiente`, `desbloqueo_auth_pendiente`, `estado_no_confirmado`, `recargar_lista`, `no_converge`, `repuesto_durante_baja`, `quitado_durante_reposicion`, `elegir_sucursal` y `acceso_quitado`), Umbrales (RPC `alerta_configurar`) y Dispositivos de la empresa en solo lectura. `ciclo-vida.js` deja bajar el kilometraje al administrador de empresa con `vehiculo_corregir_odometro` (con confirmación); el usuario de sucursal sigue viendo el aviso. Rótulos: «Equipo Neumet», «Administrador de empresa», «Usuario de sucursal». **Fuera de este PR (PR 9):** `seccionales-admin.js` y la escritura directa del odómetro del equipo Neumet siguen como estaban. La tarjeta de umbrales de Alertas sigue activa y duplica Empresa > Umbrales: decidir en el PR 9 si se retira.
 
 *Estado del PR 9c (solo front, sin migración):* la tarjeta de nivel crítico e histéresis se retiró de la vista Alertas (`alertas.js`); el administrador de empresa ajusta los umbrales **y la histéresis** solo en Empresa > Umbrales (`alerta_configurar`, con `p_histeresis_mm`); la histéresis es el sexto campo del mismo formulario, con la validación que tenía la tarjeta (0 a 3 mm, un decimal), para no perder esa capacidad. La ficha de cliente del equipo Neumet la lista, deshabilitada, con los demás umbrales (solo lectura desde el PR 9a). Alertas muestra una línea de texto hacia Empresa > Umbrales solo al administrador de empresa. Clics: ajustar el nivel crítico o la histéresis pasa de Alertas (2 clics: ir a la vista y guardar) a Empresa > Umbrales (menú, campo, Enter): no aumenta. Se eliminó `validarUmbralCritico` (sin uso) y `validarHisteresis` pasó de `domain/alertas.js` a `domain/umbrales.js`, donde Empresa valida todos los campos (`validarUmbrales`).
@@ -328,7 +345,7 @@ Sin dependencias abiertas: todas las decisiones están tomadas.
 | 7 | Pantalla «Uso»: **la construye la pista de migración en el stack nuevo** ([19](19-migracion-framework.md) §7.2.1); este PR queda como la RPC y los datos de Uso, que ya están en la migración B (PR 6). F10 sigue con los PR siguientes |
 | 8 | Migración C1 (RPC del precio mensual, retrocompatible). **Implementado (migración `20261120000000` sin aplicar; docs/08 apéndice P).** |
 | 9 | **Dividido: 9a** (PR 86, solo front, sin migración: lo de esta fila salvo Balance; estado en §4.3) y **9b** (Balance sobre la RPC de C1, bloqueado por el PR 8). Front de Balance sobre la RPC de C1; ficha de cliente, umbrales, sucursales y la tarjeta de `seccionales-admin.js` en solo lectura para Neumet; retiro de los formularios de escritura de Neumet en `vehiculos.js`, `stock.js`, `neumaticos.js` y `ciclo-vida.js`, incluida la escritura directa del odómetro `ciclo-vida.js:203` (tabla de la sección 4.1); se fusiona con C1 ya aplicada y verificada y con Empresa (PR 4) en producción |
-| 10 | `crear-usuario-seccional` deja de aceptar al equipo Neumet (sección 4.2); solo con el PR 9 desplegado |
+| 10 | `crear-usuario-seccional` deja de aceptar al equipo Neumet (sección 4.2); solo con el PR 9 desplegado. **Implementado (PR 10, sin desplegar)**; incluye también el cierre en el front de las escrituras por RPC que quedaban (sección 4.3) |
 | 11 | Migración C2 (privilegios por columna sobre `clientes` con la política `clientes_admin_update`, `FOR SELECT` para `is_admin()`, revoke de escritura en las tablas y las nueve vistas `v_*` de la sección 4.1 y recorte de las 26 RPC de la lista) y prueba SQL; solo con los PR 9 y 10 fusionados y verificados, y comprobando antes en producción, solo lectura, `pg_policies` y `role_table_grants` |
 | 12 | MFA obligatorio para el equipo Neumet y sincronización final de docs y runbook: `docs/05-roadmap.md:59`, `README.md:197` y `docs/08` §5 punto 9 listan «¿un cliente tendrá más de un usuario?» como decisión abierta o 1:1 y quedan desactualizados; también `docs/10` y `docs/16` |
 

@@ -6,7 +6,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
 import { chip, estadoVacio, estadoCarga, estadoError, filaEstado, miniVehiculo } from '../core/componentes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
-import { isClienteMode, esAdminEmpresa } from '../core/auth.js';
+import { isClienteMode, esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
@@ -46,7 +46,8 @@ function celdaPosicion(a) {
 function acciones(a, estado) {
   const arg = JSON.stringify(a.posicion === null || a.posicion === undefined ? [a.vehiculo_id] : [a.vehiculo_id, a.posicion]);
   const id = JSON.stringify([a.alerta_id]);
-  const gestion = a.alerta_id === null || a.alerta_id === undefined ? '' : html`
+  // El equipo Neumet no opera dentro de una empresa (docs/17 P1): ve las alertas sin reconocer, silenciar ni resolver.
+  const gestion = esAdmin() || a.alerta_id === null || a.alerta_id === undefined ? '' : html`
     ${a.estado === 'reconocida' ? '' : html`<button class="btn ghost" data-action="alertasReconocer" data-args="${id}">Reconocer</button>`}
     ${estado === 'silenciada'
       ? html`<button class="btn ghost" data-action="alertasQuitarSilencio" data-args="${id}">Quitar silencio</button>`
@@ -123,7 +124,7 @@ export async function load() {
 
 // Ejecuta una RPC de transición y recarga; los errores se traducen (42501, alerta ya resuelta, datos inválidos).
 async function transicion(fn, params, aviso) {
-  if (ocupado) return false;
+  if (ocupado || esAdmin()) return false;
   ocupado = true;
   try {
     const { error } = await db.rpc(fn, params);
@@ -153,6 +154,7 @@ registerActions({
     if (await transicion('alerta_silenciar', { p_alerta_id: Number(id), p_hasta: null, p_motivo: null }, 'Silencio quitado')) reloadActiveView();
   },
   alertasResolver(id) {
+    if (esAdmin()) return;
     const a = alertas.find(x => String(x.alerta_id) === String(id));
     pendiente = Number(id);
     $('alerta-sub').textContent = a ? [etiquetaCoche(a.vehiculo_nombre), a.mensaje].filter(Boolean).join(' · ') : '';
@@ -163,7 +165,7 @@ registerActions({
   },
   alertasCerrarResolver() { $('modal-alerta').classList.remove('show'); pendiente = null; },
   async alertasConfirmarResolver() {
-    if (pendiente === null) return;
+    if (pendiente === null || esAdmin()) return;
     const v = validarNota($('alerta-nota').value);
     if (!v.ok) { $('alerta-error').textContent = v.error; return; }
     if (await transicion('alerta_resolver', { p_alerta_id: pendiente, p_nota: v.nota }, 'Alerta resuelta')) {

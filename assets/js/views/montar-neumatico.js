@@ -23,7 +23,7 @@ import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 const $ = id => document.getElementById(id);
 const val = id => { const el = $(id); return el ? el.value : ''; };
 const nombrePos = pos => (Number(pos) === POS_AUXILIO ? 'el auxilio' : `P${pos}`);
-const puedeUsarStock = () => esAdmin() || esAdminEmpresa();
+const puedeUsarStock = () => esAdminEmpresa();
 
 let mont = null; // {veh, ocupadas, libres, cubiertas, sucursales, puedeStock, origen, cubiertaId, montados}
 let ret = null;  // {veh, neum, sucursales, puedeStock}
@@ -128,7 +128,7 @@ function cerrarMontar() {
 }
 
 async function confirmarMontar() {
-  if (!mont || ocupado) return;
+  if (!mont || ocupado || esAdmin()) return;
   const r = validarMontaje(estadoMontar());
   if (!r.ok) { $('mont-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('mont-confirmar').disabled = true;
@@ -216,7 +216,7 @@ async function abrirRetirar(vehiculoId, posicion) {
 function cerrarRetirar() { $('modal-retirar').classList.remove('show'); ret = null; }
 
 async function confirmarRetirar() {
-  if (!ret || ocupado) return;
+  if (!ret || ocupado || esAdmin()) return;
   const r = validarRetiro(estadoRetirar());
   if (!r.ok) { $('ret-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('ret-confirmar').disabled = true;
