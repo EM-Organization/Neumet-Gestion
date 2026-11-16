@@ -848,7 +848,7 @@ Sin anulaciones por eje, posición ni marca/modelo, sin destinatarios, correo ni
 
 # Apéndice N · Administración de empresa: base (migración `20261119000000`, F10 PR 2)
 
-Primera migración del plan de roles ([`docs/17`](17-plan-roles-admin.md) §9, migración A). Solo agrega esquema y RPC: ningún cambio de interfaz ni de Edge Function (esos son los PR siguientes). La migración **va sin aplicar** hasta que pase la compuerta.
+Primera migración del plan de roles ([`docs/17`](17-plan-roles-admin.md) §9, migración A). Solo agrega esquema y RPC: ningún cambio de interfaz ni de Edge Function (esos son los PR siguientes). La migración está aplicada en producción (`20261119000000`, ver el apéndice N).
 
 ## N.1 Regla de producto
 
