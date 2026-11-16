@@ -27,7 +27,7 @@
 {#if filas.length === 0}
   <EstadoVacio titulo={vacio.titulo} detalle={vacio.detalle ?? ''} />
 {:else if estrecho}
-  <ul class="tw:flex tw:flex-col tw:gap-3" aria-label={leyenda}>
+  <ul class="tw:list-none tw:flex tw:flex-col tw:gap-3" aria-label={leyenda}>
     {#each filas as fila, i (clave(fila, i))}
       <li class="tw:rounded-xl tw:border tw:border-[var(--border)] tw:bg-[var(--surface)] tw:p-3">
         <dl class="tw:grid tw:grid-cols-[auto_1fr] tw:gap-x-3 tw:gap-y-1 tw:text-sm">

@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, irA } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
+import { escrituras } from '../lib/lecturas.mjs';
 
 const INICIO_ANTERIOR = `((date_trunc('month', now() at time zone 'UTC') - interval '1 month') at time zone 'UTC')`;
 const num = (n) => Number(n).toLocaleString('es-AR');
@@ -81,8 +82,7 @@ export function registrar(env) {
         assert.equal(await p.eval(`document.documentElement.scrollWidth <= window.innerWidth`), true, 'sin desborde horizontal de la página en móvil');
         await p.captura('uso-movil');
 
-        assert.deepEqual(env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD' && !r.path.startsWith('/rpc/uso_clientes_listar')
-          && !r.path.startsWith('/rpc/ultimas_mediciones')).map((r) => `${r.method} ${r.path}`), [], 'la pantalla solo lee');
+        assert.deepEqual(escrituras(env, desde).map((r) => `${r.method} ${r.path}`), [], 'la pantalla solo lee');
 
         // Salir desmonta la isla y restaura el panel.
         await irA(p, 'inicio');
@@ -93,6 +93,26 @@ export function registrar(env) {
       env.sql(`delete from public.uso_cliente_mensual where mes = (date_trunc('month', now() at time zone 'UTC') - interval '1 month')::date`);
       env.sql(`delete from public.ingesta_log where recibido_at >= ${INICIO_ANTERIOR} and recibido_at < ${INICIO_ANTERIOR} + interval '1 month'`);
     }
+  });
+
+  // Reproduce la carrera que rompía el CI: el hook de login de Dispositivos lanza POST /rpc/get_unregistered_devices (lectura) y, si llega
+  // después de fijar `desde`, contaba como escritura de la pantalla. Se fuerza la llegada tardía en vez de esperar que el runner sea lento.
+  test('Uso (navegador): una lectura RPC del login que llega tarde no cuenta como escritura, pero una escritura real sí', async () => {
+    env.web.demorar('/rpc/get_unregistered_devices', 1500);
+    try {
+      await flujo(env, 'uso-lectura-tardia', 'admin', async (p) => {
+        const desde = env.peticiones.length;
+        const t0 = Date.now();
+        while (!env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/get_unregistered_devices')) && Date.now() - t0 < 8000) await pausa(p, 100);
+        assert.ok(env.peticiones.slice(desde).some((r) => r.path.startsWith('/rpc/get_unregistered_devices')), 'la lectura del login llegó después de fijar desde');
+        assert.deepEqual(escrituras(env, desde).map((r) => `${r.method} ${r.path}`), [], 'una lectura RPC no es escritura');
+        // El filtro no se traga escrituras: un POST a una tabla y una RPC que escribe sí cuentan.
+        env.peticiones.push({ method: 'POST', path: '/clientes', search: '', status: 201, body: '{}', at: Date.now(), tag: '', error: null },
+          { method: 'POST', path: '/rpc/guardar_montaje_mm', search: '', status: 200, body: '{}', at: Date.now(), tag: '', error: null });
+        assert.deepEqual(escrituras(env, desde).map((r) => `${r.method} ${r.path}`), ['POST /clientes', 'POST /rpc/guardar_montaje_mm']);
+        env.peticiones.length = env.peticiones.length - 2;
+      });
+    } finally { env.web.restaurar(); }
   });
 
   for (const rol of ['global', 'salto']) {

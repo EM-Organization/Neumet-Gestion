@@ -50,6 +50,10 @@ describe('filasDeUso', () => {
       vehiculos_activos: 10, dispositivos_activos: 2, usuarios: 3, ultimo_ingreso_at: '2026-03-31T23:59:00Z' }]);
     expect(f).toMatchObject({ id: '7-2026-03-01', mes: 'marzo de 2026', cliente: 'Transportes Alfa', api: '1.234', logins: '5', mediciones: '0', ultimoIngreso: '31/03/2026' });
   });
+  it('una métrica null o ausente se muestra «—», no 0', () => {
+    const [f] = filasDeUso([{ cliente_id: 1, cliente_nombre: 'A', mes: '2026-03-01', api_llamadas: null, logins: undefined, mediciones: 0 }]);
+    expect(f).toMatchObject({ api: '—', logins: '—', mediciones: '0', vehiculos: '—', dispositivos: '—', usuarios: '—' });
+  });
   it('el último ingreso se muestra en UTC y sin dato dice «Sin ingresos»', () => {
     const base = { cliente_id: 1, cliente_nombre: 'A', mes: '2026-03-01' };
     expect(filasDeUso([{ ...base, ultimo_ingreso_at: '2026-04-01T00:30:00Z' }])[0].ultimoIngreso).toBe('01/04/2026');

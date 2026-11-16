@@ -49,6 +49,7 @@
 
 ### Desarrollo
 - Pulido de la ola 0 de F11 (sugerencias del revisor del PR 85, no bloqueantes): otras elusiones del lint de un solo cliente en `src/`; distinguir el `TypeError` de red de otros `TypeError` (`src/compartido/datos.js:23` hoy trata cualquier `TypeError` como «Sin conexión»); revisar `Avisos`, `Boton` y `Modal`; `desmontarIsla` en `assets/js/core/islas.js` (si `mod.montar` lanza tras montar el componente no se llama a `desmontarIsla`; si `desmontarIsla` lanza queda un rechazo sin atender); `tests/e2e/lib/web.mjs`: `finally` al detener el servidor.
+- Pulido pendiente del PR 87 (piloto «Uso», sugerencias no bloqueantes del revisor): etiquetas «Logins» y «Último ingreso» más claras para el operario; un solo selector de mes en lugar de dos (menos clics); `import()` por isla para partir el bundle antes de la ola 2; prueba del 404 de la hoja de la isla; pruebas de desmontaje de la isla y de `matchMedia` en `Tabla`.
 
 | Ítem | Notas |
 |---|---|

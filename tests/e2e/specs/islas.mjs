@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo } from '../lib/flujo.mjs';
 import { cifrasInicio } from '../lib/verdad.mjs';
+import { escrituras } from '../lib/lecturas.mjs';
 
 const irA = (p, vista) => p.eval(`import('/assets/js/core/nav.js').then(m => { m.switchView(${JSON.stringify(vista)}); return true; })`);
 const forzar = (p, valor) => p.eval(`localStorage.setItem('neumet_islas', ${JSON.stringify(valor)})`);
@@ -16,13 +17,6 @@ const estado = p => p.eval(`({
   inicioActivo: document.getElementById('view-inicio').classList.contains('active'),
   alertas: (document.querySelector('[data-alertas]') || {}).textContent || ''
 })`);
-
-// Escrituras reales desde `desde`. Inicio (la vista de arranque de `salto`) lee con POST /rpc/ultimas_mediciones, que es una LECTURA
-// aunque sea POST; si llega después de fijar `desde` (el orden depende de la velocidad del runner) contaba como escritura y el test
-// era inestable. Lista explícita de RPC de lectura en vez de esperar a que Inicio termine: no depende de tiempos.
-const RPC_DE_LECTURA = ['ultimas_mediciones'];
-const escrituras = (env, desde) => env.peticiones.slice(desde).filter((r) => r.method !== 'GET' && r.method !== 'HEAD'
-  && !RPC_DE_LECTURA.some((n) => r.path.split('?')[0] === `/rpc/${n}`));
 
 export function registrar(env) {
   test('islas: bandera apagada, el panel viejo queda igual y no se monta nada', async () => {
