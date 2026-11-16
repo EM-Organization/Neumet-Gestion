@@ -44,6 +44,7 @@ Avisar al director: la migración se aplica **antes** de fusionar (`neumet-aplic
 
 ## 5. Interfaz y textos
 - `tests/visual/run.sh` y **mirar** las capturas (Read sobre el PNG), escritorio y móvil. Rechazar texto cortado, superposiciones, tablas desbordadas, contraste insuficiente, estado solo por color.
+- Si el PR agrega, mueve, renombra o duplica algo del menú o de una pestaña: ¿dónde lo buscaría un operario? ¿Está en un solo lugar y actualizó `docs/12` (sección 4, fuente de verdad del menú)? (`docs/13` §3)
 - Textos contra `docs/14-guia-de-textos.md`: sin segunda persona, sin emojis, frases cortas, estados vacíos accionables, rojo solo crítico.
 
 ## 6. Seguridad general

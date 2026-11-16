@@ -56,7 +56,7 @@ Conviene hacer B2–B4 **junto con** la Fase 2 (Vite + tokens compartidos) para 
 Nota: `deno check` de las Edge Functions es reproducible vía `supabase/functions/deno.json` y corre en CI (job `deno`); ver `supabase/functions/contacto/README.md`.
 
 ## Decisiones abiertas (requieren al dueño del producto)
-1. ¿Un cliente tendrá más de un usuario? (hoy 1:1).
+1. ~~¿Un cliente tendrá más de un usuario?~~ Resuelta (F10, docs/17): cada cliente tiene un administrador de empresa y usuarios de sucursal; `clientes.auth_user_id` queda como el vínculo del primer administrador y los demás usuarios viven en `perfiles` (ver docs/08 §4 y apéndice N).
 2. ¿El firmware en campo ya está desplegado? Define cuánto cuesta cambiar el contrato de autenticación de dispositivos.
 3. ¿El repo es público en GitHub? (cambia la urgencia de la historia con emails personales y de cualquier rotación).
 4. ¿Se factura a clientes hoy? (fija el plan Vercel/Supabase y la urgencia de backups).
