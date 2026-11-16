@@ -81,8 +81,8 @@ describe('textos', () => {
     assert.equal(textoSucursal(99, sucs), 'Sin sucursal');
   });
   test('aviso de mover usa la misma etiqueta de vehículo que Vehículos (etiquetaCoche)', () => {
-    assert.equal(avisoMovido({ numero: '101', nombre: '101' }, 'Norte'), 'Coche 101 movido a «Norte»');
-    assert.equal(avisoMovido({ numero: null, nombre: 'Unidad Sur' }, 'Sin sucursal'), 'Unidad Sur movido a «Sin sucursal»');
+    assert.equal(avisoMovido({ numero: '101', nombre: '101' }, 'Sur', 'Norte'), 'Coche 101 movido de «Sur» a «Norte»');
+    assert.equal(avisoMovido({ numero: null, nombre: 'Unidad Sur' }, 'Norte', 'Sin sucursal'), 'Unidad Sur movido de «Norte» a «Sin sucursal»');
   });
   test('confirmación de eliminar distingue con y sin vehículos', () => {
     assert.match(confirmacionEliminar('Norte', 0).mensaje, /¿Eliminar/);

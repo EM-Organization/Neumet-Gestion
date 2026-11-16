@@ -56,8 +56,9 @@ export const textoSucursal = (id, sucursales) =>
 
 // Aviso tras mover un vehículo. Mover no pide confirmación: es reversible (solo cambia vehiculos.sucursal_id, el historial no
 // se toca; docs/14 §5 regla 5). Se nombra el vehículo con la misma etiqueta que la vista Vehículos.
-export function avisoMovido(vehiculo, destinoNombre) {
-  return `${etiquetaCoche(vehiculo.nombre)} movido a «${destinoNombre}»`;
+// Nombra origen y destino: sin pedir confirmación, el aviso es lo que permite deshacer (volver a elegir el origen).
+export function avisoMovido(vehiculo, origenNombre, destinoNombre) {
+  return `${etiquetaCoche(vehiculo.nombre)} movido de «${origenNombre}» a «${destinoNombre}»`;
 }
 
 export function confirmacionEliminar(nombre, nVehiculos) {

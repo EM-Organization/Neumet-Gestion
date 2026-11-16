@@ -37,6 +37,10 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if ($('#emp-user-sucursal').value !== '' || opciones[0].textContent !== 'Elegir sucursal') fail('empresa: el campo Sucursal debe empezar en «Elegir sucursal» (vacío)');
   if (opciones[opciones.length - 1].textContent !== 'Toda la empresa') fail('empresa: «Toda la empresa» debe ser una opción explícita');
 
+  // Sin email: el foco vuelve al campo email
+  $('#emp-user-email').value = ''; $('#emp-user-form').requestSubmit(); await sleep(150);
+  if (d.activeElement !== $('#emp-user-email')) fail('empresa: sin email el foco no va al campo email');
+
   // Solo el email + Enter NO crea el usuario (antes quedaba con acceso a toda la empresa)
   var n1 = fx.llamadas.length;
   $('#emp-user-email').value = 'sinsuc@demo.test';
@@ -52,7 +56,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!alta || alta.body.email !== 'nuevo@demo.test' || alta.body.cliente_id !== 1 || alta.body.sucursal_id != null) fail('empresa: alta incorrecta ' + JSON.stringify(alta));
   if (!fila('u-31')) fail('empresa: la lista no mostró al usuario creado');
   if ($('#emp-user-email').value !== '') fail('empresa: el formulario no se vació');
-  if ($('#emp-user-sucursal').value !== '' && $('#emp-user-sucursal').value !== 'empresa') fail('empresa: valor del campo Sucursal inesperado tras crear');
+  if ($('#emp-user-sucursal').value === 'empresa') fail('empresa: tras crear con «Toda la empresa» el campo conserva «empresa» (el siguiente email + Enter daría acceso a toda la empresa)');
   // Alta en una sucursal concreta
   $('#emp-user-email').value = 'enclave@demo.test'; $('#emp-user-sucursal').value = '2';
   $('#emp-user-form').requestSubmit(); await sleep(500);

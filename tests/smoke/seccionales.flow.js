@@ -207,7 +207,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if ($('#modal-confirm').classList.contains('show')) fail('sucursales: mover no debe pedir confirmación');
   var mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
   if (!mv || mv.args.p_vehiculo_id !== 15 || mv.args.p_sucursal_id !== 1) fail('sucursales: mover con argumentos incorrectos: ' + JSON.stringify(mv));
-  if (selFila(15).value !== '1' || toast().indexOf('movido a «') === -1) fail('sucursales: el movimiento no se reflejó: ' + toast());
+  if (selFila(15).value !== '1' || toast().indexOf('movido de «') === -1) fail('sucursales: el movimiento no se reflejó: ' + toast());
   // Reversible: volver a la sucursal anterior es otro cambio de select, sin pasos intermedios
   setSel(selFila(15), ''); await sleep(400);
   mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();

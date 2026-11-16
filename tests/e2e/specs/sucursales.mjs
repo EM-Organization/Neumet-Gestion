@@ -139,7 +139,7 @@ export function registrar(env) {
       await abrirSucursales(p);
       // Mover no pide confirmación (reversible, docs/14 §5 regla 5): el cambio del select ya lo aplica
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${veh.id}"] select`, salto);
-      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido' });
+      await p.esperar(`/movido de/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido' });
       assert.equal(await p.eval(`document.querySelector('#modal-confirm').classList.contains('show')`), false, 'mover no abre diálogo de confirmación');
     });
     assert.equal(Number(env.sql(`select sucursal_id from public.vehiculos where id = ${veh.id}`)), salto);
@@ -161,7 +161,7 @@ export function registrar(env) {
     await flujo(env, 'mover-sin-sucursal', 'global', async p => {
       await abrirSucursales(p);
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${veh.id}"] select`, '');
-      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido a sin sucursal' });
+      await p.esperar(`/movido de/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo movido a sin sucursal' });
     });
     assert.equal(env.sql(`select coalesce(sucursal_id::text, 'null') from public.vehiculos where id = ${veh.id}`), 'null');
     assert.equal(huella(), antes);
@@ -237,7 +237,7 @@ export function registrar(env) {
       await p.esperar(`[...document.querySelectorAll('#suc-lista input')].some(i => i.value === 'Sucursal Ajena')`, { que: 'sucursal propia' });
       const id = Number(env.sql(`select id from public.sucursales where nombre = 'Sucursal Ajena'`));
       await elegir(p, `#suc-vehiculos tr[data-vehiculo="${otraVeh}"] select`, id);
-      await p.esperar(`/movido a/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo propio movido' });
+      await p.esperar(`/movido de/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo propio movido' });
       assert.equal(Number(env.sql(`select sucursal_id from public.vehiculos where id = ${otraVeh}`)), id);
       assert.equal(Number(env.sql(`select cliente_id from public.sucursales where id = ${id}`)), Number(env.sql(`select id from public.clientes where nombre = 'Otra Empresa SA'`)));
     });

@@ -126,7 +126,7 @@ const ACCIONES = {
     if (!v) return;
     if (String(v.sucursal_id ?? '') === String(valor)) return;
     // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-    await rpc('vehiculo_mover_sucursal', argsMover(vehiculoId, valor), avisoMovido(v, textoSucursal(valor, sucursales)));
+    await rpc('vehiculo_mover_sucursal', argsMover(vehiculoId, valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(valor, sucursales)));
   },
 };
 registerActions(ACCIONES);

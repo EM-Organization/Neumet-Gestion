@@ -139,7 +139,7 @@ async function crearUsuario() {
   err('');
   const email = $('emp-user-email').value.trim();
   const password = $('emp-user-password').value;
-  if (!email) { err('Falta el email del usuario'); return; }
+  if (!email) { err('Falta el email del usuario'); $('emp-user-email').focus(); return; }
   const alcance = validarAlcanceUsuario($('emp-user-sucursal').value);
   if (!alcance.ok) { err(alcance.error); $('emp-user-sucursal').focus(); return; }
   if (password && password.length < 12) { err('La contraseña debe tener al menos 12 caracteres (o dejarla vacía para enviar una invitación)'); return; }
@@ -150,6 +150,8 @@ async function crearUsuario() {
       cuerpoCrearUsuario({ clienteId: currentClienteId, sucursalId: alcance.sucursalId, email, password }));
     if (!body || !body.ok) { const m = mensajeCrearUsuarioEmpresa(status, body); err(m); showToast(m, true); return; }
     $('emp-user-email').value = ''; $('emp-user-password').value = '';
+    // «Toda la empresa» no queda elegida para el siguiente alta: con solo email + Enter daría acceso a toda la empresa sin querer.
+    if (alcance.sucursalId === '') $('emp-user-sucursal').value = alcanceInicial(sucursales, sucursalSeleccionada());
     showToast(password ? 'Usuario creado' : 'Invitación enviada por email');
   } finally { btn.disabled = false; ocupado = false; }
   await loadEmpresaUsuarios();
