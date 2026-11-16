@@ -47,7 +47,7 @@ Convenciones de este documento. Las afirmaciones sobre el repositorio llevan `ar
 | Unitarias de `domain/` (30 archivos) | No | No cambian |
 | Smoke (`tests/smoke`: flujos `*.flow.js` con fixtures, iframe `srcdoc` y `stub.js`; selectores por id y `data-action`) | Sí | Se reescriben por pantalla migrada |
 | Visuales (`tests/visual`, escenas) | Sí | Ídem |
-| E2E (`tests/e2e`; `lib/web.mjs` reescribe `adminpanel/index.html` y `auth-shim.js` intercepta `window.supabase`) | Sí, en la capa web | Se reescribe la capa web; `lib/postgres.mjs`, `lib/postgrest.mjs`, `tests/sql` y las pruebas Deno se conservan |
+| E2E (`tests/e2e`; `lib/web.mjs` sirve `dist/` con las cabeceras de `vercel.json` y reescribe `adminpanel/index.html`; la auth es la real de supabase-js con sesión precargada) | Sí, en la capa web | Se reescribe la capa web; `lib/postgres.mjs`, `lib/postgrest.mjs`, `tests/sql` y las pruebas Deno se conservan |
 | CSP | Ninguna prueba la comprueba: el servidor e2e no envía las cabeceras de `vercel.json` | Se corrige en el PR 2 (sección 5.5; ver 7.1) |
 
 ### 2.4 Inconsistencias del CSS y comportamiento en móvil (hipótesis, sin capturas)
@@ -194,7 +194,7 @@ No hay staging: los previews de Vercel apuntan a producción (riesgo G4 de [03](
 ### 5.6 Pruebas
 
 - `domain/` se comparte con un alias `@domain` (una sola copia; `server.fs.allow`).
-- Auth del e2e: reemplazar `auth-shim.js` por una sesión precargada en `localStorage` (JWT de prueba HS256 con `expires_at` lejano) más stubs de `/auth/v1/token`, `/auth/v1/user` y `/auth/v1/logout`. **[Verificar]** que supabase-js no intente refrescar la sesión.
+- Auth del e2e (**hecho en el PR 2a**): `auth-shim.js` se borró; `tests/e2e/lib/chrome.mjs` precarga la sesión en `localStorage` (clave `sb-127-auth-token`, JWT HS256 de 24 h) y `lib/web.mjs` atiende `/auth/v1/user` y `/auth/v1/logout`; `/auth/v1/token` responde 400 a propósito (si algo intentara refrescar, el test falla). Verificado: con la sesión vigente supabase-js no refresca. El servidor sirve `dist/` (el e2e corre `scripts/build.mjs` antes; `E2E_SIN_BUILD=1` reutiliza el `dist/` existente) con las cabeceras de `vercel.json`.
 - Los flujos de smoke y las escenas visuales pasan a pruebas de componente (Vitest con Testing Library y un `ctx.db` simulado): roles, vacíos y errores.
 - Capturas de pantallas nuevas desde e2e (CDP, escritorio y móvil).
 - Smoke y escenas de una pantalla vieja se borran **en el mismo PR** que borra la vista vieja.
@@ -231,10 +231,14 @@ Decisión del director (2026-11-16): no hay prueba de concepto previa aparte; el
 
 #### 7.1.1 Pendientes del PR 2 hallados al corregir el PR 1
 
-- **El CSS no viaja con `islas.js`:** `estilos.css` se importa en `main.js` y un `<style>` de componente sale como `islas-[hash].css`; nada lo carga cuando el panel viejo haga `import('/panel/islas.js')`. Resolver al construir `islas.js` (cargar la hoja desde el propio módulo o emitirla con nombre fijo).
-- **`verificar-dist` no corre en Vercel:** hoy solo lo ejecuta el CI. Decidir si `scripts/build.mjs` lo llama al final, para que un despliegue no publique nada fuera de lo permitido.
-- **Elusiones del lint de un solo cliente sin cubrir:** `import()` desde una URL externa (p. ej. jsdelivr, que la CSP permite y `verificar-dist` no mira) y `window['supabase'][clave dinámica]`. El PR 2 las cierra (regla o chequeo en `verificar-dist`).
-- **Caché de `/panel/assets/*`:** los archivos llevan hash pero no coinciden con ningún patrón de cabeceras de `vercel.json`, así que no reciben caché `immutable`. `vercel.json` no se tocó en el PR 1; se decide en el PR 2.
+Estado tras el PR 2a de la ola 0 (rama `feat/f11-pr2-contratos`):
+
+- **El CSS viaja con `islas.js` (hecho).** `scripts/vite-css-islas.mjs` sustituye en el bundle el marcador de `src/estilos-isla.js` por la lista real de hojas; el módulo las enlaza con `<link rel="stylesheet">` externo (sin `<style>` en línea) y `montar()` espera su carga (tope 4 s). `vite.config.mjs` fija `preserveEntrySignatures: 'strict'`: sin eso Vite recortaba `islas.js` a lo que usa `index.html` y el panel viejo no veía `desmontar` ni `API_ISLAS`; ahora `/panel/islas.js` es un re-export del chunk con hash. `verificar-dist` falla si queda el marcador, si no hay enlace a la hoja o si la hoja no existe.
+- **Cascada con el panel viejo (hallazgo).** `assets/css/styles.css` tiene `* { margin: 0; padding: 0 }` sin capa, y una regla sin capa gana a cualquier regla en `@layer`: las utilidades de Tailwind en capa no aplicaban dentro del panel viejo. Decisión: utilidades **sin capa y con prefijo `tw:`** (`tw:p-4`), que además evita colisiones con clases del panel viejo (`.hidden`, `.flex`...); el tema (variables, también con prefijo) queda en su capa. Lo cubre el e2e (`padding` calculado de la isla).
+- **`verificar-dist` corre al final de `scripts/build.mjs` (hecho).** Un `dist/` fuera de lo permitido hace fallar el build y Vercel no lo promueve. Como `.vercelignore` excluía `tests/`, ahora es `tests/*` y `!tests/build/`; si el archivo faltara en Vercel, el build avisa y sigue (CI lo corre siempre aparte). **No verificado:** que Vercel respete la negación del `.vercelignore` (se ve en el primer preview; si no, el aviso queda en el log y nada se rompe).
+- **Caché de `/panel/assets/*` (hecho).** Nuevo bloque en `vercel.json`: `Cache-Control: public, max-age=31536000, immutable` solo para `/panel/assets/(.*)` (archivos con hash). `/panel/islas.js` (nombre fijo) y lo viejo no cambian de cabeceras. Un 404 bajo esa ruta también saldría `immutable`; es inocuo porque una URL con hash que no existe no vuelve a pedirse.
+- **`/panel` devuelve 404 (descartado).** Ya no ocurre: con `cleanUrls` responde 200 (comprobado con `curl -I` contra producción). No se agrega rewrite: ningún flujo navega a `/panel` hasta la ola 5.
+- **Elusiones del lint de un solo cliente sin cubrir (pasa al PR 2b):** `import()` desde una URL externa (p. ej. jsdelivr, que la CSP permite y `verificar-dist` no mira) y `window['supabase'][clave dinámica]`.
 
 **Piloto.** La pantalla «Uso» es el piloto solo si la migración B ya está aplicada al terminar la ola 0; si no, el piloto es Flota (libre, de solo lectura; regla 7.2.1). Un inventario previo propuso `alertas` por ser pequeña y de solo lectura; se descarta porque F8 PR 2 la toca (`alertas.js` hospeda hoy la edición de `alerta_configurar`, ver [18](18-rotacion-vehiculos-pesados.md) §9.1) y regiría la regla de conflicto de 7.2.
 

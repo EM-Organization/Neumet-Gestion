@@ -14,6 +14,10 @@ let listo = Promise.resolve();
 
 const $ = id => document.getElementById(id);
 
+// Oyentes del cambio de sucursal (las islas lo reciben por ctx.onCambioSucursal; las vistas viejas siguen con reloadActiveView).
+const oyentes = new Set();
+export function onCambioSucursal(fn) { oyentes.add(fn); return () => oyentes.delete(fn); }
+
 export const sucursalSeleccionada = () => seleccion;
 export const listaSucursales = () => sucursales.slice();
 export const nombreSucursal = id => (sucursales.find(s => String(s.id) === String(id)) || {}).nombre || '';
@@ -60,6 +64,7 @@ export function refrescarSucursales() { listo = cargar(true); return listo; }
 registerActions({
   seccionalCambiar(valor) {
     seleccion = valor || '';
+    oyentes.forEach(fn => fn(seleccion || null));
     reloadActiveView();
   },
 });

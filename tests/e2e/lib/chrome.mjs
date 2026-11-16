@@ -99,7 +99,19 @@ export class Pagina {
     const p = new Pagina(cdp, sessionId, browserContextId, targetId, origin, capturas);
     await Promise.all(['Page', 'Runtime', 'Log'].map(d => cdp.send(`${d}.enable`, {}, sessionId)));
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
-    await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__E2E = ${JSON.stringify(sesion)};` }, sessionId);
+    // Sesión REAL de supabase-js: se precarga en localStorage con la clave que el cliente deriva de SUPABASE_URL (= el origen del
+    // arnés) y supabase-js la lee con getSession() como si hubiera iniciado sesión. `window.__E2E` solo deja el JWT a mano de
+    // los specs que consultan la API directo. La marca en sessionStorage evita «resucitar» la sesión al recargar tras cerrarla.
+    const entrada = { access_token: sesion.jwt, token_type: 'bearer', expires_in: sesion.expiraEn, expires_at: sesion.expiraAt, refresh_token: 'e2e-sin-refresco',
+      user: { id: sesion.sub, email: sesion.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} } };
+    const fuente = `window.__E2E = ${JSON.stringify(sesion)};
+      try {
+        if (!sessionStorage.getItem('e2e-sesion')) {
+          sessionStorage.setItem('e2e-sesion', '1');
+          localStorage.setItem('sb-' + location.hostname.split('.')[0] + '-auth-token', ${JSON.stringify(JSON.stringify(entrada))});
+        }
+      } catch (e) { /* about:blank no tiene almacenamiento */ }`;
+    await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: fuente }, sessionId);
     cdp.on(sessionId, 'Runtime.consoleAPICalled', e => {
       if (e.type === 'error' || e.type === 'assert') p.problemas.push({ tipo: 'console.error', texto: e.args.map(a => a.value ?? a.description ?? '').join(' ') });
       else if (e.type === 'warning') p.avisos.push(e.args.map(a => a.value ?? a.description ?? '').join(' '));
