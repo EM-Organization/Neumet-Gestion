@@ -10,7 +10,9 @@ export const API_ISLAS = 1;
 // Ni las banderas por rol ni el override por localStorage son control de acceso: el usuario controla su navegador y puede
 // escribir `neumet_islas` o cambiar el JS que se le sirve. Son comodidad de despliegue (apagar o probar una pantalla); quién ve
 // qué dato lo decide siempre la base (RLS y privilegios por columna), nunca estas banderas.
-export const ISLAS = { hola: { roles: [], forzable: true } };
+// `uso` es una pantalla real: solo el perfil `admin` (equipo Neumet) la monta, y no es forzable. Que el administrador de
+// empresa no la vea lo garantiza la base (uso_clientes_listar da 42501), esta bandera solo evita mostrarle una pantalla vacía.
+export const ISLAS = { hola: { roles: [], forzable: true }, uso: { roles: ['admin'] } };
 
 // Override de soporte (docs/19 §5.3): localStorage.neumet_islas = 'off' apaga todas las islas;
 // 'on:hola,otra' enciende las islas forzables nombradas, para cualquier rol con acceso al panel.
