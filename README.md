@@ -80,7 +80,7 @@ Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil gl
 | Recauchutado (administrador y perfil global) | Procesos de recauchutado por carcasa con las acciones de cada estado y «Enviar a recauchutar» (solo cubiertas del stock). Stock marca «En recauchutado»; Reportes suma los grupos «Vida» y «Banda» al costo por km |
 | Reportes | Informes exportables en CSV o versión imprimible |
 | Dispositivos (solo administrador) | Alta, edición y asignación de medidores a clientes; estado de actividad y dispositivos con mediciones aún sin cliente asignado |
-| Clientes y ficha de cliente (administrador) | Alta con invitación o contraseña, baja lógica, umbrales de desgaste, sucursales y usuarios, cuenta de API |
+| Clientes y ficha de cliente (administrador) | Alta con invitación o contraseña, baja lógica, umbrales de desgaste, sucursales y usuarios (solo lectura, salvo asignar dispositivos a sucursal), cuenta de API |
 | Estado de la flota, Mediciones y Balance (administrador) | Vista de flota entre clientes, historial por vehículo o dispositivo, ingresos, gastos y valor del inventario |
 
 Con perfil global y sucursales, un selector «Sucursal» en la barra superior filtra las pantallas. Con perfil de sucursal el selector no aparece porque la base ya limita los datos.

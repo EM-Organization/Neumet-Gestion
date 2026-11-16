@@ -6,6 +6,7 @@ import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { renderBalanceChart } from './balance-chart.js';
 import { fmtNum } from '../domain/formato.js';
+import { unirPrecios, precioDeEntrada, mensajeErrorPrecio } from '../domain/balance.js';
 
 let gastos=[], gastoModalMode='create', gastoActiveId=null;
 let balanceClients=[];
@@ -14,12 +15,15 @@ const fmt=n=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',mini
 
 export async function loadBalance(){
   
-  const [{data:cData},{data:gData}]=await Promise.all([
-    db.from('clientes').select('id,nombre,precio_mensual,created_at').order('nombre'),
+  // El precio mensual no se pide a `clientes` (C2 lo oculta a authenticated): llega por la RPC solo del equipo Neumet.
+  const [{data:cData},{data:pData,error:pErr},{data:gData}]=await Promise.all([
+    db.from('clientes').select('id,nombre,created_at').order('nombre'),
+    db.rpc('cliente_precios_mensuales'),
     db.from('gastos').select('*').order('created_at',{ascending:false})
   ]);
+  if(pErr){ setStatus(false); showToast(mensajeErrorPrecio(pErr,'cargar'),true); return; }
   setStatus(true);
-  balanceClients=cData||[];
+  balanceClients=unirPrecios(cData,pData);
   gastos=gData||[];
   renderBalance();
 }
@@ -112,11 +116,11 @@ function renderBalance(){
 }
 
 ACTIONS.updatePrecio=async function(clienteId,val){
-  const precio=Math.max(0,parseFloat(val)||0);
-  const {error}=await db.from('clientes').update({precio_mensual:precio}).eq('id',clienteId);
-  if(error){ showToast('Error al guardar precio',true); return; }
+  const precio=precioDeEntrada(val);
+  const {data,error}=await db.rpc('cliente_precio_mensual_fijar',{p_cliente_id:clienteId,p_precio:precio});
+  if(error){ showToast(mensajeErrorPrecio(error),true); renderBalance(); return; } // renderBalance devuelve el campo al valor vigente
   const c=balanceClients.find(c=>c.id===clienteId);
-  if(c) c.precio_mensual=precio;
+  if(c) c.precio_mensual=Number(data); // la base devuelve el valor ya redondeado a 2 decimales
   renderBalance();
   showToast('Precio actualizado');
 };

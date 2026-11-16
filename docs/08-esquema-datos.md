@@ -940,8 +940,8 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 ## P.3 Pruebas
 
 - `tests/sql/t_95_precio_mensual_rpc.sql`: contrato (definer, `search_path`, privilegios), equipo Neumet (lectura, escritura, redondeo, auditoría, errores) y `42501` para administrador de empresa, usuario de sucursal, `api`, sin perfil y `anon`; comprueba además que authenticated conserva `select` y `update` de la columna (retrocompatible).
-- `tests/e2e/specs/precio-mensual.mjs`: las RPC por la API real con el JWT de cada rol, y el camino directo de Balance (select y PATCH como admin) que sigue vigente.
+- `tests/e2e/specs/precio-mensual.mjs`: las RPC por la API real con el JWT de cada rol, y Balance en el panel real (lee por RPC, fija con Enter, muestra los errores `22023`, se relee de la base, el administrador de empresa no ve la pantalla) con la aserción de que ninguna petición toca `clientes.precio_mensual` directo (PR 9b).
 
 ## P.4 Límites
 
-No cambia privilegios ni políticas. Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. El front de Balance sobre estas RPC es el PR 9b, que va después de aplicar y verificar esta migración.
+No cambia privilegios ni políticas. Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. Balance usa estas RPC desde el PR 9b (solo front); con eso C2 puede retirar el privilegio de la columna.

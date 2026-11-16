@@ -10,6 +10,7 @@
 <script src="/tests/smoke/stock.flow.js"></script>
 <script src="/tests/smoke/precios.flow.js"></script>
 <script src="/tests/smoke/reca.flow.js"></script>
+<script src="/tests/smoke/balance.flow.js"></script>
 <script src="/tests/smoke/montar.flow.js"></script>
 <script src="/tests/smoke/calidad.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
@@ -176,6 +177,7 @@
     if(cliMode) await window.cambioFlow(w,d,sleep,fail,log); // administrador de empresa y de sucursal (el equipo Neumet no escribe; su guarda se prueba en detalle-admin): tests/smoke/cambio.flow.js
     await window.stockFlow(w,d,sleep,fail,log,cliMode,/[?&]secuser=1/.test(location.search)); // stock de cubiertas y buscador: tests/smoke/stock.flow.js
     await window.preciosFlow(w,d,sleep,fail,log,cliMode,/[?&]secuser=1/.test(location.search)); // precios solo admin y perfil global: tests/smoke/precios.flow.js
+    await window.balanceFlow(w,d,sleep,fail,log,cliMode); // Balance sobre las RPC del precio mensual: tests/smoke/balance.flow.js
     // --- fin clientes ---
     // --- salud de dispositivos y ficha de cliente: tests/smoke/salud.flow.js ---
     await window.saludFlow(w,d,sleep,fail,log,cliMode);
