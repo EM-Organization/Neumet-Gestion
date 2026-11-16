@@ -48,7 +48,8 @@
 3. (Opcional) MFA para administradores.
 
 ### Desarrollo
-- Pulido de la ola 0 de F11 (sugerencias del revisor del PR 85, no bloqueantes): otras elusiones del lint de un solo cliente en `src/`; `datos.js` debe tratar un `TypeError` de red como «Sin conexión»; revisar `Avisos`, `Boton` y `Modal`; `islas.js`: `desmontar`; `tests/e2e/lib/web.mjs`: `finally` al detener el servidor.
+- Pulido de la ola 0 de F11 (sugerencias del revisor del PR 85, no bloqueantes): otras elusiones del lint de un solo cliente en `src/`; distinguir el `TypeError` de red de otros `TypeError` (`src/compartido/datos.js:23` hoy trata cualquier `TypeError` como «Sin conexión»); revisar `Avisos`, `Boton` y `Modal`; `desmontarIsla` en `assets/js/core/islas.js` (si `mod.montar` lanza tras montar el componente no se llama a `desmontarIsla`; si `desmontarIsla` lanza queda un rechazo sin atender); `tests/e2e/lib/web.mjs`: `finally` al detener el servidor.
+
 | Ítem | Notas |
 |---|---|
 | Cuenta con rol `api` para la app | Crearla desde la ficha del cliente (runbook §2) |
