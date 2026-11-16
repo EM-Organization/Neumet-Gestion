@@ -7,6 +7,9 @@ export const API_ISLAS = 1;
 // Bandera apagada por defecto: sin roles, ningún rol enciende la isla. Encender es un PR de una línea.
 // `forzable`: el soporte (y las pruebas e2e) pueden encenderla con localStorage.neumet_islas = 'on:<nombre>'. Solo la isla de humo,
 // que no muestra datos de negocio: una pantalla real nunca es forzable (la visibilidad de datos la decide la base, no la bandera).
+// Ni las banderas por rol ni el override por localStorage son control de acceso: el usuario controla su navegador y puede
+// escribir `neumet_islas` o cambiar el JS que se le sirve. Son comodidad de despliegue (apagar o probar una pantalla); quién ve
+// qué dato lo decide siempre la base (RLS y privilegios por columna), nunca estas banderas.
 export const ISLAS = { hola: { roles: [], forzable: true } };
 
 // Override de soporte (docs/19 §5.3): localStorage.neumet_islas = 'off' apaga todas las islas;

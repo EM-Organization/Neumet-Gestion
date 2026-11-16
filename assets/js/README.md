@@ -133,3 +133,7 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
   y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
   Clientes (la ficha se abre desde la lista) y Balance bajo «Administración». Mapa completo: `docs/12-mapa-navegacion.md`.
 - **Solo lectura para el cliente**: Stock sin alta/edición/baja (UI oculta + guardas en las acciones; la RLS lo impide igual).
+
+## Front nuevo (`src/`, ola 0 de F11)
+- `src/compartido/`: sistema de diseño base en Svelte 5 (`Boton`, `Tabla`, `Modal`, `Avisos`, `EstadoVacio`, `Insignia`) y capa de datos `datos.js` sobre `ctx.db` (`userError`, 42501 como «Sin permiso», sin `console.error`). Las pruebas Vitest viven junto a cada componente (`npm run test:front`).
+- `core/islas.js` oculta la vista vieja de una pantalla migrada con `data-isla-oculto` (regla acotada en `assets/css/styles.css`); con las banderas apagadas el atributo no existe y el panel viejo no cambia.

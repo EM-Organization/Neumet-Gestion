@@ -30,10 +30,15 @@ if (vite.status !== 0) {
 }
 
 // Comprobación final de lo que se publica (docs/19 §7.1.1 d): lo viejo idéntico a su origen y dist/panel/** dentro de la CSP.
-// Si falla, el build falla y Vercel no promueve el despliegue. .vercelignore deja subir tests/build/; si faltara (subida
-// incompleta) se avisa y se sigue: CI la corre siempre como paso propio y un archivo de prueba ausente no debe tumbar un despliegue.
+// Si falla, el build falla y Vercel no promueve el despliegue. .vercelignore deja subir tests/build/ y la verificación es la última
+// barrera antes de publicar: en Vercel (process.env.VERCEL definido) que el verificador falte FALLA el build, porque un avisar-y-seguir
+// publicaría sin comprobar. Fuera de Vercel (desarrollo local) solo se avisa; el CI la corre siempre como paso propio.
 const verificador = join(RAIZ, 'tests', 'build', 'verificar-dist.mjs');
 if (!existsSync(verificador)) {
+  if (process.env.VERCEL) {
+    console.error('falta tests/build/verificar-dist.mjs en el build de Vercel: no se puede comprobar dist/ y el build falla (revisar .vercelignore).');
+    process.exit(1);
+  }
   console.warn('AVISO: falta tests/build/verificar-dist.mjs en este entorno; se omite la verificación de dist/ (CI la corre aparte).');
 } else {
   const v = spawnSync(process.execPath, [verificador], { cwd: RAIZ, stdio: 'inherit' });

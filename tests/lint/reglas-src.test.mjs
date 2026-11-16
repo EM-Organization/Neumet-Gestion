@@ -35,6 +35,29 @@ test('src/ no esquiva la regla con alias, acceso computado, SupabaseClient ni su
   }
 });
 
+// Elusiones que dejó abiertas el PR 2a (docs/19 §7.1.1): código de otro origen que la CSP permite (jsdelivr) y el global con clave dinámica.
+test('src/ no esquiva la regla con import() de URL externa ni con claves dinámicas del global', async () => {
+  const casos = [
+    ["export const cargar = () => import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');\n", 'import() de jsdelivr'],
+    ["export const cargar = () => import('//cdn.jsdelivr.net/npm/x');\n", 'import() de URL relativa al protocolo'],
+    ["export const cargar = (u) => import(u);\n", 'import() con ruta calculada'],
+    ["import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';\nexport { createClient };\n", 'import estático de URL externa'],
+    ["export { createClient } from 'https://esm.sh/@supabase/supabase-js';\n", 're-export de URL externa'],
+    ["export const db = window['supabase'].createClient('a', 'b');\n", "window['supabase']"],
+    ["export const f = (k) => window['supabase'][k]('a', 'b');\n", "window['supabase'][clave dinámica]"],
+    ["export const f = (k, d) => globalThis[k][d]('a', 'b');\n", 'globalThis[clave dinámica]'],
+    ["export const f = () => globalThis['supa' + 'base'];\n", 'clave armada con concatenación'],
+  ];
+  for (const [codigo, que] of casos) {
+    const r = await reglas(codigo, 'src/db.js');
+    assert.ok(r.includes('no-restricted-syntax'), `debe fallar: ${que}`);
+  }
+});
+
+test('src/ sí puede importar módulos propios con import() de ruta literal', async () => {
+  assert.deepEqual(await reglas("export const cargar = () => import('./otra.js');\n", 'src/x.js'), []);
+});
+
 test('el mismo código fuera de src/ no dispara la regla (el panel viejo sigue con su singleton)', async () => {
   const r = await reglas("export const db = window.supabase.createClient('a', 'b');\n", 'assets/js/core/supabase.js');
   assert.ok(!r.includes('no-restricted-syntax'));
