@@ -62,7 +62,10 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(rows().length !== 2) fail('alertas: chip de estado abiertas');
   $('#alert-chips [data-action="alertasEstado"]').click(); await sleep(100);
   if(rows().length !== 4) fail('alertas: chip no alterna');
-  if(!$('#alert-config').hidden) fail('alertas: el bloque de nivel crítico solo es para el cliente global');
+  // El nivel crítico ya no se edita en Alertas (vive en Empresa > Umbrales): sin tarjeta, sin campos y sin la RPC.
+  if($('#alert-config') || $('#alert-umbral') || $('#alert-histeresis') || $('[data-action="alertasGuardarConfig"]')) fail('alertas: sigue la tarjeta de nivel crítico');
+  if(!$('#alert-umbral-aviso') || !$('#alert-umbral-aviso').hidden) fail('alertas: el aviso de Empresa > Umbrales es solo para el administrador de empresa');
+  if(fx.rpcs && fx.rpcs.some(function(r){ return r[0] === 'alerta_configurar'; })) fail('alertas: llamó a alerta_configurar');
   var qs = fx.queries.join(',');
   log.push('flota-consultas='+qs);
   if(qs.indexOf('v_estado_neumaticos') === -1 || qs.indexOf('v_alertas') === -1 || qs.indexOf('v_resumen_flota_cliente') === -1) fail('flota: no consulto las vistas SQL');

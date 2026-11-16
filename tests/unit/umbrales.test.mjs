@@ -1,9 +1,9 @@
 // Tests de domain/umbrales.js (puro). Ejecutar: npm test
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarUmbrales, mensajeErrorUmbrales, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
+import { validarUmbrales, validarHisteresis, mensajeErrorUmbrales, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
 
-const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
+const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
 
 describe('aNumero', () => {
   test('coma o punto', () => { assert.equal(aNumero('7,5'), 7.5); assert.equal(aNumero(' 7.5 '), 7.5); });
@@ -14,7 +14,7 @@ describe('validarUmbrales', () => {
   test('valores por defecto válidos', () => {
     const v = validarUmbrales(OK);
     assert.equal(v.ok, true);
-    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
+    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
   });
   test('acepta coma decimal', () => assert.equal(validarUmbrales({ ...OK, umbral_bajo_mm: '8,5' }).valores.umbral_bajo_mm, 8.5));
   test('exige retiro < crítico < bajo (estricto)', () => {
@@ -39,6 +39,24 @@ describe('validarUmbrales', () => {
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '0' }).ok, false);
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7,5' }).ok, false);
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7' }).ok, true);
+  });
+});
+
+describe('histéresis', () => {
+  test('de 0 a 3 con un decimal, acepta coma', () => {
+    assert.equal(validarHisteresis('0').ok, true);
+    assert.deepEqual(validarHisteresis('0,5'), { ok: true, valor: 0.5 });
+    assert.equal(validarHisteresis('3.5').ok, false);
+    assert.equal(validarHisteresis('-1').ok, false);
+    assert.equal(validarHisteresis('0,55').ok, false);
+    assert.equal(validarHisteresis('').ok, false);
+  });
+  test('validarUmbrales la incluye: 0 vale; fuera de rango o vacía se rechaza con el campo', () => {
+    assert.equal(validarUmbrales({ ...OK, alerta_histeresis_mm: '0' }).valores.alerta_histeresis_mm, 0);
+    for (const h of ['3,1', '-0,5', '', 'x']) {
+      const v = validarUmbrales({ ...OK, alerta_histeresis_mm: h });
+      assert.equal(v.ok, false, h); assert.equal(v.campo, 'alerta_histeresis_mm');
+    }
   });
 });
 

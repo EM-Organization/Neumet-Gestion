@@ -1,6 +1,6 @@
 // Centro de alertas: la alerta única «Neumático crítico» (v_alertas) con acciones (reconocer, silenciar, resolver, ver
-// vehículo) y, para el cliente global, el nivel crítico editable. La RLS limita lo visible por rol; las transiciones
-// van por RPC (alerta_reconocer, alerta_silenciar, alerta_resolver, alerta_configurar) que autorizan en la base.
+// vehículo). La RLS limita lo visible por rol; las transiciones van por RPC (alerta_reconocer, alerta_silenciar,
+// alerta_resolver) que autorizan en la base. El nivel crítico ya no se edita aquí: vive solo en Empresa > Umbrales.
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
@@ -14,7 +14,7 @@ import { contextoListo, filtrarFilas, filtrarConsulta } from '../core/seccional.
 import { ordenarAlertas, filtrarAlertas } from '../domain/flota.js';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, hastaSilencio, validarNota,
-  validarUmbralCritico, validarHisteresis, traducirErrorAlerta, DIAS_SILENCIO,
+  traducirErrorAlerta, DIAS_SILENCIO,
 } from '../domain/alertas.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
@@ -27,7 +27,6 @@ let alertas = [];
 let clientes = [];
 let tipos = new Map(); // tipo_ruedas por vehículo (chasis y nombre de la posición)
 let porVeh = new Map(); // v_estado_neumaticos por vehículo: colores del mini vehículo (sin datos si no cargó)
-let umbrales = null; // fila de clientes del perfil global (nivel crítico editable)
 let pendiente = null; // alerta que se está resolviendo
 let ocupado = false;
 
@@ -96,37 +95,27 @@ function fillFiltros() {
   }
 }
 
-// Nivel crítico: solo el administrador de empresa lo edita (el de sucursal y el equipo Neumet no ven este bloque).
-const puedeConfigurar = () => esAdminEmpresa();
-function pintarConfig() {
-  const card = $('alert-config');
-  card.hidden = !(puedeConfigurar() && umbrales);
-  if (card.hidden) return;
-  $('alert-umbral').value = String(umbrales.umbral_critico_mm).replace('.', ',');
-  $('alert-histeresis').value = String(umbrales.alerta_histeresis_mm ?? '').replace('.', ',');
-  $('alert-config-error').textContent = '';
-}
+// Aviso para el administrador de empresa: el nivel crítico se edita solo en Empresa > Umbrales.
+const pintarAviso = () => { $('alert-umbral-aviso').hidden = !esAdminEmpresa(); };
 
 export async function load() {
   $('alert-msg').textContent = '';
   setHtml($('alert-tbody'), filaEstado(6, estadoCarga('Cargando alertas…')));
   await contextoListo();
-  const [al, res, est, vtp, cfg] = await Promise.all([
+  const [al, res, est, vtp] = await Promise.all([
     fetchAll((from, to) => db.from('v_alertas').select('*').order('vehiculo_id').order('posicion').range(from, to),
       { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
     // Solo para colorear el mini vehículo: si falla, las ruedas salen sin datos y la lista sigue funcionando.
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
     fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas')).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
-    puedeConfigurar() ? db.from('clientes').select('id,umbral_critico_mm,umbral_bajo_mm,umbral_retiro_mm,alerta_histeresis_mm').limit(1) : Promise.resolve({ data: [], error: null }),
   ]);
+  pintarAviso(); // antes del retorno por error: el aviso no depende de que la lista cargue
   if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(6, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
   tipos = vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas]));
   porVeh = est.error ? new Map() : agruparPorVehiculo(est.rows);
   clientes = res.data || [];
-  umbrales = cfg.error ? null : ((cfg.data || [])[0] || null);
-  pintarConfig();
   fillFiltros();
   $('alert-msg').textContent = al.truncated ? `Se muestran las primeras ${MAX_FILAS} alertas: la lista está incompleta.` : '';
   render();
@@ -180,18 +169,6 @@ registerActions({
     if (await transicion('alerta_resolver', { p_alerta_id: pendiente, p_nota: v.nota }, 'Alerta resuelta')) {
       $('modal-alerta').classList.remove('show'); pendiente = null; reloadActiveView();
     }
-  },
-  async alertasGuardarConfig() {
-    if (!umbrales) return;
-    const u = validarUmbralCritico($('alert-umbral').value, { retiro: umbrales.umbral_retiro_mm, bajo: umbrales.umbral_bajo_mm });
-    const h = validarHisteresis($('alert-histeresis').value);
-    const err = !u.ok ? u.error : (!h.ok ? h.error : '');
-    $('alert-config-error').textContent = err;
-    if (err) return;
-    $('alert-config-guardar').disabled = true;
-    const ok = await transicion('alerta_configurar', { p_cliente_id: null, p_umbral_critico_mm: u.valor, p_histeresis_mm: h.valor }, 'Nivel crítico actualizado');
-    $('alert-config-guardar').disabled = false;
-    if (ok) reloadActiveView();
   },
   loadAlertas: () => load(),
 });

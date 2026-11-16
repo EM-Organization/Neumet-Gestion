@@ -833,7 +833,7 @@ La alerta sigue al neumático: rotar no crea otra y cambiarlo la resuelve. Dispa
 ## M.5 Panel
 
 - Alertas: tabla con estado (Abierta, Reconocida, Silenciada, siempre con texto y símbolo), mensaje, vehículo, posición y acciones: Ver vehículo (abre el coche en la rueda), Reconocer, Silenciar 7 días o Quitar silencio, y Resolver (modal con nota obligatoria). Filtro y chips por estado.
-- Bloque «Nivel crítico» (nivel y histéresis) solo para el cliente global; el admin edita el umbral desde la ficha del cliente (el trigger reevalúa igual).
+- Nivel crítico e histéresis: desde el PR 9c (docs/17) se editan en Empresa > Umbrales (`alerta_configurar`), no en Alertas; el equipo Neumet los ve en solo lectura en la ficha del cliente desde el PR 9a (el trigger reevalúa igual).
 - Inicio: «N alertas críticas sin reconocer» y enlace a Alertas.
 
 ## M.6 Pruebas

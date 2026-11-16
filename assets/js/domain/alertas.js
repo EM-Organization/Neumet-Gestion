@@ -1,12 +1,11 @@
 // Dominio: alerta única «Neumático crítico» con estado (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
-// Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta) y de clientes (umbrales).
+// Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta).
 
 export const ESTADO_ALERTA_LABEL = { abierta: 'Abierta', reconocida: 'Reconocida', silenciada: 'Silenciada' };
 export const DIAS_SILENCIO = 7;
 export const NOTA_MAX = 200;
 
 const ts = v => { const t = Date.parse(v); return Number.isNaN(t) ? null : t; };
-const fmt = n => String(n).replace('.', ',');
 
 // Silenciada = abierta o reconocida con silencio vigente. Sin estado (filas previas a la migración) = abierta.
 export function estadoAlerta(a, ahora = Date.now()) {
@@ -38,24 +37,6 @@ export function validarNota(raw) {
   if (!nota) return { ok: false, error: 'Falta la nota de resolución' };
   if (nota.length > NOTA_MAX) return { ok: false, error: `La nota admite hasta ${NOTA_MAX} caracteres` };
   return { ok: true, nota };
-}
-
-// Nivel crítico en mm: un decimal, entre el de retiro y el de desgaste bajo (exclusivos). Acepta coma decimal.
-export function validarUmbralCritico(raw, { retiro, bajo }) {
-  const s = String(raw ?? '').trim().replace(',', '.');
-  if (!/^\d+(\.\d)?$/.test(s)) return { ok: false, error: 'Indicar un valor en mm con un decimal, por ejemplo 5,0' };
-  const v = Number(s);
-  if (!(v > Number(retiro)) || !(v < Number(bajo))) {
-    return { ok: false, error: `El nivel crítico debe quedar entre ${fmt(retiro)} mm (retiro) y ${fmt(bajo)} mm (desgaste bajo)` };
-  }
-  return { ok: true, valor: v };
-}
-
-// Histéresis en mm: de 0 a 3 con un decimal.
-export function validarHisteresis(raw) {
-  const s = String(raw ?? '').trim().replace(',', '.');
-  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: 'La histéresis va de 0 a 3 mm, con un decimal' };
-  return { ok: true, valor: Number(s) };
 }
 
 export function traducirErrorAlerta(err) {

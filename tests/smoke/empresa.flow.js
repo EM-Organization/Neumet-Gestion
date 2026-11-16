@@ -145,23 +145,34 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
 
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
-  if (all('#emp-umb-campos [data-umbral]').length !== 5) fail('empresa: faltan campos de umbrales');
+  if (all('#emp-umb-campos [data-umbral]').length !== 6) fail('empresa: faltan campos de umbrales');
+  if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0.5') fail('empresa: la histéresis actual no se cargó');
   var upd0 = (w.__saludFx && w.__saludFx.updates.length) || 0;
-  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
+  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
   var llenar = function () { Object.keys(valores).forEach(function (k) { $('#eu-' + k).value = valores[k]; }); };
   llenar();
   $('#emp-umb-form').requestSubmit(); await sleep(500);
   var cfg = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).pop();
-  if (!cfg || cfg.args.p_cliente_id !== 1 || cfg.args.p_umbral_bajo_mm !== 9) fail('empresa: alerta_configurar ' + JSON.stringify(cfg));
+  if (!cfg || cfg.args.p_cliente_id !== 1 || cfg.args.p_umbral_bajo_mm !== 9 || cfg.args.p_histeresis_mm !== 1.2) fail('empresa: alerta_configurar ' + JSON.stringify(cfg));
   if (!/Umbrales actualizados/.test(toast())) fail('empresa: sin aviso al guardar umbrales: ' + toast());
   if (w.__saludFx && w.__saludFx.updates.length !== upd0) fail('empresa: guardó con UPDATE directo sobre clientes');
   var nCfg = fx.rpcs.length;
   $('#eu-umbral_bajo_mm').value = '2'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !$('#emp-umb-error').classList.contains('show')) fail('empresa: umbrales inválidos llegaron a la base o no se avisó');
+  llenar(); $('#eu-alerta_histeresis_mm').value = '3,5'; $('#emp-umb-form').requestSubmit(); await sleep(200);
+  if (fx.rpcs.length !== nCfg || !/histéresis/i.test($('#emp-umb-error').textContent)) fail('empresa: histéresis fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
   llenar(); fx.errAlerta = { code: '42501', message: 'denegado' };
   $('#emp-umb-form').requestSubmit(); await sleep(300);
   if ($('#emp-umb-error').textContent.indexOf('Sin permiso') === -1) fail('empresa: 42501 sin mensaje: ' + $('#emp-umb-error').textContent);
   fx.errAlerta = null;
+
+  // Alertas: sin tarjeta de nivel crítico ni escritura de umbrales; solo un aviso hacia Empresa > Umbrales
+  var nCfgAl = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length;
+  $('.nav-item[data-view="alertas"]').click(); await sleep(500);
+  if (!$('#view-alertas').classList.contains('active')) fail('empresa: vista alertas no activa');
+  if ($('#alert-config') || $('#alert-umbral') || $('[data-action="alertasGuardarConfig"]')) fail('empresa: Alertas conserva la tarjeta de nivel crítico');
+  if (!visible($('#alert-umbral-aviso')) || !/Empresa > Umbrales/.test($('#alert-umbral-aviso').textContent)) fail('empresa: Alertas sin el aviso hacia Empresa > Umbrales');
+  if (fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length !== nCfgAl) fail('empresa: Alertas llamó a alerta_configurar');
 
   // Dispositivos: solo lectura
   $('.nav-item[data-view="empresa-dispositivos"]').click(); await sleep(500);

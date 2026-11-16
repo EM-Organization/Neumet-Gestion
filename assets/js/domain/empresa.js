@@ -104,6 +104,7 @@ export function mensajeCrearUsuarioEmpresa(status, body) {
 // Umbrales de la empresa: argumentos de la RPC alerta_configurar. Todos los umbrales viajan juntos (parámetro nulo = sin cambio).
 const PARAM_UMBRAL = {
   umbral_critico_mm: 'p_umbral_critico_mm',
+  alerta_histeresis_mm: 'p_histeresis_mm',
   umbral_bajo_mm: 'p_umbral_bajo_mm',
   umbral_retiro_mm: 'p_umbral_retiro_mm',
   dias_sin_medir_alerta: 'p_dias_sin_medir',

@@ -835,16 +835,7 @@
           </div>
           <button class="btn ghost" data-action="loadAlertas">Actualizar</button>
         </div>
-        <div class="ficha-card" id="alert-config" hidden>
-          <div class="ficha-card-title">Nivel crítico</div>
-          <div class="ficha-sub">Un neumático genera una alerta cuando su promedio baja de este nivel. Se resuelve al superarlo más la histéresis.</div>
-          <div class="ficha-umbrales">
-            <div class="field"><label for="alert-umbral">Nivel crítico (mm)</label><input type="text" inputmode="decimal" id="alert-umbral"/></div>
-            <div class="field"><label for="alert-histeresis">Histéresis (mm)</label><input type="text" inputmode="decimal" id="alert-histeresis"/></div>
-          </div>
-          <div class="login-error" id="alert-config-error" role="alert"></div>
-          <div class="ficha-form-actions"><button class="btn primary" id="alert-config-guardar" data-action="alertasGuardarConfig">Guardar nivel</button></div>
-        </div>
+        <div class="ficha-sub" id="alert-umbral-aviso" hidden>El nivel crítico se ajusta en Empresa &gt; Umbrales.</div>
         <div class="alert-chips" id="alert-chips"></div>
         <div class="toolbar">
           <select id="alert-estado" class="flota-select" aria-label="Estado">
