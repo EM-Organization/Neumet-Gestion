@@ -922,3 +922,26 @@ Mes calendario en UTC (no se toma la zona de Chile: es una decisión de presenta
 ## O.6 Límites
 
 La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses cerrados) consume `uso_clientes_listar`; no llama a `uso_cerrar_mes`. Sin programar el cierre y sin retención de `ingesta_log` (docs/17 §5, propuesta de 13 meses): ambos son pasos operativos posteriores. Sin umbrales ni reglas de facturación.
+
+---
+
+# Apéndice P · RPC del precio mensual (migración C1 del plan de roles)
+
+## P.1 Regla de producto
+
+`clientes.precio_mensual` es un dato interno de Neumet (docs/17 P2). Hoy lo lee y lo escribe Balance directo sobre `clientes`, y la política `clientes_self_select` deja leer la fila propia a un usuario global o de sucursal. La migración C1 (`20261120000000_precio_mensual_rpc.sql`, F10 PR 8) crea el camino definitivo, por RPC y solo para el equipo Neumet, **sin quitar nada**: el front vigente sigue funcionando. Cerrar el acceso directo es la migración C2, que se aplica solo cuando Balance ya use estas RPC (PR 9b).
+
+## P.2 Funciones
+
+- `cliente_precios_mensuales()` devuelve `(cliente_id, precio_mensual)` de todos los clientes. Solo `is_admin()`; el resto recibe `42501`.
+- `cliente_precio_mensual_fijar(p_cliente_id, p_precio)` fija el precio y devuelve el valor guardado (`numeric(12,2)`, redondeado). Solo `is_admin()`. Errores: `22023` si el precio es nulo, negativo o igual o mayor a 10^10; `P0002` si el cliente no existe.
+- Ambas son `SECURITY DEFINER` con `search_path` vacío, sin `execute` para `public` ni `anon`. El `UPDATE` dispara `trg_audit_clientes`, así que cada cambio queda en `audit_log` con el actor.
+
+## P.3 Pruebas
+
+- `tests/sql/t_95_precio_mensual_rpc.sql`: contrato (definer, `search_path`, privilegios), equipo Neumet (lectura, escritura, redondeo, auditoría, errores) y `42501` para administrador de empresa, usuario de sucursal, `api`, sin perfil y `anon`; comprueba además que authenticated conserva `select` y `update` de la columna (retrocompatible).
+- `tests/e2e/specs/precio-mensual.mjs`: las RPC por la API real con el JWT de cada rol, y el camino directo de Balance (select y PATCH como admin) que sigue vigente.
+
+## P.4 Límites
+
+No cambia privilegios ni políticas. Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. El front de Balance sobre estas RPC es el PR 9b, que va después de aplicar y verificar esta migración.
