@@ -460,7 +460,7 @@ Cada PR de este plan actualiza en el mismo PR el apéndice de [08](08-esquema-da
 
 **Dónde se editan.** En un formulario «Parámetros de rotación» visible solo para el administrador de empresa, en el menú «Empresa» de docs/17, junto a Umbrales (el nivel crítico ya no se edita en la vista de alertas desde el PR 9c). No se agrega a la ficha de cliente.
 
-**Orden respecto de docs/17.** F8 es prioridad fuerte (tablero [10](10-tablero.md)) y docs/17 (plan fusionado en `main`, PR 72) está solo planificado: el estado de sus migraciones está en el tablero [10](10-tablero.md). En producción hay una sola migración a la vez, en serie, en cualquier orden entre las migraciones de F8 (PR 2, 3, 5, 6) y las de docs/17 (A, B, C1, C2): ninguna depende de otra, salvo lo siguiente.
+**Orden respecto de docs/17.** F8 es prioridad fuerte (tablero [10](10-tablero.md)) y docs/17 (plan fusionado en `main`, PR 72) está en curso (F10; migraciones A, B, C1 y C2 ya aplicadas): el estado de sus migraciones está en el tablero [10](10-tablero.md). En producción hay una sola migración a la vez, en serie, en cualquier orden entre las migraciones de F8 (PR 2, 3, 5, 6) y las de docs/17 (A, B, C1, C2): ninguna depende de otra, salvo lo siguiente.
 
 | Punto de contacto | Regla |
 |---|---|

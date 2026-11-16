@@ -24,6 +24,7 @@ El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - Se rechaza si hay texto cortado, elementos superpuestos, tablas desbordadas, contraste insuficiente o dependencia exclusiva del color.
 - Estilo: minimalista, colores apagados, un solo énfasis por pantalla. El rojo solo para lo realmente crítico.
 - ¿El PR declara los clics de las tareas frecuentes que toca y no los aumenta sin justificación? (ver `docs/14-guia-de-textos.md`, sección 5; en un PR de interfaz el revisor puede apoyarse en el agente `neumet-ux`)
+- **Pregunta fija sobre el menú:** ¿el PR agrega, mueve, renombra o duplica algo del menú o de una pestaña? ¿Dónde lo buscaría un operario? Si la respuesta es «en dos lugares» o «no es evidente», se rechaza o se justifica por escrito. La fuente de verdad es [docs/12](12-mapa-navegacion.md) (sección 4): el PR la actualiza en el mismo cambio y el revisor la compara con el menú que ve.
 
 ## 4. Copy (textos de la interfaz)
 - Tono profesional y neutro, frases cortas, sin humor, exclamaciones, emojis ni diminutivos.
@@ -35,3 +36,10 @@ El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - Si el PR trae migración, el revisor la lee entera (permisos, `search_path`, RLS) y avisa al director; se aplica antes de fusionar el front que la usa.
 - Si cambia archivos servidos por Vercel, comprobar el efecto de la caché.
 - Nunca fusionar con CI rojo; nunca ampliar el allowlist de secretos para acomodar un valor de ejemplo.
+
+## 6. Auditoría UX por tareas al cerrar una fase
+Al cerrar cada fase que toca la interfaz (F8, F10, F11 y siguientes), antes de darla por terminada, el director lanza `neumet-ux` (skill `neumet-auditoria-ux`) para recorrer las tareas frecuentes por rol: medir, cambiar, rotar, montar, ver alertas, consultar el stock y, según la fase, administrar usuarios y sucursales.
+- Se cuentan los clics de cada tarea y se comparan con el conteo anterior de `docs/10`; un aumento sin justificación es un hallazgo.
+- Se revisa que cada tarea se encuentre en un solo lugar del menú, de acuerdo con [docs/12](12-mapa-navegacion.md) (sección 4).
+- Se mira la pantalla en escritorio y en móvil, con los textos de [docs/14](14-guia-de-textos.md) (sección 5).
+- El resultado (conteos y hallazgos) se anota en `docs/10`; los hallazgos pendientes pasan a tareas del tablero, no se pierden en el cierre.
