@@ -87,6 +87,44 @@ export function registrar(env) {
     });
   });
 
+  // Una recarga de la vista (reloadActiveView) o el cambio de sucursal mientras la isla espera sus hojas no puede dejar la pantalla en
+  // blanco: el montaje superado no desmonta ni retira nada de la vigente, y `montadas` no guarda entradas muertas.
+  for (const disparador of ['reloadActiveView', 'seccionalCambiar']) {
+    test(`islas: ${disparador} mientras cargan las hojas deja la isla visible exactamente una vez`, async () => {
+      await flujo(env, 'islas-recarga', 'global', async (p) => {
+        await forzar(p, 'on:hola');
+        await p.eval(`(async () => {
+          const nav = await import('/assets/js/core/nav.js');
+          const act = await import('/assets/js/core/actions.js');
+          const disparar = () => ${disparador === 'reloadActiveView' ? 'nav.reloadActiveView()' : "act.ACTIONS.seccionalCambiar('')"};
+          let hecho = false;
+          new MutationObserver(() => {
+            if (hecho || !document.querySelector('link[data-neumet-hoja]')) return;
+            hecho = true; disparar();
+          }).observe(document.head, { childList: true });
+          nav.switchView('hola');
+          return true;
+        })()`);
+        await p.esperar(`document.querySelector('[data-isla="hola"]')`, { que: 'la isla montada tras la recarga' });
+        await p.eval(`new Promise(ok => setTimeout(ok, 800))`);
+        const e = await p.eval(`(async () => {
+          const isl = await import('/assets/js/core/islas.js');
+          return { isla: document.querySelectorAll('[data-isla="hola"]').length, vistas: document.querySelectorAll('#view-hola').length,
+                   hosts: document.querySelectorAll('[data-isla-host="hola"]').length, registrada: isl.islaMontada('hola') };
+        })()`);
+        assert.deepEqual(e, { isla: 1, vistas: 1, hosts: 1, registrada: true });
+        // Otra recarga posterior sigue dejándola una sola vez (antes quedaba en 0 con islaMontada verdadero).
+        await p.eval(`import('/assets/js/core/nav.js').then(m => { m.reloadActiveView(); return true; })`);
+        await p.eval(`new Promise(ok => setTimeout(ok, 300))`);
+        assert.equal((await estado(p)).isla, 1);
+        // Salir desmonta de verdad y islaMontada lo refleja.
+        await irA(p, 'inicio');
+        const f = await p.eval(`import('/assets/js/core/islas.js').then(m => ({ isla: document.querySelectorAll('[data-isla="hola"]').length, registrada: m.islaMontada('hola') }))`);
+        assert.deepEqual(f, { isla: 0, registrada: false });
+      });
+    });
+  }
+
   test('islas: el servidor entrega /panel/ con la CSP de vercel.json y las hojas con caché inmutable', async () => {
     await flujo(env, 'islas-cabeceras', 'admin', async (p) => {
       const r = await p.eval(`(async () => {

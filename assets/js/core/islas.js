@@ -17,6 +17,7 @@ let modulo = null;  // promesa del import dinámico (una sola por página; se de
 let avisadoDeVersion = false;
 const montadas = new Map(); // nombre -> {mod, vista, creada, ocultos, limpiezas}
 const turnos = new Map();   // nombre -> contador: invalida un montaje en vuelo si el usuario ya salió de la vista
+const colas = new Map();    // nombre -> promesa del último montaje pedido: los montajes de una misma isla se encadenan
 
 function cargarModulo() {
   modulo ??= import('/panel/islas.js').catch((e) => { modulo = null; throw e; });
@@ -78,9 +79,21 @@ function desmontarIsla(nombre) {
   }
 }
 
-async function montarIsla(nombre) {
+// Los montajes de una misma isla corren de a uno: `mod.montar` desmonta por nombre la instancia anterior, así que dos en vuelo
+// a la vez se pisaban (el superado desmontaba y retiraba la isla de quien sí seguía vigente). El superado termina y limpia lo suyo
+// antes de que arranque el siguiente. Devuelve true (montada), false (no disponible: usar la vista vieja) o null (superado o cancelado).
+function montarIsla(nombre) {
   const turno = (turnos.get(nombre) ?? 0) + 1;
   turnos.set(nombre, turno);
+  const previa = (colas.get(nombre) ?? Promise.resolve()).catch(() => {});
+  const p = previa.then(() => montarSerial(nombre, turno));
+  colas.set(nombre, p);
+  const soltar = () => { if (colas.get(nombre) === p) colas.delete(nombre); };
+  p.then(soltar, soltar);
+  return p;
+}
+
+async function montarSerial(nombre, turno) {
   const vigente = () => turnos.get(nombre) === turno && vistaActiva() === nombre;
 
   let mod;
@@ -89,7 +102,7 @@ async function montarIsla(nombre) {
     console.warn('Panel nuevo no disponible; se muestra la vista actual.', e?.message ?? e);
     return false;
   }
-  if (!vigente()) return false;
+  if (!vigente()) return null;
   if (mod.API_ISLAS !== API_ISLAS) {
     if (!avisadoDeVersion) { avisadoDeVersion = true; showToast('Hay una versión nueva del panel. Recargar la página para usarla.', true); }
     return false;
@@ -105,9 +118,9 @@ async function montarIsla(nombre) {
     if (!montada) { limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove(); }
   }
   if (!montada) return false;
-  if (!vigente()) { // el usuario salió mientras se cargaban las hojas de estilo
+  if (!vigente()) { // salió de la vista, o pidieron otro montaje, mientras se cargaban las hojas de estilo
     mod.desmontar(nombre); limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove();
-    return false;
+    return null;
   }
   // La vista vieja (si la hay) se oculta mientras la isla está montada y se restaura al desmontar.
   const ocultos = [...vista.children].filter((el) => el !== host && !el.hidden);
@@ -122,7 +135,7 @@ export function registrarIsla(nombre, etiqueta, { viejo = null, ...opciones } = 
   const cargar = async () => {
     if (montadas.has(nombre)) return; // recarga de la vista activa (p. ej. cambio de sucursal): la isla reacciona por ctx.onCambioSucursal
     const ok = await montarIsla(nombre);
-    if (!ok && viejo && vistaActiva() === nombre) await viejo();
+    if (ok === false && viejo && vistaActiva() === nombre) await viejo();
   };
   return registerView(nombre, etiqueta, cargar, opciones);
 }
