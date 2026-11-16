@@ -137,6 +137,12 @@ export function registrar(env) {
         await irA(p, 'vehiculos');
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === ${n}`, { que: `${n} vehículos (${valor || 'todas'})` });
       }
+      // El selector se ve solo donde filtra (Vehículos ya está abierto) y no en Stock ni en Recauchutado.
+      const selVisible = () => p.eval(`!!document.querySelector('#sec-selector')?.offsetParent`);
+      assert.equal(await selVisible(), true, 'el selector se ve en Vehículos');
+      await irA(p, 'alertas'); assert.equal(await selVisible(), true, 'el selector se ve en Alertas');
+      await irA(p, 'stock'); assert.equal(await selVisible(), false, 'el selector no se ve en Stock');
+      await irA(p, 'recauchutado'); assert.equal(await selVisible(), false, 'el selector no se ve en Recauchutado');
     });
   });
 }

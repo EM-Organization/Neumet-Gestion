@@ -2,7 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, sinReconocer, hastaSilencio,
-  validarNota, traducirErrorAlerta,
+  validarNota, traducirErrorAlerta, CHIP_ESTADO_ALERTA,
 } from '../../assets/js/domain/alertas.js';
 
 const AHORA = Date.parse('2026-06-10T12:00:00Z');
@@ -51,4 +51,14 @@ test('errores de la base traducidos sin filtrar el texto crudo', () => {
   assert.match(traducirErrorAlerta({ code: '23514' }), /Datos inválidos/);
   assert.equal(traducirErrorAlerta(new Error('boom')), 'No se pudo completar la operación');
   assert.equal(traducirErrorAlerta(null), 'No se pudo completar la operación');
+});
+
+describe('chip de estado de la alerta', () => {
+  test('ningún estado va en rojo (reservado a lo crítico) y cada uno trae símbolo propio además del texto', () => {
+    const estados = Object.keys(CHIP_ESTADO_ALERTA);
+    assert.deepEqual(estados.sort(), ['abierta', 'reconocida', 'silenciada']);
+    for (const e of estados) assert.notEqual(CHIP_ESTADO_ALERTA[e][0], 'red', e);
+    assert.equal(new Set(estados.map(e => CHIP_ESTADO_ALERTA[e][1])).size, 3, 'símbolos distintos');
+    assert.notEqual(CHIP_ESTADO_ALERTA.abierta[0], CHIP_ESTADO_ALERTA.reconocida[0], 'abierta se distingue por color y por símbolo');
+  });
 });

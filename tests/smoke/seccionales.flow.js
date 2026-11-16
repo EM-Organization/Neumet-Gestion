@@ -88,6 +88,23 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (cpkTxt.indexOf('km recorridos (sin los km previos)') === -1) fail('reportes: sin la definición del costo por km');
   if (d.querySelector('#rep-cpk-csv').disabled) fail('reportes: CSV de costo por km deshabilitado con datos');
   setSel('#sec-select', ''); await sleep(300);
+
+  // El selector solo aparece donde filtra: Inicio, Vehículos, Alertas, Reportes y Mediciones a revisar; no en Stock, Recauchutado,
+  // Sucursales, Usuarios, Umbrales ni el detalle de un vehículo.
+  var visibleSel = function(){ var e = $('#sec-selector'); return !!e && e.getClientRects().length > 0; };
+  var conSel = ['inicio', 'vehiculos', 'alertas', 'reportes'], sinSel = ['stock', 'sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
+  for (var i = 0; i < conSel.length; i++) { await nav(conSel[i]); if (!visibleSel()) fail('selector: debe verse en ' + conSel[i]); }
+  for (var j = 0; j < sinSel.length; j++) { await nav(sinSel[j]); if (visibleSel()) fail('selector: no debe verse en ' + sinSel[j]); }
+  $('#view-stock [data-neu-tab="recauchutado"]') && (await nav('stock'), $('#view-stock [data-neu-tab="recauchutado"]').click(), await sleep(500));
+  if (visibleSel()) fail('selector: no debe verse en Recauchutado');
+  await nav('inicio'); if (!visibleSel()) fail('selector: debe volver a verse al regresar a Inicio');
+  // Stock toma la sucursal de la barra como valor inicial de su propio filtro (solo cuando cambia la elección).
+  setSel('#sec-select', '2'); await sleep(300);
+  await nav('stock'); await sleep(400);
+  if ($('#filter-sucursal-stock').value !== '2') fail('selector: Stock no tomó la sucursal de la barra como valor inicial: ' + $('#filter-sucursal-stock').value);
+  setSel('#filter-sucursal-stock', ''); await nav('stock'); await sleep(400);
+  if ($('#filter-sucursal-stock').value !== '') fail('selector: Stock pisó el filtro propio sin que cambiara la sucursal de la barra');
+  await nav('inicio'); setSel('#sec-select', ''); await sleep(300);
   log.push('selector-flow: ok, vehEqs=' + fx.vehEqs.join(','));
 };
 

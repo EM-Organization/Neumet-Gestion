@@ -46,6 +46,13 @@ export function mostrarSelector({ esSeccional, sucursales }) {
   return !esSeccional && (sucursales || []).length > 0;
 }
 
+// Vistas que de verdad filtran por la sucursal elegida en la barra superior (cada una usa filtrarConsulta/filtrarFilas).
+// Fuera de ellas el selector no hace nada, así que no se muestra: Stock tiene su propio filtro de ubicación; Recauchutado,
+// Sucursales y Empresa no filtran; el detalle de un vehículo es de un solo vehículo. `calidad` cuelga de Inicio. Flota,
+// Mediciones y Dispositivos también filtran, pero son de administración y el selector solo existe para clientes.
+export const VISTAS_CON_SELECTOR = ['inicio', 'vehiculos', 'alertas', 'reportes', 'calidad', 'flota', 'mediciones', 'dispositivos'];
+export const selectorEnVista = vista => VISTAS_CON_SELECTOR.includes(vista);
+
 // Traduce errores de la base al ABM de sucursales (mensajes en español para el admin).
 export function mensajeErrorSeccional(err) {
   const code = err && err.code;

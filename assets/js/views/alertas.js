@@ -14,15 +14,16 @@ import { contextoListo, filtrarFilas, filtrarConsulta } from '../core/seccional.
 import { ordenarAlertas, filtrarAlertas } from '../domain/flota.js';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, hastaSilencio, validarNota,
-  traducirErrorAlerta, DIAS_SILENCIO,
+  traducirErrorAlerta, DIAS_SILENCIO, CHIP_ESTADO_ALERTA,
 } from '../domain/alertas.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 10000;
-const ESTADO_CHIP = { abierta: ['red', '✕'], reconocida: ['orange', '✓'], silenciada: ['gray', '–'] };
-const chipEstado = e => chip(ESTADO_CHIP[e][0], etiquetaEstadoAlerta(e), ESTADO_CHIP[e][1]);
+const chipEstado = e => chip(CHIP_ESTADO_ALERTA[e][0], etiquetaEstadoAlerta(e), CHIP_ESTADO_ALERTA[e][1]);
+// Un solo mecanismo de filtro por estado: los chips con su conteo (clic para filtrar, otro clic para quitar el filtro).
+let estadoSel = '';
 let alertas = [];
 let clientes = [];
 let tipos = new Map(); // tipo_ruedas por vehículo (chasis y nombre de la posición)
@@ -32,7 +33,7 @@ let ocupado = false;
 
 function filtros() {
   return {
-    estado: $('alert-estado').value,
+    estado: estadoSel,
     clienteId: isClienteMode() ? '' : ($('alert-cliente')?.value || ''),
   };
 }
@@ -75,7 +76,7 @@ export function render() {
   // Los chips cuentan con el filtro de cliente aplicado, pero sin el de estado.
   const base = filtrarAlertas(alertas, { clienteId: f.clienteId });
   const c = contarPorEstadoAlerta(base);
-  setHtml($('alert-chips'), joinHtml(['abierta', 'reconocida', 'silenciada'].map(e => html`<button type="button" class="alert-chip ${e === f.estado ? 'active' : ''}" data-action="alertasEstado" data-args="${JSON.stringify([e])}">${chipEstado(e)} ${fmtNum(c[e])}</button>`)));
+  setHtml($('alert-chips'), joinHtml(['abierta', 'reconocida', 'silenciada'].map(e => html`<button type="button" class="alert-chip ${e === f.estado ? 'active' : ''}" aria-pressed="${String(e === f.estado)}" data-action="alertasEstado" data-args="${JSON.stringify([e])}">${chipEstado(e)} ${fmtNum(c[e])}</button>`)));
   const lista = ordenarAlertas(filtrarPorEstadoAlerta(base, f.estado));
   $('alert-count').textContent = plural(lista.length, 'alerta');
   const mostrarCliente = !isClienteMode() && !f.clienteId;
@@ -140,8 +141,7 @@ async function transicion(fn, params, aviso) {
 
 registerActions({
   alertasEstado(e) {
-    const sel = $('alert-estado');
-    sel.value = sel.value === e ? '' : e;
+    estadoSel = estadoSel === e ? '' : e;
     render();
   },
   async alertasReconocer(id) {
@@ -176,7 +176,7 @@ registerActions({
 });
 
 export function init() {
-  ['alert-estado', 'alert-cliente'].forEach(id => $(id).addEventListener('change', render));
+  $('alert-cliente').addEventListener('change', render);
 }
 
 registerView('alertas', 'Alertas', load);

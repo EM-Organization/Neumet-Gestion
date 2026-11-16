@@ -5,6 +5,8 @@ import {
   idsVehiculosDeSucursal, filtrarPorVehiculos, resumenDesdeFilas, mostrarSelector,
   mensajeErrorSeccional, validarNombreSeccional, mensajeErrorCrearUsuario, cuerpoCrearUsuario,
 } from '../../assets/js/domain/seccional.js';
+import { VISTAS_CON_SELECTOR, selectorEnVista } from '../../assets/js/domain/seccional.js';
+import { readdirSync, readFileSync } from 'node:fs';
 import { kpisFlota } from '../../assets/js/domain/flota.js';
 
 const vehs = [{ id: 1, sucursal_id: 10 }, { id: 2, sucursal_id: 20 }, { id: 3, sucursal_id: null }, { id: 4, sucursal_id: 10 }];
@@ -83,5 +85,26 @@ describe('mensajes y validación del ABM', () => {
   test('cuerpoCrearUsuario: sin password ni sucursal cuando están vacíos', () => {
     assert.deepEqual(cuerpoCrearUsuario({ clienteId: '7', sucursalId: '', email: ' a@b.cl ', password: '' }), { cliente_id: 7, email: 'a@b.cl' });
     assert.deepEqual(cuerpoCrearUsuario({ clienteId: 7, sucursalId: '70', email: 'a@b.cl', password: 'x' }), { cliente_id: 7, sucursal_id: 70, email: 'a@b.cl', password: 'x' });
+  });
+});
+
+describe('selector de sucursal de la barra: solo en las vistas que filtran', () => {
+  test('sí en Inicio, Vehículos, Alertas y Reportes; no en Stock, Recauchutado, Sucursales ni Empresa', () => {
+    for (const v of ['inicio', 'vehiculos', 'alertas', 'reportes', 'calidad']) assert.equal(selectorEnVista(v), true, v);
+    for (const v of ['stock', 'recauchutado', 'sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos', 'vehiculo-detalle', 'ficha', '', null, undefined]) assert.equal(selectorEnVista(v), false, String(v));
+  });
+  // Guarda contra el desfase: toda vista que consulta con el filtro de sucursal debe mostrar el selector, y ninguna otra.
+  test('la lista coincide con las vistas que usan el filtro de core/seccional.js', () => {
+    const dir = new URL('../../assets/js/views/', import.meta.url);
+    const filtran = new Set();
+    for (const f of readdirSync(dir).filter(n => n.endsWith('.js'))) {
+      const src = readFileSync(new URL(f, dir), 'utf8');
+      const usa = /import\s*\{[^}]*\b(filtrarConsulta|filtrarFilas|hayFiltroSeccional)\b[^}]*\}\s*from\s*'\.\.\/core\/seccional\.js'/.test(src);
+      const m = src.match(/registerView\(\s*'([^']+)'/);
+      if (usa && m) filtran.add(m[1]);
+    }
+    // El detalle de un vehículo filtra solo para decidir si lo muestra; es de un único vehículo y no lleva selector.
+    filtran.delete('vehiculo-detalle');
+    assert.deepEqual([...filtran].sort(), [...VISTAS_CON_SELECTOR].sort());
   });
 });
