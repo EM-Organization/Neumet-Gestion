@@ -10,6 +10,7 @@ import { showToast, userError } from '../core/ui.js';
 import { chip, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
+import { esAdmin } from '../core/auth.js';
 import { contextoListo, filtrarFilas } from '../core/seccional.js';
 import { fmtFechaHora, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -40,10 +41,10 @@ export function listaCalidad(rows, { conVehiculo = false, tipos = null } = {}) {
       <div class="cal-cab"><span class="cal-donde">${donde}</span>${chip(CLS[r.calidad] || 'gray', etiquetaCalidad(r.calidad), simboloCalidad(r.calidad))}</div>
       <div class="cal-valores${inval ? ' tachado' : ''}">${valoresTexto(r)}<span class="cal-fecha"> · ${fmtFechaHora(r.created_at)}</span></div>
       ${r.calidad_motivo ? html`<div class="cal-motivo">${inval ? 'Motivo: ' : ''}${r.calidad_motivo}</div>` : ''}
-      <div class="cal-acciones">
+      ${esAdmin() ? '' : html`<div class="cal-acciones">
         ${inval ? '' : html`<button type="button" class="btn" data-action="calidad-invalidar" data-args="${JSON.stringify([r.id])}">Invalidar</button>`}
         <button type="button" class="btn ghost" data-action="calidad-revalidar" data-args="${JSON.stringify([r.id])}">Marcar como válida</button>
-      </div></li>`;
+      </div>`}</li>`;
   }))}</ul>`;
 }
 
@@ -76,6 +77,7 @@ export async function load() {
 function cerrar() { $('modal-calidad').classList.remove('show'); pendiente = null; }
 
 function abrirInvalidar(id) {
+  if (esAdmin()) return; // el equipo Neumet no opera dentro de una empresa (docs/17 P1)
   const r = filas.find(x => String(x.id) === String(id)) || null;
   pendiente = Number(id);
   $('cal-sub').textContent = r ? [etiquetaCoche((r.vehiculos || {}).nombre || ''), valoresTexto(r)].filter(Boolean).join(' · ') : '';
@@ -85,8 +87,9 @@ function abrirInvalidar(id) {
   $('modal-calidad').classList.add('show');
 }
 
+// Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 async function confirmarInvalidar() {
-  if (pendiente === null || ocupado) return;
+  if (pendiente === null || ocupado || esAdmin()) return;
   const v = validarMotivo($('cal-motivo').value);
   if (!v.ok) { $('cal-error').textContent = v.error; return; }
   ocupado = true; $('cal-confirmar').disabled = true;
@@ -106,7 +109,7 @@ async function confirmarInvalidar() {
 }
 
 async function revalidar(id) {
-  if (ocupado) return;
+  if (ocupado || esAdmin()) return;
   ocupado = true;
   try {
     const { error } = await db.rpc('medicion_revalidar', { p_medicion_id: Number(id) });

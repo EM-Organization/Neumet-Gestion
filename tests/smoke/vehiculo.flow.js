@@ -233,7 +233,9 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   // Guardas propias: aunque otro botón o una vista nueva emita estas acciones, el equipo Neumet no abre ningún modal de escritura.
   // (cicloRegistrarCosto además la rechaza costos.js: es una segunda barrera, así que ese caso no distingue la guarda propia.)
   var falsos = [['neumatico-cambiar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['neumatico-montar', { 'data-vehiculo-id': '10' }],
-    ['neumatico-retirar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['cicloRegistrarCosto', { 'data-args': '[1]' }]];
+    ['neumatico-retirar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['cicloRegistrarCosto', { 'data-args': '[1]' }],
+    // F10 PR 10: la rotación no pide confirmación cuando el destino está libre; sin guarda propia llegaría a neumatico_rotar.
+    ['neumatico-rotar-pos', { 'data-args': '[10,3,99]' }], ['neumatico-cambiar-confirmar', {}], ['neumatico-montar-confirmar', {}], ['neumatico-retirar-confirmar', {}]];
   for(var i = 0; i < falsos.length; i++){
     var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i][0]);
     Object.keys(falsos[i][1]).forEach(function(k){ f.setAttribute(k, falsos[i][1][k]); });
@@ -242,5 +244,6 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
       if($(sel) && $(sel).classList.contains('show')) fail('detalle(admin): ' + falsos[i][0] + ' abrió ' + sel + ' para el equipo Neumet');
     });
   }
+  if(w.__cicloFx.rpcs.length) fail('detalle(admin): una acción con guarda llamó RPC: ' + JSON.stringify(w.__cicloFx.rpcs));
   log.push('detalle-admin: solo lectura');
 };

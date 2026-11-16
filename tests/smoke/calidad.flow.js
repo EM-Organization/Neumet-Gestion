@@ -26,6 +26,26 @@ window.calidadListaFlow = async function(w, d, sleep, fail, log, cliMode){
   var filas = all('#cal-contenido .cal-fila');
   if(filas.length !== 2) fail('calidad('+rol+'): se esperaban 2 mediciones en revisión, hay '+filas.length);
   var t0 = filas.length ? txt(filas[0]) : '';
+  if(!cliMode){
+    // F10 PR 10: el equipo Neumet ve las mediciones en revisión sin poder invalidarlas ni validarlas (las RPC son de la empresa).
+    ['En revisión','Camión 01','mm'].forEach(function(t){ if(t0.indexOf(t) === -1) fail('calidad(admin): fila sin «'+t+'»: '+t0); });
+    if(all('#cal-contenido [data-action="calidad-invalidar"], #cal-contenido [data-action="calidad-revalidar"], #cal-contenido .cal-acciones').length) fail('calidad(admin): ofrece Invalidar o Marcar como válida al equipo Neumet');
+    if(/Invalidar|Marcar como válida/.test(txt($('#cal-contenido')))) fail('calidad(admin): textos de acciones de escritura en la lista');
+    // Guarda propia de cada acción: un botón ajeno con el mismo data-action no abre el modal ni llama a la RPC.
+    var falsos = [['calidad-invalidar', '[9001]'], ['calidad-confirmar', '[]'], ['calidad-revalidar', '[9001]']];
+    for(var i = 0; i < falsos.length; i++){
+      var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i][0]); f.setAttribute('data-args', falsos[i][1]);
+      d.body.appendChild(f);
+      if(falsos[i][0] === 'calidad-confirmar'){ $('#cal-motivo').value = 'Medidor descalibrado'; }
+      f.click(); await sleep(400); f.remove();
+      if($('#modal-calidad').classList.contains('show')) fail('calidad(admin): '+falsos[i][0]+' abrió el modal para el equipo Neumet');
+    }
+    var esc = ((w.__flotaFx && w.__flotaFx.rpcs) || []).filter(function(r){ return /^medicion_(invalidar|revalidar)$/.test(r[0]); });
+    if(esc.length) fail('calidad(admin): el equipo Neumet llamó RPC de escritura: '+JSON.stringify(esc));
+    log.push('calidad(admin): solo lectura');
+    $('.nav-item[data-view="inicio"]').click(); await sleep(400);
+    return;
+  }
   ['En revisión','Camión 01','Invalidar','Marcar como válida','mm'].forEach(function(t){ if(t0.indexOf(t) === -1) fail('calidad('+rol+'): fila sin «'+t+'»: '+t0); });
   if(all('#cal-contenido .cal-valores.tachado').length) fail('calidad('+rol+'): una medición en revisión no debe tacharse');
   log.push('calidad('+rol+'): '+t0.slice(0, 120));

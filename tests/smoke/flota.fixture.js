@@ -59,6 +59,8 @@
     var c = base.apply(this, arguments), from = c.from, rpc = c.rpc;
     c.from = function(t){ return T[t] ? VQ(t) : from(t); };
     c.rpc = function(name, args){
+      // Registra las RPC de escritura de alertas, calidad y recauchutado (F10 PR 10: el equipo Neumet no debe llamarlas).
+      if(/^(alerta_|medicion_|recauchutado_)/.test(name)){ fx.rpcs.push([name, args]); return Promise.resolve({data:{ok:true},error:null}); }
       if(name !== 'ultimas_mediciones') return rpc.apply(c, arguments);
       fx.rpcs.push([name, args]);
       if(fx.rpcError) return Promise.resolve({data:null,error:{message:'function does not exist'}});

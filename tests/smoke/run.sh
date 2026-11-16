@@ -11,6 +11,7 @@ sleep 1
 Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = reportes ] && Q="?reportes=1"
 [ "$MODE" = flota ] && Q="?flota=1"
+[ "$MODE" = alertas-cliente ] && Q="?cliente=1&alertas=1"
 [ "$MODE" = detalle ] && Q="?cliente=1&detalle=1"
 [ "$MODE" = detalle-admin ] && Q="?detalle=1"
 [ "$MODE" = montar ] && Q="?cliente=1&detalle=1&montar=1"

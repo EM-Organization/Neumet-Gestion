@@ -138,7 +138,7 @@ flowchart TD
 | Stock | Filtro por cliente; cubiertas y lotes anteriores en solo lectura (sin alta ni edición) | Stock |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
-| Ficha de cliente | Editar umbrales; crear sucursales, asignar vehículos y dispositivos, crear usuarios de sucursal; crear cuentas de API | Clientes |
+| Ficha de cliente | Editar umbrales; sucursales y usuarios en solo lectura (crearlos es del administrador de empresa; Neumet solo asigna dispositivos a una sucursal); crear cuentas de API | Clientes |
 | Estado de la flota | Resumen por vehículo con prioridades, filtrable por cliente; abre el detalle | Estado de la flota |
 | Mediciones | Historial de mediciones por vehículo y dispositivo | Mediciones |
 | Balance | Gastos y valor del inventario | Balance |

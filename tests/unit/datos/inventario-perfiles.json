@@ -131,42 +131,52 @@
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 122,
+  "linea": 118,
   "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 134,
+  "linea": 130,
   "texto": "assertEquals(calls.perfiles, [['new-1', 7, 70, 'salto@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 147,
+  "linea": 143,
   "texto": "assertEquals(calls.perfiles, [['new-2', 7, null, 'global@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 164,
+  "linea": 160,
   "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 197,
+  "linea": 193,
   "texto": "assertEquals(calls.perfiles, [['new-2', 7, 70, 'nuevo@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 204,
+  "linea": 200,
   "texto": "assertEquals(calls.perfiles, [['new-2', 7, null, 'adm2@b.cl']]);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 211,
+  "linea": 207,
   "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {
   "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
-  "linea": 243,
+  "linea": 234,
+  "texto": "assertEquals(calls.perfiles.length, 0);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 248,
+  "texto": "assertEquals(calls.perfiles[0][1], 7);"
+ },
+ {
+  "archivo": "supabase/functions/crear-usuario-seccional/handler_test.ts",
+  "linea": 258,
   "texto": "assertEquals(calls.perfiles.length, 0);"
  },
  {

@@ -15,7 +15,9 @@ import {
 
 const $ = id => document.getElementById(id);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
-const puedeGestionar = () => esAdmin() || esAdminEmpresa();
+// El equipo Neumet no opera dentro de una empresa (docs/17 P1): ve los procesos en solo lectura. Las cuatro RPC
+// recauchutado_* pierden su rama de admin en el PR 11 (C2).
+const puedeGestionar = () => esAdminEmpresa();
 
 let procesos = [], cubiertas = [], sucursales = [], modal = null, cargaN = 0;
 
@@ -27,7 +29,7 @@ function render() {
   const lista = $('reca-lista');
   $('btn-reca-enviar').style.display = puedeGestionar() ? '' : 'none';
   if (!procesos.length) {
-    setHtml(lista, html`<div class="empty-state"><div class="empty-title">Sin recauchutados registrados</div><div class="empty-sub">Usar «Enviar a recauchutar» con una cubierta del stock.</div></div>`);
+    setHtml(lista, html`<div class="empty-state"><div class="empty-title">Sin recauchutados registrados</div><div class="empty-sub">${puedeGestionar() ? 'Usar «Enviar a recauchutar» con una cubierta del stock.' : 'Los procesos los registra el administrador de empresa.'}</div></div>`);
     return;
   }
   setHtml(lista, html`<ul class="stk-lista reca-lista" aria-label="Recauchutados">
@@ -119,8 +121,9 @@ registerActions({
   },
   recaDictamenCambio() { mostrarCampos('dictamen', $('reca-dictamen').value); },
   recaCerrar() { $('modal-reca').classList.remove('show'); modal = null; },
+  // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
   async recaGuardar() {
-    if (!modal) return;
+    if (!modal || !puedeGestionar()) return;
     const f = { fecha: $('reca-fecha').value, sucursalId: $('reca-sucursal').value };
     let r, rpc;
     if (modal.modo === 'enviar') {
@@ -160,7 +163,7 @@ registerActions({
 registerView('recauchutado', 'Recauchutado', loadRecauchutado);
 onLogin(() => {
   const item = document.querySelector('.nav-item[data-view="recauchutado"]');
-  if (item) item.style.display = puedeGestionar() ? '' : 'none';
+  if (item) item.style.display = puedeGestionar() || esAdmin() ? '' : 'none'; // el equipo Neumet conserva la lista, en solo lectura
 });
 onLogout(() => {
   procesos = []; cubiertas = []; sucursales = []; modal = null;
