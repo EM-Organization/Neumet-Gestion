@@ -69,7 +69,7 @@ describe('llamadas a confirmDialog en el código fuente', () => {
       llamadas.push({ f, args: argumentos(src, m.index + m[0].length - 1) });
     }
   }
-  test('hay llamadas que revisar', () => assert.ok(llamadas.length >= 10));
+  test('hay llamadas que revisar', () => assert.ok(llamadas.length >= 5));
   test('todas pasan etiqueta literal e intención booleana literal', () => {
     for (const { f, args } of llamadas) {
       assert.equal(args.length, 4, `${f}: confirmDialog debe recibir título, mensaje, etiqueta y danger`);

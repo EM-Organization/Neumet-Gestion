@@ -10,7 +10,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: vista Vehiculos no activa');
   // Cliente: sin ABM visible ni texto de relleno
   if($('#view-vehiculos .table-wrap').offsetParent !== null) fail('detalle: el cliente ve la tabla de administracion');
-  if($('[data-action="openVehiculoModal"]').offsetParent !== null) fail('detalle: el cliente ve "Nuevo vehiculo"');
+  if($('[data-action="openVehiculoModal"]') || $('#modal-vehiculo')) fail('detalle: queda el alta de vehiculos del panel viejo (la hace Sucursales, no Vehiculos)');
   if($('#veh-lista-wrap').offsetParent === null) fail('detalle: el cliente no ve la lista');
   log.push('veh-lista='+filas().length);
   if(filas().length !== 3) fail('detalle: se esperaban 3 vehiculos, hay '+filas().length);
@@ -210,4 +210,25 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     enter(escribir('AB123CD')); await sleep(900);
     $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(800);
   }
+};
+
+// El equipo Neumet (admin interno) abre el detalle desde la tabla de Vehículos y solo mira: ve costos y km, pero ninguna acción
+// de escritura (docs/17 PR 9). Contraparte positiva: detalleFlow (administrador de empresa) exige Cambiar, Rotar y Registrar costo.
+window.detalleAdminFlow = async function(w, d, sleep, fail, log){
+  var $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
+  var b = $('#tbody-vehiculos [data-va="detalle"][data-vid="10"]');
+  if(!b){ fail('detalle(admin): sin botón de detalle del vehículo 10'); return; }
+  b.click(); await sleep(900);
+  if(all('#vd-diagrama .vd-rueda').length !== 10){ fail('detalle(admin): el detalle no mostró las 10 ruedas'); return; }
+  var prohibidas = '[data-action="neumatico-cambiar"],[data-action="neumatico-rotar-pos"],[data-action="neumatico-retirar"],[data-action="neumatico-montar"],[data-action="detalleRegistrarCosto"]';
+  if(all(prohibidas).length) fail('detalle(admin): acciones de escritura en la vista: ' + Array.prototype.map.call(all(prohibidas), function(x){ return x.dataset.action; }).join(','));
+  $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(600);
+  var panel = $('#vd-panel').textContent;
+  if(all('#vd-panel ' + prohibidas.split(',').join(',#vd-panel ')).length) fail('detalle(admin): el panel de la rueda ofrece escrituras: ' + panel.replace(/\s+/g,' ').slice(0,200));
+  if(/Registrar costo|Cambiar neumático|Retirar neumático/.test(panel)) fail('detalle(admin): textos de acciones de escritura en el panel');
+  // Sigue viendo lo que le corresponde: el costo del neumático
+  if(panel.indexOf('UYU 1.500,00') === -1) fail('detalle(admin): dejó de ver el costo: ' + panel.replace(/\s+/g,' ').slice(0,200));
+  if(w.__cicloFx.rpcs.length) fail('detalle(admin): llamó RPC: ' + JSON.stringify(w.__cicloFx.rpcs));
+  log.push('detalle-admin: solo lectura');
 };

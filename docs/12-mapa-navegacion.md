@@ -124,19 +124,18 @@ flowchart TD
   C -->|Nuevo cliente| CN[Alta de cliente]
   C -->|eliminar| BL[Baja lógica]
   FI -->|Volver a Clientes| C
-  FI --> U[Umbrales de desgaste]
-  FI --> SE[Sucursales y usuarios]
+  FI --> U[Umbrales de desgaste: solo lectura]
+  FI --> SE[Sucursales, vehículos y usuarios: solo lectura; asigna dispositivos a sucursal]
   FI --> API[Cuenta de API]
-  V -->|Nuevo vehículo / editar| VM[Formulario de vehículo]
-  S -->|Agregar cubierta| SC[Formulario de cubierta: cliente, quema, marca, sucursal]
-  S -->|Agregar compra / editar lote| SM[Formulario de lote anterior]
+  V -->|detalle| VD
+  V -->|Odómetro y ciclo de vida| OD[Ciclo de vida: solo lectura]
   D -->|alta / editar / eliminar| DM[Formulario de dispositivo]
 ```
 
 | Pantalla | Qué hace el administrador además | Menú resaltado |
 |---|---|---|
-| Vehículos | Alta, edición y baja de vehículos; filtro por cliente; ver detalle | Vehículos |
-| Stock | Alta de cubiertas a nombre de un cliente elegido; filtro por cliente; alta y edición de lotes anteriores | Stock |
+| Vehículos | Filtro por cliente; ver detalle y ciclo de vida, ambos en solo lectura (sin alta, edición, baja ni acciones sobre neumáticos o costos) | Vehículos |
+| Stock | Filtro por cliente; cubiertas y lotes anteriores en solo lectura (sin alta ni edición) | Stock |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
 | Ficha de cliente | Editar umbrales; crear sucursales, asignar vehículos y dispositivos, crear usuarios de sucursal; crear cuentas de API | Clientes |

@@ -1,18 +1,18 @@
 import { db } from '../core/supabase.js';
-import { SUPABASE_URL, SUPABASE_KEY } from '../core/config.js';
-import { html, setHtml, joinHtml } from '../core/html.js';
-import { showToast, userError, confirmDialog } from '../core/ui.js';
+import { html, setHtml } from '../core/html.js';
+import { showToast, userError } from '../core/ui.js';
 import { isClienteMode } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
-import {
-  validarNombreSeccional, mensajeErrorSeccional, cuerpoCrearUsuario, mensajeErrorCrearUsuario,
-} from '../domain/seccional.js';
+import { mensajeErrorSeccional } from '../domain/seccional.js';
+import { textoAlcance, ordenarUsuarios, ESTADO_QUITADO } from '../domain/empresa.js';
 
-// ABM de sucursales en la ficha de cliente (solo admin): crear/renombrar/eliminar sucursales, asignar vehículos y
-// dispositivos, y crear usuarios (de sucursal o globales) con la función crear-usuario-seccional.
+// Sucursales y usuarios en la ficha de cliente (solo equipo Neumet). Es SOLO LECTURA (docs/17 §4.1, PR 9): crear, renombrar o
+// eliminar sucursales, mover vehículos y crear usuarios los hace el administrador de la empresa (Empresa y Sucursales).
+// Única escritura que conserva Neumet: asignar un dispositivo (hardware) a una sucursal. Los usuarios salen de la RPC
+// usuarios_empresa_listar (email real, sin leer la tabla de usuarios).
 const $ = id => document.getElementById(id);
 let clienteId = null;
-let secs = [], vehs = [], disps = [], perfiles = [];
+let secs = [], vehs = [], disps = [], usuarios = [];
 
 const err = msg => { const el = $('sec-error'); el.textContent = msg || ''; el.classList.toggle('show', !!msg); };
 const sinValor = v => v === null || v === undefined;
@@ -24,23 +24,19 @@ function opciones(seleccion, primera) {
 }
 
 function renderLista() {
-  setHtml($('sec-lista'), secs.length ? html`<table class="sec-tabla"><thead><tr><th>Sucursal</th><th>Vehículos</th><th>Dispositivos</th><th>Usuarios</th><th></th></tr></thead><tbody>${
+  setHtml($('sec-lista'), secs.length ? html`<table class="sec-tabla"><thead><tr><th>Sucursal</th><th>Vehículos</th><th>Dispositivos</th><th>Usuarios</th></tr></thead><tbody>${
     secs.map(s => html`<tr data-sucursal="${s.id}">
-      <td><input type="text" id="sec-n-${s.id}" value="${s.nombre}" maxlength="100" aria-label="Nombre de la sucursal"/></td>
+      <td>${s.nombre}</td>
       <td>${vehs.filter(v => String(v.sucursal_id) === String(s.id)).length}</td>
       <td>${disps.filter(d => String(d.sucursal_id) === String(s.id)).length}</td>
-      <td>${perfiles.filter(p => String(p.sucursal_id) === String(s.id)).length}</td>
-      <td class="sec-acciones">
-        <button class="btn ghost" data-action="seccionalRenombrar" data-args="[${s.id}]">Guardar nombre</button>
-        <button class="btn ghost danger" data-action="seccionalEliminar" data-args="[${s.id}]">Eliminar</button>
-      </td></tr>`)}</tbody></table>`
+      <td>${usuarios.filter(u => u.estado !== ESTADO_QUITADO && String(u.sucursal_id) === String(s.id)).length}</td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Este cliente aún no tiene sucursales: todos sus usuarios ven toda la flota.</div>`);
 }
 
 function renderAsignacion() {
   setHtml($('sec-vehiculos'), vehs.length ? html`<table class="sec-tabla"><thead><tr><th>Vehículo</th><th>Sucursal</th></tr></thead><tbody>${
     vehs.map(v => html`<tr data-vehiculo="${v.id}"><td>${v.nombre}${v.patente ? html` <span class="dash-fleet-pat">${v.patente}</span>` : ''}</td>
-      <td><select class="flota-select" data-change="seccionalAsignarVeh" data-args="[${v.id}]" aria-label="Sucursal del vehículo">${opciones(v.sucursal_id, 'Sin sucursal (solo perfil global)')}</select></td></tr>`)}</tbody></table>`
+      <td>${sinValor(v.sucursal_id) ? 'Sin sucursal' : (nombreDe(v.sucursal_id) || 'Sucursal')}</td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin vehículos.</div>`);
   setHtml($('sec-dispositivos'), disps.length ? html`<table class="sec-tabla"><thead><tr><th>Dispositivo</th><th>Sucursal</th></tr></thead><tbody>${
     disps.map(d => html`<tr data-dispositivo="${d.id}"><td>${d.nombre || 'Sin nombre'} <span class="mono-cell">${d.mac_address}</span></td>
@@ -49,12 +45,12 @@ function renderAsignacion() {
 }
 
 function renderUsuarios() {
-  setHtml($('sec-usuarios'), perfiles.length ? html`<table class="sec-tabla"><thead><tr><th>Usuario</th><th>Alcance</th></tr></thead><tbody>${
-    perfiles.map(p => html`<tr><td>${p.email || ('ID ' + String(p.user_id).slice(0, 8))}</td>
-      <td>${sinValor(p.sucursal_id) ? html`<span class="badge blue">Global (todas)</span>` : html`<span class="badge orange">${nombreDe(p.sucursal_id) || 'Sucursal'}</span>`}</td></tr>`)}</tbody></table>`
+  const lista = ordenarUsuarios(usuarios);
+  setHtml($('sec-usuarios'), lista.length ? html`<table class="sec-tabla"><thead><tr><th>Usuario</th><th>Alcance</th><th>Estado</th></tr></thead><tbody>${
+    lista.map(u => html`<tr data-user="${u.user_id}"><td>${u.email || ('ID ' + String(u.user_id).slice(0, 8))}</td>
+      <td><span class="badge ${sinValor(u.sucursal_id) ? 'blue' : 'orange'}">${textoAlcance(u)}</span></td>
+      <td>${u.estado === ESTADO_QUITADO ? 'Acceso quitado' : 'Con acceso'}</td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin usuarios.</div>`);
-  setHtml($('sec-user-sucursal'), joinHtml([html`<option value="">Global (ve todas las sucursales)</option>`,
-    ...secs.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
 }
 
 function render() { renderLista(); renderAsignacion(); renderUsuarios(); }
@@ -66,80 +62,30 @@ export async function cargarSeccionalesAdmin(id) {
   if (id == null) { card.style.display = 'none'; return; }
   card.style.display = '';
   err('');
-  const [s, v, d, p] = await Promise.all([
+  const [s, v, d, u] = await Promise.all([
     db.from('sucursales').select('id,nombre').eq('cliente_id', id).order('nombre'),
     db.from('vehiculos').select('id,nombre,patente,sucursal_id').eq('cliente_id', id).eq('activo', true).order('nombre'),
     db.from('dispositivos').select('id,mac_address,nombre,sucursal_id').eq('cliente_id', id).order('mac_address'),
-    db.from('perfiles').select('user_id,email,sucursal_id').eq('cliente_id', id).eq('rol', 'cliente').order('created_at'),
+    db.rpc('usuarios_empresa_listar', { p_cliente_id: id }),
   ]);
   if (clienteId !== id) return; // el admin cambió de cliente mientras cargaba
-  const e = s.error || v.error || d.error || p.error;
+  const e = s.error || v.error || d.error;
   if (e) { showToast(userError(e), true); return; }
-  secs = s.data || []; vehs = v.data || []; disps = d.data || []; perfiles = p.data || [];
+  secs = s.data || []; vehs = v.data || []; disps = d.data || [];
+  // La lista de usuarios es informativa: si falla, el resto de la tarjeta sigue útil.
+  usuarios = u.error ? [] : (u.data || []);
+  if (u.error) err('No se pudo cargar la lista de usuarios.');
   render();
 }
 
-const recargar = () => cargarSeccionalesAdmin(clienteId);
-
-async function guardar(fn, okMsg) {
-  err('');
-  const { error } = await fn();
-  if (error) { const m = mensajeErrorSeccional(error); if (m.startsWith('No se pudo')) userError(error); err(m); showToast(m, true); return false; }
-  if (okMsg) showToast(okMsg);
-  await recargar();
-  return true;
-}
-
-async function crearUsuario() {
-  err('');
-  const email = $('sec-user-email').value.trim();
-  const password = $('sec-user-password').value;
-  if (!email) { err('Falta el email del usuario'); return; }
-  if (password && password.length < 12) { err('La contraseña debe tener al menos 12 caracteres (o déjala vacía para enviar una invitación)'); return; }
-  const btn = $('sec-user-crear');
-  btn.disabled = true;
-  let res, result = null;
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario-seccional`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: SUPABASE_KEY },
-      body: JSON.stringify(cuerpoCrearUsuario({ clienteId, sucursalId: $('sec-user-sucursal').value, email, password })),
-    });
-    result = await res.json();
-  } catch { /* red o respuesta no JSON: se informa abajo */ }
-  finally { btn.disabled = false; }
-  if (!res || !result || !result.ok) {
-    const m = mensajeErrorCrearUsuario(res && res.status, result && result.error);
-    err(m); showToast(m, true); return;
-  }
-  $('sec-user-email').value = ''; $('sec-user-password').value = '';
-  showToast(password ? 'Usuario creado' : 'Invitación enviada por email');
-  await recargar();
-}
-
 registerActions({
-  async seccionalCrear() {
-    const v = validarNombreSeccional($('sec-nombre').value);
-    if (!v.ok) { err(v.error); return; }
-    if (await guardar(() => db.from('sucursales').insert({ cliente_id: clienteId, nombre: v.valor }), 'Sucursal creada')) $('sec-nombre').value = '';
-  },
-  async seccionalRenombrar(id) {
-    const v = validarNombreSeccional($(`sec-n-${id}`).value);
-    if (!v.ok) { err(v.error); return; }
-    await guardar(() => db.from('sucursales').update({ nombre: v.valor }).eq('id', id), 'Sucursal actualizada');
-  },
-  async seccionalEliminar(id) {
-    if (!await confirmDialog('Eliminar sucursal', `¿Eliminar la sucursal "${nombreDe(id)}"? Solo es posible si no tiene vehículos, dispositivos ni usuarios.`, 'Eliminar', true)) return;
-    await guardar(() => db.from('sucursales').delete().eq('id', id), 'Sucursal eliminada');
-  },
-  async seccionalAsignarVeh(id, valor) {
-    await guardar(() => db.from('vehiculos').update({ sucursal_id: valor ? Number(valor) : null }).eq('id', id), 'Vehículo asignado');
-  },
   async seccionalAsignarDisp(id, valor) {
-    await guardar(() => db.from('dispositivos').update({ sucursal_id: valor ? Number(valor) : null }).eq('id', id), 'Dispositivo asignado');
+    err('');
+    const { error } = await db.from('dispositivos').update({ sucursal_id: valor ? Number(valor) : null }).eq('id', id);
+    if (error) { const m = mensajeErrorSeccional(error); if (m.startsWith('No se pudo')) userError(error); err(m); showToast(m, true); return; }
+    showToast('Dispositivo asignado');
+    await cargarSeccionalesAdmin(clienteId);
   },
-  seccionalCrearUsuario: crearUsuario,
 });
 
 export function init() { /* todo va por data-action / data-change */ }
