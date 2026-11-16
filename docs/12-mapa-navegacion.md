@@ -10,7 +10,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 |---|---|
 | Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos críticos |
 | El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Inicio y en Vehículos lo reemplaza el buscador propio de la pantalla |
-| Stock era una pestaña escondida en Vehículos | Pestaña **Stock** del ítem **Neumáticos** del menú. El perfil global agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
+| Stock era una pestaña escondida en Vehículos | Pestaña **Stock** del ítem **Neumáticos** del menú. El administrador de empresa agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
 | «Estado de la flota» duplicaba a Inicio para el cliente | El cliente no la ve: su equivalente es **Vehículos**, ordenado por urgencia con el estado de cada uno. El administrador la conserva en Administración como vista entre clientes |
 | Clientes y Ficha de cliente eran dos entradas | Una sola entrada, **Clientes**. El nombre de un cliente abre su ficha, con «Volver a Clientes» y migas «Clientes › Nombre» |
 | Vehículos mencionados sin enlace al detalle | Todo vehículo de Inicio, Alertas, Estado de la flota y Reportes abre el detalle |
@@ -22,7 +22,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 ## 2. Rol cliente (gomero / gestor de flota)
 
-Nomenclatura planificada ([docs/17](17-plan-roles-admin.md)): el perfil global será el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal». Los nombres actuales de esta sección siguen vigentes.
+Nomenclatura (plan de [docs/17](17-plan-roles-admin.md), F10 en curso): el perfil global es el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal»; la base conserva los valores `cliente` y `admin`. Esta sección usa ambos nombres: «perfil global» equivale a «administrador de empresa».
 
 Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios, Umbrales y Dispositivos); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
@@ -35,7 +35,7 @@ flowchart TD
   M --> N[Neumáticos]
   N --> S[Pestaña Stock]
   N -->|solo administrador de empresa| RC[Pestaña Recauchutado]
-  S -->|perfil global: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
+  S -->|administrador de empresa: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
   M -->|Empresa: solo administrador de empresa| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
@@ -97,14 +97,14 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Vehículos | Encontrar un camión | Buscar por matrícula o número de coche, abrir el detalle |
 | Detalle de vehículo | Ver el estado de cada rueda | Elegir una rueda, ver mediciones y gráfico, cambiar neumático, rotar, registrar odómetro |
 | Alertas | Lista de problemas activos | Filtrar por severidad y tipo, abrir el vehículo |
-| Neumáticos › Stock (perfil global) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
-| Neumáticos › Stock (perfil de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el perfil global. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
+| Neumáticos › Stock (administrador de empresa) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
+| Neumáticos › Stock (usuario de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el administrador de empresa. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
-| Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
+| Sucursales (solo administrador de empresa) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 
 ## 3. Rol administrador (NEUMET)
 
-> **Nomenclatura planificada** ([docs/17](17-plan-roles-admin.md), estado: planificado, nada implementado): este rol pasa a llamarse «Equipo Neumet» (el valor `admin` de la base no cambia) y el cliente con perfil global (sección 2) pasa a llamarse «Administrador de empresa»; el perfil de sucursal será «Usuario de sucursal». Hasta que se fusionen los PR del plan, el menú y las pantallas de esta sección son los vigentes.
+> **Nomenclatura** ([docs/17](17-plan-roles-admin.md), F10 en curso): este rol es el «Equipo Neumet» (el valor `admin` de la base no cambia) y el cliente con perfil global (sección 2) es el «Administrador de empresa»; el perfil de sucursal es el «Usuario de sucursal». Dentro de una empresa el equipo Neumet solo mira (C2); esta sección describe lo que sigue pudiendo hacer.
 
 Menú lateral: lo del cliente, **Dispositivos** (solo administración) y la sección **Administración**: Estado de la flota · Mediciones · Clientes · Balance · Uso.
 
@@ -147,7 +147,7 @@ flowchart TD
 | Neumáticos › Recauchutado | Procesos de recauchutado en solo lectura (sin acciones) | Neumáticos |
 | Dispositivos | Alta, edición, eliminación y asignación a cliente | Dispositivos |
 | Clientes | Alta (con invitación o contraseña), baja lógica; el nombre abre la ficha | Clientes |
-| Ficha de cliente | Editar umbrales; sucursales y usuarios en solo lectura (crearlos es del administrador de empresa; Neumet solo asigna dispositivos a una sucursal); crear cuentas de API | Clientes |
+| Ficha de cliente | Umbrales, sucursales y usuarios en solo lectura (crearlos es del administrador de empresa; Neumet solo asigna dispositivos a una sucursal); crear cuentas de API | Clientes |
 | Estado de la flota | Resumen por vehículo con prioridades, filtrable por cliente; abre el detalle | Estado de la flota |
 | Mediciones | Historial de mediciones por vehículo y dispositivo | Mediciones |
 | Balance | Gastos y valor del inventario | Balance |
@@ -164,7 +164,7 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Alertas | `alertas` | |
 | Neumáticos | `stock` | `recauchutado` (segunda pestaña) |
 | Reportes | `reportes` | |
-| Sucursales (Empresa, cliente global) | `sucursales` | |
+| Sucursales (Empresa, administrador de empresa) | `sucursales` | |
 | Dispositivos (admin) | `dispositivos` | |
 | Estado de la flota (admin) | `flota` | |
 | Mediciones (admin) | `mediciones` | |
@@ -172,7 +172,7 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Balance (admin) | `balance` | |
 | Uso (admin) | `uso` | |
 
-Las RPC de sucursales aceptan al administrador (indicando el cliente) y al perfil global de un cliente, solo sobre su propio cliente; el perfil de sucursal, otro cliente, el rol `api`, una sesión sin perfil y `anon` reciben «permiso denegado». La administración de sucursales del administrador sigue en la ficha de cliente.
+Las RPC de sucursales (`sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar`) aceptan solo al administrador de empresa, sobre su propio cliente; desde la migración C2 el equipo Neumet recibe «permiso denegado» (`42501`), igual que el usuario de sucursal, otro cliente, el rol `api`, una sesión sin perfil y `anon`. La ficha de cliente es de solo lectura: las sucursales se administran en Empresa > Sucursales.
 
 La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada rol y comprueba que cargan sin errores de consola ni recursos sin cargar, que solo un ítem queda resaltado y que cada vista tiene título. Las pruebas `salud.flow.js`, `flota.flow.js` y `vehiculo.flow.js` comprueban la ficha, los enlaces al detalle y el botón «Volver».
 

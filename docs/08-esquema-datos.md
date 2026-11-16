@@ -182,15 +182,15 @@ Un perfil por usuario (`perfiles.user_id`). Helpers `SECURITY DEFINER`: `is_admi
 | `api` | `rol = 'api'` | Sin política ni acceso por PostgREST; solo vía `api-proveedor` con service role |
 | Sin perfil, `anon` | | Sin acceso |
 
-Nota: `precio_mensual` **no** es exclusivo del admin. `clientes` tiene grant de tabla completa a `authenticated` (`init_schema.sql:448`) y `clientes_self_select` (`:458`) deja a cualquier usuario del cliente, global o de sucursal, leer esa columna de su fila; la interfaz no la muestra, pero la API la entrega. Lo cierra la migración C2 del plan (docs/17).
+Nota: `precio_mensual` **no** es exclusivo del admin. `clientes` tiene grant de tabla completa a `authenticated` (`init_schema.sql:448`) y `clientes_self_select` (`:458`) deja a cualquier usuario del cliente, global o de sucursal, leer esa columna de su fila; la interfaz no la muestra, pero la API la entrega. Lo cerró la migración C2 (apéndice Q): hoy ningún rol de `authenticated` lee ni escribe esa columna.
 
 El primer usuario de cada cliente es global (trigger `clientes_sync_perfil`). Hoy no existe forma de quitar el acceso a un usuario.
 
-### Cambio planificado de roles (estado: planificado)
+### Cambio de roles (estado: en curso, F10)
 
-El plan [docs/17](17-plan-roles-admin.md) separa el perfil `admin` (pasa a ser el **equipo Neumet**, sin renombrar el valor en la base) del **administrador de empresa** (el cliente global actual, con gestión de usuarios y umbrales). Nada de esto está implementado: la matriz anterior sigue vigente hasta que se fusione cada PR del plan.
+El plan [docs/17](17-plan-roles-admin.md) separa el perfil `admin` (pasa a ser el **equipo Neumet**, sin renombrar el valor en la base) del **administrador de empresa** (el cliente global actual, con gestión de usuarios y umbrales). Estado: en curso (F10). Aplicadas en producción las migraciones A, B, C1 y C2; el front del equipo Neumet ya es de solo lectura y el administrador de empresa gestiona usuarios y umbrales desde Empresa. Quedan pendientes los renombres de interfaz y lo que figure en el tablero ([10](10-tablero.md)). Los nombres de la tabla siguen siendo los del plan.
 
-| Rol hoy | Rol planificado | Qué cambia |
+| Rol en la base | Rol en el plan | Qué cambia |
 |---|---|---|
 | `admin` | Equipo Neumet | Gana «Uso» por cliente; con la migración C2 solo mira dentro de las empresas (decisión P1 del dueño) |
 | Cliente global | Administrador de empresa | Gana Usuarios (crear, asignar sucursal, quitar acceso) y todos los umbrales; función nueva `admin_empresa_cliente_id()`; deja de ver `precio_mensual` (migración C2) |
@@ -933,7 +933,7 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 
 ## P.1 Regla de producto
 
-`clientes.precio_mensual` es un dato interno de Neumet (docs/17 P2). Hoy lo lee y lo escribe Balance directo sobre `clientes`, y la política `clientes_self_select` deja leer la fila propia a un usuario global o de sucursal. La migración C1 (`20261120000000_precio_mensual_rpc.sql`, F10 PR 8) crea el camino definitivo, por RPC y solo para el equipo Neumet, **sin quitar nada**: el front vigente sigue funcionando. Cerrar el acceso directo es la migración C2 (apéndice Q), que se aplicó cuando Balance ya usaba estas RPC (PR 9b).
+`clientes.precio_mensual` es un dato interno de Neumet (docs/17 P2). Antes de C2 lo leía y escribía Balance directo sobre `clientes`, y la política `clientes_self_select` dejaba leer la fila propia a un usuario global o de sucursal; Balance usa las RPC desde el PR 9b y C2 cerró ese acceso. La migración C1 (`20261120000000_precio_mensual_rpc.sql`, F10 PR 8) crea el camino definitivo, por RPC y solo para el equipo Neumet, **sin quitar nada** (el front vigente de entonces siguió funcionando). Cerrar el acceso directo es la migración C2 (apéndice Q), que se aplicó cuando Balance ya usaba estas RPC (PR 9b).
 
 ## P.2 Funciones
 
