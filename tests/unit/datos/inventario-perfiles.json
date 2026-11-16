@@ -10,36 +10,6 @@
   "texto": "* @param perfil           fila de perfiles del usuario ({rol, cliente_id, sucursal_id}) o null"
  },
  {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 15,
-  "texto": "let secs = [], vehs = [], disps = [], perfiles = [];"
- },
- {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 32,
-  "texto": "<td>${perfiles.filter(p => String(p.sucursal_id) === String(s.id)).length}</td>"
- },
- {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 52,
-  "texto": "setHtml($('sec-usuarios'), perfiles.length ? html`<table class=\"sec-tabla\"><thead><tr><th>Usuario</th><th>Alcance</th></tr></thead><tbody>${"
- },
- {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 53,
-  "texto": "perfiles.map(p => html`<tr><td>${p.email || ('ID ' + String(p.user_id).slice(0, 8))}</td>"
- },
- {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 73,
-  "texto": "db.from('perfiles').select('user_id,email,sucursal_id').eq('cliente_id', id).eq('rol', 'cliente').order('created_at'),"
- },
- {
-  "archivo": "assets/js/views/seccionales-admin.js",
-  "linea": 78,
-  "texto": "secs = s.data || []; vehs = v.data || []; disps = d.data || []; perfiles = p.data || [];"
- },
- {
   "archivo": "supabase/functions/api-proveedor/sql_test.ts",
   "linea": 105,
   "texto": "insert into public.perfiles values ('${U1}','api',1),('${U2}','api',2),('${UCLI}','cliente',1);"

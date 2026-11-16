@@ -34,12 +34,12 @@ export function validarOdometro(actual, nuevoTexto, confirmarBaja=false){
 }
 
 // Qué hace cada rol ante un kilometraje menor al actual (docs/17 §4.1):
-//   'confirmar_directo'  el equipo Neumet confirma y escribe como hasta ahora (se retira en el PR 9 de F10);
+//   'solo_lectura'       el equipo Neumet no escribe el kilometraje (PR 9 de F10): ninguna RPC;
 //   'corregir'           el administrador de empresa confirma y usa la RPC vehiculo_corregir_odometro;
 //   'avisar'             el usuario de sucursal no puede: se le indica quién lo corrige.
-// Sin baja, el cliente usa vehiculo_registrar_odometro (que rechaza bajar) y el equipo Neumet escribe directo.
+// Sin baja, el cliente usa vehiculo_registrar_odometro (que rechaza bajar).
 export function rutaOdometro({ cliente = false, adminEmpresa = false, baja = false } = {}){
-  if(!cliente) return {accion:'confirmar_directo', rpc:null};
+  if(!cliente) return {accion:'solo_lectura', rpc:null};
   if(!baja) return {accion:'registrar', rpc:'vehiculo_registrar_odometro'};
   return adminEmpresa ? {accion:'corregir', rpc:'vehiculo_corregir_odometro'} : {accion:'avisar', rpc:null};
 }

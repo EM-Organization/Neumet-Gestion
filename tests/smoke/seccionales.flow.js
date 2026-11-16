@@ -1,72 +1,42 @@
 // Recorridos de humo de sucursales (datos simulados por sucursales.fixture.js + flota.fixture.js).
-//   window.seccionalesAdminFlow(w, d, sleep, fail, log)    ABM en la ficha de cliente (admin)
+//   window.seccionalesAdminFlow(w, d, sleep, fail, log)    ficha de cliente del equipo Neumet: solo lectura (PR 9 de F10)
 //   window.seccionalesClienteFlow(w, d, sleep, fail, log)  selector de sucursal (perfil global)
 //   window.seccionalesUsuarioFlow(w, d, sleep, fail, log)  perfil de sucursal: sin selector
 window.seccionalesAdminFlow = async function(w, d, sleep, fail, log){
-  var fx = w.__secFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
+  // Equipo Neumet (docs/17 PR 9): la ficha muestra sucursales, vehículos y usuarios SOLO en lectura. La única escritura que
+  // conserva es asignar un dispositivo (hardware) a una sucursal.
+  var fx = w.__secFx, ex = w.__empFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
   var toast = function(){ return $('#toast-msg').textContent; };
   var setSel = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
   var lista = function(){ return all('#sec-lista tr[data-sucursal]').length; };
   $('.nav-item[data-view="clientes"]').click(); await sleep(500); $('#tbody-clientes [data-action="abrirFichaCliente"]').click(); await sleep(700);
   if (!$('#view-ficha').classList.contains('active')) { fail('sucursales: ficha no activa'); return; }
-  if (!$('#ficha-seccionales') || $('#ficha-seccionales').style.display === 'none') { fail('sucursales: falta la tarjeta del ABM'); return; }
+  if (!$('#ficha-seccionales') || $('#ficha-seccionales').style.display === 'none') { fail('sucursales: falta la tarjeta'); return; }
   if (lista() !== 2) fail('sucursales: se esperaban 2 sucursales del cliente 1, hay ' + lista());
   if (d.body.innerHTML.indexOf('<Norte>') !== -1) fail('sucursales: nombre sin escapar');
-  if (all('#sec-vehiculos select').length < 1) fail('sucursales: sin selects de vehículos');
 
-  // Asignar un vehículo a una sucursal
-  var selVeh = $('#sec-vehiculos select');
-  setSel(selVeh, '1'); await sleep(300);
-  var up = fx.updates.filter(function(u){ return u.table === 'vehiculos'; }).pop();
-  if (!up || up.patch.sucursal_id !== 1) fail('sucursales: no asignó el vehículo a la sucursal 1');
-  setSel($('#sec-vehiculos select'), ''); await sleep(300);
-  up = fx.updates.filter(function(u){ return u.table === 'vehiculos'; }).pop();
-  if (!up || up.patch.sucursal_id !== null) fail('sucursales: no quitó la sucursal del vehículo');
+  // Sin formularios ni botones de escritura sobre sucursales, vehículos o usuarios
+  ['#sec-nombre', '#sec-user-email', '#sec-user-sucursal', '#sec-user-password', '#sec-user-crear'].forEach(function(s){ if ($(s)) fail('sucursales: el equipo Neumet no debe ver el formulario ' + s); });
+  ['seccionalCrear', 'seccionalRenombrar', 'seccionalEliminar', 'seccionalAsignarVeh', 'seccionalCrearUsuario'].forEach(function(a){ if ($('[data-action="' + a + '"],[data-change="' + a + '"]')) fail('sucursales: queda la acción de escritura ' + a); });
+  if (all('#sec-vehiculos select, #sec-vehiculos input, #sec-vehiculos button').length) fail('sucursales: los vehículos deben ser solo lectura');
+  if (all('#sec-usuarios select, #sec-usuarios input, #sec-usuarios button').length) fail('sucursales: los usuarios deben ser solo lectura');
+  if (all('#sec-lista input, #sec-lista button').length) fail('sucursales: la lista de sucursales debe ser solo lectura');
+
+  // Usuarios: salen de la RPC con el cliente de la ficha (no se lee perfiles) y muestran alcance y estado
+  var rpc = ex.rpcs.filter(function(r){ return r.name === 'usuarios_empresa_listar'; }).pop();
+  if (!rpc || rpc.args.p_cliente_id !== 1) fail('sucursales: usuarios_empresa_listar no se llamó con el cliente de la ficha: ' + JSON.stringify(rpc));
+  var us = $('#sec-usuarios').textContent.replace(/\s+/g, ' ');
+  if (us.indexOf('salto@demo.test') === -1 || us.indexOf('Acceso quitado') === -1 || us.indexOf('Con acceso') === -1) fail('sucursales: usuarios sin email o estado: ' + us);
+
+  // Única escritura: asignar un dispositivo a una sucursal
   var upd = $('#sec-dispositivos select');
-  if (upd) { setSel(upd, '2'); await sleep(300); if (!fx.updates.some(function(u){ return u.table === 'dispositivos' && u.patch.sucursal_id === 2; })) fail('sucursales: no asignó el dispositivo'); }
-
-  // Alta (con validación de nombre vacío)
-  $('#sec-nombre').value = '  '; $('[data-action="seccionalCrear"]').click(); await sleep(100);
-  if ($('#sec-error').textContent.indexOf('nombre') === -1) fail('sucursales: falta validación de nombre vacío');
-  $('#sec-nombre').value = 'Rivera'; $('[data-action="seccionalCrear"]').click(); await sleep(300);
-  var ins = fx.inserts.filter(function(i){ return i.table === 'sucursales'; }).pop();
-  if (!ins || ins.row.nombre !== 'Rivera' || ins.row.cliente_id !== 1) fail('sucursales: alta incorrecta');
-  if (lista() !== 3) fail('sucursales: la lista no creció tras el alta (' + lista() + ')');
-
-  // Renombrar
-  $('#sec-n-1').value = 'Montevideo Centro'; $('#sec-lista tr[data-sucursal="1"] [data-action="seccionalRenombrar"]').click(); await sleep(300);
-  var ren = fx.updates.filter(function(u){ return u.table === 'sucursales'; }).pop();
-  if (!ren || ren.patch.nombre !== 'Montevideo Centro') fail('sucursales: renombrar incorrecto');
-
-  // Eliminar: la sucursal 2 tiene vehículos => la base la rechaza y se explica
-  $('#sec-lista tr[data-sucursal="2"] [data-action="seccionalEliminar"]').click(); await sleep(150);
-  $('#confirm-ok').click(); await sleep(300);
-  if (toast().indexOf('reasígnalos') === -1) fail('sucursales: falta mensaje de sucursal con datos: ' + toast());
-  if (lista() !== 3) fail('sucursales: se borró una sucursal rechazada');
-  // Eliminar una vacía (la recién creada)
-  var nueva = all('#sec-lista tr[data-sucursal]')[2];
-  nueva.querySelector('[data-action="seccionalEliminar"]').click(); await sleep(150);
-  $('#confirm-ok').click(); await sleep(300);
-  if (lista() !== 2) fail('sucursales: no eliminó la sucursal vacía (' + lista() + ')');
-
-  // Crear usuarios con la función crear-usuario-seccional
-  var n = fx.fetches.length;
-  $('#sec-user-email').value = 'nuevo@demo.test'; setSel($('#sec-user-sucursal'), '2'); $('#sec-user-password').value = '';
-  $('#sec-user-crear').click(); await sleep(300);
-  var f = fx.fetches[fx.fetches.length - 1];
-  if (fx.fetches.length !== n + 1 || f.cliente_id !== 1 || f.sucursal_id !== 2 || 'password' in f) fail('sucursales: alta de usuario sin password incorrecta: ' + JSON.stringify(f));
-  if (toast().indexOf('Invitación') === -1) fail('sucursales: falta aviso de invitación: ' + toast());
-  n = fx.fetches.length;
-  $('#sec-user-email').value = 'corta@demo.test'; $('#sec-user-password').value = 'abc12345678'; $('#sec-user-crear').click(); await sleep(150);
-  if (fx.fetches.length !== n) fail('sucursales: contraseña corta llegó al servidor');
-  if ($('#sec-error').textContent.indexOf('12 caracteres') === -1) fail('sucursales: falta mensaje de 12 caracteres');
-  setSel($('#sec-user-sucursal'), ''); $('#sec-user-email').value = 'global2@demo.test'; $('#sec-user-password').value = 'abcdefghijkl'; $('#sec-user-crear').click(); await sleep(300);
-  f = fx.fetches[fx.fetches.length - 1];
-  if (!f || 'sucursal_id' in f || f.password !== 'abcdefghijkl') fail('sucursales: alta de usuario global incorrecta: ' + JSON.stringify(f));
-  $('#sec-user-email').value = 'dup@demo.test'; $('#sec-user-password').value = ''; $('#sec-user-crear').click(); await sleep(300);
-  if (toast().indexOf('Ya existe') === -1) fail('sucursales: 409 sin mensaje: ' + toast());
-  if (all('#sec-usuarios tr').length < 4) fail('sucursales: la tabla de usuarios no muestra los nuevos');
-  log.push('seccionales-admin: updates=' + fx.updates.length + ' inserts=' + fx.inserts.length + ' fetches=' + fx.fetches.length);
+  if (!upd) { fail('sucursales: falta el selector de sucursal del dispositivo'); return; }
+  setSel(upd, '2'); await sleep(300);
+  if (!fx.updates.some(function(u){ return u.table === 'dispositivos' && u.patch.sucursal_id === 2; })) fail('sucursales: no asignó el dispositivo');
+  var otras = fx.updates.filter(function(u){ return u.table !== 'dispositivos'; });
+  if (otras.length || fx.inserts.length || fx.deletes.length || fx.fetches.length || fx.rpcs.length) fail('sucursales: el equipo Neumet hizo una escritura ajena al dispositivo: ' + JSON.stringify({ otras: otras, i: fx.inserts.length, d: fx.deletes.length, f: fx.fetches.length, r: fx.rpcs.length }));
+  if (toast().indexOf('Dispositivo asignado') === -1) fail('sucursales: falta el aviso de asignación: ' + toast());
+  log.push('seccionales-admin: solo lectura, updates=' + fx.updates.length);
 };
 
 window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
