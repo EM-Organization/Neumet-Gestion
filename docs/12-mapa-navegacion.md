@@ -2,6 +2,8 @@
 
 Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pantalla. Está sacado del código (`adminpanel/index.html`, `assets/js/core/nav.js`, `assets/js/core/buscador.js`, `assets/js/views/`). Si algo no coincide con lo que se ve en el panel, el código manda: corregir este documento.
 
+**Fuente de verdad del menú.** Este mapa (en especial la sección 4, «Tabla de destinos del menú») es la fuente de verdad de qué ítems tiene el menú, a dónde lleva cada uno y dónde se busca cada tarea. Un PR que agrega, mueve, renombra o duplica un ítem o una pestaña actualiza este mapa en el mismo PR, y el revisor lo comprueba con la pregunta fija de [docs/13](13-checklist-revision-prs.md) sección 3. Una tarea frecuente no se ofrece en dos lugares sin justificarlo aquí.
+
 ## 1. Cambios respecto al mapa anterior
 
 | Problema detectado | Resolución |
@@ -32,13 +34,13 @@ flowchart TD
   M --> A[Alertas]
   M --> N[Neumáticos]
   N --> S[Pestaña Stock]
-  N -->|solo perfil global| RC[Pestaña Recauchutado]
+  N -->|solo administrador de empresa| RC[Pestaña Recauchutado]
   S -->|perfil global: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
-  M -->|Empresa: solo perfil global| SU[Sucursales]
+  M -->|Empresa: solo administrador de empresa| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
   SU -->|mover vehículo con confirmación| SU
-  V -->|solo perfil global: Agregar vehículo| VA[Diálogo Agregar vehículo]
+  V -->|solo administrador de empresa: Agregar vehículo| VA[Diálogo Agregar vehículo]
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   B -->|quema de una cubierta en stock| S
   I -->|buscador de Inicio| VD

@@ -217,7 +217,7 @@ Las viñetas siguientes son del diseño inicial; la matriz vigente es la de arri
 6. Los datos existentes (si se migran) pueden violar los CHECK nuevos (MAC con `-`, mm fuera de 0..40, patentes duplicadas por cliente).
 7. `crear-cliente` y `guardar-montaje-mm` no están versionadas: confirmar que `crear-cliente` crea la fila `clientes` con `auth_user_id` (el trigger crea el perfil) y que la ingesta inserta con service_role.
 8. Primer administrador: debe crearse a mano en `perfiles` (instrucciones al final de la migración). Sin ello, nadie puede usar el panel.
-9. Un cliente = un usuario (1:1, `auth_user_id` unique y `perfiles` PK en `user_id`); si cambia (roadmap, decisión 1) habrá que ajustar.
+9. Resuelta en F10 (docs/17): un cliente tiene un administrador de empresa (perfil `cliente` sin sucursal) y usuarios de sucursal, todos en `perfiles` (PK en `user_id`: un usuario pertenece a un solo cliente). `clientes.auth_user_id` (unique) es solo el vínculo del primer administrador y, desde C2, no se escribe por la API (apéndices N y Q).
 
 ## 6. Cómo se validó
 
@@ -892,6 +892,10 @@ Reglas:
 
 Las Edge Functions que usan estas RPC (`quitar-acceso-usuario`, `reponer-acceso-usuario`, PR 3) no cambian la base: llaman a las RPC con el JWT del llamante y a `accesos_quitados_marcar_auth` con la clave de servicio. Sin panel (PR 4 en adelante), sin cambios en `api-proveedor`, sin migraciones B (uso) ni C1/C2 (recorte de `admin`), sin MFA. Las RPC existentes que insertan en `audit_log` y `vehiculo_registrar_odometro` no cambian.
 
+---
+
+# Apéndice O · Uso mensual por cliente (migración B `20261119500000_uso_cliente_mensual.sql`, F10 PR 6)
+
 ## O.1 Regla de producto
 
 Migración B del plan de roles (`20261119500000_uso_cliente_mensual.sql`, docs/17 §5, F10 PR 6): el uso de cada cliente mes a mes se guarda de forma permanente. **No es para facturar** (docs/17 P5). Solo el equipo Neumet lo lee; el administrador de empresa y el resto reciben `42501` (docs/17 §5 dice que las RPC «solo autorizan al equipo Neumet»; abrirlo al administrador de empresa sobre su propio cliente es un cambio de una línea en `uso_clientes_listar`, pero es decisión de producto).
@@ -929,7 +933,7 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 
 ## P.1 Regla de producto
 
-`clientes.precio_mensual` es un dato interno de Neumet (docs/17 P2). Hoy lo lee y lo escribe Balance directo sobre `clientes`, y la política `clientes_self_select` deja leer la fila propia a un usuario global o de sucursal. La migración C1 (`20261120000000_precio_mensual_rpc.sql`, F10 PR 8) crea el camino definitivo, por RPC y solo para el equipo Neumet, **sin quitar nada**: el front vigente sigue funcionando. Cerrar el acceso directo es la migración C2, que se aplica solo cuando Balance ya use estas RPC (PR 9b).
+`clientes.precio_mensual` es un dato interno de Neumet (docs/17 P2). Hoy lo lee y lo escribe Balance directo sobre `clientes`, y la política `clientes_self_select` deja leer la fila propia a un usuario global o de sucursal. La migración C1 (`20261120000000_precio_mensual_rpc.sql`, F10 PR 8) crea el camino definitivo, por RPC y solo para el equipo Neumet, **sin quitar nada**: el front vigente sigue funcionando. Cerrar el acceso directo es la migración C2 (apéndice Q), que se aplicó cuando Balance ya usaba estas RPC (PR 9b).
 
 ## P.2 Funciones
 
@@ -944,7 +948,7 @@ La pantalla «Uso» (isla Svelte, solo `admin`, meses calendario UTC, solo meses
 
 ## P.4 Límites
 
-No cambia privilegios ni políticas (los cierra C2, apéndice Q). Mientras no se aplique C2, un usuario global o de sucursal sigue pudiendo leer `precio_mensual` de su cliente por `clientes`. Balance usa estas RPC desde el PR 9b (solo front); con eso C2 puede retirar el privilegio de la columna.
+No cambia privilegios ni políticas: los cerró C2 (apéndice Q, ya aplicada), que retiró el privilegio de la columna `precio_mensual`; desde entonces solo estas RPC la leen y la escriben. Balance las usa desde el PR 9b (solo front).
 
 ---
 
@@ -966,7 +970,11 @@ Migración `20261120500000_cerrar_escrituras_neumet.sql` (F10 PR 11, docs/17 §4
 - Una medición sin cliente (dispositivo sin asignar) ya no se puede invalidar ni revalidar: solo lo hacía el equipo Neumet. Salida: asignar el dispositivo a un cliente con `asignar_dispositivo_a_cliente` (el admin la conserva) y que la invalide el administrador de empresa.
 - `select=*` sobre `clientes` da `42501` (incluye `precio_mensual`): hay que pedir columnas. **Regla de revisión:** en el front, `select('*')` sobre `clientes` (también con `.update(...).select()` sin columnas) falla con `42501` para todos los roles por los privilegios por columna; revisar que cada lectura de `clientes` nombre sus columnas.
 
-## Q.3 Pruebas
+## Q.3 Comentario desactualizado en la migración
+
+El comentario de `20261120500000_cerrar_escrituras_neumet.sql:765` dice que con solo `FOR SELECT` el `UPDATE` de `clientes.nombre` y `auth_user_id` afectaría 0 filas; tras el ajuste de la ronda 1 de C2 `auth_user_id` ya no se escribe (privilegio por columna solo sobre `nombre`). No se edita porque la migración ya está aplicada (regla: nunca se modifica una migración aplicada). Vale lo de esta sección Q.1.
+
+## Q.4 Pruebas
 
 - `tests/sql/t_96_cerrar_escrituras_neumet.sql`: catálogo (privilegios, políticas, grupos de funciones; una guarda falla si aparece una función `SECURITY DEFINER` ejecutable sin clasificar), matriz por rol generada desde `pg_proc`, lo que el admin conserva, escrituras directas denegadas y columnas de `clientes` por rol. Las pruebas `t_10` a `t_95` se adaptaron: el actor es el cliente global y el admin recibe `42501`.
 - `tests/e2e/specs/cerrar-escrituras-neumet.mjs`: PostgREST real con el JWT de cada rol.
