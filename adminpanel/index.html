@@ -65,25 +65,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         Vehículos
       </button>
+      <button type="button" class="nav-item" data-view="stock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
+        Neumáticos
+      </button>
       <button type="button" class="nav-item" data-view="alertas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Alertas
       </button>
-      <button type="button" class="nav-item" data-view="stock">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg>
-        Stock
-      </button>
-      <button type="button" class="nav-item" data-view="recauchutado" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
-        Recauchutado
-      </button>
       <button type="button" class="nav-item" data-view="reportes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Reportes
-      </button>
-      <button type="button" class="nav-item" data-view="sucursales" data-global-only style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
-        Sucursales
       </button>
       <button type="button" class="nav-item" data-view="dispositivos" data-admin-only>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="17" r="1"/><path d="M9 6h6"/></svg>
@@ -91,6 +83,10 @@
         <span class="nav-badge" id="nav-unreg-badge" style="display:none">0</span>
       </button>
       <div class="nav-section" data-empresa-only style="display:none">Empresa</div>
+      <button type="button" class="nav-item" data-view="sucursales" data-empresa-only style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+        Sucursales
+      </button>
       <button type="button" class="nav-item" data-view="empresa-usuarios" data-empresa-only style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Usuarios
@@ -346,6 +342,10 @@
             <div>
               <div class="page-title">Vehículos</div>
             </div>
+            <button type="button" class="btn primary" id="btn-veh-agregar" data-empresa-only style="display:none" data-action="vehiculoAgregarAbrir">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar vehículo
+            </button>
           </div>
           <div class="toolbar">
             <div class="search search-grande">
@@ -383,19 +383,25 @@
         </div>
       </div>
 
-      <!-- RECAUCHUTADO (admin y perfil global) -->
+      <!-- NEUMÁTICOS · pestaña Recauchutado (equipo Neumet: solo lectura; administrador de empresa: gestiona) -->
       <div class="view" id="view-recauchutado">
-        <div class="page-header">
-          <div><div class="page-title">Recauchutado</div></div>
-          <button class="btn primary" id="btn-reca-enviar" style="display:none" data-action="recaEnviar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Enviar a recauchutar
-          </button>
+        <div class="tabs" role="tablist" aria-label="Neumáticos" data-neu-tabs>
+          <button type="button" class="tab" role="tab" id="neu-r-stock" data-neu-tab="stock" aria-controls="neu-panel-stock" aria-selected="false" tabindex="-1">Stock</button>
+          <button type="button" class="tab" role="tab" id="neu-r-reca" data-neu-tab="recauchutado" data-neu-reca aria-controls="neu-panel-reca" aria-selected="true" tabindex="0" style="display:none">Recauchutado</button>
         </div>
-        <div id="reca-lista"></div>
+        <div role="tabpanel" id="neu-panel-reca" aria-labelledby="neu-r-reca">
+          <div class="page-header">
+            <div><div class="page-title">Recauchutado</div></div>
+            <button class="btn primary" id="btn-reca-enviar" style="display:none" data-action="recaEnviar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Enviar a recauchutar
+            </button>
+          </div>
+          <div id="reca-lista"></div>
+        </div>
       </div>
 
-      <!-- SUCURSALES (cliente con perfil global) -->
+      <!-- SUCURSALES (menú Empresa, administrador de empresa) -->
       <div class="view" id="view-sucursales">
         <div class="page-header">
           <h2 class="page-title">Sucursales</h2>
@@ -414,18 +420,6 @@
         </div>
         <div class="ficha-card">
           <div class="ficha-card-title">Vehículos</div>
-          <div class="sec-sub">Agregar vehículo</div>
-          <div class="sec-alta">
-            <input type="text" id="suc-veh-numero" maxlength="50" placeholder="Número de coche" aria-label="Número de coche" autocomplete="off"/>
-            <input type="text" id="suc-veh-patente" maxlength="20" placeholder="Matrícula" aria-label="Matrícula" autocomplete="off" autocapitalize="characters"/>
-            <select id="suc-veh-ruedas" class="select-filter" aria-label="Tipo de ruedas">
-              <option value="10">10 ruedas</option>
-              <option value="16">16 ruedas</option>
-            </select>
-            <select id="suc-veh-sucursal" class="select-filter" aria-label="Sucursal del vehículo nuevo"></select>
-            <label class="sec-check"><input type="checkbox" id="suc-veh-cargar"/> Cargar neumáticos ahora</label>
-            <button type="button" class="btn primary" data-action="sucursalVehiculoCrear">Agregar vehículo</button>
-          </div>
           <div class="sec-sub">Asignación</div>
           <div class="toolbar">
             <div class="search">
@@ -437,58 +431,64 @@
         </div>
       </div>
 
-      <!-- STOCK -->
+      <!-- NEUMÁTICOS · pestaña Stock -->
       <div class="view" id="view-stock">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Stock de neumáticos</div>
-          </div>
-          <button class="btn primary" id="btn-cubierta-nueva" style="display:none" data-action="cubiertaNueva">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Agregar cubierta
-          </button>
+        <div class="tabs" role="tablist" aria-label="Neumáticos" data-neu-tabs>
+          <button type="button" class="tab" role="tab" id="neu-s-stock" data-neu-tab="stock" aria-controls="neu-panel-stock" aria-selected="true" tabindex="0">Stock</button>
+          <button type="button" class="tab" role="tab" id="neu-s-reca" data-neu-tab="recauchutado" data-neu-reca aria-controls="neu-panel-reca" aria-selected="false" tabindex="-1" style="display:none">Recauchutado</button>
         </div>
-        <div class="toolbar">
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="search-stock" type="text" placeholder="Quema, marca o modelo" aria-label="Buscar por quema, marca o modelo" autocomplete="off"/>
+        <div role="tabpanel" id="neu-panel-stock" aria-labelledby="neu-s-stock">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Stock de neumáticos</div>
+            </div>
+            <button class="btn primary" id="btn-cubierta-nueva" style="display:none" data-action="cubiertaNueva">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar cubierta
+            </button>
           </div>
-          <select id="filter-cliente-stock" class="select-filter" aria-label="Filtrar por cliente">
-            <option value="">Todos los clientes</option>
-          </select>
-          <select id="filter-sucursal-stock" class="select-filter" aria-label="Filtrar por sucursal">
-            <option value="">Todas las sucursales</option>
-          </select>
-          <select id="filter-condicion-stock" class="select-filter" aria-label="Filtrar por condición">
-            <option value="">Todas las condiciones</option>
-          </select>
-          <button class="btn ghost" data-action="loadStock">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Actualizar
-          </button>
-        </div>
-        <p class="stk-resumen" id="stk-resumen" aria-live="polite"></p>
-        <div id="stk-lista"></div>
+          <div class="toolbar">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="search-stock" type="text" placeholder="Quema, marca o modelo" aria-label="Buscar por quema, marca o modelo" autocomplete="off"/>
+            </div>
+            <select id="filter-cliente-stock" class="select-filter" aria-label="Filtrar por cliente">
+              <option value="">Todos los clientes</option>
+            </select>
+            <select id="filter-sucursal-stock" class="select-filter" aria-label="Filtrar por sucursal">
+              <option value="">Todas las sucursales</option>
+            </select>
+            <select id="filter-condicion-stock" class="select-filter" aria-label="Filtrar por condición">
+              <option value="">Todas las condiciones</option>
+            </select>
+            <button class="btn ghost" data-action="loadStock">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Actualizar
+            </button>
+          </div>
+          <p class="stk-resumen" id="stk-resumen" aria-live="polite"></p>
+          <div id="stk-lista"></div>
 
-        <div id="stock-lotes" style="display:none">
-          <div class="stk-subtitulo">
-            <h3>Lotes anteriores</h3>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th scope="col">Marca</th>
-                <th scope="col">Modelo</th>
-                <th scope="col">Cliente</th>
-                <th scope="col">Precio/ud</th>
-                <th scope="col">Fecha compra</th>
-                <th scope="col">Asignados</th>
-                <th scope="col">Notas</th>
-              </tr></thead>
-              <tbody id="tbody-stock">
-                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
-              </tbody>
-            </table>
+          <div id="stock-lotes" style="display:none">
+            <div class="stk-subtitulo">
+              <h3>Lotes anteriores</h3>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th scope="col">Marca</th>
+                  <th scope="col">Modelo</th>
+                  <th scope="col">Cliente</th>
+                  <th scope="col">Precio/ud</th>
+                  <th scope="col">Fecha compra</th>
+                  <th scope="col">Asignados</th>
+                  <th scope="col">Notas</th>
+                </tr></thead>
+                <tbody id="tbody-stock">
+                  <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div>Cargando…</div></td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -1230,6 +1230,30 @@
     <div class="modal-footer">
       <button class="btn ghost" data-action="costoCerrar">Cancelar</button>
       <button class="btn primary" id="costo-guardar" data-action="costoGuardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Agregar vehículo (administrador de empresa; RPC vehiculo_crear) -->
+<div class="modal-backdrop" id="modal-veh-nuevo" data-backdrop-close="vehiculoAgregarCerrar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="veh-nuevo-title">Agregar vehículo</div>
+    </div>
+    <div class="modal-body" id="veh-nuevo-body">
+      <div class="field"><label for="veh-nuevo-numero">Número de coche</label><input type="text" id="veh-nuevo-numero" maxlength="50" autocomplete="off"/></div>
+      <div class="field"><label for="veh-nuevo-patente">Matrícula <span class="label-opt">(opcional)</span></label><input type="text" id="veh-nuevo-patente" maxlength="20" autocomplete="off" autocapitalize="characters"/></div>
+      <div class="field-row">
+        <div class="field"><label for="veh-nuevo-ruedas">Tipo de ruedas</label>
+          <select id="veh-nuevo-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select></div>
+        <div class="field"><label for="veh-nuevo-sucursal">Sucursal</label><select id="veh-nuevo-sucursal"></select></div>
+      </div>
+      <label class="sec-check"><input type="checkbox" id="veh-nuevo-cargar"/> Cargar neumáticos ahora</label>
+      <div id="veh-nuevo-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn ghost" data-action="vehiculoAgregarCerrar">Cancelar</button>
+      <button type="button" class="btn primary" id="veh-nuevo-guardar" data-action="vehiculoAgregarGuardar">Agregar vehículo</button>
     </div>
   </div>
 </div>

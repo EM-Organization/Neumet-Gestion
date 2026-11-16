@@ -100,22 +100,25 @@ export function registrar(env) {
     assert.equal(foto(env), antes);
   });
 
-  test('Sucursales (global): agregar un vehículo con sucursal, matrícula y tipo de ruedas', async () => {
+  test('Vehículos (global): agregar un vehículo con sucursal, matrícula y tipo de ruedas', async () => {
     await flujo(env, 'vehiculo-nuevo', 'global', async p => {
-      await abrirSucursales(p);
-      await p.escribir('#suc-veh-numero', '777');
-      await p.escribir('#suc-veh-patente', 'e2e 0777');
-      await elegir(p, '#suc-veh-ruedas', 16);
-      await elegir(p, '#suc-veh-sucursal', Number(env.sql(`select ${sucDemo('salto')}`)));
-      await p.click('[data-action="sucursalVehiculoCrear"]');
+      await irA(p, 'vehiculos');
+      await p.click('#btn-veh-agregar');
+      await p.esperar(`document.querySelector('#modal-veh-nuevo').classList.contains('show')`, { que: 'diálogo de alta' });
+      await p.escribir('#veh-nuevo-numero', '777');
+      await p.escribir('#veh-nuevo-patente', 'e2e 0777');
+      await elegir(p, '#veh-nuevo-ruedas', 16);
+      await elegir(p, '#veh-nuevo-sucursal', Number(env.sql(`select ${sucDemo('salto')}`)));
+      await p.click('#veh-nuevo-guardar');
       await p.esperar(`/Vehículo agregado/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo agregado' });
       const v = filas(env, `select cliente_id, nombre, numero, patente, patente_norm, tipo_ruedas, activo, sucursal_id from public.vehiculos where numero = '777'`);
       assert.deepEqual(v, [{ cliente_id: Number(env.sql(`select ${DEMO}`)), nombre: 'Coche 777', numero: '777', patente: 'e2e 0777', patente_norm: 'E2E0777', tipo_ruedas: 16, activo: true, sucursal_id: Number(env.sql(`select ${sucDemo('salto')}`)) }]);
-      await p.esperar(`!!document.querySelector('#suc-vehiculos tr[data-vehiculo]') && /Coche 777/.test(document.querySelector('#suc-vehiculos').textContent)`, { que: 'vehículo en el listado' });
-      // Número repetido
-      await p.escribir('#suc-veh-numero', '777');
-      await p.click('[data-action="sucursalVehiculoCrear"]');
-      await p.esperar(`/número de coche/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de número repetido' });
+      await p.esperar(`/Coche 777/.test(document.querySelector('#veh-lista').textContent)`, { que: 'vehículo en la lista' });
+      // Número repetido: el diálogo queda abierto con el mensaje
+      await p.click('#btn-veh-agregar');
+      await p.escribir('#veh-nuevo-numero', '777');
+      await p.click('#veh-nuevo-guardar');
+      await p.esperar(`/número de coche/.test(document.querySelector('#veh-nuevo-error').textContent)`, { que: 'aviso de número repetido' });
       assert.equal(Number(env.sql(`select count(*) from public.vehiculos where numero = '777'`)), 1);
     }, { http: RPC_RECHAZADA });
   });

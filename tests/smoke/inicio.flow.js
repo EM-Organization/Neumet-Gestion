@@ -153,12 +153,18 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   ['inicio','vehiculos','alertas','stock','reportes'].concat(cliMode ? [] : ['dispositivos']).forEach(function(v){
     if(!navVisible(v)) fail('menu('+rol+'): falta '+v);
   });
-  ['salud','dashboard','ficha'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
+  ['salud','dashboard','ficha','recauchutado'].forEach(function(v){ if($('.nav-item[data-view="'+v+'"]')) fail('menu('+rol+'): sigue la entrada '+v); });
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
-    // Sucursales y la sección Empresa solo para el administrador de empresa (cliente sin sucursal); el de sucursal no las ve.
-    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,alertas,stock,reportes' : 'inicio,vehiculos,alertas,stock,recauchutado,reportes,sucursales,empresa-usuarios,empresa-umbrales,empresa-dispositivos';
+    // Menú: Inicio, Vehículos, Neumáticos (Stock y Recauchutado son pestañas), Alertas, Reportes. Sucursales vive en la sección Empresa,
+    // junto a Usuarios, Umbrales y Dispositivos, y solo para el administrador de empresa (cliente sin sucursal); el de sucursal no la ve.
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,stock,alertas,reportes' : 'inicio,vehiculos,stock,alertas,reportes,sucursales,empresa-usuarios,empresa-umbrales,empresa-dispositivos';
     if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
+    if(!/[?&]secuser=1/.test(w.parent.location.search)){
+      var navs = all('.sidebar-nav > *'), iEmp = navs.findIndex(function(n){ return n.classList.contains('nav-section') && n.textContent.trim() === 'Empresa'; });
+      var iSuc = navs.indexOf($('.nav-item[data-view="sucursales"]'));
+      if(iEmp < 0 || iSuc < iEmp) fail('menu(cliente): Sucursales debe estar bajo la sección Empresa');
+    }
     // Defensa en el router: aunque se fuerce la vista Dispositivos (botón de menú oculto o acción), el cliente sigue en Inicio
     $('.nav-item[data-view="dispositivos"]').click(); await sleep(400);
     if($('#view-dispositivos').classList.contains('active') || !$('#view-inicio').classList.contains('active')) fail('dispositivos(cliente): el router abrió la vista');

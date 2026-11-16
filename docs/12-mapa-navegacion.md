@@ -22,7 +22,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 Nomenclatura planificada ([docs/17](17-plan-roles-admin.md)): el perfil global será el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal». Los nombres actuales de esta sección siguen vigentes.
 
-Menú lateral: **Inicio · Vehículos · Alertas · Stock · Reportes**. El cliente con perfil global ve además **Sucursales** (después de Reportes); el perfil de sucursal no la ve. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
+Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios, Umbrales y Dispositivos); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
 flowchart TD
@@ -33,7 +33,7 @@ flowchart TD
   M --> S[Stock]
   S -->|perfil global: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
-  M -->|solo perfil global| SU[Sucursales]
+  M -->|Empresa: solo perfil global| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
   SU -->|agregar vehículo, mover con confirmación| SU
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
@@ -83,7 +83,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Detalle | «Volver a …» | Pantalla desde la que se abrió | La de esa pantalla |
 | Detalle | Miga «Vehículos» | Vehículos | Vehículos |
 | Detalle | Rueda | Panel de la rueda (cambiar, rotar) | Vehículos |
-| Sucursales | Alta, nombre, «Eliminar», «Agregar vehículo», selector de sucursal de cada vehículo | La misma pantalla (aviso y recarga) | Sucursales |
+| Sucursales | Alta, nombre, «Eliminar», selector de sucursal de cada vehículo. «Agregar vehículo» vive ahora en Vehículos | La misma pantalla (aviso y recarga) | Sucursales |
 
 | Pantalla | Para qué sirve | Qué puede hacer el cliente |
 |---|---|---|
@@ -94,7 +94,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Stock (perfil global) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
 | Stock (perfil de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el perfil global |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
-| Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); agregar un vehículo (número de coche, matrícula, tipo de ruedas, sucursal opcional); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
+| Sucursales (solo perfil global) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
 
 ## 3. Rol administrador (NEUMET)
 
@@ -151,11 +151,11 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Ítem | Vista (`data-view`) | Vista que cuelga de él |
 |---|---|---|
 | Inicio | `inicio` | |
-| Vehículos | `vehiculos` | `vehiculo-detalle` |
+| Vehículos | `vehiculos` | `vehiculo-detalle` (con «Agregar vehículo» para el administrador de empresa) |
 | Alertas | `alertas` | |
-| Stock | `stock` | |
+| Neumáticos | `stock` | `recauchutado` (segunda pestaña) |
 | Reportes | `reportes` | |
-| Sucursales (cliente global) | `sucursales` | |
+| Sucursales (Empresa, cliente global) | `sucursales` | |
 | Dispositivos (admin) | `dispositivos` | |
 | Estado de la flota (admin) | `flota` | |
 | Mediciones (admin) | `mediciones` | |

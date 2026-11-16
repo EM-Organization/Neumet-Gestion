@@ -2,19 +2,21 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, avatarFor } from '../core/ui.js';
 import { chipEstado, estadoVacio, estadoError } from '../core/componentes.js';
-import { isClienteMode, currentClienteId } from '../core/auth.js';
+import { isClienteMode, currentClienteId, esAdminEmpresa } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
-import { ACTIONS } from '../core/actions.js';
-import { contextoListo, filtrarConsulta, filtrarFilas } from '../core/seccional.js';
+import { ACTIONS, registerActions } from '../core/actions.js';
+import { contextoListo, filtrarConsulta, filtrarFilas, listaSucursales, sucursalSeleccionada, refrescarSucursales } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { agruparVehiculos } from '../domain/flota.js';
 import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda.js';
 import { plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
 let vehiculos=[], resumenes=new Map();
-// Solo lectura para el equipo Neumet (docs/17 PR 9): crear, editar y eliminar vehículos lo hace el administrador de la empresa en Sucursales.
+// Solo lectura para el equipo Neumet (docs/17 PR 9). El administrador de la empresa agrega vehículos desde aquí (RPC
+// vehiculo_crear; la base rechaza al resto) y los mueve entre sucursales en Sucursales (menú Empresa).
 
 // La lista de vehículos se muestra en cuanto llega; el estado de los neumáticos (consulta pesada) se agrega después.
 // Así la búsqueda por matrícula o número no espera ni depende de esa consulta.
@@ -123,6 +125,46 @@ function renderVehiculos(){
   });
 }
 
+const $=id=>document.getElementById(id);
+const errNuevo=msg=>{ $('veh-nuevo-error').textContent=msg||''; };
+
+registerActions({
+  vehiculoAgregarAbrir(){
+    if(!esAdminEmpresa()) return;
+    ['veh-nuevo-numero','veh-nuevo-patente'].forEach(id=>{ $(id).value=''; });
+    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=false; errNuevo('');
+    // Sucursal por defecto: la que está elegida en la barra superior (si hay una).
+    setHtml($('veh-nuevo-sucursal'), joinHtml([html`<option value="">Sin sucursal</option>`,
+      listaSucursales().map(s=>html`<option value="${s.id}">${s.nombre}</option>`)]));
+    $('veh-nuevo-sucursal').value=sucursalSeleccionada();
+    $('modal-veh-nuevo').classList.add('show');
+  },
+  vehiculoAgregarCerrar(){ $('modal-veh-nuevo').classList.remove('show'); },
+  async vehiculoAgregarGuardar(){
+    if(!esAdminEmpresa()) return; // defensa en profundidad: el botón no se ofrece y la RPC rechaza igual
+    const r=validarVehiculoNuevo({ numero:$('veh-nuevo-numero').value, patente:$('veh-nuevo-patente').value,
+      tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
+    if(!r.ok){ errNuevo(r.error); return; }
+    const btn=$('veh-nuevo-guardar'), txt=btn.textContent;
+    btn.disabled=true; btn.textContent='Guardando…';
+    try{
+      const {data,error}=await db.rpc('vehiculo_crear',r.args);
+      if(error){
+        const m=mensajeErrorGestion(error);
+        if(m.startsWith('No se pudo')) userError(error);
+        errNuevo(m); showToast(m,true);
+        return;
+      }
+      const cargar=$('veh-nuevo-cargar').checked;
+      ACTIONS.vehiculoAgregarCerrar();
+      showToast('Vehículo agregado');
+      await Promise.all([loadVehiculos(),refrescarSucursales()]);
+      // «Cargar neumáticos ahora»: el vehículo nuevo no tiene neumáticos; el detalle ofrece cargarlos.
+      if(cargar&&data&&data.id) abrirDetalle(Number(data.id));
+    } finally { btn.disabled=false; btn.textContent=txt; }
+  },
+});
+
 ACTIONS.loadVehiculos=loadVehiculos;
 export const load=loadVehiculos;
 registerView('vehiculos','Vehículos',loadVehiculos);
@@ -141,4 +183,8 @@ export function init(){
     if(v){ e.preventDefault(); abrirDetalle(v.id); }
   });
   document.getElementById('filter-cliente-veh').addEventListener('change',renderVehiculos);
+  // Enter en cualquier campo de texto del alta guarda (sin buscar el botón).
+  $('veh-nuevo-body').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type==='text'){ e.preventDefault(); ACTIONS.vehiculoAgregarGuardar(); }
+  });
 }

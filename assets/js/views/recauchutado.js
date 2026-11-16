@@ -1,9 +1,9 @@
-// Vista Recauchutado: procesos por carcasa (enviar -> dictamen -> aceptar o rechazar). Solo admin y perfil global; la
+// Pestaña Recauchutado de Neumáticos: procesos por carcasa (enviar -> dictamen -> aceptar o rechazar). Solo admin y perfil global; la
 // autorización real vive en las RPC recauchutado_* (docs/08 apéndice L).
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
-import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogin, onLogout } from '../core/auth.js';
+import { isClienteMode, currentClienteId, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
@@ -160,15 +160,8 @@ registerActions({
   loadRecauchutado,
 });
 
-registerView('recauchutado', 'Recauchutado', loadRecauchutado);
-onLogin(() => {
-  const item = document.querySelector('.nav-item[data-view="recauchutado"]');
-  if (item) item.style.display = puedeGestionar() || esAdmin() ? '' : 'none'; // el equipo Neumet conserva la lista, en solo lectura
-});
-onLogout(() => {
-  procesos = []; cubiertas = []; sucursales = []; modal = null;
-  const item = document.querySelector('.nav-item[data-view="recauchutado"]');
-  if (item) item.style.display = 'none';
-});
+// Cuelga del menú Neumáticos (pestaña Recauchutado): el ítem resaltado es `stock`.
+registerView('recauchutado', 'Recauchutado', loadRecauchutado, { menu: 'stock' });
+onLogout(() => { procesos = []; cubiertas = []; sucursales = []; modal = null; });
 
 export function init() { /* todo va por data-action */ }

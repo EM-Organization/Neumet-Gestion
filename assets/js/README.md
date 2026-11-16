@@ -33,12 +33,13 @@ domain/
   rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso); esAdminEmpresa() (regla única del
                         cliente sin sucursal), esUsuarioSucursal(), rotuloRol() («Equipo Neumet», «Administrador de empresa», «Usuario de sucursal»)
   empresa.js            PURO: pantalla Empresa (F10): interpreta las respuestas 200/4xx/502 de quitar y reponer acceso, orden y acciones de la lista, argumentos de alerta_configurar
+  neumaticos.js         PURO: pestañas visibles de «Neumáticos» por rol y navegación por teclado
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
   inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo administración)  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
-  stock.js  reportes.js
+  stock.js  reportes.js  neumaticos.js (pestañas Stock | Recauchutado del ítem «Neumáticos»; cada pestaña sigue siendo la vista `stock` / `recauchutado`)
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
   empresa-usuarios.js  empresa-umbrales.js  empresa-dispositivos.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
   uso.js (Uso mensual por cliente, solo administración: registra la isla Svelte `uso`; sin vista vieja, con la bandera apagada muestra un aviso estático)
@@ -129,7 +130,7 @@ tests/smoke/run.sh admin    # arnés headless con supabase simulado (admin y cli
   de carga o al perder la red (`setStatus(false)` / evento `offline`). Nunca «Conectando…».
 - **Copy**: si un texto no ayuda a decidir o actuar, se elimina. Títulos cortos, sin subtítulos de relleno; los vacíos dicen
   qué pasa y, si existe, ofrecen la acción concreta.
-- **Menú del cliente**: Inicio, Vehículos, Alertas, Stock (solo lectura), Reportes. Dispositivos es solo de administración (sin ítem para el cliente y rechazada por el router). Se quitan «Mi panel» (duplicaba Inicio),
+- **Menú del cliente**: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado), Alertas, Reportes. Dispositivos es solo de administración (sin ítem para el cliente y rechazada por el router). Se quitan «Mi panel» (duplicaba Inicio),
   «Mi resumen» (la ficha es de administración), «Mediciones» (el detalle por vehículo y el export viven en Vehículos y Reportes)
   y «Estado de la flota» (Inicio y Vehículos cubren la prioridad). El administrador conserva Estado de la flota, Mediciones,
   Clientes (la ficha se abre desde la lista) y Balance bajo «Administración». Mapa completo: `docs/12-mapa-navegacion.md`.
