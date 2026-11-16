@@ -898,7 +898,7 @@ Migración B del plan de roles (`20261119500000_uso_cliente_mensual.sql`, docs/1
 
 ## O.2 Esquema
 
-- Índices `ingesta_log (cliente_id, recibido_at)` y `mediciones (cliente_id, created_at)` para agregar por cliente y mes.
+- Índice `ingesta_log (cliente_id, recibido_at)` para agregar por cliente y mes. `mediciones` no recibe índice nuevo: el cierre usa `mediciones_cliente_fecha_idx (cliente_id, created_at desc)` (migración `20261106020000`), y un tercer B-tree encarecería cada inserción de la tabla más escrita.
 - `uso_cliente_mensual (cliente_id, mes)`, clave primaria compuesta, `mes` = primer día del mes UTC (con `check`). Columnas: `api_llamadas`, `api_por_endpoint` (jsonb `{endpoint: {ok, rechazado, error}}`), `logins`, `mediciones`, `vehiculos_activos`, `dispositivos_activos`, `usuarios`, `ultimo_ingreso_at`, `cerrado_at`. RLS activada, **sin políticas y sin ningún grant** para `anon` ni `authenticated` (los privilegios por defecto de `public` se revocan explícitamente). No hay costos ni precios: no requiere privilegios por columna.
 
 ## O.3 Definición de lo que cuenta

@@ -26,7 +26,7 @@
 
 -- 1. Índices ------------------------------------------------------------------
 create index if not exists ingesta_log_cliente_recibido_idx on public.ingesta_log (cliente_id, recibido_at);
-create index if not exists mediciones_cliente_created_idx   on public.mediciones (cliente_id, created_at);
+-- mediciones ya tiene mediciones_cliente_fecha_idx (cliente_id, created_at desc): sirve a las consultas del cierre; no se agrega otro.
 
 -- 2. Tabla ---------------------------------------------------------------------
 create table if not exists public.uso_cliente_mensual (

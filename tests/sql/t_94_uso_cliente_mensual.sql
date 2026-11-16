@@ -34,6 +34,19 @@ insert into public.mediciones (vehiculo_id, cliente_id, device_id, posicion, mm1
   (1, 1, '94:00:00:00:00:01', 2, 8, 8, 8, 8, '2026-08-16 10:00+00'),
   (1, 1, '94:00:00:00:00:01', 3, 8, 8, 8, 8, '2026-09-02 10:00+00');   -- fuera del mes
 
+-- ---- índices: mediciones es la tabla más escrita; esta migración no agrega un B-tree redundante ------------------
+-- Duplicado = mismas columnas clave en el mismo orden (se ignora asc/desc), sin predicado parcial.
+select test.eq('I: mediciones no tiene dos índices iguales sobre las mismas columnas',
+  (select count(*) from (
+     select indkey::text from pg_index where indrelid = 'public.mediciones'::regclass and indpred is null
+     group by indkey::text having count(*) > 1) d), 0::bigint);
+select test.eq('I: hay un índice utilizable por (cliente_id, created_at) en mediciones',
+  (select count(*) from pg_index i where i.indrelid = 'public.mediciones'::regclass and i.indpred is null
+     and (i.indkey::int2[])[0] = (select attnum from pg_attribute where attrelid = 'public.mediciones'::regclass and attname = 'cliente_id')
+     and (i.indkey::int2[])[1] = (select attnum from pg_attribute where attrelid = 'public.mediciones'::regclass and attname = 'created_at')) >= 1, true);
+select test.eq('I: el índice de ingesta_log por (cliente_id, recibido_at) existe',
+  (select count(*) from pg_indexes where schemaname = 'public' and tablename = 'ingesta_log' and indexname = 'ingesta_log_cliente_recibido_idx'), 1::bigint);
+
 -- ---- cierre (servicio) -----------------------------------------------------------------------------------------
 select test.become('service_role', null);
 select test.eq('A: el cierre escribe una fila por cliente vigente', (select public.uso_cerrar_mes('2026-08-20')) >= 2, true);
