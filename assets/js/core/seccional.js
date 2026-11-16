@@ -64,7 +64,9 @@ export function refrescarSucursales() { listo = cargar(true); return listo; }
 registerActions({
   seccionalCambiar(valor) {
     seleccion = valor || '';
-    oyentes.forEach(fn => fn(seleccion || null));
+    // Un oyente de isla que lance no puede impedir la recarga de la vista activa ni a los demás oyentes: cada uno va aislado.
+    // console.warn y no console.error: es un fallo de la isla, no del flujo del panel, y no debe ensuciar un flujo que sigue sano.
+    oyentes.forEach(fn => { try { fn(seleccion || null); } catch (e) { console.warn('Un oyente de cambio de sucursal falló:', e?.message ?? e); } });
     reloadActiveView();
   },
 });

@@ -11,6 +11,8 @@ const svelteParser = require('svelte-eslint-parser');
 // Un solo cliente de Supabase (docs/19 §5.2): el front nuevo recibe `ctx.db`, el mismo cliente del panel viejo.
 // Dos clientes dan «Multiple GoTrueClient» y se pisan los refrescos de sesión.
 const msgUno = 'src/ usa ctx.db; no crear un segundo cliente (docs/19 §5.2).';
+// `/` no puede ir dentro de una regex de selector (esquery no admite el escape), de ahí \x2f.
+const EXTERNA = String.raw`/^\s*([a-z][a-z0-9+.-]*:|[\\\x2f]{2})/i`;
 const sinClienteSupabase = {
   'no-restricted-imports': ['error', {
     paths: [{ name: '@supabase/supabase-js', message: msgUno }],
@@ -23,6 +25,15 @@ const sinClienteSupabase = {
     { selector: "ObjectPattern > Property[key.name='createClient']", message: 'Prohibido extraer createClient (ni con alias) en src/: usar ctx.db (docs/19 §5.2).' },
     // El global UMD de supabase-js no se toca desde src/ (cubre window.supabase, globalThis.supabase y llamadas indirectas como (0, window.supabase.createClient)()).
     { selector: "MemberExpression[object.name=/^(window|globalThis|self)$/][property.name='supabase']", message: 'Prohibido el global supabase en src/: usar ctx.db (docs/19 §5.2).' },
+    // window['supabase'] (acceso computado con literal) y window[clave]: una clave dinámica no se puede comprobar (docs/19 §7.1.1).
+    { selector: "MemberExpression[object.name=/^(window|globalThis|self)$/][property.value='supabase']", message: "Prohibido window['supabase'] en src/: usar ctx.db (docs/19 §5.2)." },
+    { selector: "MemberExpression[object.name=/^(window|globalThis|self)$/][computed=true]:not([property.type='Literal'])", message: 'Prohibido acceder a window/globalThis con una clave dinámica en src/: no se puede comprobar que no sea el global supabase (docs/19 §7.1.1).' },
+    { selector: "MemberExpression[computed=true][property.type='Literal'][property.value='supabase']", message: "Prohibido ['supabase'] en src/: usar ctx.db (docs/19 §5.2)." },
+    // Código de otro origen: la CSP deja pasar cdn.jsdelivr.net, así que un import() o import de URL externa cargaría supabase-js u otro código ajeno.
+    // La regex rechaza cualquier esquema (https:, data:, blob:...), `//` o `\\` iniciales, con espacios previos y sin distinguir mayúsculas: el navegador normaliza todo eso.
+    { selector: `ImportExpression[source.type='Literal'][source.value=${EXTERNA}]`, message: 'import() desde una URL externa prohibido en src/: todo el código sale del build (docs/19 §7.1.1).' },
+    { selector: "ImportExpression:not([source.type='Literal'])", message: 'import() con ruta calculada prohibido en src/: no se puede comprobar el destino (docs/19 §7.1.1).' },
+    { selector: `ImportDeclaration[source.value=${EXTERNA}], ExportAllDeclaration[source.value=${EXTERNA}], ExportNamedDeclaration[source.value=${EXTERNA}]`, message: 'Importar desde una URL externa prohibido en src/ (docs/19 §7.1.1).' },
     { selector: "NewExpression[callee.name='SupabaseClient'], NewExpression[callee.property.name='SupabaseClient']", message: 'Prohibido new SupabaseClient en src/: usar ctx.db (docs/19 §5.2).' },
     { selector: "ImportExpression[source.value=/^@supabase\\//]", message: 'Prohibido importar @supabase/* en src/ (docs/19 §5.2).' },
     { selector: "ImportExpression[source.type='TemplateLiteral']", message: 'import() con plantilla prohibido en src/: no se puede comprobar el destino (docs/19 §5.2).' }],

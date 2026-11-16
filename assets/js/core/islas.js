@@ -54,6 +54,12 @@ function crearCtx(limpiezas) {
   });
 }
 
+// Ocultar la vista vieja: `hidden` solo no alcanza, styles.css no tiene una regla global [hidden] y reglas como
+// `.page-header { display: flex }` ganan al display:none del atributo. data-isla-oculto lo respalda con una regla acotada
+// (assets/css/styles.css) que no afecta a nada que no haya ocultado una isla: con las banderas apagadas el panel no cambia.
+function ocultarVieja(el) { el.hidden = true; el.dataset.islaOculto = ''; }
+function mostrarVieja(el) { el.hidden = false; delete el.dataset.islaOculto; }
+
 function vistaDe(nombre) {
   const existente = document.getElementById('view-' + nombre);
   if (existente) return { vista: existente, creada: false };
@@ -74,7 +80,7 @@ function desmontarIsla(nombre) {
   try { m.mod.desmontar(nombre); } finally {
     m.limpiezas.splice(0).forEach((baja) => baja());
     m.host.remove();
-    m.ocultos.forEach((el) => { el.hidden = false; });
+    m.ocultos.forEach(mostrarVieja);
     if (m.creada) m.vista.remove();
   }
 }
@@ -95,17 +101,19 @@ function montarIsla(nombre) {
 
 async function montarSerial(nombre, turno) {
   const vigente = () => turnos.get(nombre) === turno && vistaActiva() === nombre;
+  // Un montaje superado (otro pedido, salida de la vista o cierre de sesión) nunca debe disparar la vista vieja: null, no false.
+  const sinMontar = () => (vigente() ? false : null);
 
   let mod;
   try { mod = await cargarModulo(); } catch (e) {
     // Sin build (smoke y visuales sirven el repositorio) o sin red: se sigue con la vista vieja; no es un error de la vista.
     console.warn('Panel nuevo no disponible; se muestra la vista actual.', e?.message ?? e);
-    return false;
+    return sinMontar();
   }
   if (!vigente()) return null;
   if (mod.API_ISLAS !== API_ISLAS) {
     if (!avisadoDeVersion) { avisadoDeVersion = true; showToast('Hay una versión nueva del panel. Recargar la página para usarla.', true); }
-    return false;
+    return sinMontar();
   }
 
   const { vista, creada } = vistaDe(nombre);
@@ -114,17 +122,21 @@ async function montarSerial(nombre, turno) {
   vista.appendChild(host);
   const limpiezas = [];
   let montada = false;
-  try { montada = await mod.montar(nombre, host, crearCtx(limpiezas)); } finally {
+  try { montada = await mod.montar(nombre, host, crearCtx(limpiezas)); } catch (e) {
+    // La isla falló al montar: no se deja la vista vacía ni un rechazo sin atender; se cae a la vista vieja (false) y se anota
+    // con console.warn (no es un error del flujo del panel). Si ya hay otro montaje en cola, este es null y no toca nada.
+    console.warn(`La isla ${nombre} no se pudo montar; se muestra la vista actual.`, e?.message ?? e);
+  } finally {
     if (!montada) { limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove(); }
   }
-  if (!montada) return false;
+  if (!montada) return sinMontar();
   if (!vigente()) { // salió de la vista, o pidieron otro montaje, mientras se cargaban las hojas de estilo
     mod.desmontar(nombre); limpiezas.splice(0).forEach((baja) => baja()); host.remove(); if (creada) vista.remove();
     return null;
   }
   // La vista vieja (si la hay) se oculta mientras la isla está montada y se restaura al desmontar.
   const ocultos = [...vista.children].filter((el) => el !== host && !el.hidden);
-  ocultos.forEach((el) => { el.hidden = true; });
+  ocultos.forEach(ocultarVieja);
   montadas.set(nombre, { mod, vista, creada, host, ocultos, limpiezas });
   return true;
 }
@@ -144,4 +156,9 @@ export const islaMontada = (nombre) => montadas.has(nombre);
 
 onSalirVista((anterior) => desmontarIsla(anterior));
 onLogin(({ user }) => { usuario = { id: user.id, email: user.email }; });
-onLogout(() => { usuario = null; [...montadas.keys()].forEach(desmontarIsla); });
+onLogout(() => {
+  usuario = null;
+  // Un montaje en vuelo no está en `montadas`: sin subir su turno terminaría montándose con la sesión ya cerrada.
+  for (const nombre of [...turnos.keys()]) turnos.set(nombre, turnos.get(nombre) + 1);
+  [...montadas.keys()].forEach(desmontarIsla);
+});

@@ -35,6 +35,58 @@ test('src/ no esquiva la regla con alias, acceso computado, SupabaseClient ni su
   }
 });
 
+// Elusiones que dejó abiertas el PR 2a (docs/19 §7.1.1): código de otro origen que la CSP permite (jsdelivr) y el global con clave dinámica.
+test('src/ no esquiva la regla con import() de URL externa ni con claves dinámicas del global', async () => {
+  const casos = [
+    ["export const cargar = () => import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');\n", 'import() de jsdelivr'],
+    ["export const cargar = () => import('//cdn.jsdelivr.net/npm/x');\n", 'import() de URL relativa al protocolo'],
+    ["export const cargar = (u) => import(u);\n", 'import() con ruta calculada'],
+    ["import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';\nexport { createClient };\n", 'import estático de URL externa'],
+    ["export { createClient } from 'https://esm.sh/@supabase/supabase-js';\n", 're-export de URL externa'],
+    ["export const db = window['supabase'].createClient('a', 'b');\n", "window['supabase']"],
+    ["export const f = (k) => window['supabase'][k]('a', 'b');\n", "window['supabase'][clave dinámica]"],
+    ["export const f = (k, d) => globalThis[k][d]('a', 'b');\n", 'globalThis[clave dinámica]'],
+    ["export const f = () => globalThis['supa' + 'base'];\n", 'clave armada con concatenación'],
+  ];
+  for (const [codigo, que] of casos) {
+    const r = await reglas(codigo, 'src/db.js');
+    assert.ok(r.includes('no-restricted-syntax'), `debe fallar: ${que}`);
+  }
+});
+
+// Ronda 1 del PR 85: la regex anterior (/^(https?:)?\/\//) distinguía mayúsculas y exigía `//` al inicio.
+test('src/ no esquiva la regla de URL externa con mayúsculas, espacios, barras invertidas ni otros esquemas', async () => {
+  const casos = [
+    ["export const c = () => import('HTTPS://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');\n", 'esquema en mayúsculas'],
+    ["export const c = () => import(' https://cdn.jsdelivr.net/npm/x');\n", 'espacio inicial'],
+    ["export const c = () => import('https:\\\\cdn.jsdelivr.net/x');\n", 'barras invertidas tras el esquema'],
+    ["export const c = () => import('\\\\\\\\cdn.jsdelivr.net/x');\n", 'doble barra invertida inicial'],
+    ["export const c = () => import('data:text/javascript,export default 1');\n", 'import() de data:'],
+    ["export const c = () => import('blob:https://x.y/abc');\n", 'import() de blob:'],
+    ["import x from 'data:text/javascript,export default 1';\nexport { x };\n", 'import estático de data:'],
+    ["export * from 'HTTPS://esm.sh/x';\n", 'export * de URL en mayúsculas'],
+    ["export { a } from ' //esm.sh/x';\n", 'export from con espacio y //'],
+  ];
+  for (const [codigo, que] of casos) {
+    assert.ok((await reglas(codigo, 'src/db.js')).includes('no-restricted-syntax'), `debe fallar: ${que}`);
+  }
+});
+
+test('src/ sí admite import relativos y de paquetes locales sin esquema', async () => {
+  for (const codigo of [
+    "export const a = () => import('./x.js');\n",
+    "export const a = () => import('../x.js');\n",
+    "import { y } from './x.js';\nexport { y };\n",
+    "import { y } from '../compartido/index.js';\nexport { y };\n",
+    "import { y } from 'svelte';\nexport { y };\n",
+    "export { z } from './z.js';\n",
+  ]) assert.deepEqual(await reglas(codigo, 'src/x.js'), [], codigo);
+});
+
+test('src/ sí puede importar módulos propios con import() de ruta literal', async () => {
+  assert.deepEqual(await reglas("export const cargar = () => import('./otra.js');\n", 'src/x.js'), []);
+});
+
 test('el mismo código fuera de src/ no dispara la regla (el panel viejo sigue con su singleton)', async () => {
   const r = await reglas("export const db = window.supabase.createClient('a', 'b');\n", 'assets/js/core/supabase.js');
   assert.ok(!r.includes('no-restricted-syntax'));
