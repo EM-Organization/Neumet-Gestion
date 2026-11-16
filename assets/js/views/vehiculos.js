@@ -146,6 +146,7 @@ registerActions({
       tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
     if(!r.ok){ errNuevo(r.error); return; }
     const btn=$('veh-nuevo-guardar'), txt=btn.textContent;
+    if(btn.disabled) return; // Enter repetido mientras se guarda: sin doble alta
     btn.disabled=true; btn.textContent='Guardando…';
     try{
       const {data,error}=await db.rpc('vehiculo_crear',r.args);
