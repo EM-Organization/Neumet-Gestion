@@ -55,8 +55,14 @@ export function registrar(env) {
 
     // Lo que el admin conserva: nombre del cliente y las RPC de plataforma
     const nombre = env.sql(`select nombre from public.clientes where id = ${demo}`).trim();
-    const n = await pedir(env, 'admin', `clientes?id=eq.${demo}`, { metodo: 'PATCH', cuerpo: { nombre }, extra: { Prefer: 'return=minimal' } }); // return=representation leería precio_mensual
-    assert.equal(n.status, 204, JSON.stringify(n.datos));
+    // Forma exacta de clientes.js:151: PATCH con return=representation y `select` de columnas explícitas (SEL, sin
+    // precio_mensual). Lo que da 42501 es pedir `*` o precio_mensual, no la representación en sí.
+    const SEL = 'id,nombre,created_at,auth_user_id,deleted_at,dispositivos(id,mac_address,activo),vehiculos(id)';
+    const n = await pedir(env, 'admin', `clientes?id=eq.${demo}&select=${encodeURIComponent(SEL)}`, { metodo: 'PATCH', cuerpo: { nombre } });
+    assert.equal(n.status, 200, JSON.stringify(n.datos));
+    assert.equal(n.datos[0].nombre, nombre);
+    denegado(await pedir(env, 'admin', `clientes?id=eq.${demo}&select=*`, { metodo: 'PATCH', cuerpo: { nombre } }), 'admin: PATCH con select=* (incluye precio_mensual)');
+    denegado(await pedir(env, 'admin', `clientes?id=eq.${demo}`, { metodo: 'PATCH', cuerpo: { auth_user_id: null }, extra: { Prefer: 'return=minimal' } }), 'admin: reasignar auth_user_id');
     assert.equal((await rpc(env, 'admin', 'cliente_precios_mensuales')).status, 200);
   });
 }
