@@ -8,8 +8,8 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   if(!nb){ fail('ciclo: sin botón Odómetro y ciclo de vida en la fila del vehículo'); return; }
   nb.click(); await sleep(500);
   if(!$('#modal-ciclo').classList.contains('show')) { fail('ciclo: modal no abierto'); return; }
-  var cb = $('#modal-ciclo [data-action="neumatico-cambiar"]');
-  if(!cb || cb.getAttribute('data-vehiculo-id') !== '10' || !cb.getAttribute('data-posicion')) fail('ciclo: falta el botón Cambiar neumático (punto de entrada temporal)');
+  // El equipo Neumet solo mira (docs/17 PR 9): sin «Cambiar neumático» (ni su selector) en el modal
+  if($('#modal-ciclo [data-action="neumatico-cambiar"]') || $('#ciclo-cambio-pos') || $('#ciclo-cambio-btn') || $('#ciclo-cambio').children.length) fail('ciclo: el equipo Neumet ve «Cambiar neumático»: ' + $('#ciclo-cambio').textContent);
 
   // El costo del evento llega de eventos_costos (la base no entrega la columna por select): se muestra al admin
   if($('#ciclo-timeline').textContent.indexOf('costo 230.5') === -1) fail('ciclo: la línea de tiempo no muestra el costo del montaje: ' + $('#ciclo-timeline').textContent.slice(0, 200));
@@ -41,7 +41,8 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
     if(cTxt.indexOf('UYU 1.900,00') === -1 || cTxt.indexOf('UYU 0,475 por km') === -1) fail('ciclo: costo y CPK confiables: ' + cTxt);
     if(cTxt.indexOf('UYU 0,500 por km') === -1 || cTxt.indexOf('Estimado: faltan lecturas de odómetro') === -1) fail('ciclo: CPK estimado sin la nota: ' + cTxt);
     if(cTxt.indexOf('Sin costos registrados') === -1) fail('ciclo: neumático sin costos: ' + cTxt);
-    if(!cT.querySelector('[data-action="cicloRegistrarCosto"]')) fail('ciclo: falta «Registrar costo»');
+    // Ve costos pero no los registra: costo_registrar escribe costos_neumatico, que la migración C2 le corta
+    if(cT.querySelector('[data-action="cicloRegistrarCosto"]') || /Registrar costo/.test(cT.innerHTML)) fail('ciclo: el equipo Neumet ve «Registrar costo»');
   }
   // Solo lectura para el equipo Neumet (docs/17 PR 9): sin formulario de odómetro ni de eventos, y ninguna escritura sobre
   // vehículos, neumáticos o eventos. Antes esta vista escribía odómetro, bajas e inspecciones y rotaba por RPC.
@@ -50,7 +51,7 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   if($('#ciclo-odo').textContent.indexOf('administrador de la empresa') === -1) fail('ciclo: falta la indicación de quién corrige el kilometraje: ' + $('#ciclo-odo').textContent);
   if(writes('vehiculos').length || writes('neumaticos').length || writes('eventos_neumatico').length) fail('ciclo: el equipo Neumet escribió: ' + JSON.stringify(fx.writes));
   if(fx.rpcs.length) fail('ciclo: el equipo Neumet llamó a una RPC de escritura: ' + JSON.stringify(fx.rpcs));
-  // El costo sí se registra: gastos sigue siendo del equipo Neumet
+  // Tampoco registra costos (costo_registrar escribe costos_neumatico): lo hace el administrador de empresa. Cubierto arriba y en la ausencia de RPC.
   log.push('ciclo-flow: solo lectura, writes=' + fx.writes.length);
   $('[data-action="closeCicloVida"]').click(); await sleep(100);
   if($('#modal-ciclo').classList.contains('show')) fail('ciclo: modal no cerrado');

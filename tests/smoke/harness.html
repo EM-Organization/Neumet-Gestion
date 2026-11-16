@@ -110,6 +110,7 @@
       // Vehículos como cliente: buscador + detalle con diagrama (vehiculo.fixture.js): tests/smoke/vehiculo.flow.js
       // Con ?montar=1: coche sin neumáticos, montar y retirar (montar.fixture.js): tests/smoke/montar.flow.js
       if(/[?&]montar=1/.test(location.search)) await window.montarFlow(w,d,sleep,fail,log);
+      else if(!cliMode) await window.detalleAdminFlow(w,d,sleep,fail,log); // equipo Neumet: solo mira (tests/smoke/vehiculo.flow.js)
       else await window.detalleFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
       throw new Error('__done');

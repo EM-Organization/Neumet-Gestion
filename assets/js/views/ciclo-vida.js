@@ -5,14 +5,14 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, esAdminEmpresa } from '../core/auth.js';
+import { isClienteMode, esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { getVehiculos } from './vehiculos.js';
 import { fmtNum, fmtFechaHora } from '../domain/formato.js';
 import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
-import { abrirRegistroCosto, puedeVerCostos } from './costos.js';
+import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import { TIPO_LABEL, validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, ordenarEventos } from '../domain/ciclo-vida.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
@@ -69,7 +69,7 @@ function renderOdometro(){
 // Contrato: data-action="neumatico-cambiar" + data-vehiculo-id + data-posicion.
 function renderCambio(){
   const disp=neums.filter(n=>n.estado==='montado' || !n.estado);
-  if(!disp.length){ setHtml($('ciclo-cambio'), html``); return; }
+  if(esAdmin() || !disp.length){ setHtml($('ciclo-cambio'), html``); return; }
   setHtml($('ciclo-cambio'), html`
     <div class="field"><label for="ciclo-cambio-pos">Cambiar neumático (taller)</label>
       <select id="ciclo-cambio-pos" data-change="cicloCambioPos">${disp.map(n=>html`<option value="${n.posicion}">${neumLabel(n)}</option>`)}</select></div>
@@ -106,7 +106,7 @@ function renderTimeline(){
       <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td>
       <td class="mono-cell" data-label="Costo">${c.textoCosto}</td>
       <td class="mono-cell" data-label="Costo por km">${c.textoCpk}</td>
-      <td data-label=""><button type="button" class="btn ghost ciclo-costo-btn" data-action="cicloRegistrarCosto" data-args="[${n.id}]" aria-label="Registrar costo, ${nomPos(n.posicion)}">Registrar costo</button></td></tr>
+      <td data-label="">${puedeRegistrarCosto()?html`<button type="button" class="btn ghost ciclo-costo-btn" data-action="cicloRegistrarCosto" data-args="[${n.id}]" aria-label="Registrar costo, ${nomPos(n.posicion)}">Registrar costo</button>`:''}</td></tr>
       ${c.nota?html`<tr class="ciclo-km-nota"><td colspan="5">${c.nota}</td></tr>`:''}`; });
     setHtml($('ciclo-costo'), cRows.length?html`<table class="ciclo-tabla"><thead><tr><th>Posición</th><th>Neumático</th><th>Costo</th><th>Costo por km</th><th><span class="sr-only">Acción</span></th></tr></thead><tbody>${cRows}</tbody></table>`
       :html`<div class="ciclo-sub">Sin neumáticos montados.</div>`);
@@ -146,7 +146,7 @@ ACTIONS.cicloGuardarOdometro=async function(){
   let ruta=rutaOdometro({cliente:true, adminEmpresa:esAdminEmpresa(), baja:!!r.requiereConfirmacion});
   if(r.requiereConfirmacion){
     // Bajar el kilometraje (p. ej. por cambio de tablero): el usuario de sucursal no puede; el administrador de empresa
-    // y el equipo Neumet confirman.
+    // confirma (el equipo Neumet ya no escribe el kilometraje).
     if(ruta.accion==='avisar'){ showToast(AVISO_ODOMETRO_SUCURSAL(veh.odometro_km),true); return; }
     if(!(await confirmDialog('Kilometraje menor al actual',`Se registrará ${r.valor} km, menos que ${veh.odometro_km} km. ¿Continuar?`,'Continuar',false))) return;
     r=validarOdometro(veh.odometro_km??null, $('ciclo-odo-input').value, true);

@@ -13,6 +13,7 @@ import { showToast, userError } from '../core/ui.js';
 import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import { registerView, switchView, vistaActiva, etiquetaVista, setTitulo } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
+import { esAdmin } from '../core/auth.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
@@ -20,7 +21,7 @@ import { semaforoVehiculo } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
-import { abrirRegistroCosto, puedeVerCostos } from './costos.js';
+import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import {
   layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
@@ -45,8 +46,8 @@ let ultimoFoco = null;
 let tokenGrafico = 0;
 const cacheMediciones = new Map();
 
-// Rol que puede operar sobre neumáticos (cambiar/rotar): por ahora admin y cliente.
-const puedeOperar = () => true;
+// Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
+const puedeOperar = () => !esAdmin();
 
 // Vista desde la que se abrió el detalle: "Volver" regresa a ella (Inicio, Alertas, Flota, Vehículos...).
 let origen = 'vehiculos';
@@ -257,7 +258,7 @@ function seccionCosto(n) {
     ${dato('Costo', c.textoCosto)}
     ${dato('Costo por km', c.textoCpk)}
   </dl>${c.nota ? html`<p class="vd-p-nota">${c.nota}</p>` : ''}
-  <button type="button" class="btn ghost vd-costo-btn" data-action="detalleRegistrarCosto" data-args="[${n.id}]">Registrar costo</button>`;
+  ${puedeRegistrarCosto() ? html`<button type="button" class="btn ghost vd-costo-btn" data-action="detalleRegistrarCosto" data-args="[${n.id}]">Registrar costo</button>` : ''}`;
 }
 
 function quemaDe(fila) {
