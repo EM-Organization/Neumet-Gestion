@@ -24,6 +24,7 @@ import { registrar as costosCpk } from './specs/costos-cpk.mjs';
 import { registrar as preciosSoloGlobal } from './specs/precios-solo-global.mjs';
 import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
 import { registrar as empresaPanel } from './specs/empresa-panel.mjs';
+import { registrar as usoCliente } from './specs/uso-cliente.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -49,4 +50,5 @@ costosCpk(env);
 preciosSoloGlobal(env);
 adminEmpresa(env);
 empresaPanel(env);
+usoCliente(env);
 contrato(env);
