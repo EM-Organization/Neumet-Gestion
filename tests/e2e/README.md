@@ -8,10 +8,13 @@ ejercen el **panel real** en Chrome headless contra una base real.
   **todas** las migraciones de `supabase/migrations`, el cliente `Demo Transportes` y `supabase/seed/demo.sql`.
   Además un segundo cliente (`Otra Empresa SA`, con casos límite de búsqueda) y un usuario sin perfil (`tests/e2e/sql/`).
 - **PostgREST** v16.5 (`PGRST_DB_MAX_ROWS=1000` como Supabase), con JWT secret de prueba (`lib/config.mjs`).
-- **Servidor local** que sirve `adminpanel/` y `assets/` sin tocarlos y hace de proxy de `/rest/v1` a PostgREST,
-  registrando cada petición. En `adminpanel/index.html` sustituye solo: el CDN de supabase-js (la misma versión,
-  desde `node_modules`), `assets/config.js` y añade `browser/auth-shim.js`, que reemplaza únicamente la autenticación
-  (`getSession`, login, logout) por un JWT HS256 de prueba. Todas las consultas `from`/`rpc` van por HTTP a PostgREST.
+- **Servidor local** que sirve `dist/` (el e2e corre `scripts/build.mjs` antes; `E2E_SIN_BUILD=1` reutiliza el `dist/` existente)
+  con las cabeceras de `vercel.json` (CSP incluida: una violación sale como error del navegador y rompe el flujo) y hace de proxy de
+  `/rest/v1` a PostgREST, registrando cada petición. En `adminpanel/index.html` sustituye solo el CDN de supabase-js (la misma
+  versión, desde `node_modules`) y `assets/config.js`. La autenticación es la **real** de supabase-js: `lib/chrome.mjs` precarga la
+  sesión (JWT HS256 de prueba) en `localStorage` y el servidor atiende `/auth/v1/user` y `/auth/v1/logout`; `/auth/v1/token` responde 400
+  a propósito (si algo intentara refrescar la sesión, el test falla). Todas las consultas `from`/`rpc` van por HTTP a PostgREST.
+- **islas** (`specs/islas.mjs`): el panel construido monta la isla de humo de `/panel/islas.js` con la bandera encendida (`localStorage.neumet_islas = 'on:hola'`), la lee con el JWT del rol y la desmonta al cambiar de vista.
 - **Sesiones**: `admin`, `global` (Demo), `salto`, `montevideo` (perfiles de sucursal), `otra` (otro cliente), `sinperfil`, `api` (perfil de rol `api`).
 - **sin-acceso**: `sinperfil` y `api` ven «Sin acceso» (sin panel ni menú), la API real les devuelve 0 filas y navegar por código no consulta datos.
 

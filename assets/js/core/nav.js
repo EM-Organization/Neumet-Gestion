@@ -20,6 +20,12 @@ export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa}={}){
 
 let activa=null;
 export const vistaActiva=()=>activa;
+// ¿Está registrada la vista? (lo usa core/islas.js para validar el destino de ctx.navegar).
+export const hayVista=v=>Object.prototype.hasOwnProperty.call(NAV_LABELS,v);
+// Hooks de salida: se ejecutan al cambiar de una vista a OTRA (no al recargar la misma), con (anterior, nueva).
+// Las islas (core/islas.js) se desmontan aquí, sin que nav.js sepa nada de ellas.
+const SALIDA_HOOKS=[];
+export function onSalirVista(fn){ SALIDA_HOOKS.push(fn); }
 export const etiquetaVista=v=>NAV_LABELS[v]||v;
 // Recarga la vista activa (p. ej. al cambiar el selector de sucursal).
 export function reloadActiveView(){ if(activa&&LOADERS[activa]) LOADERS[activa](); }
@@ -36,7 +42,9 @@ export function setTitulo(actual,padre=null){
 export function switchView(v){
   if(!panelHabilitado()) return;
   if((SOLO_ADMIN.has(v)&&isClienteMode())||(SOLO_EMPRESA.has(v)&&!esAdminEmpresa())) v='inicio';
+  const anterior=activa;
   activa=v;
+  if(anterior&&anterior!==v) SALIDA_HOOKS.forEach(fn=>fn(anterior,v));
   const item=MENU[v]||v;
   document.querySelectorAll('.nav-item[data-view]').forEach(n=>{
     const on=n.dataset.view===item;

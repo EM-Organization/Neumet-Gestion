@@ -4,7 +4,9 @@
 # que no se publica nada más es outputDirectory + tests/build/verificar-dist.mjs).
 docs/
 supabase/
-tests/
+# tests/ no se sube, salvo tests/build/ (verificar-dist.mjs corre al final de scripts/build.mjs, docs/19 §7.1.1 d).
+tests/*
+!tests/build/
 .github/
 .claude/
 node_modules/

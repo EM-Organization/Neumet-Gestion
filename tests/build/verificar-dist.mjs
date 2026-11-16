@@ -64,6 +64,21 @@ for (const f of panel) {
   if (f.endsWith('.js') && /\beval\s*\(|new\s+Function\s*\(/.test(texto)) errores.push(`eval o new Function en ${f}`);
   if (/sb_secret_|service_role/.test(texto)) errores.push(`posible secreto en ${f}`);
 }
+// El CSS viaja con islas.js (docs/19 §7.1.1 a): cada hoja que islas.js enlaza debe existir en dist/panel/, y no puede quedar el marcador sin sustituir.
+// islas.js re-exporta un chunk con hash: el enlace a la hoja vive en cualquier .js de dist/panel, relativo a ese archivo.
+{
+  let enlaces = 0;
+  for (const f of panel.filter((x) => x.endsWith('.js'))) {
+    const js = readFileSync(join(DIST, f), 'utf8');
+    if (js.includes('__NEUMET_HOJAS_CSS__')) errores.push(`${f} conserva el marcador de hojas CSS sin sustituir`);
+    for (const m of js.matchAll(/["'`]((?:\.\/)?[\w./-]+\.css)["'`]/g)) {
+      enlaces++;
+      const destino = join(dirname(f), m[1]).split('\\').join('/');
+      if (!panel.includes(destino)) errores.push(`${f} enlaza una hoja que no existe: ${m[1]} (${destino})`);
+    }
+  }
+  if (enlaces === 0) errores.push('ningún .js de dist/panel enlaza la hoja CSS de las islas');
+}
 if (bytesPanel > TOPE_PANEL_BYTES) errores.push(`dist/panel pesa ${bytesPanel} bytes, sobre el tope de ${TOPE_PANEL_BYTES}`);
 
 if (errores.length) {

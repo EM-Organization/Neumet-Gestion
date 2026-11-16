@@ -1,5 +1,9 @@
-/* Tailwind 4 sin preflight: el reset global cambiaría el panel viejo cuando una isla se monte dentro de él
-   (docs/19 §4.3). Solo tema y utilidades; el contenedor de cada isla lleva la clase `neumet-isla`. */
-@layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* Tailwind 4 sin preflight: el reset global cambiaría el panel viejo cuando una isla se monte dentro de él (docs/19 §4.3).
+   Solo tema y utilidades, con el prefijo `tw:` (clase `tw:p-4`): así ninguna utilidad puede coincidir con una clase del panel viejo
+   (.hidden, .flex, .grid...) cuando esta hoja queda cargada en la página tras montar una isla.
+   Las utilidades van SIN @layer a propósito: assets/css/styles.css tiene `* { margin: 0; padding: 0 }` sin capa, y una regla
+   sin capa gana a toda regla en capa sin importar la especificidad; en capa, `tw:p-4` no aplicaría nunca dentro del panel viejo.
+   Solo el tema (variables) queda en su capa. El contenedor de cada isla lleva la clase `neumet-isla`. */
+@layer theme;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" prefix(tw);
