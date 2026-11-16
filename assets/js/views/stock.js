@@ -343,7 +343,7 @@ onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubierta
 
 ACTIONS.loadStock=loadStock;
 export const load=loadStock;
-registerView('stock','Stock',loadStock);
+registerView('stock','Neumáticos',loadStock); // pestaña Stock; la otra pestaña es `recauchutado` (views/neumaticos.js)
 
 export function init(){
   $('search-stock').addEventListener('input',renderStock);

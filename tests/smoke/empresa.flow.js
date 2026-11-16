@@ -11,7 +11,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   var confirmar = async function () { await esperar(function () { return $('#modal-confirm').classList.contains('show'); }, 'diálogo de confirmación'); $('#confirm-ok').click(); await sleep(250); };
 
   // Menú: sección Empresa visible solo para el administrador de empresa
-  ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
+  ['sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
     if (!visible($('.nav-item[data-view="' + v + '"]'))) fail('empresa: falta en el menú ' + v);
   });
   if (visible($('.nav-item[data-view="clientes"]')) || visible($('.nav-item[data-view="balance"]'))) fail('empresa: el menú muestra Clientes o Balance');
@@ -185,7 +185,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
 window.empresaBloqueadaFlow = async function (w, d, sleep, fail, log, quien) {
   var fx = w.__empFx, $ = function (s) { return d.querySelector(s); };
   var oculto = function (el) { return !el || el.getClientRects().length === 0; };
-  ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
+  ['sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
     if (!oculto($('.nav-item[data-view="' + v + '"]'))) fail('empresa(' + quien + '): el menú muestra ' + v);
   });
   if (quien === 'sucursal' && d.querySelector('#user-role').textContent !== 'Usuario de sucursal') fail('empresa(sucursal): rol mostrado: ' + d.querySelector('#user-role').textContent);

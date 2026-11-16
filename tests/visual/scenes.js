@@ -3,7 +3,7 @@
 // Los errores de consola / recursos que ocurran mientras tanto igual hacen fallar el título (SMOKE:FAIL).
 window.visualScene = async function(name, w, d, sleep, fail, log){
   var $ = function(s){ return d.querySelector(s); };
-  var nav = function(v){ var b = $('.nav-item[data-view="'+v+'"]'); if(!b) fail('escena '+name+': no existe nav '+v); else b.click(); };
+  var nav = function(v){ if(v === 'recauchutado'){ nav('stock'); var t = $('#view-stock [data-neu-tab="recauchutado"]'); if(!t || !t.offsetParent) fail('escena '+name+': sin pestaña Recauchutado'); else t.click(); return; } var b = $('.nav-item[data-view="'+v+'"]'); if(!b) fail('escena '+name+': no existe nav '+v); else b.click(); };
   var click = function(s){ var b = $(s); if(!b) fail('escena '+name+': no existe '+s); else b.click(); };
   var escribir = function(v){ var i = $('#search-vehiculos'); i.value = v; i.dispatchEvent(new w.Event('input',{bubbles:true})); return i; };
   var abrirDetalle = async function(){
@@ -28,6 +28,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'ciclo-vida': async function(){ nav('vehiculos'); await sleep(600); click('#tbody-vehiculos [data-va="ciclo"]'); await sleep(900); var k = $('#ciclo-km'); if(k) k.scrollIntoView(); await sleep(300); },
     'ciclo-costo': async function(){ nav('vehiculos'); await sleep(600); click('#tbody-vehiculos [data-va="ciclo"]'); await sleep(900); var k = $('#ciclo-costo'); if(k) k.scrollIntoView(); await sleep(300); },
     'vehiculos': async function(){ nav('vehiculos'); await sleep(700); },
+    'vehiculos-agregar': async function(){ nav('vehiculos'); await sleep(700); var b = $('#btn-veh-agregar'); if(!b || !b.offsetParent) fail('escena '+name+': sin botón Agregar vehículo'); else b.click(); await sleep(300); },
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
@@ -73,6 +74,6 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   await sleep(300);
   var nv = $('.nav-item.active'), vw = $('.view.active');
   log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
-  var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes','view-calidad':'inicio'};
+  var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes','view-calidad':'inicio','view-recauchutado':'stock'};
   if(nv && vw && (colgadas[vw.id] ? colgadas[vw.id] !== nv.dataset.view : vw.id !== 'view-'+nv.dataset.view)) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
 };

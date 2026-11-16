@@ -1,16 +1,15 @@
-// Sucursales del cliente con perfil global: crear, renombrar y eliminar sucursales; agregar vehículos y moverlos entre
-// sucursales. Toda escritura pasa por RPC (sucursal_crear, sucursal_renombrar, sucursal_eliminar, vehiculo_crear,
-// vehiculo_mover_sucursal): la autorización y el aislamiento por cliente se verifican en la base, no aquí.
+// Sucursales del cliente con perfil global (menú Empresa): crear, renombrar y eliminar sucursales y mover vehículos entre
+// ellas. El alta de vehículos vive en la vista Vehículos. Toda escritura pasa por RPC (sucursal_crear, sucursal_renombrar,
+// sucursal_eliminar, vehiculo_mover_sucursal): la autorización y el aislamiento por cliente se verifican en la base, no aquí.
 import { db } from '../core/supabase.js';
-import { html, setHtml, joinHtml } from '../core/html.js';
+import { html, setHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { currentClienteId, esAdminEmpresa, onLogin, onLogout } from '../core/auth.js';
+import { currentClienteId, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
-import { abrirDetalle } from './vehiculo-detalle.js';
 import { refrescarSucursales } from '../core/seccional.js';
 import {
-  validarNombreSucursal, validarVehiculoNuevo, argsMover, contarPorSucursal, filtrarVehiculos,
+  validarNombreSucursal, argsMover, contarPorSucursal, filtrarVehiculos,
   textoSucursal, confirmacionMover, confirmacionEliminar, mensajeErrorGestion,
 } from '../domain/sucursales.js';
 
@@ -40,7 +39,6 @@ function renderSucursales() {
           <button type="button" class="btn ghost" data-action="sucursalEliminar" data-args="[${s.id}]">Eliminar</button>
         </td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin sucursales. Usar «Agregar sucursal» para crear la primera.</div>`);
-  setHtml($('suc-veh-sucursal'), joinHtml(opciones('', 'Sin sucursal')));
 }
 
 function renderVehiculos() {
@@ -115,18 +113,6 @@ registerActions({
     if (!await confirmDialog(c.titulo, c.mensaje, 'Eliminar', true)) return;
     await rpc('sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
   },
-  async sucursalVehiculoCrear() {
-    const r = validarVehiculoNuevo({
-      numero: $('suc-veh-numero').value, patente: $('suc-veh-patente').value,
-      tipoRuedas: $('suc-veh-ruedas').value, sucursalId: $('suc-veh-sucursal').value,
-    });
-    if (!r.ok) { err(r.error); return; }
-    const creado = await rpc('vehiculo_crear', r.args, 'Vehículo agregado');
-    if (!creado) return;
-    $('suc-veh-numero').value = ''; $('suc-veh-patente').value = '';
-    // «Cargar neumáticos ahora»: el vehículo nuevo no tiene neumáticos; el detalle ofrece cargarlos.
-    if ($('suc-veh-cargar').checked && creado.id) { $('suc-veh-cargar').checked = false; abrirDetalle(Number(creado.id)); }
-  },
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);
     if (!v) return;
@@ -138,16 +124,8 @@ registerActions({
 });
 
 registerView('sucursales', 'Sucursales', loadSucursales);
-onLogin(() => {
-  // El perfil de sucursal no gestiona: la entrada del menú queda oculta (y la base rechaza igual).
-  const item = document.querySelector('.nav-item[data-view="sucursales"]');
-  if (item) item.style.display = esAdminEmpresa() ? '' : 'none';
-});
-onLogout(() => {
-  sucursales = []; vehiculos = [];
-  const item = document.querySelector('.nav-item[data-view="sucursales"]');
-  if (item) item.style.display = 'none';
-});
+// La entrada del menú (sección Empresa, `data-empresa-only`) la muestra core/auth.js solo al administrador de empresa.
+onLogout(() => { sucursales = []; vehiculos = []; });
 
 export function init() {
   $('suc-buscar').addEventListener('input', renderVehiculos);
