@@ -157,15 +157,15 @@ export function registrar(env) {
 
   test('Montar (global): alta de vehículo con «Cargar neumáticos ahora» lleva al detalle vacío', async () => {
     await flujo(env, 'alta-cargar', 'global', async p => {
-      await irA(p, 'sucursales');
-      await p.esperar(`document.querySelectorAll('#suc-vehiculos tr[data-vehiculo]').length > 0`, { que: 'vista Sucursales cargada' });
-      assert.equal(await p.eval(`document.querySelector('#suc-veh-cargar').checked`), false, 'la opción empieza desmarcada');
-      await p.escribir('#suc-veh-numero', '8801');
-      await p.escribir('#suc-veh-patente', 'e2e 8801');
-      await p.eval(`document.querySelector('#suc-veh-cargar').click()`);
-      await p.click('[data-action="sucursalVehiculoCrear"]');
+      await irA(p, 'vehiculos');
+      await p.click('#btn-veh-agregar');
+      assert.equal(await p.eval(`document.querySelector('#veh-nuevo-cargar').checked`), false, 'la opción empieza desmarcada');
+      await p.escribir('#veh-nuevo-numero', '8801');
+      await p.escribir('#veh-nuevo-patente', 'e2e 8801');
+      await p.eval(`document.querySelector('#veh-nuevo-cargar').click()`);
+      await p.click('#veh-nuevo-guardar');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Coche 8801/.test(document.querySelector('#vd-cab').textContent) && !!document.querySelector('#vd-resumen .vd-vacio')`, { que: 'detalle del vehículo nuevo, vacío' });
-      assert.match(await texto(p, '#vd-volver'), /Volver a Sucursales/);
+      assert.match(await texto(p, '#vd-volver'), /Volver a Vehículos/);
       assert.match(await texto(p, '#vd-resumen'), /Cargar neumáticos/);
     }, { http: RECHAZO });
     const v = json(env, `select id, nombre, tipo_ruedas, cliente_id from public.vehiculos where patente = 'e2e 8801'`)[0];
@@ -173,12 +173,12 @@ export function registrar(env) {
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id = ${v.id}`)), 0);
     // Sin marcar la opción, el alta no navega
     await flujo(env, 'alta-sin-cargar', 'global', async p => {
-      await irA(p, 'sucursales');
-      await p.esperar(`document.querySelectorAll('#suc-vehiculos tr[data-vehiculo]').length > 0`, { que: 'vista Sucursales cargada' });
-      await p.escribir('#suc-veh-numero', '8802');
-      await p.click('[data-action="sucursalVehiculoCrear"]');
-      await p.esperar(`/Coche 8802/.test(document.querySelector('#suc-vehiculos').textContent)`, { que: 'vehículo en el listado' });
-      assert.equal(await p.eval(`document.querySelector('#view-sucursales').classList.contains('active')`), true);
+      await irA(p, 'vehiculos');
+      await p.click('#btn-veh-agregar');
+      await p.escribir('#veh-nuevo-numero', '8802');
+      await p.click('#veh-nuevo-guardar');
+      await p.esperar(`/Coche 8802/.test(document.querySelector('#veh-lista').textContent)`, { que: 'vehículo en la lista' });
+      assert.equal(await p.eval(`document.querySelector('#view-vehiculos').classList.contains('active')`), true);
     });
   });
 

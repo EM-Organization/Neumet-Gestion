@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 import { flujo, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json, ALCANCE } from '../lib/verdad.mjs';
 
-const CLIENTE = ['inicio', 'vehiculos', 'alertas', 'stock', 'reportes'];
-// Recauchutado: admin y perfil global (el de sucursal no gestiona stock).
-const GLOBAL = ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes'];  // Dispositivos es solo de administración
+const CLIENTE = ['inicio', 'vehiculos', 'stock', 'alertas', 'reportes'];
+// Neumáticos (Stock | Recauchutado) es una sola entrada de menú; la pestaña Recauchutado la ven admin y perfil global.
+const GLOBAL = CLIENTE;  // Dispositivos es solo de administración
 // Empresa (F10 PR 4): solo el administrador de empresa (cliente sin sucursal); el equipo Neumet no la ve.
 const EMPRESA = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
 const VISTAS = {
-  admin: ['inicio', 'vehiculos', 'alertas', 'stock', 'recauchutado', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance', 'uso'],
+  admin: ['inicio', 'vehiculos', 'stock', 'alertas', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance', 'uso'],
   global: [...GLOBAL, 'sucursales', ...EMPRESA], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales', ...EMPRESA]
 };
 
@@ -35,6 +35,17 @@ export function registrar(env) {
           await dormir(500); // deja terminar las consultas de la vista
           assert.equal(await p.eval(`document.querySelectorAll('.nav-item.active').length`), 1);
           assert.doesNotMatch(await texto(p, `#view-${v}`), /Error de conexión|No se pudo cargar|Algo salió mal/i, `vista ${v}`);
+        }
+        // Pestaña Recauchutado de Neumáticos: la ven admin y perfil global, no el de sucursal.
+        await irA(p, 'stock');
+        const reca = await p.eval(`!!document.querySelector('#view-stock [data-neu-tab="recauchutado"]').offsetParent`);
+        assert.equal(reca, ['admin', 'global', 'otra'].includes(rol), `pestaña Recauchutado visible para ${rol}`);
+        if (reca) {
+          await p.click('#view-stock [data-neu-tab="recauchutado"]');
+          await p.esperar(`document.querySelector('#view-recauchutado').classList.contains('active')`, { que: 'pestaña Recauchutado' });
+          await dormir(500);
+          assert.equal(await p.eval(`document.querySelector('.nav-item.active').dataset.view`), 'stock', 'el menú sigue en Neumáticos');
+          assert.doesNotMatch(await texto(p, '#view-recauchutado'), /Error de conexión|No se pudo cargar|Algo salió mal/i);
         }
         if (rol !== 'admin') {
           // El cliente no ve controles de administración.

@@ -5,10 +5,12 @@ import { isClienteMode, panelHabilitado, esAdmin, esAdminEmpresa } from './auth.
 const NAV_LABELS={};
 const LOADERS={};
 const MENU={};
-const SOLO_ADMIN=new Set(), SOLO_EMPRESA=new Set();
+const SOLO_ADMIN=new Set(), SOLO_EMPRESA=new Set(), VETOS={};
 // `soloAdmin`: vista de administración (equipo Neumet); el rol cliente que la pida (menú, buscador o código) vuelve a Inicio.
 // `soloEmpresa`: vista del administrador de empresa; el equipo Neumet y el usuario de sucursal vuelven a Inicio.
-export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa}={}){
+// `vetoA`: {vista, cuando}: si `cuando()` es verdadero, pedir esta vista abre `vista` (p. ej. Recauchutado para el usuario de sucursal).
+export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa,vetoA}={}){
+  if(vetoA) VETOS[name]=vetoA;
   // Defensa en profundidad: ningún loader consulta datos si la sesión no es admin/cliente (los de administración, solo admin;
   // los de empresa, solo el administrador de empresa).
   NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name); if(soloEmpresa) SOLO_EMPRESA.add(name);
@@ -42,6 +44,7 @@ export function setTitulo(actual,padre=null){
 export function switchView(v){
   if(!panelHabilitado()) return;
   if((SOLO_ADMIN.has(v)&&isClienteMode())||(SOLO_EMPRESA.has(v)&&!esAdminEmpresa())) v='inicio';
+  if(VETOS[v]&&VETOS[v].cuando()) v=VETOS[v].vista;
   const anterior=activa;
   activa=v;
   if(anterior&&anterior!==v) SALIDA_HOOKS.forEach(fn=>fn(anterior,v));

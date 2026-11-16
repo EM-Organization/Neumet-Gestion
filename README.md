@@ -62,7 +62,7 @@ Las operaciones de escritura del cliente (cambio de neumático, rotación, odóm
 
 ## 4. Mapa de funcionalidades del panel
 
-Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil global, Sucursales. El administrador añade Dispositivos y la sección Administración (Estado de la flota, Mediciones, Clientes, Balance). Flujos y destinos de cada click en [`docs/12-mapa-navegacion.md`](docs/12-mapa-navegacion.md).
+Menú del cliente: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchutado; el usuario de sucursal solo ve Stock), Alertas, Reportes y, con perfil global, Sucursales dentro de Empresa. El administrador añade Dispositivos y la sección Administración (Estado de la flota, Mediciones, Clientes, Balance). Flujos y destinos de cada click en [`docs/12-mapa-navegacion.md`](docs/12-mapa-navegacion.md).
 
 | Pantalla | Qué ofrece |
 |---|---|
@@ -73,7 +73,7 @@ Menú del cliente: Inicio, Vehículos, Alertas, Stock, Reportes y, con perfil gl
 | Rotación | Intercambio de dos posiciones del mismo vehículo; el historial y las alertas siguen al neumático |
 | Número de quema | Identifica al neumático físico; único por cliente. El buscador lo resuelve y abre el vehículo donde está montado |
 | Km previos | Km que el neumático ya traía al montarlo; junto con los recorridos en el vehículo dan los km totales |
-| Sucursales (cliente global) | Crear, renombrar y eliminar sucursales vacías; agregar vehículos; mover un vehículo entre sucursales o a «Sin sucursal», con confirmación. Mover solo cambia `vehiculos.sucursal_id`: el historial queda intacto y el movimiento queda en la auditoría |
+| Sucursales (cliente global) | Crear, renombrar y eliminar sucursales vacías; mover un vehículo entre sucursales o a «Sin sucursal», con confirmación. Mover solo cambia `vehiculos.sucursal_id`: el historial queda intacto y el movimiento queda en la auditoría |
 | Stock | Cubiertas individuales del cliente (quema, marca, modelo, fecha de compra, precio opcional, condición Nuevo/Usado/Reparado/Recauchutado y sucursal), con filtros, búsqueda por quema y las acciones agregar, editar, mover y eliminar para el perfil global (y el administrador); los lotes anteriores con cantidad se conservan en solo lectura para el cliente. El buscador global encuentra una cubierta por quema. No visible para el perfil de sucursal |
 | Alertas | Una sola alerta «Neumático crítico» con estado (abierta, reconocida, silenciada) y filtro por estado. Acciones: ver el vehículo en la rueda, reconocer, silenciar 7 días y resolver con nota. El cliente global edita el nivel crítico y la histéresis; el administrador, el umbral desde la ficha del cliente |
 | Mediciones a revisar | Lista (Inicio › Mediciones a revisar) de mediciones que la base marcó como sospechosas. Una persona las invalida con motivo o las marca como válidas; las invalidadas no cuentan en estados, tasas ni alertas, pero se conservan |

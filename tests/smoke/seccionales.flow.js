@@ -105,7 +105,8 @@ window.seccionalesUsuarioFlow = async function(w, d, sleep, fail, log){
 };
 
 // Vista Sucursales del perfil global: alta, renombrar, eliminar (con y sin vehículos), alta y movimiento de vehículos
-// con confirmación, escape de nombres y actualización del selector de la barra superior.
+// con confirmación, escape de nombres y actualización del selector de la barra superior. El alta de vehículos se prueba
+// desde la vista Vehículos (botón «Agregar vehículo»).
 window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var fx = w.__secFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
   var toast = function(){ return $('#toast-msg').textContent; };
@@ -152,16 +153,40 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#confirm-ok').click(); await sleep(400);
   if (filas() !== 2) fail('sucursales: no eliminó la sucursal vacía (' + filas() + ')');
 
-  // Agregar vehículo (validación, alta con sucursal, duplicado)
-  $('#suc-veh-numero').value = ' '; $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(100);
-  if ($('#suc-error').textContent.indexOf('número de coche') === -1) fail('sucursales: falta validación del número de coche');
-  $('#suc-veh-numero').value = '321'; $('#suc-veh-patente').value = 'QQ 0001'; $('#suc-veh-ruedas').value = '16'; $('#suc-veh-sucursal').value = '2';
-  $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(400);
+  // El alta de vehículos ya no vive en Sucursales (se hace desde la vista Vehículos)
+  ['suc-veh-numero', 'suc-veh-patente', 'suc-veh-sucursal', 'suc-veh-cargar'].forEach(function(id){ if ($('#' + id)) fail('sucursales: queda el campo de alta de vehículo #' + id); });
+  if ($('#view-sucursales [data-action="sucursalVehiculoCrear"]')) fail('sucursales: queda el botón de alta de vehículo');
+
+  // Agregar vehículo desde Vehículos (validación, alta con sucursal, duplicado)
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(700);
+  if (!visible($('#btn-veh-agregar')) || $('#btn-veh-agregar').textContent.trim() !== 'Agregar vehículo') fail('vehiculos: falta el botón «Agregar vehículo» del administrador de empresa');
+  var nv = function(id){ return $('#veh-nuevo-' + id); };
+  $('#btn-veh-agregar').click(); await sleep(200);
+  if (!$('#modal-veh-nuevo').classList.contains('show')) { fail('vehiculos: «Agregar vehículo» no abrió el diálogo'); return; }
+  if (d.activeElement !== nv('numero')) fail('vehiculos: el foco no quedó en el número de coche');
+  var ops = Array.prototype.map.call(nv('sucursal').options, function(o){ return o.textContent; });
+  if (ops[0] !== 'Sin sucursal' || ops.length !== 3) fail('vehiculos: opciones de sucursal del alta: ' + ops.join('|'));
+  nv('numero').value = ' '; $('#veh-nuevo-guardar').click(); await sleep(100);
+  if (nv('error').textContent.indexOf('número de coche') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: falta validación del número de coche');
+  nv('numero').value = '321'; nv('patente').value = 'QQ 0001'; nv('ruedas').value = '16'; nv('sucursal').value = '2';
+  // Enter en el campo de matrícula guarda (un clic menos)
+  // Dos Enter seguidos: una sola llamada a vehiculo_crear (el segundo ve el botón deshabilitado)
+  nv('patente').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  nv('patente').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(500);
+  if (fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).length !== 1) fail('vehiculos: dos Enter seguidos llamaron más de una vez a vehiculo_crear');
   var cr = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).pop();
-  if (!cr || cr.args.p_numero !== '321' || cr.args.p_patente !== 'QQ 0001' || cr.args.p_tipo_ruedas !== 16 || cr.args.p_sucursal_id !== 2) fail('sucursales: vehiculo_crear con argumentos incorrectos: ' + JSON.stringify(cr));
+  if (!cr || cr.args.p_numero !== '321' || cr.args.p_patente !== 'QQ 0001' || cr.args.p_tipo_ruedas !== 16 || cr.args.p_sucursal_id !== 2) fail('vehiculos: vehiculo_crear con argumentos incorrectos: ' + JSON.stringify(cr));
+  if ($('#modal-veh-nuevo').classList.contains('show') || toast().indexOf('Vehículo agregado') === -1) fail('vehiculos: tras agregar debe cerrarse el diálogo y avisar: ' + toast());
+  // Duplicado: el diálogo queda abierto con el mensaje
+  $('#btn-veh-agregar').click(); await sleep(200);
+  if (nv('numero').value !== '') fail('vehiculos: el diálogo reabierto debe empezar vacío');
+  nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(400);
+  if (toast().indexOf('número de coche') === -1 || nv('error').textContent.indexOf('número de coche') === -1 || !$('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: sin mensaje de número duplicado: ' + toast());
+  $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
+  if ($('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: Cancelar no cerró el diálogo');
+  // La sucursal elegida en la barra superior es la sucursal por defecto del alta
+  $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
   if (vrows().length !== 4) fail('sucursales: el vehículo nuevo no aparece (' + vrows().length + ')');
-  $('#suc-veh-numero').value = '321'; $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(400);
-  if (toast().indexOf('número de coche') === -1) fail('sucursales: sin mensaje de número duplicado: ' + toast());
 
   // Mover: confirmar y cancelar
   var selFila = function(id){ return $('#suc-vehiculos tr[data-vehiculo="' + id + '"] select'); };
@@ -187,13 +212,14 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (!visible($('.nav-item[data-view="sucursales"]'))) fail('sucursales: la entrada del menú no es visible para el perfil global');
   // «Cargar neumáticos ahora»: tras crear el vehículo abre su detalle, que ofrece cargar los neumáticos
   $('#suc-buscar').value = ''; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true }));
-  if (!/Cargar neumáticos ahora/.test($('label.sec-check').textContent) || $('#suc-veh-cargar').checked) fail('sucursales: falta la opción «Cargar neumáticos ahora» (sin marcar por defecto)');
-  $('#suc-veh-numero').value = '322'; $('#suc-veh-cargar').checked = true;
-  $('[data-action="sucursalVehiculoCrear"]').click(); await sleep(1200);
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
+  $('#btn-veh-agregar').click(); await sleep(200);
+  if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || nv('cargar').checked) fail('vehiculos: falta la opción «Cargar neumáticos ahora» (sin marcar por defecto)');
+  nv('numero').value = '322'; nv('cargar').checked = true;
+  $('#veh-nuevo-guardar').click(); await sleep(1200);
   // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).
-  if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-volver').textContent.indexOf('Volver a Sucursales') === -1) fail('sucursales: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
-  if ($('#suc-veh-cargar').checked) fail('sucursales: la casilla debe desmarcarse tras abrir el detalle');
+  if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-volver').textContent.indexOf('Volver a Vehículos') === -1) fail('vehiculos: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
   $('[data-action="detalleVolver"]').click(); await sleep(700);
-  if (!$('#view-sucursales').classList.contains('active')) fail('sucursales: Volver no regresó a Sucursales');
+  if (!$('#view-vehiculos').classList.contains('active')) fail('vehiculos: Volver no regresó a Vehículos');
   log.push('sucursales-cliente: rpcs=' + fx.rpcs.length);
 };
