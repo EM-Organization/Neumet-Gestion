@@ -29,7 +29,7 @@ La cuenta es de mínimo privilegio y queda ligada a un cliente. Contrato en [07-
    insert into public.perfiles (user_id, rol, cliente_id) values ('<uuid de la cuenta>', 'api', <id del cliente>);
    ```
 3. Probar el login contra `api-proveedor` (contrato en [`api/openapi.yaml`](api/openapi.yaml)). **[pendiente]**: cuenta aún no creada.
-4. Limitaciones conocidas: un JWT no se revoca antes de expirar (aprox. 1 h); la baja de un cliente no desactiva su perfil `api` (sugerencias del revisor en el tablero).
+4. Limitaciones conocidas: un JWT no se revoca antes de expirar (aprox. 1 h); desde el PR 5 de F10, dar de baja un cliente (`deleted_at`) corta su cuenta `api` (login y tokens ya emitidos responden 401) sin tocar su perfil.
 
 ## 3. Aplicar migraciones y desplegar funciones
 

@@ -3,6 +3,11 @@ import type { FilaBd } from './mapping.ts';
 export interface PerfilApi {
   rol: string;
   cliente_id: number | null;
+  /**
+   * true solo si el cliente existe y no está dado de baja (`clientes.deleted_at` nulo).
+   * Cualquier otra cosa (false, ausente) cierra: la cuenta se trata como sin perfil.
+   */
+  cliente_activo?: boolean;
 }
 
 export interface ItemRpc {
