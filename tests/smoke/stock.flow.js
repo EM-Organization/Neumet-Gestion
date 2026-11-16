@@ -29,7 +29,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
     log.push('stock-flow(sucursal): ok');
     return;
   }
-  if(!visible($('#btn-cubierta-nueva'))) fail('stock(' + rol + '): falta «Agregar cubierta»');
+  // El equipo Neumet mira el stock pero no escribe (docs/17 PR 9): solo el administrador de la empresa ve el alta
+  if(rol === 'admin' && visible($('#btn-cubierta-nueva'))) fail('stock(admin): el equipo Neumet ve «Agregar cubierta»');
+  if(rol !== 'admin' && !visible($('#btn-cubierta-nueva'))) fail('stock(' + rol + '): falta «Agregar cubierta»');
   if(rol === 'global' && visible($('#filter-cliente-stock'))) fail('stock(global): ve el filtro de cliente');
   if(rol === 'admin' && !visible($('#filter-cliente-stock'))) fail('stock(admin): falta el filtro de cliente');
 
@@ -48,6 +50,15 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
     set('#filter-cliente-stock', '2'); await sleep(100);
     if(quemas().join() !== 'Z-900') fail('stock(admin): filtro de cliente: ' + quemas().join());
     set('#filter-cliente-stock', ''); await sleep(100);
+  }
+
+  if(rol === 'admin'){
+    if(all('#stk-lista [data-action^="cubierta"]').length) fail('stock(admin): ve acciones de escritura sobre cubiertas');
+    var n0 = fx.rpcs.length;
+    ['cubiertaNueva', 'cubiertaEditar', 'cubiertaMover', 'cubiertaEliminar', 'cubiertaGuardar'].forEach(function(a){ if(w.document.querySelector('#view-stock [data-action="' + a + '"]') && visible(w.document.querySelector('#view-stock [data-action="' + a + '"]'))) fail('stock(admin): ve ' + a); });
+    if(fx.rpcs.length !== n0 || fx.rpcs.some(function(r){ return /^stock_cubierta_/.test(r.name); })) fail('stock(admin): el equipo Neumet llamó a una RPC de escritura de cubiertas');
+    log.push('stock-flow(admin): solo lectura');
+    return;
   }
 
   // Agregar cubierta: validación local, error de la base y éxito

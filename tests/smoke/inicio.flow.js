@@ -221,24 +221,30 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!$('.skip-link')) fail('a11y: falta el enlace "Saltar al contenido"');
 
   // --- Modal: role=dialog, foco dentro, Tab atrapado, Esc cierra y devuelve el foco ---
-  $('.nav-item[data-view="vehiculos"]').click(); await sleep(400);
-  var abre = $('[data-action="openVehiculoModal"]');
-  // El cliente no ve "Nuevo vehículo" (data-admin-only): se muestra solo para probar la accesibilidad del modal.
-  if(abre.offsetParent === null) abre.style.display = '';
+  // El administrador de empresa abre el alta de cubierta (Stock); el equipo Neumet, el ciclo de vida desde Vehículos
+  // (ya no tiene formularios de alta: docs/17 PR 9).
+  // El usuario de sucursal no tiene ningún diálogo de alta: su cobertura es la de los otros dos perfiles.
+  var sinDialogo = /[?&]secuser=1/.test(window.location.search);
+  var modalSel = cliMode ? '#modal-cubierta' : '#modal-ciclo';
+  if(!sinDialogo){
+  $('.nav-item[data-view="' + (cliMode ? 'stock' : 'vehiculos') + '"]').click(); await sleep(500);
+  var abre = cliMode ? $('#btn-cubierta-nueva') : $('#tbody-vehiculos [data-va="ciclo"]');
+  if(!abre) { fail('modal: sin botón para abrir el diálogo de prueba'); return; }
   abre.focus();
   abre.click(); await sleep(400);
-  var dlg = $('#modal-vehiculo .modal');
+  var dlg = $(modalSel + ' .modal');
   if(dlg.getAttribute('role') !== 'dialog' || dlg.getAttribute('aria-modal') !== 'true') fail('modal: sin role=dialog/aria-modal');
   if(!dlg.getAttribute('aria-labelledby')) fail('modal: sin aria-labelledby');
   if(!dlg.contains(d.activeElement)) fail('modal: el foco no entró al diálogo');
-  var foco = all('#modal-vehiculo .modal button, #modal-vehiculo .modal input, #modal-vehiculo .modal select, #modal-vehiculo .modal textarea').filter(function(e){ return !e.disabled && visible(e); });
+  var foco = all(modalSel + ' .modal button, ' + modalSel + ' .modal input, ' + modalSel + ' .modal select, ' + modalSel + ' .modal textarea').filter(function(e){ return !e.disabled && visible(e); });
   foco[foco.length - 1].focus(); key('Tab');
   if(d.activeElement !== foco[0]) fail('modal: Tab desde el último control no vuelve al primero');
   key('Tab', true);
   if(d.activeElement !== foco[foco.length - 1]) fail('modal: Shift+Tab desde el primero no va al último');
   key('Escape'); await sleep(200);
-  if($('#modal-vehiculo').classList.contains('show')) fail('modal: Esc no cierra');
+  if($(modalSel).classList.contains('show')) fail('modal: Esc no cierra');
   if(d.activeElement !== abre) fail('modal: el foco no vuelve al botón que lo abrió');
+  }
   // --- Cliente CON vehículos pero sin neumáticos medidos (vistas derivadas vacías): NO es "sin datos" ---
   var fxv = w.__flotaFx;
   if(fxv){

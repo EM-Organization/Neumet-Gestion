@@ -4,12 +4,9 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   var writes = function(t, op){ return fx.writes.filter(function(x){ return x.table === t && (!op || x.op === op); }); };
   function setv(sel, v){ $(sel).value = v; }
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(500);
-  var nb = $('#tbody-vehiculos [data-va="neum"]');
-  if(!nb){ fail('ciclo: sin botón neumáticos'); return; }
+  var nb = $('#tbody-vehiculos [data-va="ciclo"]');
+  if(!nb){ fail('ciclo: sin botón Odómetro y ciclo de vida en la fila del vehículo'); return; }
   nb.click(); await sleep(500);
-  var b = $('[data-action="cicloDesdeNeum"]');
-  if(!b){ fail('ciclo: falta botón Odómetro y ciclo de vida'); return; }
-  b.click(); await sleep(500);
   if(!$('#modal-ciclo').classList.contains('show')) { fail('ciclo: modal no abierto'); return; }
   var cb = $('#modal-ciclo [data-action="neumatico-cambiar"]');
   if(!cb || cb.getAttribute('data-vehiculo-id') !== '10' || !cb.getAttribute('data-posicion')) fail('ciclo: falta el botón Cambiar neumático (punto de entrada temporal)');
@@ -46,66 +43,15 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
     if(cTxt.indexOf('Sin costos registrados') === -1) fail('ciclo: neumático sin costos: ' + cTxt);
     if(!cT.querySelector('[data-action="cicloRegistrarCosto"]')) fail('ciclo: falta «Registrar costo»');
   }
-  var dlg = function(tag, label, danger, icono){
-    var ok = $('#confirm-ok'), ic = $('#confirm-icon');
-    if(ok.textContent !== label) fail(tag + ': etiqueta del botón «' + ok.textContent + '», se esperaba «' + label + '»');
-    if(ok.classList.contains('danger') !== danger || ok.classList.contains('primary') === danger) fail(tag + ': clase del botón ' + ok.className);
-    if(ic.classList.contains('danger') !== danger) fail(tag + ': clase del icono ' + ic.className);
-    var vis = Array.prototype.filter.call(ic.querySelectorAll('svg'), function(s){ return !s.hasAttribute('hidden'); }).map(function(s){ return s.dataset.icono; });
-    if(vis.join() !== (danger ? 'papelera' : icono)) fail(tag + ': icono visible ' + vis.join());
-  };
-  // Odómetro: inválido no escribe; válido actualiza vehiculos
-  setv('#ciclo-odo-input', '-5'); $('#ciclo-odo-save').click(); await sleep(150);
-  if(writes('vehiculos').length) fail('ciclo: odómetro negativo llegó a la BD');
-  setv('#ciclo-odo-input', '12.5'); $('#ciclo-odo-save').click(); await sleep(150);
-  if(writes('vehiculos').length) fail('ciclo: odómetro decimal llegó a la BD');
-  setv('#ciclo-odo-input', '5000'); $('#ciclo-odo-save').click(); await sleep(300);
-  var vw = writes('vehiculos', 'update');
-  if(vw.length !== 1 || vw[0].payload.odometro_km !== 5000 || !vw[0].payload.odometro_actualizado_at) fail('ciclo: no se guardó el odómetro: ' + JSON.stringify(vw));
-  if($('#ciclo-odo-val').textContent.indexOf('5') === -1) fail('ciclo: odómetro no se refleja');
-  // Bajar el odómetro pide confirmación; cancelar no escribe
-  setv('#ciclo-odo-input', '100'); $('#ciclo-odo-save').click(); await sleep(200);
-  if(!$('#modal-confirm').classList.contains('show')) fail('ciclo: bajar odómetro no pidió confirmación');
-  dlg('ciclo odómetro', 'Continuar', false, 'info');
-  $('#confirm-cancel').click(); await sleep(150);
-  if(writes('vehiculos', 'update').length !== 1) fail('ciclo: odómetro bajó sin confirmar');
-
-  // Eventos: inspección (solo evento), baja sin motivo (rechazada), baja con motivo (patch + evento)
-  setv('#ciclo-tipo', 'inspeccion'); $('#ciclo-tipo').dispatchEvent(new w.Event('change', {bubbles: true}));
-  setv('#ciclo-ev-odo', '5000'); $('#ciclo-ev-save').click(); await sleep(300);
-  var ev = writes('eventos_neumatico', 'insert');
-  if(ev.length !== 1 || ev[0].payload[0].tipo !== 'inspeccion' || ev[0].payload[0].odometro_km !== 5000) fail('ciclo: evento de inspección: ' + JSON.stringify(ev));
-  if(writes('neumaticos').length) fail('ciclo: la inspección modificó neumaticos');
-  setv('#ciclo-tipo', 'baja'); $('#ciclo-tipo').dispatchEvent(new w.Event('change', {bubbles: true}));
-  $('#ciclo-ev-save').click(); await sleep(200);
-  if(writes('eventos_neumatico', 'insert').length !== 1) fail('ciclo: baja sin motivo registró evento');
-  setv('#ciclo-baja-motivo', 'Corte lateral <b>'); $('#ciclo-ev-save').click(); await sleep(300);
-  var nw = writes('neumaticos', 'update');
-  if(nw.length !== 1 || nw[0].payload.estado !== 'baja' || nw[0].payload.motivo_baja !== 'Corte lateral <b>' || !nw[0].payload.fecha_baja) fail('ciclo: patch de baja: ' + JSON.stringify(nw));
-  ev = writes('eventos_neumatico', 'insert');
-  if(ev.length !== 2 || ev[1].payload[0].tipo !== 'baja') fail('ciclo: evento de baja');
-  if($('#ciclo-timeline').innerHTML.indexOf('<b>') !== -1) fail('ciclo: HTML sin escapar en la línea de tiempo');
-  // Rotación: intercambio P2<->P3 vía RPC atómica (sin UPDATE sueltos); un error de la RPC no da éxito
-  var nWrites = fx.writes.length;
-  setv('#ciclo-neum', '2'); setv('#ciclo-tipo', 'rotacion'); $('#ciclo-tipo').dispatchEvent(new w.Event('change', {bubbles: true}));
-  setv('#ciclo-pos-dest', '3'); setv('#ciclo-ev-odo', '5100');
-  var ce = w.console.error; w.console.error = function(){}; // el error esperado se registra en consola
-  fx.rpcError = {code: 'P0002', message: 'no hay neumático'};
-  $('#ciclo-ev-save').click(); await sleep(200);
-  dlg('ciclo rotación', 'Rotar', false, 'intercambio');
-  $('#confirm-ok').click(); await sleep(300);
-  if(fx.rpcs.length !== 1) fail('ciclo: la rotación no llamó a la RPC: ' + JSON.stringify(fx.rpcs));
-  if($('#toast-msg').textContent.indexOf('registrado') !== -1) fail('ciclo: éxito mostrado pese al error de la RPC');
-  fx.rpcError = null; w.console.error = ce;
-  $('#ciclo-ev-save').click(); await sleep(200);
-  $('#confirm-ok').click(); await sleep(300);
-  if(fx.rpcs.length !== 2) fail('ciclo: segunda rotación sin RPC');
-  var ra = fx.rpcs[1] ? fx.rpcs[1].args : {};
-  if(ra.p_vehiculo_id !== 10 || ra.p_pos_a !== 2 || ra.p_pos_b !== 3 || ra.p_odometro_km !== 5100) fail('ciclo: args de la RPC: ' + JSON.stringify(ra));
-  if(fx.writes.length !== nWrites) fail('ciclo: la rotación hizo escrituras sueltas: ' + JSON.stringify(fx.writes.slice(nWrites)));
-  if($('#toast-msg').textContent.indexOf('registrado') === -1) fail('ciclo: falta aviso de rotación registrada');
-  log.push('ciclo-flow: writes=' + fx.writes.length);
+  // Solo lectura para el equipo Neumet (docs/17 PR 9): sin formulario de odómetro ni de eventos, y ninguna escritura sobre
+  // vehículos, neumáticos o eventos. Antes esta vista escribía odómetro, bajas e inspecciones y rotaba por RPC.
+  ['#ciclo-odo-input', '#ciclo-odo-save', '#ciclo-form', '#ciclo-admin', '#ciclo-tipo', '#ciclo-ev-save'].forEach(function(sel){ if($(sel)) fail('ciclo: el equipo Neumet ve un control de escritura ' + sel); });
+  if(!$('#ciclo-odo-val') || $('#ciclo-odo-val').textContent.trim() === '') fail('ciclo: el odómetro no se muestra en lectura: ' + $('#ciclo-odo').textContent);
+  if($('#ciclo-odo').textContent.indexOf('administrador de la empresa') === -1) fail('ciclo: falta la indicación de quién corrige el kilometraje: ' + $('#ciclo-odo').textContent);
+  if(writes('vehiculos').length || writes('neumaticos').length || writes('eventos_neumatico').length) fail('ciclo: el equipo Neumet escribió: ' + JSON.stringify(fx.writes));
+  if(fx.rpcs.length) fail('ciclo: el equipo Neumet llamó a una RPC de escritura: ' + JSON.stringify(fx.rpcs));
+  // El costo sí se registra: gastos sigue siendo del equipo Neumet
+  log.push('ciclo-flow: solo lectura, writes=' + fx.writes.length);
   $('[data-action="closeCicloVida"]').click(); await sleep(100);
   if($('#modal-ciclo').classList.contains('show')) fail('ciclo: modal no cerrado');
-  $('[data-action="closeNeumaticosModal"]').click(); await sleep(100);
 };

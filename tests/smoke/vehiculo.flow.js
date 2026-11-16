@@ -10,7 +10,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: vista Vehiculos no activa');
   // Cliente: sin ABM visible ni texto de relleno
   if($('#view-vehiculos .table-wrap').offsetParent !== null) fail('detalle: el cliente ve la tabla de administracion');
-  if($('[data-action="openVehiculoModal"]').offsetParent !== null) fail('detalle: el cliente ve "Nuevo vehiculo"');
+  if($('[data-action="openVehiculoModal"]') || $('#modal-vehiculo')) fail('detalle: queda el alta de vehiculos del panel viejo (la hace Sucursales, no Vehiculos)');
   if($('#veh-lista-wrap').offsetParent === null) fail('detalle: el cliente no ve la lista');
   log.push('veh-lista='+filas().length);
   if(filas().length !== 3) fail('detalle: se esperaban 3 vehiculos, hay '+filas().length);

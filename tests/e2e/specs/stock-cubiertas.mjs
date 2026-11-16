@@ -273,26 +273,16 @@ export function registrar(env) {
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where lower(numero_quema) = 'otra-q1' and cliente_id = ${DEMO}`)), 0, 'la quema quedó libre');
   });
 
-  test('Stock (admin): agrega una cubierta a nombre de Otra Empresa SA eligiendo el cliente', async () => {
-    const otra = Number(env.sql(`select ${OTRA}`));
-    const suc = sucOtra(env);
-    const antes = cubiertas(env, `n.cliente_id = ${OTRA}`).length;
-    await flujo(env, 'alta-admin', 'admin', async p => {
+  test('Stock (admin): el equipo Neumet mira el stock pero el panel no ofrece alta ni acciones (docs/17 PR 9)', async () => {
+    const antes = foto(env);
+    await flujo(env, 'sin-alta-admin', 'admin', async p => {
       await abrirStock(p, cubiertas(env).length);
-      await p.click('#btn-cubierta-nueva');
-      await p.esperar(`document.querySelector('#modal-cubierta').classList.contains('show') && !!document.querySelector('#cb-cliente-wrap').offsetParent`, { que: 'modal con selector de cliente' });
-      await elegir(p, '#cb-cliente', otra);
-      const opts = await p.eval(`[...document.querySelectorAll('#cb-sucursal option')].map(o => o.textContent)`);
-      assert.ok(opts.includes(suc.nombre) && !opts.includes('Montevideo') && !opts.includes('Salto'), `solo las sucursales del cliente elegido: ${opts}`);
-      await poner(p, '#cb-quema', 'ADM-1'); await poner(p, '#cb-marca', 'Marca Admin');
-      await elegir(p, '#cb-sucursal', suc.id);
-      await p.click('#cb-guardar');
-      await toast(p, /Cubierta agregada/);
+      assert.equal(await p.eval(`!!document.querySelector('#btn-cubierta-nueva').offsetParent`), false, 'sin botón de alta');
+      assert.equal(await p.eval(`document.querySelectorAll('#stk-lista [data-action^="cubierta"]').length`), 0, 'sin acciones sobre las cubiertas');
+      assert.equal(await p.eval(`document.querySelectorAll('#tbody-stock button[data-sa]').length`), 0, 'sin editar ni eliminar lotes');
+      assert.equal(await p.eval(`!!document.querySelector('[data-action="openStockModal"]')`), false, 'sin alta de lotes');
     });
-    assert.equal(cubiertas(env, `n.cliente_id = ${OTRA}`).length, antes + 1);
-    const c = unaCubierta(env, 'ADM-1', OTRA);
-    assert.equal(c.ubicacion, suc.nombre);
-    assert.equal(env.sql(`select actor_rol from public.audit_log where entidad = 'eventos_neumatico' and accion = 'INSERT' and despues->>'neumatico_id' = '${c.id}'`), 'admin');
+    assert.equal(foto(env), antes, 'el panel no escribió nada');
   });
 
   // ---- Taller: montar una cubierta y devolver el neumático retirado al stock -------------------------------------
