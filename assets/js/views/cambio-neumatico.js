@@ -121,7 +121,9 @@ async function abrir(vehiculoId, posicion) {
   $('modal-cambio').classList.add('show');
 }
 
-ACTIONS['neumatico-cambiar'] = async function (vehiculoId, posicion) { await abrir(Number(vehiculoId), Number(posicion)); };
+// El equipo Neumet no opera dentro de una empresa (docs/17 P1): la acción no se ofrece en la interfaz y además se rechaza aquí,
+// porque un botón ajeno con este data-action (o una vista que no filtre) no debe abrir el modal.
+ACTIONS['neumatico-cambiar'] = async function (vehiculoId, posicion) { if (esAdmin()) return; await abrir(Number(vehiculoId), Number(posicion)); };
 ACTIONS['neumatico-cambiar-resumen'] = function () { if (ctx) actualizar(); };
 ACTIONS['neumatico-cambiar-cerrar'] = function () { $('modal-cambio').classList.remove('show'); ctx = null; };
 

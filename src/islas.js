@@ -4,20 +4,22 @@ import './estilos.css';
 import { mount, unmount } from 'svelte';
 import { crearRegistro, API_ISLAS } from './registro.js';
 import { cargarHojas } from './estilos-isla.js';
-import Hola from './componentes/Hola.svelte';
-import Uso from './componentes/Uso.svelte';
 
 const registro = crearRegistro();
-const componentes = { hola: Hola, uso: Uso };
+// Un import() por isla: Vite parte el bundle y una pantalla solo baja su código al montarse (docs/19, presupuesto de dist/panel).
+const cargadores = {
+  hola: () => import('./componentes/Hola.svelte'),
+  uso: () => import('./componentes/Uso.svelte'),
+};
 
 export { API_ISLAS };
 
 // Asíncrono porque espera las hojas de estilo; devuelve false (sin tocar el DOM) si la bandera está apagada para el rol,
 // si la isla no existe o si el `ctx` es de otra versión del contrato (defensa: el panel viejo ya lo comprueba antes).
 export async function montar(nombre, el, ctx) {
-  if (ctx?.api !== API_ISLAS || !registro.activa(nombre, ctx.rol) || !componentes[nombre]) return false;
+  if (ctx?.api !== API_ISLAS || !registro.activa(nombre, ctx.rol) || !cargadores[nombre]) return false;
   await cargarHojas();
-  return registro.montar(nombre, el, ctx, componentes, { mount, unmount });
+  return registro.montar(nombre, el, ctx, cargadores, { mount, unmount });
 }
 export const desmontar = (nombre) => registro.desmontar(nombre);
 export const desmontarTodas = () => registro.desmontarTodas();

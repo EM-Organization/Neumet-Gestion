@@ -56,7 +56,7 @@ describe('Uso: éxito', () => {
     const celdas = [...target.querySelectorAll('tbody tr td')].map((td) => td.textContent);
     expect(celdas).toEqual(['octubre de 2026', 'Transportes Alfa', '1.234', '5', '40', '10', '2', '3', '31/10/2026']);
     expect([...target.querySelectorAll('th')].map((th) => th.textContent)).toEqual(
-      ['Mes', 'Cliente', 'Llamadas API', 'Logins', 'Mediciones', 'Vehículos', 'Dispositivos', 'Usuarios', 'Último ingreso']);
+      ['Mes', 'Cliente', 'Llamadas API', 'Inicios de sesión de API', 'Mediciones', 'Vehículos', 'Dispositivos', 'Usuarios', 'Último ingreso al panel']);
     expect(target.textContent).toContain('1 registro');
   });
 
@@ -68,9 +68,9 @@ describe('Uso: éxito', () => {
 
   it('el mes en curso no se ofrece y se declara como sin cerrar; los meses son UTC', async () => {
     const { target } = await montar();
-    const opciones = [...selectDe(target, 'Hasta').options].map((o) => o.textContent);
+    const opciones = [...selectDe(target, 'Mes').options].map((o) => o.textContent);
     expect(opciones).not.toContain('noviembre de 2026');
-    expect(opciones.at(-1)).toBe('octubre de 2026');
+    expect(opciones.slice(0, 2)).toEqual(['Últimos 12 meses', 'octubre de 2026']);
     expect(target.textContent).toContain('En curso: noviembre de 2026, sin cerrar');
     expect(target.textContent).toContain('UTC');
     expect(target.textContent).toContain('Llamadas API no incluye logins');
@@ -153,13 +153,22 @@ describe('Uso: filtros', () => {
     expect(llamadas.at(-1).args.p_cliente_id).toBeNull();
   });
 
-  it('cambiar el rango pide el nuevo rango; «Desde» posterior a «Hasta» arrastra a «Hasta»', async () => {
+  it('hay un solo selector «Mes» (sin «Desde» ni «Hasta») y arranca en «Últimos 12 meses»', async () => {
+    const { target } = await montar();
+    const etiquetas = [...target.querySelectorAll('label')].map((l) => l.firstChild.textContent.trim());
+    expect(etiquetas).toEqual(['Mes', 'Cliente']);
+    expect(target.querySelector('[role="group"]')).toBeNull();
+    expect(selectDe(target, 'Mes').value).toBe('ultimos');
+    expect(selectDe(target, 'Mes').selectedOptions[0].textContent).toBe('Últimos 12 meses');
+  });
+
+  it('elegir un mes pide ese mes solo y volver a «Últimos 12 meses» pide el rango completo', async () => {
     const { target, llamadas } = await montar();
-    await cambiar(selectDe(target, 'Hasta'), '2026-03-01');
-    expect(llamadas.at(-1).args).toMatchObject({ p_desde: '2025-11-01', p_hasta: '2026-03-01' });
-    await cambiar(selectDe(target, 'Desde'), '2026-06-01');
-    expect(llamadas.at(-1).args).toMatchObject({ p_desde: '2026-06-01', p_hasta: '2026-06-01' });
-    expect(selectDe(target, 'Hasta').value).toBe('2026-06-01');
+    await cambiar(selectDe(target, 'Mes'), '2026-03-01');
+    expect(llamadas.at(-1).args).toMatchObject({ p_desde: '2026-03-01', p_hasta: '2026-03-01' });
+    expect(llamadas).toHaveLength(2); // un solo cambio, una sola consulta
+    await cambiar(selectDe(target, 'Mes'), 'ultimos');
+    expect(llamadas.at(-1).args).toMatchObject({ p_desde: '2025-11-01', p_hasta: '2026-10-01' });
   });
 
   it('una respuesta vieja no pisa a una más nueva', async () => {
@@ -203,10 +212,9 @@ describe('Uso: filtros', () => {
 });
 
 describe('Uso: accesibilidad y teclado', () => {
-  it('cada control tiene etiqueta visible, el rango es un grupo con nombre y hay un solo h2', async () => {
+  it('cada control tiene etiqueta visible y hay un solo h2', async () => {
     const { target } = await montar();
-    expect(target.querySelector('[role="group"]').getAttribute('aria-label')).toBe('Rango de meses');
-    for (const t of ['Desde', 'Hasta', 'Cliente']) expect(selectDe(target, t).closest('label').textContent).toContain(t);
+    for (const t of ['Mes', 'Cliente']) expect(selectDe(target, t).closest('label').textContent).toContain(t);
     expect(target.querySelectorAll('h2')).toHaveLength(1);
     expect(target.querySelector('table caption').textContent).toBe('Uso mensual por cliente');
     expect(target.querySelectorAll('th[scope="col"]')).toHaveLength(9);

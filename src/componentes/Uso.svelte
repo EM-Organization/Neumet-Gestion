@@ -5,8 +5,8 @@
   // Meses calendario UTC. El mes en curso no tiene fila (uso_cerrar_mes solo cierra meses terminados): se avisa en vez de mostrar
   // una cifra parcial que parecería definitiva.
   import { onMount } from 'svelte';
-  import { Boton, EstadoVacio, Insignia, SelectorRango, Tabla, crearDatos } from '../compartido/index.js';
-  import { COLUMNAS, etiquetaMes, filasDeUso, mesEnCurso, mesesElegibles, rangoPorDefecto } from '../uso/uso.js';
+  import { Boton, EstadoVacio, Insignia, Tabla, crearDatos } from '../compartido/index.js';
+  import { COLUMNAS, ETIQUETA_ULTIMOS, SELECCION_ULTIMOS, etiquetaMes, filasDeUso, mesEnCurso, mesesElegibles, rangoDeSeleccion } from '../uso/uso.js';
 
   let { ctx, ahora = () => new Date() } = $props();
 
@@ -14,8 +14,10 @@
   const datos = $derived(crearDatos(ctx.db));
   const meses = $derived(mesesElegibles(ahora()));
   const enCurso = $derived(mesEnCurso(ahora()));
-  const rangoInicial = () => rangoPorDefecto(ahora());
+  const rangoInicial = () => rangoDeSeleccion(SELECCION_ULTIMOS, ahora());
+  const claseSelect = 'tw:min-h-10 tw:rounded-[9px] tw:border tw:border-[var(--border-strong)] tw:bg-[var(--surface)] tw:px-3 tw:text-sm tw:text-[var(--text-primary)] tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-[var(--accent-dark)]';
 
+  let seleccion = $state(SELECCION_ULTIMOS); // valor del selector «Mes»
   let rango = $state(rangoInicial());
   let clienteId = $state(''); // '' = todos los clientes
   let clientes = $state([]);
@@ -54,17 +56,21 @@
     <EstadoVacio titulo="Sin permiso" detalle="Esta pantalla es solo para el equipo Neumet." />
   {:else}
     <div class="tw:flex tw:flex-wrap tw:items-end tw:gap-4">
-      <SelectorRango
-        opciones={meses}
-        desde={rango.desde}
-        hasta={rango.hasta}
-        etiqueta={etiquetaMes}
-        alCambiar={(nuevo) => { rango = nuevo; cargar(); }}
-      />
+      <label class="tw:flex tw:flex-col tw:gap-1 tw:text-sm tw:text-[var(--text-secondary)]">
+        Mes
+        <select
+          class={claseSelect}
+          value={seleccion}
+          onchange={(e) => { seleccion = e.currentTarget.value; rango = rangoDeSeleccion(seleccion, ahora()); cargar(); }}
+        >
+          <option value={SELECCION_ULTIMOS}>{ETIQUETA_ULTIMOS}</option>
+          {#each meses as k (k)}<option value={k}>{etiquetaMes(k)}</option>{/each}
+        </select>
+      </label>
       <label class="tw:flex tw:flex-col tw:gap-1 tw:text-sm tw:text-[var(--text-secondary)]">
         Cliente
         <select
-          class="tw:min-h-10 tw:rounded-[9px] tw:border tw:border-[var(--border-strong)] tw:bg-[var(--surface)] tw:px-3 tw:text-sm tw:text-[var(--text-primary)] tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-[var(--accent-dark)]"
+          class={claseSelect}
           value={clienteId}
           onchange={(e) => { clienteId = e.currentTarget.value; cargar(); }}
         >

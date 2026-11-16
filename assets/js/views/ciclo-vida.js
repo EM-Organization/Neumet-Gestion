@@ -128,6 +128,7 @@ function renderTodo(){
 }
 
 ACTIONS.cicloRegistrarCosto=function(id){
+  if(esAdmin()) return; // costos.js ya lo rechaza; guarda propia para no depender de eso
   const n=neums.find(x=>x.id===Number(id)); if(!n) return;
   abrirRegistroCosto({neumaticoId:n.id, etiqueta:`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Neumático'}`,
     alGuardar:async()=>{ if(await cargar()) renderTodo(); }});
