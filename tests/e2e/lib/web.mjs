@@ -1,17 +1,23 @@
-// Servidor local: sirve el panel real (assets/ y adminpanel/) y hace de proxy de /rest/v1 hacia PostgREST,
-// registrando cada petición de datos (método, ruta, estado, cuerpo de error) para los contratos de consultas.
-// Solo se sustituyen tres cosas en adminpanel/index.html: el CDN de supabase-js (por la misma versión servida
-// desde node_modules), assets/config.js (URL del proxy) y un shim que reemplaza la capa de AUTENTICACIÓN.
+// Servidor local: sirve el panel CONSTRUIDO (dist/, salida de scripts/build.mjs: lo viejo idéntico más /panel/), con las
+// cabeceras de vercel.json (CSP incluida: una violación sale como error del navegador y rompe el flujo), y hace de proxy de
+// /rest/v1 hacia PostgREST, registrando cada petición de datos (método, ruta, estado, cuerpo de error) para los contratos.
+// Solo se sustituyen dos cosas en adminpanel/index.html: el CDN de supabase-js (por la misma versión servida desde
+// node_modules) y assets/config.js (URL del proxy). La autenticación es la REAL de supabase-js: la sesión de prueba se
+// precarga en localStorage (chrome.mjs) y este servidor responde /auth/v1/{user,token,logout} como lo haría GoTrue.
 import { createServer, request as httpRequest } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { ROOT } from './postgres.mjs';
 
+const DIST = join(ROOT, 'dist');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2', '.mp4': 'video/mp4' };
 
 export async function startWeb({ postgrestBase }) {
   const peticiones = [];
-  const shim = readFileSync(join(ROOT, 'tests/e2e/browser/auth-shim.js'), 'utf8');
+  // Cabeceras de vercel.json: cada bloque cuyo `source` (una expresión regular de ruta) coincide, en orden; el último gana.
+  const bloques = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')).headers
+    .map(b => ({ re: new RegExp(`^${b.source}$`), headers: b.headers }));
+  const cabecerasDe = pathname => Object.fromEntries(bloques.filter(b => b.re.test(pathname)).flatMap(b => b.headers.map(h => [h.key.toLowerCase(), h.value])));
   const supabaseUmd = readFileSync(join(ROOT, 'node_modules/@supabase/supabase-js/dist/umd/supabase.js'));
   const cdn = /<script[^>]*cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js[^>]*><\/script>/;
 
@@ -19,7 +25,7 @@ export async function startWeb({ postgrestBase }) {
     const url = new URL(req.url, 'http://x');
     if (url.pathname.startsWith('/rest/v1/') || url.pathname === '/rest/v1') return proxy(req, res, url);
     if (url.pathname === '/__e2e/supabase.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); return res.end(supabaseUmd); }
-    if (url.pathname === '/__e2e/auth-shim.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); return res.end(shim); }
+    if (url.pathname.startsWith('/auth/v1/')) return auth(req, res, url);
     if (url.pathname === '/__e2e/config.js') {
       res.writeHead(200, { 'content-type': MIME['.js'] });
       return res.end(`window.NEUMET_CONFIG = { SUPABASE_URL: location.origin, SUPABASE_KEY: 'clave-publica-de-prueba' };`);
@@ -30,20 +36,34 @@ export async function startWeb({ postgrestBase }) {
   function estatico(pathname, res) {
     let rel = decodeURIComponent(pathname);
     if (rel.endsWith('/')) rel += 'index.html';
-    const file = normalize(join(ROOT, rel));
-    if (!file.startsWith(ROOT) || rel.includes('/node_modules/') || rel.includes('/.git/') || !existsSync(file) || !statSync(file).isFile()) {
+    const file = normalize(join(DIST, rel));
+    if (!file.startsWith(DIST) || rel.includes('/node_modules/') || rel.includes('/.git/') || !existsSync(file) || !statSync(file).isFile()) {
       res.writeHead(404); return res.end('no encontrado');
     }
     let body = readFileSync(file);
     if (rel === '/adminpanel/index.html') {
       let h = body.toString('utf8');
       if (!cdn.test(h)) throw new Error('adminpanel/index.html ya no carga supabase-js desde el CDN esperado: actualizar tests/e2e/lib/web.mjs');
-      h = h.replace(cdn, '<script src="/__e2e/supabase.js"></script><script src="/__e2e/auth-shim.js"></script>')
+      h = h.replace(cdn, '<script src="/__e2e/supabase.js"></script>')
         .replace('../assets/config.js', '/__e2e/config.js');
       body = Buffer.from(h);
     }
-    res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    res.writeHead(200, { 'cache-control': 'no-store', ...cabecerasDe(pathname), 'content-type': MIME[extname(file)] || 'application/octet-stream' });
     res.end(body);
+  }
+
+  // GoTrue mínimo. El JWT de la sesión de prueba ya viene firmado por el arnés; aquí solo se devuelve lo que supabase-js pide.
+  function auth(req, res, url) {
+    const json = (status, obj) => { res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (url.pathname === '/auth/v1/logout') { res.writeHead(204); return res.end(); }
+    if (url.pathname === '/auth/v1/user') {
+      try {
+        const c = JSON.parse(Buffer.from((req.headers.authorization || '').replace(/^Bearer /, '').split('.')[1], 'base64url').toString('utf8'));
+        return json(200, { id: c.sub, email: c.email, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {} });
+      } catch { return json(401, { message: 'jwt inválido' }); }
+    }
+    // /token (login o refresco): la sesión de prueba dura todo el arnés; si algo intenta renovarla es un fallo del test.
+    return json(400, { error: 'e2e_no_soportado', error_description: `el arnés e2e no atiende ${url.pathname}` });
   }
 
   function proxy(req, res, url) {

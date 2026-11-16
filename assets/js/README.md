@@ -22,6 +22,7 @@ core/
   actions.js            ACTIONS + registerActions + listener delegado (data-action / data-change / data-backdrop-close)
   auth.js               checkAuth, login/logout, rol de la sesión (currentRol: admin | cliente | sin_acceso; pantalla «Sin acceso»), modo cliente (currentClienteId, isClienteMode), hooks onLogin/onLogout
   nav.js                registerView(nombre, etiqueta, load, {menu}), switchView, setTitulo (migas), sidebar móvil
+  islas.js              registrarIsla(nombre, etiqueta): monta una pantalla Svelte de /panel/islas.js con el `ctx` versionado (API_ISLAS) y la desmonta al salir de la vista (docs/19 §5.2)
   buscador.js           buscador de vehículos por matrícula o número (barra superior, Inicio; atajo «/»)
   brand.js              BRAND (paleta para SVG generados por JS)
   svg.js                svgEl(tag, attrs)

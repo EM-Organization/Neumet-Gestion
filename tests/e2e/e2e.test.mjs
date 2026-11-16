@@ -1,5 +1,5 @@
 // Pruebas E2E: el panel real en Chrome headless contra Postgres + migraciones + RLS + seed demo + PostgREST reales.
-// Solo la autenticación está sustituida (ver browser/auth-shim.js). Ejecutar: npm run e2e  (README en tests/e2e/).
+// Se sirve dist/ (build real) con las cabeceras de vercel.json; la autenticación es la real de supabase-js (ver lib/web.mjs). Ejecutar: npm run e2e  (README en tests/e2e/).
 import { after } from 'node:test';
 import { iniciarEntorno } from './lib/env.mjs';
 import { registrar as inicio } from './specs/inicio.mjs';
@@ -24,6 +24,7 @@ import { registrar as costosCpk } from './specs/costos-cpk.mjs';
 import { registrar as preciosSoloGlobal } from './specs/precios-solo-global.mjs';
 import { registrar as adminEmpresa } from './specs/admin-empresa.mjs';
 import { registrar as empresaPanel } from './specs/empresa-panel.mjs';
+import { registrar as islas } from './specs/islas.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -49,4 +50,5 @@ costosCpk(env);
 preciosSoloGlobal(env);
 adminEmpresa(env);
 empresaPanel(env);
+islas(env);
 contrato(env);

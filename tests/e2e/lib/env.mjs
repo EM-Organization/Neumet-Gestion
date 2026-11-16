@@ -1,6 +1,8 @@
 // Levanta todo el entorno E2E: Postgres + migraciones + seed, PostgREST, servidor del panel y Chrome.
 import { createServer } from 'node:net';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { JWT_SECRET, USERS } from './config.mjs';
 import { signJwt } from './jwt.mjs';
 import { startPostgres, prepararBase, query, ROOT } from './postgres.mjs';
@@ -12,8 +14,17 @@ const freePort = () => new Promise((ok, ko) => {
   const s = createServer(); s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => ok(port)); }); s.on('error', ko);
 });
 
+// El panel se prueba CONSTRUIDO (dist/), igual que lo sirve Vercel: lo viejo idéntico más /panel/ (docs/19 §7.1.1 b).
+// E2E_SIN_BUILD=1 reutiliza el dist/ existente (iteración local).
+function construirDist() {
+  if (process.env.E2E_SIN_BUILD && existsSync(join(ROOT, 'dist/panel/islas.js'))) return;
+  const r = spawnSync(process.execPath, [join(ROOT, 'scripts/build.mjs')], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`npm run build falló antes del e2e:\n${r.stdout}\n${r.stderr}`);
+}
+
 export async function iniciarEntorno() {
   const t0 = Date.now();
+  construirDist();
   const pg = await startPostgres();
   const migs = prepararBase(pg.url);
   const rest = await startPostgrest({ dbUri: pg.apiUrl, port: await freePort() });
@@ -24,7 +35,8 @@ export async function iniciarEntorno() {
 
   const sesion = rol => {
     const u = USERS[rol];
-    return { rol, sub: u.sub, email: u.email, jwt: signJwt({ sub: u.sub, email: u.email }, JWT_SECRET) };
+    const expiraEn = 24 * 3600; // la sesión dura todo el arnés: el stub de /auth/v1/token no sabe refrescar
+    return { rol, sub: u.sub, email: u.email, jwt: signJwt({ sub: u.sub, email: u.email }, JWT_SECRET, { expiresIn: expiraEn }), expiraEn, expiraAt: Math.floor(Date.now() / 1000) + expiraEn };
   };
   return {
     pg, rest, web, browser, sesion,
