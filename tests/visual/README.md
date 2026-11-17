@@ -24,7 +24,7 @@ vista pedida en pantalla (`scenes.js`) y Chrome headless hace `--screenshot`. Un
 que el título sea `SMOKE:OK`: cualquier `console.error`, `Acción desconocida`, recurso que no carga, o un menú que resalta una
 vista distinta de la activa, hace fallar la escena.
 
-Requisitos: Google Chrome (se busca en la ruta de macOS y en `google-chrome`/`chromium`; o `CHROME=/ruta`) y `python3`.
+Requisitos: Google Chrome (se busca en la ruta de macOS y en `google-chrome`/`chromium`; o `CHROME=/ruta`) y `node`. El servidor estático (`scripts/servir-estatico.mjs`) toma el primer puerto libre salvo que se fije `PORT`.
 Las capturas desactivan transiciones y animaciones: con tiempo virtual, Chrome fotografiaba el menú a mitad de la transición y parecía resaltar el ítem anterior (por ejemplo Inicio con otra vista abierta). El estado real del DOM era correcto.
 Limitaciones: el stub no reproduce datos reales, RLS ni la caché de módulos del CDN; las fuentes se cargan de la red (sin
 red cae a la tipografía del sistema); las animaciones no se capturan. Cada captura tarda unos segundos (44 capturas ~ 5 min).

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # QA visual: capturas de las vistas clave (admin/cliente x escritorio/móvil) con Chrome headless y el stub de tests/smoke.
 # Uso: tests/visual/run.sh [escena ...]      (sin argumentos: todas). Salida: tests/visual/out/<rol>-<tamaño>-<escena>.png
-# Variables: PORT (8792), CHROME (ruta del binario), SIZES="desktop mobile"  # también: laptop (1280x720), ROLES="admin cliente".
+# Variables: PORT (por defecto, el primer puerto libre), CHROME (ruta del binario), SIZES="desktop mobile"  # también: laptop (1280x720), ROLES="admin cliente".
 set -uo pipefail
 cd "$(dirname "$0")/../.."
-PORT="${PORT:-8792}"; OUT_DIR="tests/visual/out"
+OUT_DIR="tests/visual/out"
 CHROME="${CHROME:-}"
 if [ -z "$CHROME" ]; then
   for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" google-chrome google-chrome-stable chromium chromium-browser; do
@@ -16,8 +16,9 @@ SIZES="${SIZES:-desktop mobile}"; ROLES="${ROLES:-admin cliente}"
 # escena:roles que la admiten (detalle/selector necesitan fixtures de cliente)
 ALL="login:admin sin-acceso:admin inicio:both ultimas-mediciones:both ciclo-vida:admin ciclo-costo:admin vehiculos:both flota:both alertas:both dispositivos:admin reportes:both reportes-cpk:both mediciones:both clientes:admin ficha:admin stock:both recauchutado:cliente recauchutado-aceptar:cliente stock-alta:both stock-mover:cliente stock-busqueda:cliente busqueda:both vehiculos-busqueda:cliente vehiculos-agregar:cliente detalle:cliente detalle-rueda:cliente detalle-calidad:cliente detalle-rueda-calidad:cliente calidad-lista:both calidad-invalidar:cliente detalle-rueda-km:cliente detalle-rueda-costo:cliente cambio-neumatico:cliente cambio-cubierta:cliente cambio-almacenar:cliente detalle-vacio:cliente detalle-vacio-rueda:cliente montar-neumatico:cliente montar-nueva:cliente montar-siguiente:cliente retirar-neumatico:cliente selector-seccional:cliente confirmar-intercambio:cliente confirmar-eliminar:admin empresa-usuarios:cliente empresa-umbrales:cliente empresa-dispositivos:cliente"
 mkdir -p "$OUT_DIR"
-python3 -m http.server "$PORT" >/dev/null 2>&1 &
-SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
+. tests/lib-servidor.sh
+iniciar_servidor || exit 2
+trap 'kill $SRV 2>/dev/null' EXIT
 FAIL=0; N=0
 for item in $ALL; do
   scene="${item%%:*}"; who="${item##*:}"
@@ -35,9 +36,9 @@ for item in $ALL; do
       [ "$scene" = sin-acceso ] && Q="$Q&sinperfil=1"
       f="$OUT_DIR/$role-$size-$scene.png"; rm -f "$f"
       "$CHROME" --headless=new --disable-gpu --hide-scrollbars --window-size=$W,$H --virtual-time-budget=${BUDGET:-30000} \
-        --screenshot="$PWD/$f" "http://localhost:$PORT/tests/smoke/harness.html?$Q" >/dev/null 2>&1
+        --screenshot="$PWD/$f" "http://127.0.0.1:$PORT/tests/smoke/harness.html?$Q" >/dev/null 2>&1
       # Comprobación del estado (errores de consola/recursos): segunda pasada rápida con --dump-dom
-      T=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-30000} --dump-dom "http://localhost:$PORT/tests/smoke/harness.html?$Q" 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
+      T=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-30000} --dump-dom "http://127.0.0.1:$PORT/tests/smoke/harness.html?$Q" 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
       N=$((N+1))
       if [ -s "$f" ] && [[ "$T" == *"SMOKE:OK"* ]]; then echo "ok    $f"; else echo "FALLA $f $T"; FAIL=$((FAIL+1)); fi
     done

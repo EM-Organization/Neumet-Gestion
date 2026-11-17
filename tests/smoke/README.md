@@ -7,7 +7,7 @@ y recorre las vistas y los modales principales. El resultado queda en `document.
 
 ## Cómo correrlo
 
-Requiere Google Chrome y `python3`:
+Requiere Google Chrome y `node`. Cada corrida levanta su propio servidor en el primer puerto libre (`PORT=n` para fijarlo), así que varias a la vez no chocan; `scripts/smoke-modos.sh [modo ...]` corre varios modos y resume (sin argumentos, los once):
 
 ```
 tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de sucursales)
@@ -33,7 +33,7 @@ El recorrido del stock de cubiertas (`stock.flow.js`, con `stock.fixture.js` y l
 
 El equipo Neumet (admin) queda en solo lectura en Alertas (`flota.flow.js`), Calidad de datos (`calidad.flow.js`) y Recauchutado (`reca.flow.js`, también para cliente y secuser): sin botones de escritura y, con botones falsos que llevan el `data-action`, sin modal ni RPC `alerta_*`, `medicion_*` o `recauchutado_*` (F10 PR 10).
 
-Equivale a servir el repo con `python3 -m http.server <puerto>` y ejecutar:
+Equivale a servir el repo con `node scripts/servir-estatico.mjs <puerto> .` (no `python3 -m http.server`: un hilo y cola de 5 perdían módulos con «recurso no cargado») y ejecutar:
 
 ```
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
