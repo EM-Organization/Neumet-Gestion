@@ -5,12 +5,12 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
-import { registerView } from '../core/nav.js';
+import { registerView, vistaActiva, reloadActiveView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
 import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
-  etiquetaEstado, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo, validarAceptacion,
+  etiquetaEstado, etiquetaBanda, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo, validarAceptacion,
   traducirErrorRecauchutado, ERROR_GENERICO_RECAUCHUTADO,
 } from '../domain/recauchutado.js';
 
@@ -20,9 +20,12 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 // recauchutado_* pierden su rama de admin en el PR 11 (C2).
 const puedeGestionar = () => esAdminEmpresa();
 
-let procesos = [], cubiertas = [], sucursales = [], modal = null, cargaN = 0;
+let procesos = [], cubiertas = [], sucursales = [], clientes = [], modal = null, cargaN = 0, guardando = false;
 
+const nombreCliente = id => (clientes.find(c => String(c.id) === String(id)) || {}).nombre || '';
 const etiquetaProceso = p => `${p.numero_quema || p.idneumatico || 'Sin quema'} · ${p.marca || 'Sin marca'}${p.modelo ? ' ' + p.modelo : ''}`;
+// Tras el turno del observador de core/modal-a11y.js, que al abrir enfoca el primer campo.
+const enfocar = id => setTimeout(() => { const el = $(id); if (el && el.getClientRects().length) el.focus(); }, 60);
 const err = msg => { $('reca-error').textContent = msg || ''; };
 const fechaTxt = f => (f ? fmtFecha(new Date(f + 'T00:00:00')) : '—');
 
@@ -33,14 +36,16 @@ function render() {
     setHtml(lista, html`<div class="empty-state"><div class="empty-title">Sin recauchutados registrados</div><div class="empty-sub">${puedeGestionar() ? 'Usar «Enviar a recauchutar» con una cubierta del stock.' : 'Los procesos los registra el administrador de empresa.'}</div></div>`);
     return;
   }
-  setHtml(lista, html`<ul class="stk-lista reca-lista" aria-label="Recauchutados">
-    <li class="stk-cab reca-fila" aria-hidden="true"><span>Cubierta</span><span>Proveedor</span><span>Estado</span><span>Envío</span><span>Vida</span><span></span></li>
+  // El equipo Neumet ve procesos de varios clientes: el cliente va bajo la cubierta (como en Stock) para no tocar la grilla de 6 columnas.
+  const ver = esAdmin();
+  setHtml(lista, html`${ver ? html`<p class="stk-resumen">Vista de solo lectura: los procesos los gestiona el administrador de cada empresa.</p>` : ''}<ul class="stk-lista reca-lista" aria-label="Recauchutados">
+    <li class="stk-cab reca-fila" aria-hidden="true"><span>Cubierta${ver ? ' y cliente' : ''}</span><span>Proveedor</span><span>Estado</span><span>Envío</span><span>Banda</span><span></span></li>
     ${procesos.map(p => html`<li class="stk-fila reca-fila" data-proceso="${p.id}">
-      <span class="stk-quema">${etiquetaProceso(p)}</span>
+      <span class="stk-quema">${etiquetaProceso(p)}${ver ? html`<span class="stk-sub">${nombreCliente(p.cliente_id) || 'Sin cliente'}</span>` : ''}</span>
       <span class="stk-desc">${p.proveedor}</span>
       <span class="stk-cond"><span class="badge">${etiquetaEstado(p.estado)}</span>${p.motivo ? html`<span class="stk-sub">${p.motivo}</span>` : ''}</span>
       <span class="stk-loc">${fechaTxt(p.fecha_envio)}</span>
-      <span class="stk-compra">${p.vida_nueva !== null && p.vida_nueva !== undefined ? html`Recauchutado nº ${p.vida_nueva}` : html`Vida ${p.vida_origen}`}</span>
+      <span class="stk-compra">${etiquetaBanda(p.vida_nueva !== null && p.vida_nueva !== undefined ? p.vida_nueva : p.vida_origen)}</span>
       <span class="stk-acc">${puedeGestionar() ? accionesDe(p.estado).map(a => html`<button type="button" class="btn ghost stk-btn" data-action="recaAbrir" data-args='["${a.id}",${p.id}]'>${a.label}</button>`) : ''}</span>
     </li>`)}</ul>`);
 }
@@ -48,7 +53,7 @@ function render() {
 export async function loadRecauchutado() {
   const mio = ++cargaN;
   setHtml($('reca-lista'), html`<div class="loading-state"><div class="spinner"></div></div>`);
-  const [rp, rc, rs] = await Promise.all([
+  const [rp, rc, rs, rcl] = await Promise.all([
     fetchAll((from, to) => {
       let q = db.from('recauchutados')
         .select('id,cliente_id,neumatico_id,idneumatico,numero_quema,marca,modelo,vida_origen,vida_nueva,proveedor,estado,fecha_envio,fecha_cierre,motivo')
@@ -63,13 +68,16 @@ export async function loadRecauchutado() {
       return q;
     }, { pageSize: PAGE_SIZE, max: 50000 }),
     db.from('sucursales').select('id,nombre,cliente_id').order('nombre'),
+    esAdmin() ? db.from('clientes').select('id,nombre').is('deleted_at', null).order('nombre') : Promise.resolve({ data: [] }),
   ]);
   if (mio !== cargaN) return;
-  if (rp.error || rc.error) { showToast(userError(rp.error || rc.error), true); return; }
+  if (rp.error || rc.error) { showToast(userError(rp.error || rc.error), true); return false; }
   procesos = rp.rows || [];
   cubiertas = rc.rows || [];
   sucursales = rs.error ? [] : (rs.data || []);
+  clientes = rcl.error ? [] : (rcl.data || []);
   render();
+  return true;
 }
 
 const opcionesSucursal = clienteId => joinHtml([
@@ -94,18 +102,28 @@ function mostrarCampos(modo, apto) {
 }
 
 registerActions({
-  recaEnviar() {
+  // `cubiertaId` viene de la fila de Stock («Enviar a recauchutar»): el modal abre con la cubierta ya elegida.
+  async recaEnviar(cubiertaId) {
     if (!puedeGestionar()) return;
+    const elegida = cubiertaId === undefined || cubiertaId === null ? null : Number(cubiertaId);
+    // Desde Stock la pestaña Recauchutado puede no haberse abierto: se leen cubiertas y procesos antes de ofrecer el modal.
+    // Si la lectura falla ya avisó con su propio mensaje: no se suma un segundo aviso («ya no se puede enviar»).
+    if (elegida !== null && await loadRecauchutado() === false) return;
     const libres = cubiertasEnviables(cubiertas, procesos);
     modal = { modo: 'enviar' };
     $('reca-title').textContent = TITULOS.enviar; $('reca-sub').textContent = '';
     setHtml($('reca-cubierta'), joinHtml([html`<option value="">Elegir cubierta</option>`,
-      libres.map(c => html`<option value="${c.id}">${c.numero_quema || c.idneumatico || 'Sin quema'} · ${c.marca || 'Sin marca'}${c.modelo ? ' ' + c.modelo : ''} (vida ${c.vida})</option>`)]));
+      libres.map(c => html`<option value="${c.id}">${c.numero_quema || c.idneumatico || 'Sin quema'} · ${c.marca || 'Sin marca'}${c.modelo ? ' ' + c.modelo : ''} (${etiquetaBanda(c.vida).toLowerCase()})</option>`)]));
     ['reca-proveedor', 'reca-motivo', 'reca-banda-marca', 'reca-banda-modelo', 'reca-profundidad', 'reca-costo'].forEach(id => { $(id).value = ''; });
     $('reca-moneda').value = 'UYU'; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
+    if (elegida !== null) {
+      if (!libres.some(c => c.id === elegida)) { modal = null; showToast('La cubierta ya no se puede enviar a recauchutar', true); return; }
+      $('reca-cubierta').value = String(elegida);
+    }
     mostrarCampos('enviar'); err('');
     $('reca-guardar').textContent = 'Enviar';
     $('modal-reca').classList.add('show');
+    enfocar(elegida !== null ? 'reca-proveedor' : 'reca-cubierta');
   },
   recaAbrir(modo, id) {
     const p = procesos.find(x => x.id === id);
@@ -119,12 +137,13 @@ registerActions({
     mostrarCampos(modo, 'apto'); err('');
     $('reca-guardar').textContent = modo === 'aceptar' ? 'Aceptar' : modo === 'rechazar' ? 'Rechazar' : 'Guardar';
     $('modal-reca').classList.add('show');
+    enfocar({ dictamen: 'reca-dictamen', aceptar: 'reca-profundidad', rechazar: 'reca-motivo' }[modo]);
   },
   recaDictamenCambio() { mostrarCampos('dictamen', $('reca-dictamen').value); },
   recaCerrar() { $('modal-reca').classList.remove('show'); modal = null; },
   // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
   async recaGuardar() {
-    if (!modal || !puedeGestionar()) return;
+    if (!modal || guardando || !puedeGestionar()) return; // `guardando`: un segundo Enter mientras se guarda no repite el envío
     const f = { fecha: $('reca-fecha').value, sucursalId: $('reca-sucursal').value };
     let r, rpc;
     if (modal.modo === 'enviar') {
@@ -143,7 +162,7 @@ registerActions({
     }
     if (!r.ok) { err(r.error); return; }
     const btn = $('reca-guardar'); const txt = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Guardando…';
+    btn.disabled = true; btn.textContent = 'Guardando…'; guardando = true;
     try {
       const { error } = await db.rpc(rpc, r.args);
       if (error) {
@@ -155,14 +174,18 @@ registerActions({
       ACTIONS.recaCerrar();
       showToast('Recauchutado actualizado');
       document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
-      await loadRecauchutado();
-    } finally { btn.disabled = false; btn.textContent = txt; }
+      // El envío puede haberse iniciado desde Stock: se refresca la vista que está a la vista.
+      if (vistaActiva() === 'recauchutado') await loadRecauchutado(); else reloadActiveView();
+    } finally { btn.disabled = false; btn.textContent = txt; guardando = false; }
   },
   loadRecauchutado,
 });
 
 // Cuelga del menú Neumáticos (pestaña Recauchutado): el ítem resaltado es `stock`.
 registerView('recauchutado', 'Recauchutado', loadRecauchutado, { menu: 'stock', vetoA: { vista: 'stock', cuando: () => !pestanasVisibles({ admin: esAdmin(), adminEmpresa: esAdminEmpresa() }).includes(PESTANA_RECAUCHUTADO) } });
-onLogout(() => { procesos = []; cubiertas = []; sucursales = []; modal = null; });
+onLogout(() => { procesos = []; cubiertas = []; sucursales = []; clientes = []; modal = null; });
 
-export function init() { /* todo va por data-action */ }
+export function init() {
+  // «Enter» en cualquier campo guarda (docs/14 §5, regla 3).
+  $('reca-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS.recaGuardar(); });
+}

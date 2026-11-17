@@ -49,7 +49,17 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
   $('#view-recauchutado [data-neu-tab="stock"]').click(); await sleep(700);
   if(!$('#view-stock').classList.contains('active')) fail('reca('+rol+'): el clic en Stock no volvió');
   await irA(); // Recauchutado queda abierto para lo que sigue
+  // Sin jerga de «vida» (docs/14 §5): banda original / recauchutado nº N, para todos los roles que ven la lista.
+  var tl = $('#reca-lista').textContent;
+  if(/\bVida\b|\bvida \d/i.test(tl) || tl.indexOf('Banda original') === -1 || tl.indexOf('Recauchutado nº 1') === -1) fail('reca('+rol+'): banda/vida en la lista: ' + tl);
   if(rol === 'cliente'){
+    var textosAcc = all('#reca-lista [data-action="recaAbrir"]').map(function(b){ return b.textContent.trim(); });
+    if(textosAcc.indexOf('Aceptar recauchutado') === -1 || textosAcc.indexOf('Rechazar recauchutado') === -1) fail('reca(cliente): textos de las acciones: ' + textosAcc.join('|'));
+    // «Enter» en un campo envía el formulario: con datos faltantes muestra el error y no llama a la RPC.
+    $('#btn-reca-enviar').click(); await sleep(400);
+    $('#reca-form').requestSubmit(); await sleep(200);
+    if(!/cubierta|proveedor/i.test($('#reca-error').textContent) || !$('#modal-reca').classList.contains('show')) fail('reca(cliente): Enter con datos faltantes: ' + $('#reca-error').textContent);
+    $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200);
     if($('#btn-reca-enviar').style.display === 'none') fail('reca(cliente): falta «Enviar a recauchutar»');
     var acc = all('#reca-lista [data-action="recaAbrir"]');
     if(acc.length < 2) fail('reca(cliente): faltan las acciones por proceso (hay '+acc.length+')');
@@ -58,7 +68,8 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
     log.push('reca(cliente): acciones conservadas');
     return;
   }
-  // El equipo Neumet conserva la lista en solo lectura (pestaña Recauchutado).
+  // El equipo Neumet conserva la lista en solo lectura (pestaña Recauchutado) y la vista mezcla clientes: se nombra el cliente.
+  if(!/solo lectura/.test(tl) || tl.indexOf('Transportes Alfa') === -1) fail('reca(admin): falta el aviso de solo lectura o el cliente: ' + tl);
   if($('#btn-reca-enviar').style.display !== 'none') fail('reca(admin): ofrece «Enviar a recauchutar» al equipo Neumet');
   if(all('#reca-lista [data-action="recaAbrir"]').length) fail('reca(admin): ofrece acciones por proceso al equipo Neumet');
   var falsos = [['recaEnviar', '[]'], ['recaAbrir', '["dictamen",2]'], ['recaAbrir', '["aceptar",3]'], ['recaGuardar', '[]']];

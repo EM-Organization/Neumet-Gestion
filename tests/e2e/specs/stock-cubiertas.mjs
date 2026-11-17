@@ -221,6 +221,27 @@ export function registrar(env) {
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where lower(numero_quema) = 'otra-q1'`)), 2, 'una por cliente');
   });
 
+  test('Stock (global): «Enviar a recauchutar» desde la fila abre el modal con la cubierta elegida y Enter envía una sola vez', async () => {
+    const c = unaCubierta(env, 'S-011');
+    assert.ok(c && c.estado === 'almacenado');
+    const abiertos = () => Number(env.sql(`select count(*) from public.recauchutados where neumatico_id = ${c.id}`));
+    assert.equal(abiertos(), 0);
+    await flujo(env, 'enviar-desde-stock', 'global', async p => {
+      await abrirStock(p, cubiertas(env, `n.cliente_id = ${DEMO}`).length);
+      await p.click(`[data-cubierta="${c.id}"] [data-action="recaEnviar"]`);
+      await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
+      assert.equal(await p.eval(`document.querySelector('#reca-cubierta').value`), String(c.id), 'la cubierta llega elegida');
+      // El foco inicial queda en el proveedor (lo único que falta) y «Enter» envía.
+      await p.esperar(`document.activeElement && document.activeElement.id === 'reca-proveedor'`, { que: 'foco en el proveedor' });
+      await p.escribir('#reca-proveedor', 'Recauchutadora E2E');
+      await p.enter(); await p.enter(); // doble Enter: un solo envío
+      await toast(p, /Recauchutado actualizado/);
+      await p.esperar(`!document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal cerrado' });
+      assert.equal(await p.eval(`!!document.querySelector('[data-cubierta="${c.id}"] [data-action="recaEnviar"]')`), false, 'la cubierta enviada ya no ofrece el envío');
+    });
+    assert.equal(abiertos(), 1, 'un solo proceso, aunque llegaron dos Enter');
+  });
+
   test('Stock (global): editar condición y datos, mover y eliminar (si nunca se usó) por la interfaz', async () => {
     const c = unaCubierta(env, 'OTRA-Q1');
     const mvd = sucId(env, 'Montevideo'), salto = sucId(env, 'Salto');
@@ -243,7 +264,7 @@ export function registrar(env) {
       assert.match(await texto(p, '#cubierta-mover-sub'), /OTRA-Q1 · ahora en Salto/);
       await elegir(p, '#cbm-sucursal', mvd);
       await p.click('#cbm-guardar');
-      await toast(p, /Cubierta movida/);
+      await toast(p, /Sucursal actualizada/);
       await p.esperar(`/Montevideo/.test(document.querySelector(\`[data-cubierta="${c.id}"] .stk-loc\`).textContent)`, { que: 'ubicación Montevideo' });
       // Una cubierta que tuvo uso no se elimina: mensaje claro y nada cambia
       await p.click(`[data-cubierta="${uso.id}"] [data-action="cubiertaEliminar"]`);

@@ -29,6 +29,7 @@ import { registrar as precioMensual } from './specs/precio-mensual.mjs';
 import { registrar as cerrarEscriturasNeumet } from './specs/cerrar-escrituras-neumet.mjs';
 import { registrar as islas } from './specs/islas.mjs';
 import { registrar as usoIsla } from './specs/uso-isla.mjs';
+import { registrar as stockLotesSucursal } from './specs/stock-lotes-sucursal.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -59,4 +60,5 @@ precioMensual(env);
 cerrarEscriturasNeumet(env);
 islas(env);
 usoIsla(env);
+stockLotesSucursal(env);
 contrato(env);

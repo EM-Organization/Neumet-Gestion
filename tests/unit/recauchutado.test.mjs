@@ -2,7 +2,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  etiquetaEstado, estaAbierto, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo,
+  etiquetaEstado, etiquetaBanda, estaAbierto, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo,
   validarAceptacion, traducirErrorRecauchutado, ERROR_GENERICO_RECAUCHUTADO,
 } from '../../assets/js/domain/recauchutado.js';
 
@@ -18,6 +18,7 @@ describe('estados y acciones', () => {
   test('acciones por estado', () => {
     assert.deepEqual(accionesDe('enviado').map(a => a.id), ['dictamen']);
     assert.deepEqual(accionesDe('apto').map(a => a.id), ['aceptar', 'rechazar']);
+    assert.deepEqual(accionesDe('apto').map(a => a.label), ['Aceptar recauchutado', 'Rechazar recauchutado']);
     assert.deepEqual(accionesDe('recibido'), []);
     assert.deepEqual(accionesDe('rechazado'), []);
     assert.deepEqual(accionesDe(undefined), []);
@@ -99,4 +100,11 @@ describe('traducirErrorRecauchutado', () => {
     assert.equal(traducirErrorRecauchutado({ message: 'boom' }), ERROR_GENERICO_RECAUCHUTADO);
     assert.equal(traducirErrorRecauchutado(null), ERROR_GENERICO_RECAUCHUTADO);
   });
+});
+
+test('etiquetaBanda: sin jerga de «vida»', () => {
+  assert.equal(etiquetaBanda(0), 'Banda original');
+  assert.equal(etiquetaBanda(1), 'Recauchutado nº 1');
+  assert.equal(etiquetaBanda('2'), 'Recauchutado nº 2');
+  assert.equal(etiquetaBanda(null), 'Banda original');
 });

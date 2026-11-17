@@ -498,7 +498,7 @@ No se migran ni se tocan: `stock_neumaticos` sigue con su cantidad y su RLS (sol
 
 ## F.6 Panel
 
-`views/stock.js` y `domain/stock-cubiertas.js`: lista con distintivo de condición (con texto: no depende del color), filtros por sucursal y condición, búsqueda por quema, marca o modelo, y las acciones Editar, Mover y Eliminar; «Agregar cubierta» (el admin elige el cliente). El filtro de sucursal de la barra superior es de vehículos y se oculta en Stock. El buscador global (`core/buscador.js`) suma las quemas de las cubiertas en stock: una coincidencia abre Stock filtrado; varias, una lista. Textos: `docs/14`.
+`views/stock.js` y `domain/stock-cubiertas.js`: lista con distintivo de condición (con texto: no depende del color), filtros por sucursal y condición, búsqueda por quema, marca o modelo, y las acciones Editar, Cambiar sucursal (antes «Mover»), Enviar a recauchutar y Eliminar; «Agregar cubierta» (el admin elige el cliente). El filtro de sucursal de la barra superior es de vehículos y se oculta en Stock. El buscador global (`core/buscador.js`) suma las quemas de las cubiertas en stock: una coincidencia abre Stock filtrado; varias, una lista. Textos: `docs/14`.
 
 ## F.7 Riesgos y límites
 
@@ -781,7 +781,7 @@ Vida vigente en un evento = `vida_base` + eventos `reencauche` hasta él, con `v
 
 ## L.4 Panel y pruebas
 
-Panel: vista **Recauchutado** (admin y perfil global; `views/recauchutado.js`, `domain/recauchutado.js`): lista de procesos con las acciones de cada estado y «Enviar a recauchutar» (solo cubiertas del stock); Stock marca «En recauchutado» y oculta «Mover»; Reportes suma los grupos «Vida» y «Banda» al costo por km. Textos según `docs/14`.
+Panel: vista **Recauchutado** (admin y perfil global; `views/recauchutado.js`, `domain/recauchutado.js`): lista de procesos con las acciones de cada estado y «Enviar a recauchutar» (solo cubiertas del stock); Stock marca «En recauchutado», oculta «Cambiar sucursal» (antes «Mover») y ofrece «Enviar a recauchutar» en la fila de cada cubierta con vida menor a 3; Reportes suma los grupos «Vida» y «Banda» al costo por km. Textos según `docs/14`.
 
 Pruebas: SQL `tests/sql/t_91_recauchutado_carcasa.sql` (flujo completo, rechazos sin vida ficticia, guardia, matriz de roles, costos y km por vida, ponderación, planes), con doble pasada de la migración y PG16/PG17. Unitarias: `recauchutado.test.mjs`. Smoke: el menú de `inicio.flow.js`.
 
