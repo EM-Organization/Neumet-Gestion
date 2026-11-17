@@ -14,7 +14,7 @@ info:
 
     | Motivo | Significado / acción esperada |
     |---|---|
-    | `vehiculo` | Matrícula inexistente o de otro cliente (misma respuesta). Revisar la matrícula. |
+    | `vehiculo` | Matrícula inexistente para el cliente y ninguna posición permite crearla (en cuanto hay una posición válida, 1..16 o 99 con las tres lecturas, el vehículo se crea). Enviar una posición válida. |
     | `sin_neumaticos` | El coche existe pero no tiene neumáticos montados con `idneumatico`. Cargar las ruedas del coche en el panel. Estado global ok. |
     | `posicion` | El coche tiene neumáticos pero la posición no existe en su montaje. Revisar con `obtener_montaje`. |
     | `sin_medicion` | Rueda no auxilio con los cuatro mm null. Medir y reenviar. |
@@ -83,6 +83,8 @@ paths:
             La respuesta NO incluye el motivo; se registra en `ingesta_log` (ver tabla de motivos
             en `info.description` y docs/07 Apéndice B). Un coche existente sin neumáticos cargados
             devuelve guardado=false en todas sus posiciones (motivo interno `sin_neumaticos`).
+            Una matrícula inexistente del cliente con al menos una posición válida CREA el vehículo y sus
+            neumáticos y guarda las mediciones (docs/07 Apéndice B, «Alta de vehículo»); la respuesta conserva su forma.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }

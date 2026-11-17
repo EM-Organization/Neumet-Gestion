@@ -81,4 +81,6 @@ insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idn
   (2, 3, (select id from public.neumaticos where idneumatico='T-3-1'), 'T-3-1', 'montaje', 500, 400.00, now() - interval '2880 hours');
 
 insert into public.gastos (nombre, monto) values ('secreto', 100);
+-- Los vehículos de arriba llevan id explícito: la secuencia queda atrás y un alta real (api_guardar_montaje) chocaría.
+select setval(pg_get_serial_sequence('public.vehiculos', 'id'), 1000);
 commit;

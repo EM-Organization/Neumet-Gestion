@@ -219,7 +219,11 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       const entrada: LogEntrada = {
         ...log,
         motivo: motivo ?? log.motivo ?? null,
-        status: http >= 500 ? 'error' : http === 200 && (!motivo || motivo === 'fallo_parcial') ? 'ok' : 'rechazado',
+        status: http >= 500
+          ? 'error'
+          : http === 200 && (!motivo || motivo === 'fallo_parcial' || motivo === 'vehiculo_creado')
+          ? 'ok'
+          : 'rechazado',
         http_code: http,
         duracion_ms: ahora() - c.inicio,
       } as LogEntrada;
@@ -399,9 +403,12 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
         motivos[x.motivo] = (motivos[x.motivo] ?? 0) + 1;
       }
     }
+    // Alta de vehículo: solo la request que lo creó (un replay repite la respuesta pero no crea nada).
+    const alta = r.creado === true && r.replay !== true;
     log.payload_resumen = {
       ...log.payload_resumen,
       replay: r.replay === true,
+      ...(alta ? { vehiculo_creado: true, neumaticos_creados: r.neumaticos_creados ?? 0 } : {}),
       ...(Object.keys(motivos).length > 0 ? { motivos } : {}),
     };
     // Motivo agregado para el admin. La respuesta a DAC no lo lleva: conserva {posicion, guardado}.
@@ -414,6 +421,8 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
         ? 'sin_neumaticos'
         : log.n_fallidos > 0
         ? 'fallo_parcial'
+        : alta
+        ? 'vehiculo_creado'
         : null,
     };
   }

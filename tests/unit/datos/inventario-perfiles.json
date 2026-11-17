@@ -41,7 +41,7 @@
  },
  {
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
-  "linea": 171,
+  "linea": 226,
   "texto": "return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, estado };"
  },
  {

@@ -215,7 +215,7 @@ Las viñetas siguientes son del diseño inicial; la matriz vigente es la de arri
 4. ¿`vehiculo.cliente_id` puede cambiarse con neumáticos asignados? `neumaticos.cliente_id` es redundante y podría quedar inconsistente (la RLS usa el vehículo, no esa columna).
 5. Formato del `numero` (docs/07 §5).
 6. Los datos existentes (si se migran) pueden violar los CHECK nuevos (MAC con `-`, mm fuera de 0..40, patentes duplicadas por cliente).
-7. `crear-cliente` y `guardar-montaje-mm` no están versionadas: confirmar que `crear-cliente` crea la fila `clientes` con `auth_user_id` (el trigger crea el perfil) y que la ingesta inserta con service_role.
+7. `crear-cliente` y `guardar-montaje-mm` no están versionadas: confirmar que `crear-cliente` crea la fila `clientes` con `auth_user_id` (el trigger crea el perfil) y que la ingesta inserta con service_role (la RPC `api_guardar_montaje` también crea vehículos y neumáticos: apéndice R).
 8. Primer administrador: debe crearse a mano en `perfiles` (instrucciones al final de la migración). Sin ello, nadie puede usar el panel.
 9. Resuelta en F10 (docs/17): un cliente tiene un administrador de empresa (perfil `cliente` sin sucursal) y usuarios de sucursal, todos en `perfiles` (PK en `user_id`: un usuario pertenece a un solo cliente). `clientes.auth_user_id` (unique) es solo el vínculo del primer administrador y, desde C2, no se escribe por la API (apéndices N y Q).
 
@@ -523,7 +523,7 @@ Monta un neumático en una posición **libre**. Origen: una cubierta del stock (
 
 | Regla | Detalle |
 |---|---|
-| Posición | Entero de 1 a 99. **Esperada** según el tipo del vehículo: 1-10 si `tipo_ruedas = 10`, 1-16 si es 16, y **99 = auxilio**. Igual que `layoutRuedas` del panel, un vehículo de 10 con algún neumático montado en 11..98 se trata como de 16. Las posiciones 17..98 no se crean aquí (las crea la ingesta de la API). Fuera de lo esperado: `23514` |
+| Posición | Entero de 1 a 99. **Esperada** según el tipo del vehículo: 1-10 si `tipo_ruedas = 10`, 1-16 si es 16, y **99 = auxilio**. Igual que `layoutRuedas` del panel, un vehículo de 10 con algún neumático montado en 11..98 se trata como de 16. Las posiciones 17..98 no se crean aquí ni por la API (la ingesta solo crea 1..16 y 99, apéndice R). Fuera de lo esperado: `23514` |
 | Libre | Si cualquier fila ocupa `(vehiculo_id, posicion)` (también un neumático aparcado): `55000` «la posición N ya tiene un neumático». Un segundo auxilio: `55000` |
 | Cubierta del stock | Solo admin o perfil global (sucursal: `42501`), del **mismo cliente** que el vehículo, sin vehículo y `almacenado`; si no (inexistente, de otro cliente o ya montada, mismo mensaje): `P0002`. Misma fila: conserva quema, `idneumatico`, `km_previos` y mediciones; `sucursal_id` pasa a `NULL` y el trigger convierte «Nuevo» en «Usado». El costo de compra se imputa solo en el primer montaje |
 | Ingresado a mano | `p_nuevo` (jsonb): `marca` (obligatoria, hasta 60), `modelo`, `codigo`, `numero_quema` (hasta 40, **única por cliente** sin distinguir mayúsculas: `23505`), `km_previos` (entero 0..999999999), `fecha_compra` (no futura), `precio` (≥ 0), `vida` (entero 0..3; con vida > 0 nace «Recauchutado», si no «Usado»). Una clave desconocida da `22023`. `idneumatico` = `CN-<vehículo>-<posición>-<8 hex>` (el mismo formato que genera `neumatico_cambiar`) |
@@ -979,3 +979,34 @@ El comentario de `20261120500000_cerrar_escrituras_neumet.sql:765` dice que con 
 - `tests/sql/t_96_cerrar_escrituras_neumet.sql`: catálogo (privilegios, políticas, grupos de funciones; una guarda falla si aparece una función `SECURITY DEFINER` ejecutable sin clasificar), matriz por rol generada desde `pg_proc`, lo que el admin conserva, escrituras directas denegadas y columnas de `clientes` por rol. Las pruebas `t_10` a `t_95` se adaptaron: el actor es el cliente global y el admin recibe `42501`.
 - `tests/e2e/specs/cerrar-escrituras-neumet.mjs`: PostgREST real con el JWT de cada rol.
 
+---
+
+# Apéndice R · La API crea el vehículo y sus neumáticos (migración `20261121000000_api_crea_vehiculo.sql`)
+
+## R.1 Qué cambia
+
+`public.api_guardar_montaje` (SECURITY DEFINER, `search_path` vacío, solo `service_role`; misma firma) ya no responde `no_encontrado` a una patente inexistente del cliente cuando hay datos para crearla: crea el vehículo, sus neumáticos y las mediciones en la misma transacción. Comportamiento y respuesta: docs/07, apéndice B («Alta de vehículo»).
+
+## R.2 Decisiones del dueño
+
+1. `tipo_ruedas` se deduce de las posiciones: 1..10 más auxilio 99 = 10; cualquier 11..16 = 16. Fuera de 1..99 sigue siendo 400.
+2. Neumáticos sin marca, modelo, precio ni fecha de compra, con `idneumatico = 'API-<vehiculo_id>-P<posicion>'`. Un auxilio con los cuatro `null` no se crea.
+3. Protección siempre activa para todas las cuentas `api` (sin bandera por cuenta).
+4. Sucursal: las cuentas `api` no pueden tener sucursal (`perfiles_sucursal_rol_ck`), así que el vehículo queda con `sucursal_id` nulo y lo ve el perfil global. No se agregó ninguna columna.
+
+## R.3 Reglas que se conservan
+
+- `normalizar_patente`; unicidad `vehiculos_cliente_patente_norm_uk (cliente_id, patente_norm)`: una patente de otro cliente no se revela y no impide el alta propia.
+- Concurrencia: `pg_advisory_xact_lock` por cliente y patente más `insert ... on conflict do nothing`; savepoint por posición; idempotencia por `api_idempotencia` (el replay no crea).
+- Lecturas inválidas no crean vehículo ni neumático; si ninguna posición es válida no se crea nada (o se borra el vehículo recién insertado si ninguna se pudo guardar).
+- `ingesta_log` registra el alta (`motivo = 'vehiculo_creado'`, `payload_resumen.vehiculo_creado` y `neumaticos_creados`, sin payload). `v_salud` y el uso mensual (`api_llamadas`, `mediciones`) no cambian.
+
+## R.4 Límites
+
+Una patente mal escrita crea un vehículo huérfano (acotado por el límite de 120 requests/min). Hoy no hay forma de archivarlo desde el panel (ninguna RPC ni vista pone `vehiculos.activo = false` y `authenticated` no tiene UPDATE sobre `vehiculos`): el equipo Neumet solo puede darlo de baja con SQL manual, y mientras tanto suma a `vehiculos_activos` de `uso_cliente_mensual` y al KPI «Vehículos activos» (riesgo asumido); las posiciones 17..98 no se crean; en un vehículo existente las posiciones nuevas siguen respondiendo `posicion`; el tipo de ruedas puede quedar mal deducido si la primera request es parcial.
+
+## R.5 Pruebas
+
+- `tests/sql/t_97_api_crea_vehiculo.sql` (alta, tipo 10 y 16, auxilio, mixtos, ninguna válida, cliente B no toca a A, idempotencia, privilegios) y `tests/sql/concurrencia_api_alta.sh` (dos sesiones reales, un solo vehículo). `t_58` se adaptó: una medición válida sobre una patente inexistente ya crea.
+- `tests/e2e/specs/api-crea-vehiculo.mjs`: RPC por PostgREST real con el JWT de cada rol.
+- `supabase/functions/api-proveedor/handler_test.ts`: forma de la respuesta, log y replay.

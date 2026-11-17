@@ -23,7 +23,8 @@ export function registrar(env) {
     const sin = guardar('E2ESIN1', items, 'e2e-sin');
     assert.equal(sin.estado, 'ok');
     assert.equal(motivos(sin), '1:false:sin_neumaticos,2:false:sin_neumaticos');
-    const ajeno = guardar('E2EAJE1', items, 'e2e-aje');
+    // Sin lecturas: con medición válida la patente ajena crearía el coche propio (api-crea-vehiculo.mjs).
+    const ajeno = guardar('E2EAJE1', [{ posicion: 1 }, { posicion: 2 }], 'e2e-aje');
     assert.equal(ajeno.estado, 'no_encontrado');
     assert.equal(motivos(ajeno), '1:false:vehiculo,2:false:vehiculo');
     assert.equal(med(), m0, 'no se escribió ninguna medición');

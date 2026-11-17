@@ -55,17 +55,18 @@ select test.eq('con neumáticos: P1 guardada y P7 inexistente -> posicion',
 select test.eq('con neumáticos: solo se insertó la medición de P1',
   (select count(*) from public.mediciones), :med0::bigint + 1);
 
--- 5. Otro cliente / inexistente: vehiculo, indistinguibles
+-- 5. Otro cliente / inexistente: vehiculo, indistinguibles. Desde 20261121000000 una patente inexistente con
+-- una medición válida se CREA (t_97); aquí la posición no tiene nada creable, así que no se crea y no se revela.
 insert into _r select 'ajeno', public.api_guardar_montaje(1, gen_random_uuid(), 'TT5840',
-  '[{"posicion":1,"mm1":9,"mm2":9,"mm3":9}]'::jsonb, gen_random_uuid(), 'k58-f', 'hf');
+  '[{"posicion":1,"mm1":null,"mm2":null,"mm3":null}]'::jsonb, gen_random_uuid(), 'k58-f', 'hf');
 insert into _r select 'nada', public.api_guardar_montaje(1, gen_random_uuid(), 'NOEXISTE9',
-  '[{"posicion":1,"mm1":9,"mm2":9,"mm3":9}]'::jsonb, gen_random_uuid(), 'k58-g', 'hg');
+  '[{"posicion":1,"mm1":null,"mm2":null,"mm3":null}]'::jsonb, gen_random_uuid(), 'k58-g', 'hg');
 select test.eq('vehículo de otro cliente: no_encontrado + vehiculo',
   (select r->>'estado' || '/' || (r->'resultados'->0->>'motivo') from _r where k = 'ajeno'), 'no_encontrado/vehiculo');
 select test.eq('vehículo ajeno e inexistente: misma respuesta',
   (select (r - 'vehiculo_id') from _r where k = 'ajeno'), (select (r - 'vehiculo_id') from _r where k = 'nada'));
 select test.eq('cliente 2 sobre su coche sin neumáticos ajenos: el coche 81 (cliente 1) es vehiculo',
-  public.api_guardar_montaje(2, gen_random_uuid(), 'TT5800', '[{"posicion":1,"mm1":9,"mm2":9,"mm3":9}]'::jsonb,
+  public.api_guardar_montaje(2, gen_random_uuid(), 'TT5800', '[{"posicion":1,"mm1":null,"mm2":null,"mm3":null}]'::jsonb,
     gen_random_uuid(), 'k58-h', 'hh')->'resultados'->0->>'motivo', 'vehiculo');
 
 -- 6. Replay idempotente: misma clave y hash -> misma respuesta con replay:true, sin escribir
