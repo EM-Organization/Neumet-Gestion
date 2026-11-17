@@ -219,6 +219,29 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if ($('#modal-confirm').classList.contains('show')) fail('sucursales: mover a «sin sucursal» no debe pedir confirmación');
   mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
   if (!mv || mv.args.p_vehiculo_id !== 10 || mv.args.p_sucursal_id !== null) fail('sucursales: mover a «sin sucursal» incorrecto: ' + JSON.stringify(mv));
+  // Operaciones distintas superpuestas (RPC lenta): solo el doble envío de la MISMA operación se descarta
+  var cnt = function(nm){ return fx.rpcs.filter(function(r){ return r.name === nm; }).length; };
+  fx.rpcDelay = 300;
+  var m0 = cnt('vehiculo_mover_sucursal'), c0 = cnt('sucursal_crear'), r0 = cnt('sucursal_renombrar');
+  setSel(selFila(10), '1'); await sleep(100);
+  setSel(selFila(15), ''); await sleep(50);
+  $('#suc-nombre').value = 'Salto'; $('#suc-form').requestSubmit();
+  await sleep(2500);
+  if (cnt('vehiculo_mover_sucursal') !== m0 + 2) fail('sucursales: dos mover de vehículos distintos superpuestos deben ejecutarse ambos (' + (cnt('vehiculo_mover_sucursal') - m0) + ')');
+  if (cnt('sucursal_crear') !== c0 + 1) fail('sucursales: «Agregar sucursal» durante un mover no creó la sucursal');
+  if (selFila(10).value !== '1' || selFila(15).value !== '') fail('sucursales: los selects no reflejan el estado real tras mover dos vehículos');
+  // Renombrar dos filas seguidas: ambas se guardan y el texto escrito en la segunda no se pierde por la recarga
+  var ids = Array.prototype.slice.call(all('#suc-lista tr[data-sucursal]')).map(function(t){ return t.dataset.sucursal; });
+  $('#suc-n-' + ids[0]).value = 'Fila uno'; $('#suc-n-' + ids[1]).value = 'Fila dos';
+  $('#suc-n-' + ids[0]).dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await sleep(100);
+  $('#suc-n-' + ids[1]).dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  await sleep(1800);
+  if (cnt('sucursal_renombrar') !== r0 + 2) fail('sucursales: renombrar dos filas superpuestas debe guardar ambas (' + (cnt('sucursal_renombrar') - r0) + ')');
+  // Texto sin guardar en una fila ajena sobrevive a la recarga de otra operación
+  $('#suc-n-' + ids[2]).value = 'Sin guardar'; setSel(selFila(10), ''); await sleep(1500);
+  if ($('#suc-n-' + ids[2]).value !== 'Sin guardar') fail('sucursales: la recarga pisó el texto sin guardar de otra fila');
+  fx.rpcDelay = 0;
+  setSel(selFila(10), ''); setSel(selFila(15), '1'); await sleep(400);
   // Buscador del listado
   $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');

@@ -29,6 +29,12 @@ function opciones(seleccion, primera) {
 }
 
 function renderSucursales() {
+  // La recarga de otra operación no debe pisar un nombre escrito y aún sin guardar en otra fila.
+  const sinGuardar = new Map();
+  for (const s of sucursales) {
+    const inp = $(`suc-n-${s.id}`);
+    if (inp && inp.value !== inp.defaultValue) sinGuardar.set(String(s.id), inp.value);
+  }
   const cuentas = contarPorSucursal(vehiculos);
   setHtml($('suc-lista'), sucursales.length
     ? html`<table class="sec-tabla"><thead><tr><th scope="col">Nombre</th><th scope="col">Vehículos</th><th scope="col"></th></tr></thead><tbody>${
@@ -40,6 +46,7 @@ function renderSucursales() {
           <button type="button" class="btn ghost" data-action="sucursalEliminar" data-args="[${s.id}]">Eliminar</button>
         </td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin sucursales. Usar «Agregar sucursal» para crear la primera.</div>`);
+  for (const [id, valor] of sinGuardar) { const inp = $(`suc-n-${id}`); if (inp) inp.value = valor; }
 }
 
 function renderVehiculos() {
@@ -77,26 +84,31 @@ async function recargar() {
 }
 
 // Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
-// Una sola a la vez: con Enter repetido cada envío lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»).
-// Un envío mientras hay otra en curso se descarta; al terminar la primera la vista se recarga con el estado real.
-let ocupado = false;
-async function rpc(nombre, args, okMsg) {
-  if (ocupado) return false;
-  ocupado = true;
-  try {
-    err('');
-    const { data, error } = await db.rpc(nombre, args);
-    if (error) {
-      const m = mensajeErrorGestion(error);
-      if (m.startsWith('No se pudo')) userError(error);
-      err(m); showToast(m, true);
-      await loadSucursales(); // deja el select en el valor real
-      return false;
-    }
-    if (okMsg) showToast(okMsg);
-    await recargar();
-    return data || true;
-  } finally { ocupado = false; }
+// La guarda es por operación y objetivo (`crear`, `renombrar:<id>`, `mover:<vehiculoId>`): con Enter repetido cada envío
+// lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»), así que el doble envío de la MISMA operación
+// se descarta. Operaciones distintas no se pierden: se encolan y corren en serie, cada una con su recarga del estado real.
+const enCurso = new Set();
+let cola = Promise.resolve();
+async function ejecutar(nombre, args, okMsg) {
+  err('');
+  const { data, error } = await db.rpc(nombre, args);
+  if (error) {
+    const m = mensajeErrorGestion(error);
+    if (m.startsWith('No se pudo')) userError(error);
+    err(m); showToast(m, true);
+    await loadSucursales(); // deja el select en el valor real
+    return false;
+  }
+  if (okMsg) showToast(okMsg);
+  await recargar();
+  return data || true;
+}
+function rpc(clave, nombre, args, okMsg) {
+  if (enCurso.has(clave)) { loadSucursales(); return Promise.resolve(false); } // el control vuelve a su valor real
+  enCurso.add(clave);
+  const corrida = cola.then(() => ejecutar(nombre, args, okMsg));
+  cola = corrida.catch(() => {});
+  return corrida.finally(() => enCurso.delete(clave));
 }
 
 const ACCIONES = {
@@ -104,12 +116,12 @@ const ACCIONES = {
   async sucursalCrear() {
     const v = validarNombreSucursal($('suc-nombre').value);
     if (!v.ok) { err(v.error); return; }
-    if (await rpc('sucursal_crear', { p_nombre: v.valor }, 'Sucursal creada')) $('suc-nombre').value = '';
+    if (await rpc('crear', 'sucursal_crear', { p_nombre: v.valor }, 'Sucursal creada')) $('suc-nombre').value = '';
   },
   async sucursalRenombrar(id) {
     const v = validarNombreSucursal($(`suc-n-${id}`).value);
     if (!v.ok) { err(v.error); return; }
-    await rpc('sucursal_renombrar', { p_sucursal_id: Number(id), p_nombre: v.valor }, 'Sucursal actualizada');
+    await rpc(`renombrar:${id}`, 'sucursal_renombrar', { p_sucursal_id: Number(id), p_nombre: v.valor }, 'Sucursal actualizada');
   },
   async sucursalEliminar(id) {
     const s = porId(id);
@@ -119,14 +131,14 @@ const ACCIONES = {
     // Con vehículos asociados no hay nada que confirmar: se informa y no se llama a la base.
     if (n > 0) { err(c.mensaje); showToast(c.mensaje, true); return; }
     if (!await confirmDialog(c.titulo, c.mensaje, 'Eliminar', true)) return;
-    await rpc('sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
+    await rpc(`eliminar:${id}`, 'sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
   },
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);
     if (!v) return;
     if (String(v.sucursal_id ?? '') === String(valor)) return;
     // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-    await rpc('vehiculo_mover_sucursal', argsMover(vehiculoId, valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(valor, sucursales)));
+    await rpc(`mover:${vehiculoId}`, 'vehiculo_mover_sucursal', argsMover(vehiculoId, valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(valor, sucursales)));
   },
 };
 registerActions(ACCIONES);

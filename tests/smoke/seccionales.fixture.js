@@ -102,7 +102,9 @@
       if (!h) return rpcBase.apply(this, arguments);
       fx.rpcs.push({ name: name, args: args });
       var e = h();
-      return Promise.resolve({ data: e ? null : (name === 'vehiculo_crear' ? { id: seq, cliente_id: 1 } : {}), error: e || null });
+      var out = { data: e ? null : (name === 'vehiculo_crear' ? { id: seq, cliente_id: 1 } : {}), error: e || null };
+      // fx.rpcDelay (ms) simula una RPC lenta para probar operaciones superpuestas
+      return fx.rpcDelay ? new Promise(function(ok){ setTimeout(function(){ ok(out); }, fx.rpcDelay); }) : Promise.resolve(out);
     };
     c.from = function(t){
       if (t === 'sucursales' || t === 'perfiles') return MQ(t);
