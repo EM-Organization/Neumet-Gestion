@@ -117,14 +117,14 @@ npm run verificar:rapido       # lint + check + unitarias, test:front y el smoke
 
 - **Por qué `npm ci` propio** y no un enlace al `node_modules` del repo principal: ese puede estar desactualizado y un `npm install` en un
   worktree cambiaría las dependencias de todos los demás.
-- **Smoke y capturas**: `tests/smoke/run.sh <modo>` y `tests/visual/run.sh` levantan `scripts/servir-estatico.mjs` (Node, multihilo) en el primer
+- **Smoke y capturas**: `tests/smoke/run.sh <modo>` y `tests/visual/run.sh` levantan `scripts/servir-estatico.mjs` (Node, concurrente, cola larga) en el primer
   puerto libre; se pueden correr varios a la vez en distintos worktrees. `scripts/smoke-modos.sh` corre los once modos.
   `PORT` y `BUDGET` siguen funcionando. Necesitan Google Chrome y `node` (>= 22.12).
-- **`npm run e2e`** (verificado desde un worktree: 159 pruebas): necesita `npm ci` hecho (el e2e corre `npm run build`), Postgres con
+- **`npm run e2e`** (verificado desde un worktree): necesita `npm ci` hecho (el e2e corre `npm run build`), Postgres con
   `initdb`/`pg_ctl` (`brew install postgresql@17`, o `E2E_PG_URL` con un superusuario), `libpq` en macOS y Chrome. El binario de PostgREST se
   descarga la primera vez (con SHA-256 fijado) en `tests/e2e/.cache/` **de cada worktree**; para no repetir la descarga, `E2E_POSTGREST_BIN=/ruta`.
   Tarda unos 3,5 minutos y usa puertos libres, pero no conviene correr dos e2e a la vez en la misma máquina (carga de Chrome).
 - **`verificar:rapido` no corre** SQL (`tests/sql/run.sh`), e2e, Deno ni capturas: al final lista cuáles corresponden según el diff.
 - Si el smoke falla con `window.xFlow is not a function` o `reading 'closest'`: antes del servidor Node era, con casi total seguridad, un `<script>` del arnés que no
   llegaba (cola de conexiones del servidor de un hilo; no se reprodujo a voluntad); `reading 'closest'` era el síntoma secundario de una sección de Inicio
-  ausente (ahora el flujo se detiene tras el primer mensaje). Con el servidor Node no reapareció en 33 corridas seguidas y 33 en paralelo (3 instancias); si vuelve, mirar primero el primer mensaje de `SMOKE:FAIL`.
+  ausente (ahora el flujo se detiene tras el primer mensaje). Con el servidor Node no reapareció en decenas de corridas seguidas y en paralelo; si vuelve, mirar primero el primer mensaje de `SMOKE:FAIL`.
