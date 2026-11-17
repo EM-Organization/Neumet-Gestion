@@ -65,7 +65,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#vd-panel').classList.contains('abierto')) fail('detalle: el panel no se abrio');
   if(r3.getAttribute('aria-pressed') !== 'true') fail('detalle: rueda seleccionada sin aria-pressed');
   if(d.activeElement !== $('#vd-panel-titulo')) fail('detalle: el foco no paso al panel');
-  ['Posición 3','Eje 2 · izquierda externa','Crítico','Desgaste mayor al normal','Interno','4,2','Alertas','Neumático crítico','Rotación'].forEach(function(t){
+  ['Eje 2 izquierda exterior','P3','Crítico','Desgaste mayor al normal','Interno','4,2','Alertas','Neumático crítico','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');
@@ -103,20 +103,32 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     br.click(); await sleep(200);
     if(rpcs('neumatico_rotar').length) fail('detalle: rotar sin destino llego a la RPC');
     if($('#toast-msg').textContent.indexOf('Elegir la posición') === -1) fail('detalle: rotar sin destino deberia avisar');
-    // Rotar 3 con 1 (ambas ocupadas: intercambio con confirmacion)
+    // Rotar 3 con 1 (ambas ocupadas): es reversible, no pide confirmación; el aviso nombra el intercambio con nombres de posición
+    var optTxt = Array.prototype.map.call(sel.options, function(o){ return o.textContent; }).join('|');
+    if(/(^|\|)P\d/.test(optTxt) || optTxt.indexOf('Delantera izquierda') === -1) fail('detalle: el select de Rotar debe usar nombres de posición, no «P<n>»: '+optTxt);
+    var evRot = 0, cuentaEv = function(){ evRot++; }; d.addEventListener('neumet:neumatico-cambiado', cuentaEv);
     sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
     if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);
-    br.click(); await sleep(400);
-    if(!$('#modal-confirm').classList.contains('show')) fail('detalle: el handler real no pidio confirmar el intercambio');
-    else {
-      var cok = $('#confirm-ok');
-      if(cok.textContent !== 'Rotar' || cok.classList.contains('danger') || !cok.classList.contains('primary')) fail('detalle: el intercambio debe confirmarse con «Rotar» sin rojo: ' + cok.textContent + ' / ' + cok.className);
-      if($('#confirm-icon').classList.contains('danger') || $('#confirm-icon').querySelector('svg:not([hidden])').dataset.icono !== 'intercambio') fail('detalle: el intercambio muestra la papelera');
-      cok.click(); await sleep(400);
-    }
+    br.click(); br.click(); await sleep(500);   // doble clic: una sola rotación
+    if($('#modal-confirm').classList.contains('show')) fail('detalle: rotar no debe pedir confirmación (es reversible)');
+    if($('#toast-msg').textContent !== 'Rotación registrada: Eje 2 izquierda exterior ↔ Delantera izquierda') fail('detalle: aviso de rotación: '+$('#toast-msg').textContent);
+    if(!d.activeElement || !d.activeElement.classList.contains('vd-rueda') || d.activeElement.dataset.pos !== '3') fail('detalle: tras rotar el foco debe volver a la rueda: '+(d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
     var rot = rpcs('neumatico_rotar');
-    if(rot.length !== 1) fail('detalle: la rotacion no llego a la RPC real ('+rot.length+')');
+    if(rot.length !== 1) fail('detalle: la rotacion (con doble clic) debe llegar una sola vez a la RPC ('+rot.length+')');
     else if(JSON.stringify([rot[0].args.p_vehiculo_id, rot[0].args.p_pos_a, rot[0].args.p_pos_b]) !== '[10,3,1]') fail('detalle: args de rotar: '+JSON.stringify(rot[0].args));
+    // Respuesta que nunca llega: no se reintenta, se recarga el detalle y la respuesta tardía no pinta nada
+    var cambioMod = await (new w.Function('return import("/assets/js/views/cambio-neumatico.js")'))();
+    cambioMod.config.timeoutMs = 300; w.__cicloFx.rpcDelay = 1000;
+    evRot = 0; var lect0 = w.__cicloFx.lecturas.v_estado_neumaticos || 0;
+    sel = $('#vd-rotar-destino'); sel.value = '2'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
+    $('#vd-rotar-btn').click(); await sleep(700);
+    if($('#toast-msg').textContent !== 'No se pudo confirmar la rotación. Revisar el vehículo antes de reintentar') fail('detalle: rotar sin respuesta debe avisar que no se pudo confirmar: '+$('#toast-msg').textContent);
+    if((w.__cicloFx.lecturas.v_estado_neumaticos || 0) <= lect0) fail('detalle: rotar sin respuesta debe recargar el detalle');
+    if(rpcs('neumatico_rotar').length !== 2) fail('detalle: rotar sin respuesta no debe reintentar solo');
+    await sleep(900);
+    if($('#toast-msg').textContent.indexOf('Rotación registrada') !== -1 || evRot) fail('detalle: la respuesta tardía de rotar pintó éxito: '+$('#toast-msg').textContent);
+    w.__cicloFx.rpcDelay = 0; cambioMod.config.timeoutMs = 20000;
+    d.removeEventListener('neumet:neumatico-cambiado', cuentaEv);
     for(var u = 0; u < 20 && $('#vd-panel-body').children.length === 0; u++) await sleep(50);
     // Cambiar: abre el modal real del taller con el neumatico de P3
     r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
@@ -124,12 +136,30 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     $('#vd-panel [data-action="neumatico-cambiar"]').click(); await sleep(700);
     if(!$('#modal-cambio').classList.contains('show')) fail('detalle: Cambiar no abrio el modal real');
     else {
-      if($('#cambio-actual').textContent.indexOf('P3') === -1) fail('detalle: el modal de cambio no es de P3');
+      if($('#cambio-actual').textContent.indexOf('Eje 2 izquierda exterior') === -1 || /\bP\d/.test($('#cambio-actual').textContent)) fail('detalle: el modal de cambio no es de la posición 3 con nombre: '+$('#cambio-actual').textContent);
+      if($('#vd-panel [data-action="neumatico-cambiar"]') && !$('#vd-panel [data-action="neumatico-cambiar"]').classList.contains('primary')) fail('detalle: Cambiar neumático debe ser la acción primaria');
       $('#cambio-motivo').value = 'Desgaste';
       $('#cambio-confirmar').click(); await sleep(600);
       var cam = rpcs('neumatico_cambiar');
       if(cam.length !== 1 || cam[0].args.p_vehiculo_id !== 10 || cam[0].args.p_posicion !== 3) fail('detalle: el cambio no llego a la RPC real: '+JSON.stringify(cam.map(function(c){ return c.args; })));
       if($('#modal-cambio').classList.contains('show')) fail('detalle: el modal de cambio no se cerro');
+      // Respuesta que nunca llega: el modal se cierra (no se reintenta: el cambio pudo aplicarse), se recarga el detalle
+      // y la respuesta tardía no pinta nada
+      var cm = await (new w.Function('return import("/assets/js/views/cambio-neumatico.js")'))();
+      cm.config.timeoutMs = 300; w.__cicloFx.rpcDelay = 1000;
+      var evCam = 0, cuentaCam = function(){ evCam++; }; d.addEventListener('neumet:neumatico-cambiado', cuentaCam);
+      var lect1 = w.__cicloFx.lecturas.v_estado_neumaticos || 0;
+      $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400);
+      $('#vd-panel [data-action="neumatico-cambiar"]').click(); await sleep(700);
+      $('#cambio-motivo').value = 'Desgaste';
+      $('#cambio-confirmar').click(); await sleep(700);
+      if($('#modal-cambio').classList.contains('show')) fail('detalle: sin respuesta, el modal de cambio debe cerrarse (no dejarlo listo para reintentar)');
+      if($('#toast-msg').textContent !== 'No se pudo confirmar el cambio. Revisar el vehículo antes de reintentar') fail('detalle: aviso de cambio sin respuesta: '+$('#toast-msg').textContent);
+      if((w.__cicloFx.lecturas.v_estado_neumaticos || 0) <= lect1) fail('detalle: cambio sin respuesta debe recargar el detalle');
+      await sleep(900);
+      if($('#toast-msg').textContent.indexOf('Cambio registrado') !== -1 || evCam || $('#modal-cambio').classList.contains('show')) fail('detalle: la respuesta tardía del cambio pintó algo: '+$('#toast-msg').textContent);
+      if(rpcs('neumatico_cambiar').length !== 2) fail('detalle: cambio sin respuesta no debe reintentar solo');
+      w.__cicloFx.rpcDelay = 0; cm.config.timeoutMs = 20000; d.removeEventListener('neumet:neumatico-cambiado', cuentaCam);
     }
     // Sin accion registrada: aviso en vez de error (se quita temporalmente el handler real)
     var AC = (await (new w.Function('return import("/assets/js/core/actions.js")'))()).ACTIONS;

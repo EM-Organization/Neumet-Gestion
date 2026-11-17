@@ -12,7 +12,9 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   btn.click(); await sleep(600);
   var modal = $('#modal-cambio');
   if(!modal || !modal.classList.contains('show')){ fail('cambio: el modal no se abrió'); btn.remove(); return; }
-  if($('#cambio-actual').textContent.indexOf('P1') === -1) fail('cambio: no muestra el neumático actual');
+  if($('#cambio-actual').textContent.indexOf('Delantera izquierda') === -1 || /\bP\d/.test($('#cambio-actual').textContent)) fail('cambio: no muestra el neumático actual con nombre de posición: '+$('#cambio-actual').textContent);
+  if($('#cambio-actual').textContent.indexOf('Neumático nuevo') === -1 || /vida \d/.test($('#cambio-actual').textContent)) fail('cambio: «vida 0» y km sin formato: '+$('#cambio-actual').textContent);
+  if($('#cambio-form').tagName !== 'FORM' || $('#cambio-confirmar').type !== 'submit') fail('cambio: el modal debe ser un formulario con envío por Enter');
   if($('#cambio-actual').innerHTML.indexOf('<MultiWay>') !== -1) fail('cambio: HTML sin escapar');
   if(d.querySelectorAll('input[name="cambio-destino"]').length !== 4) fail('cambio: faltan los 4 destinos');
   if(!$('#cambio-stock').options.length) fail('cambio: no lista el stock del cliente');
@@ -118,5 +120,17 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
     var cv = cambios()[cambios().length - 1].args;
     if(cambios().length !== antesA + 1 || cv.p_destino_viejo !== 'almacenado' || cv.p_devolver_stock !== true || cv.p_sucursal_stock !== 1 || cv.p_quema_viejo !== 'Q-OLD' || cv.p_cubierta_id !== undefined) fail('cambio: args al devolver al stock: ' + JSON.stringify(cv));
   }
+  // Enter (envío del formulario) y doble clic: un solo cambio. Enter mantenido (e.repeat) se ignora.
+  btn.click(); await sleep(600);
+  d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); await sleep(100);
+  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'Desgaste';
+  var rep = new w.KeyboardEvent('keydown', {key: 'Enter', repeat: true, bubbles: true, cancelable: true});
+  $('#cambio-marca').dispatchEvent(rep);
+  if(!rep.defaultPrevented) fail('cambio: Enter mantenido debe ignorarse');
+  var antesE = cambios().length; fx.rpcDelay = 400;
+  $('#cambio-form').requestSubmit(); $('#cambio-form').requestSubmit(); $('#cambio-confirmar').click(); await sleep(800);
+  fx.rpcDelay = 0;
+  if(cambios().length !== antesE + 1) fail('cambio: Enter/doble envío debe registrar un solo cambio, registró ' + (cambios().length - antesE));
+  if(modal.classList.contains('show')) fail('cambio: el modal no se cerró tras enviar con Enter');
   btn.remove();
 };

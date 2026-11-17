@@ -108,7 +108,8 @@
   var base = window.supabase.createClient;
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), from = c.from, rpc = c.rpc;
-    c.from = function(t){ return T[t] ? Q(t) : from(t); };
+    // Cuántas veces se consultó cada tabla (las pruebas detectan así que el detalle se recargó)
+    c.from = function(t){ var cf = window.__cicloFx; if(cf) cf.lecturas[t] = (cf.lecturas[t] || 0) + 1; return T[t] ? Q(t) : from(t); };
     c.rpc = function(name, args){
       if(name !== 'medicion_invalidar' && name !== 'medicion_revalidar') return rpc.apply(c, arguments);
       fx.calRpcs.push({name: name, args: args});
