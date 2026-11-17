@@ -33,6 +33,11 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(secUser){
     if(visible($('#btn-cubierta-nueva'))) fail('stock(sucursal): ve «Agregar cubierta»');
     if(all('#stk-lista [data-action^="cubierta"]').length) fail('stock(sucursal): ve acciones sobre cubiertas');
+    // H5: sin pestañas el título «Stock» se ve y no queda una cabecera vacía de 60 px sobre la lista.
+    var titS = $('#view-stock .page-title');
+    if(!titS || !visible(titS) || titS.textContent.trim() !== 'Stock') fail('stock(sucursal): falta el título visible «Stock»');
+    var cabS = $('#view-stock .page-header');
+    if(cabS && cabS.getBoundingClientRect().height < 20) fail('stock(sucursal): cabecera de Stock colapsada');
     log.push('stock-flow(sucursal): ok');
     return;
   }
@@ -67,6 +72,26 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
     log.push('stock-flow(admin): solo lectura');
     return;
   }
+
+  // Ancho (H1 de la auditoría): de 360 a 1400 px el documento no se desplaza en horizontal y las acciones de cada fila quedan dentro de la tarjeta.
+  var marco = w.frameElement, anchoOriginal = marco.style.width;
+  var medidas = [];
+  for(var wi = 0, anchos = [360, 390, 940, 1100, 1280, 1400]; wi < anchos.length; wi++){
+    marco.style.width = anchos[wi] + 'px'; await sleep(250);
+    var de = d.documentElement, tarjeta = $('#stk-lista .stk-lista').getBoundingClientRect(), maxFila = 0;
+    if(de.scrollWidth > de.clientWidth) fail('stock(' + anchos[wi] + 'px): el documento se desplaza en horizontal (' + de.scrollWidth + ' > ' + de.clientWidth + ')');
+    all('#stk-lista .stk-fila').forEach(function(f){
+      maxFila = Math.max(maxFila, f.getBoundingClientRect().height);
+      Array.prototype.forEach.call(f.querySelectorAll('.stk-acc > button, .stk-acc > .menu-mas'), function(b){
+        var r = b.getBoundingClientRect();
+        if(r.left < tarjeta.left - 1 || r.right > tarjeta.right + 1) fail('stock(' + anchos[wi] + 'px): una acción se sale de la tarjeta (' + Math.round(r.left) + '-' + Math.round(r.right) + ' vs ' + Math.round(tarjeta.left) + '-' + Math.round(tarjeta.right) + ')');
+      });
+    });
+    medidas.push(anchos[wi] + ':' + Math.round(maxFila));
+    if(anchos[wi] >= 940 && maxFila > 110) fail('stock(' + anchos[wi] + 'px): las filas miden ' + Math.round(maxFila) + ' px: las acciones se apilan');
+  }
+  marco.style.width = anchoOriginal; await sleep(250);
+  log.push('stock-anchos(altura máxima de fila): ' + medidas.join(' '));
 
   // Agregar cubierta: validación local, error de la base y éxito
   $('#btn-cubierta-nueva').click(); await sleep(300);
@@ -119,13 +144,51 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(ed.length !== 1 || JSON.stringify(ed[0].args) !== JSON.stringify({p_id: 31, p_datos: {marca: 'Michelin XZ', condicion: 'reparado'}})) fail('stock: args de stock_cubierta_editar: ' + JSON.stringify(ed.map(function(e){ return e.args; })));
   if($('#modal-cubierta').classList.contains('show')) fail('stock: el modal de edición no se cerró');
 
-  // Acciones de la fila: «Enviar a recauchutar» recupera el clic perdido; «Cambiar sucursal» reemplaza a «Mover»; Eliminar es el más discreto.
+  // Acciones de la fila: «Enviar a recauchutar» queda a la vista; Editar, Cambiar sucursal y Eliminar van en el menú «Más» (H1 de la auditoría:
+  // cuatro botones se apilaban y desbordaban la tarjeta).
   var fila31 = d.querySelector('[data-cubierta="31"]');
-  var textosAcc = all('[data-cubierta="31"] .stk-acc button').map(function(b){ return b.textContent.trim(); }).join('|');
-  if(textosAcc !== 'Editar|Cambiar sucursal|Enviar a recauchutar|Eliminar') fail('stock: acciones de la fila: ' + textosAcc);
-  if(w.getComputedStyle(fila31.querySelector('.stk-del')).color === w.getComputedStyle(fila31.querySelector('[data-action="cubiertaEditar"]')).color) fail('stock: Eliminar no es más discreto que Editar');
+  var visibles = function(f){ return Array.prototype.filter.call(f.querySelectorAll('.stk-acc button'), visible).map(function(b){ return b.textContent.trim(); }).join('|'); };
+  if(visibles(fila31) !== 'Enviar a recauchutar|Más') fail('stock: acciones visibles de la fila: ' + visibles(fila31));
+  var itemsMenu = function(f){ return Array.prototype.map.call(f.querySelectorAll('.menu-mas-item'), function(b){ return b.textContent.trim(); }).join('|'); };
+  if(itemsMenu(fila31) !== 'Editar|Cambiar sucursal|Eliminar') fail('stock: ítems del menú Más: ' + itemsMenu(fila31));
+  var mas31 = fila31.querySelector('[data-menu-mas-btn]'), lista31 = fila31.querySelector('.menu-mas-lista');
+  if(mas31.getAttribute('aria-expanded') !== 'false' || visible(lista31)) fail('stock: el menú Más debe empezar cerrado');
+  // Teclado y lector de pantalla: abre con aria-expanded y foco al primer ítem; Esc cierra y devuelve el foco al botón.
+  mas31.focus(); mas31.dispatchEvent(new w.MouseEvent('click', {bubbles: true, detail: 0})); await sleep(100);
+  if(mas31.getAttribute('aria-expanded') !== 'true' || !visible(lista31)) fail('stock: Más no abrió el menú');
+  if(d.activeElement !== lista31.querySelector('.menu-mas-item')) fail('stock: abrir con teclado debe enfocar el primer ítem');
+  var rl = lista31.getBoundingClientRect(), rt = fila31.ownerDocument.defaultView.innerWidth;
+  if(rl.left < 0 || rl.right > rt) fail('stock: el menú Más se sale de la pantalla: ' + rl.left + '-' + rl.right);
+  d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true})); await sleep(50);
+  if(d.activeElement.textContent.trim() !== 'Cambiar sucursal') fail('stock: ArrowDown no pasó al segundo ítem');
+  d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await sleep(100);
+  if(mas31.getAttribute('aria-expanded') !== 'false' || visible(lista31) || d.activeElement !== mas31) fail('stock: Esc no cerró el menú o no devolvió el foco al botón');
+  // Un clic fuera lo cierra; otro menú abierto cierra al anterior (nunca dos a la vez).
+  mas31.click(); await sleep(100);
+  d.querySelector('[data-cubierta="32"] [data-menu-mas-btn]').click(); await sleep(100);
+  if(mas31.getAttribute('aria-expanded') !== 'false' || all('.menu-mas-lista').filter(visible).length !== 1) fail('stock: dos menús Más abiertos a la vez');
+  $('#stk-resumen').click(); await sleep(100);
+  if(all('.menu-mas-lista').filter(visible).length) fail('stock: un clic fuera no cerró el menú');
+  // Elegir un ítem abre su modal, cierra el menú y deja el foco en el botón Más (de donde el modal lo recupera al cerrarse).
+  mas31.click(); await sleep(100);
+  Array.prototype.filter.call(lista31.querySelectorAll('.menu-mas-item'), function(b){ return b.textContent.trim() === 'Editar'; })[0].click(); await sleep(300);
+  if(!$('#modal-cubierta').classList.contains('show') || visible(lista31) || mas31.getAttribute('aria-expanded') !== 'false') fail('stock: Editar desde el menú no abrió el modal o no cerró el menú');
+  $('#modal-cubierta [data-action="cubiertaCerrar"]').click(); await sleep(200);
+  var sinFiltro = fx.rpcs.length;
+  // «Enviar a recauchutar» abre el modal con la cubierta elegida, sugiere proveedores ya usados y, con doble Enter, envía una sola vez.
   fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
   if(!$('#modal-reca').classList.contains('show') || $('#reca-cubierta').value !== '31') fail('stock: «Enviar a recauchutar» no abrió el modal con la cubierta elegida: ' + $('#reca-cubierta').value);
+  var prov = all('#reca-proveedores option').map(function(o){ return o.value; }).sort().join('|');
+  if(prov !== 'Recauchutadora Norte|Recauchutadora Sur' || $('#reca-proveedor').getAttribute('list') !== 'reca-proveedores') fail('stock: sugerencias de proveedor: ' + prov);
+  $('#reca-proveedor').value = 'Recauchutadora Sur';
+  $('#reca-form').requestSubmit(); $('#reca-form').requestSubmit(); await sleep(500);
+  var env = fx.rpcs.slice(sinFiltro).filter(function(r){ return r.name === 'recauchutado_enviar'; });
+  if(env.length !== 1 || env[0].args.p_neumatico_id !== 31 || env[0].args.p_proveedor !== 'Recauchutadora Sur') fail('stock: doble Enter envió ' + env.length + ' veces: ' + JSON.stringify(env));
+  if($('#toast-msg').textContent !== 'S-001 enviada a Recauchutadora Sur') fail('stock: aviso del envío: ' + $('#toast-msg').textContent);
+  if($('#modal-reca').classList.contains('show')) fail('stock: el modal de envío no se cerró');
+  fx.rpcs = fx.rpcs.filter(function(r){ return r.name !== 'recauchutado_enviar'; });
+  fila31 = d.querySelector('[data-cubierta="31"]');
+  fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
   $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200);
 
   // Si no se pueden leer los recauchutados, «Enviar a recauchutar» avisa una vez del fallo y no abre el modal (sin segundo aviso engañoso).
@@ -136,8 +199,8 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if($('#modal-reca').classList.contains('show') || /ya no se puede enviar/.test($('#toast-msg').textContent)) fail('stock: con la lectura caída «Enviar a recauchutar» no debe abrir el modal ni avisar «ya no se puede»: ' + $('#toast-msg').textContent);
 
   // Con la vida máxima (S-011, recauchutada 3 veces) no se ofrece «Enviar a recauchutar»: no hay más recauchutados posibles.
-  var textos34 = all('[data-cubierta="34"] .stk-acc button').map(function(b){ return b.textContent.trim(); }).join('|');
-  if(textos34 !== 'Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 no debe ofrecer «Enviar a recauchutar»: ' + textos34);
+  var textos34 = visibles(d.querySelector('[data-cubierta="34"]')) + '#' + itemsMenu(d.querySelector('[data-cubierta="34"]'));
+  if(textos34 !== 'Más#Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 no debe ofrecer «Enviar a recauchutar»: ' + textos34);
 
   // Cambiar sucursal: destino distinto; mismo destino no llama a la RPC
   d.querySelector('[data-cubierta="31"] [data-action="cubiertaMover"]').click(); await sleep(300);

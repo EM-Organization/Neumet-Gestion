@@ -853,9 +853,19 @@
   #view-sucursales .sec-tabla .sec-acciones { padding-top: 6px; }
 }
 
-/* UX: «Eliminar» en la fila de cubiertas es secundario frente a Editar (texto atenuado); solo se destaca al apuntarlo (el hover rojo vive en tokens.css). */
-.stk-acc .stk-btn.stk-del:not(:hover):not(:focus-visible) { color: var(--text-secondary); }
-/* Cuatro acciones por fila no caben en una línea de la grilla: pasan a la siguiente en lugar de desbordar. */
-.stk-acc { flex-wrap: wrap; }
+.stk-acc { flex-wrap: wrap; align-items: center; }
+/* Acción primaria de una fila (Enviar a recauchutar, Reconocer): contorno en el color de marca, sin relleno; el relleno queda para el botón de la cabecera. */
+.stk-btn.stk-primaria { color: var(--accent-dark); border-color: var(--accent-border); font-weight: 600; }
+.stk-btn.stk-primaria:hover:not(:disabled) { background: var(--accent-light); }
+/* Menú «Más» (core/menu-mas.js): la lista es fija para no quedar recortada por el overflow de la tabla. */
+.menu-mas { display: inline-block; }
+.menu-mas-lista { position: fixed; z-index: 70; display: flex; flex-direction: column; min-width: 170px; padding: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(56,52,36,0.16); }
+.menu-mas-lista[hidden] { display: none; }
+.menu-mas-item { text-align: left; background: none; border: 0; border-radius: 7px; padding: 9px 12px; min-height: 40px; font: inherit; font-size: 14px; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+.menu-mas-item:hover, .menu-mas-item:focus-visible { background: var(--surface-2); outline: none; }
+.menu-mas-item:focus-visible, .menu-mas-btn:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+.menu-mas-item.menu-mas-del { color: var(--text-secondary); }
+.menu-mas-item.menu-mas-del:hover, .menu-mas-item.menu-mas-del:focus-visible { background: var(--danger-bg); color: var(--danger); }
+.alert-ver { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
 /* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
 .th-natural th { text-transform: none; letter-spacing: normal; }

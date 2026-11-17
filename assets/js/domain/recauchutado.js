@@ -30,6 +30,27 @@ export function cubiertasEnviables(cubiertas, procesos) {
   return (cubiertas || []).filter(c => (c.vida ?? 0) < VIDA_MAXIMA && !abiertas.has(String(c.id)));
 }
 
+// Identificador visible de una cubierta (el mismo que ve el operario en las listas): quema, o el id de dispositivo si no tiene.
+export const identificadorCubierta = c => (c && (c.numero_quema || c.idneumatico)) || 'Sin quema';
+
+// Proveedores ya usados, sin repetir (sin distinguir mayúsculas ni espacios de más) y con el más reciente primero: alimentan las sugerencias
+// del campo Proveedor para no volver a tipear el mismo nombre. `procesos` ya viene ordenado de más nuevo a más viejo.
+export function proveedoresUsados(procesos) {
+  const vistos = new Set();
+  const out = [];
+  for (const p of procesos || []) {
+    const nombre = String((p && p.proveedor) ?? '').trim();
+    const clave = nombre.toLowerCase();
+    if (!nombre || vistos.has(clave)) continue;
+    vistos.add(clave);
+    out.push(nombre);
+  }
+  return out;
+}
+
+// Aviso tras enviar: dice qué cubierta y a quién, en lugar de un genérico «actualizado».
+export const avisoEnvio = (cubierta, proveedor) => `${identificadorCubierta(cubierta)} enviada a ${String(proveedor).trim()}`;
+
 const vacio = v => v === null || v === undefined || String(v).trim() === '';
 const txt = v => (vacio(v) ? null : String(v).trim());
 const fechaOk = f => /^\d{4}-\d{2}-\d{2}$/.test(f) && !Number.isNaN(Date.parse(`${f}T00:00:00Z`));

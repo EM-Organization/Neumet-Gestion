@@ -34,6 +34,9 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
   if($('#breadcrumb-current').textContent !== 'Stock' || $('#breadcrumb-parent').textContent !== 'Neumáticos' || $('#breadcrumb-parent').hidden) fail('reca('+rol+'): migas de Stock '+$('#breadcrumb-parent').textContent+' > '+$('#breadcrumb-current').textContent);
   var tit = $('#view-stock .page-title');
   if(tit && tit.getClientRects().length && tit.getBoundingClientRect().width > 2) fail('reca('+rol+'): el título bajo las pestañas repite la ruta');
+  // H5: con pestañas la cabecera no ocupa una fila propia: el contenido queda a menos de 40 px de las pestañas.
+  var tabsEl = $('#view-stock [role="tablist"]'), lista0 = $('#view-stock .toolbar, #view-stock #stk-resumen');
+  if(tabsEl && lista0 && lista0.getBoundingClientRect().top - tabsEl.getBoundingClientRect().bottom > 40) fail('reca('+rol+'): hueco excesivo entre las pestañas y el contenido: ' + Math.round(lista0.getBoundingClientRect().top - tabsEl.getBoundingClientRect().bottom));
   tabStock.focus();
   tabStock.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await sleep(700);
   if(!$('#view-recauchutado').classList.contains('active') || $('.nav-item.active').dataset.view !== 'stock') fail('reca('+rol+'): ArrowRight no abrió Recauchutado con Neumáticos resaltado');

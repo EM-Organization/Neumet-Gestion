@@ -108,3 +108,19 @@ test('etiquetaBanda: sin jerga de «vida»', () => {
   assert.equal(etiquetaBanda('2'), 'Recauchutado nº 2');
   assert.equal(etiquetaBanda(null), 'Banda original');
 });
+
+// H18: sugerencias de proveedor y aviso del envío.
+import { proveedoresUsados, avisoEnvio, identificadorCubierta } from '../../assets/js/domain/recauchutado.js';
+
+test('proveedoresUsados: sin repetir, el más reciente primero, ignora vacíos y mayúsculas', () => {
+  assert.deepEqual(proveedoresUsados([{ proveedor: 'Sur' }, { proveedor: ' norte ' }, { proveedor: 'SUR' }, { proveedor: '' }, { proveedor: null }, {}]), ['Sur', 'norte']);
+  assert.deepEqual(proveedoresUsados(null), []);
+  assert.deepEqual(proveedoresUsados([]), []);
+});
+
+test('avisoEnvio: nombra la cubierta y el proveedor', () => {
+  assert.equal(avisoEnvio({ numero_quema: 'S-001' }, ' Sur '), 'S-001 enviada a Sur');
+  assert.equal(avisoEnvio({ idneumatico: 'N7' }, 'Sur'), 'N7 enviada a Sur');
+  assert.equal(avisoEnvio({}, 'Sur'), 'Sin quema enviada a Sur');
+  assert.equal(identificadorCubierta(null), 'Sin quema');
+});

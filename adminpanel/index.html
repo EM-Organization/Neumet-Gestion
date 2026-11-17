@@ -438,7 +438,7 @@
         <div role="tabpanel" id="neu-panel-stock" aria-labelledby="neu-s-stock">
           <div class="page-header">
             <div>
-              <div class="page-title">Stock de neumáticos</div>
+              <div class="page-title">Stock</div>
             </div>
             <button class="btn primary" id="btn-cubierta-nueva" style="display:none" data-action="cubiertaNueva">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -1260,7 +1260,7 @@
     <div class="modal-body">
       <div class="field" id="reca-g-cubierta"><label for="reca-cubierta">Cubierta</label><select id="reca-cubierta"></select>
         <div class="field-hint">Solo cubiertas del stock. Para una montada, usar «Retirar neumático» primero.</div></div>
-      <div class="field" id="reca-g-proveedor"><label for="reca-proveedor">Proveedor</label><input type="text" id="reca-proveedor" maxlength="80" autocomplete="off"/></div>
+      <div class="field" id="reca-g-proveedor"><label for="reca-proveedor">Proveedor</label><input type="text" id="reca-proveedor" maxlength="80" autocomplete="off" list="reca-proveedores"/><datalist id="reca-proveedores"></datalist></div>
       <div class="field" id="reca-g-dictamen"><label for="reca-dictamen">Dictamen</label>
         <select id="reca-dictamen" data-change="recaDictamenCambio"><option value="apto">Apto</option><option value="no">No apto</option></select></div>
       <div class="field" id="reca-g-motivo"><label for="reca-motivo">Motivo</label><input type="text" id="reca-motivo" maxlength="300" autocomplete="off"/></div>
