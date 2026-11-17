@@ -47,7 +47,7 @@ Tareas independientes se lanzan **en la misma respuesta** (varias llamadas `Agen
    - (c) **Concurrencia y pruebas mutantes** sobre lo nuevo: el test falla sin el arreglo y se prueban los casos de `docs/13` §1.b.
    PR chico o solo docs: **un solo revisor**, sin focos. Un foco se reparte solo si el PR lo toca (sin interfaz, no hay foco b).
    Skill `neumet-revisar-pr`; devuelven veredicto y **no corrigen ni fusionan**. El director **consolida un único veredicto** (APROBADO solo si todos lo son; los bloqueantes se unen sin duplicados).
-   Desde la ronda 1 distinguen **bloqueante real** (pérdida de datos, elección del usuario perdida, fuga entre roles, afirmación falsa en docs) de **sugerencia**; una afirmación falsa en docs es siempre bloqueante.
+   Desde la ronda 1 distinguen **bloqueante** (todo incumplimiento de una regla de `CLAUDE.md` o `docs/13`, además de pérdida de datos, elección perdida, fuga entre roles y afirmación falsa en docs: ejemplos, no lista cerrada) de **sugerencia** (lo opinable o de estilo que no viola una regla).
 2. Si hay bloqueantes → **Corrector** (`subagent_type: "neumet-corrector"`): skill `neumet-corregir-pr` sobre la rama del PR, con la lista de bloqueantes copiada tal cual. Luego **vuelve al paso 1** con un revisor nuevo que re-ejecute lo que falló (ronda 2: solo bloqueantes y diff; un revisor basta).
    Máximo **2 rondas**. Si en la segunda siguen los bloqueantes, parar y escalar al usuario con el resumen (es una de las pocas razones para consultarlo); no seguir iterando a ciegas.
 3. Aprobado con el CI verde y la rama al día con `main` → pasar a producción (sección 4).
@@ -56,7 +56,7 @@ Tareas independientes se lanzan **en la misma respuesta** (varias llamadas `Agen
 Nunca dos PR con migración a la vez: serializar.
 1. Si trae migración: `neumet-aplicar-migracion` (`neumet-operativo` para lo mecánico, o el director). **Autorización duradera del dueño**: la compuerta cumplida basta, no se pide confirmación.
    Solo se para y se consulta si la migración es destructiva (borra o reescribe datos), si hay datos de clientes reales en juego o si el dry-run lista algo inesperado. Preguntar por lógica de negocio, no por trámite de desarrollo.
-2. `gh pr merge <n> --merge --delete-branch`. Enseguida, con `neumet-operativo` (`neumet-operar ramas`): poner al día con `main` las ramas de los demás PR abiertos y reportar conflictos; los resuelve el corrector.
+2. `gh pr merge <n> --merge --delete-branch`. Enseguida, con `neumet-operativo` (`neumet-operar ramas`): poner al día con `main` las ramas de los demás PR abiertos y reportar conflictos; los resuelve el corrector. El brief indica las ramas con autor, corrector o revisor activo (se saltan).
 3. Si hay Edge Function que depende de la migración: `neumet-operar funcion <nombre>` **después** de la migración.
 4. **Verificación posterior** sobre `main` actualizado: `git pull`, `neumet-verificar` nivel rápido, y humo en producción (recarga forzada, la vista tocada con datos reales del demo).
 5. `neumet-docs-sync` y actualizar `docs/10-tablero.md` (puede ir en un PR `chore/`).

@@ -66,10 +66,8 @@ El director lanza `neumet-ux` para la auditoría de clics (`docs/10`) o para rev
 El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
 
 Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisores (en paralelo, un foco cada uno) → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
-**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (revisor APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
-**Agilidad sin bajar calidad** (detalle en `neumet-orquestar`, `neumet-pr` y `docs/13`): los cambios con concurrencia o estado compartido llevan diseño previo contrastado por el director antes de implementar;
-los revisores arrancan al abrir el PR, hasta 3 a la vez con foco acotado (PR chico o solo docs: uno); el director marca los archivos «calientes» y tras cada fusión `neumet-operativo` actualiza las ramas abiertas.
-El tope sigue en 3 autores; los revisores en paralelo cuentan contra el límite de uso, y ante «monthly spend limit» se reanuda con `SendMessage`, no se relanza desde cero.
+**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (veredicto consolidado APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
+**Agilidad sin bajar calidad**: diseño previo para concurrencia, revisores en paralelo con foco y ramas al día tras cada fusión; detalle y límites en `neumet-orquestar`, `neumet-pr` y `docs/13`.
 Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migración al mismo tiempo en producción. Los agentes en segundo plano no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`.
 
 ## Skills del proyecto (`.claude/skills/`)

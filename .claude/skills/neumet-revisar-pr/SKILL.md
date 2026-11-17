@@ -8,7 +8,7 @@ description: Revisar un PR de NEUMET con el checklist de docs/13: ejecutar los c
 Argumento: número de PR. El rigor completo está en `docs/13-checklist-revision-prs.md`; esto es el procedimiento.
 **Revisar no es fusionar**: este skill termina en un veredicto. Fusionar es un paso aparte, después de aplicar la migración si la hay.
 **Foco**: el brief puede acotar la revisión a un foco (a: seguridad/base/RLS; b: UX y textos; c: concurrencia y pruebas mutantes). Con foco, ejecutar a fondo solo esa parte y decir qué quedó fuera; sin foco, todo.
-Desde la ronda 1, separar **bloqueante real** (pérdida de datos, elección del usuario perdida, fuga entre roles, afirmación falsa en docs) de **sugerencia**. En la ronda 2: solo los bloqueantes previos y el diff de la corrección.
+Desde la ronda 1, separar **bloqueante** de **sugerencia**. Bloqueante: todo incumplimiento de una regla de `CLAUDE.md` o de `docs/13` (test que falle sin el arreglo, `search_path` vacío, pruebas por rol, clics, textos, docs al día), además de pérdida de datos, elección perdida, fuga entre roles y afirmación falsa en docs (ejemplos, no lista cerrada). Sugerencia: lo opinable o de estilo que no viola una regla. En la ronda 2: solo los bloqueantes previos y el diff de la corrección.
 
 ## 1. Contexto
 ```

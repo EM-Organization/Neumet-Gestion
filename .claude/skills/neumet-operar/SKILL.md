@@ -1,6 +1,6 @@
 ---
 name: neumet-operar
-description: Tareas operativas de NEUMET sobre producción y el entorno local: desplegar Edge Functions, regenerar el demo, ver el estado de migraciones y limpiar worktrees y ramas ya fusionados. Lo usa el director sin pedir confirmación cuando la compuerta de calidad está cumplida; afecta producción o borra ramas locales. Apto para un subagente haiku.
+description: Tareas operativas de NEUMET sobre producción y el entorno local: desplegar Edge Functions, regenerar el demo, ver el estado de migraciones, poner al día con main las ramas de los PR abiertos (`ramas`: push sin force, nunca a main) y limpiar worktrees y ramas ya fusionados. Lo usa el director sin pedir confirmación cuando la compuerta de calidad está cumplida; afecta producción o borra ramas locales. Apto para un subagente haiku.
 ---
 
 # Operación
@@ -33,10 +33,14 @@ Funciones: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-
 3. Verificar en el panel que Inicio, Alertas y Stock muestran datos con fechas actuales (recarga forzada).
 
 ## `ramas`: poner al día los PR abiertos tras una fusión
-1. `gh pr list --state open --json number,headRefName`.
-2. Por cada rama: worktree propio (`git worktree add .claude/worktrees/ramas-<n> origin/<rama>`), `git merge origin/main` y, si queda limpio, `git push` normal (nunca `--force`). Quitar el worktree.
-3. Si hay conflicto: `git merge --abort`, no tocar la rama y reportar al director PR y archivos en conflicto; los resuelve el corrector.
-4. Informar tabla: PR, al día / conflicto / sin cambios.
+Empuja a ramas de PR ajenas (sin `--force`, nunca a `main`). El brief del director debe listar las ramas con autor, corrector o revisor activo: esas se saltan.
+1. `gh pr list --state open --json number,headRefName,baseRefName,isCrossRepository`. Saltar y reportar: `headRefName == main`, PR de forks (`isCrossRepository`), PR apilados (`baseRefName` distinto de `main`),
+   las ramas que el director indicó con agente activo y las que tengan un worktree `agent-*` o `corregir-*` de esa rama (`git worktree list`): riesgo de pisar un push en curso.
+2. Por cada rama restante: `git fetch origin`, worktree propio (`git worktree add .claude/worktrees/ramas-<n> origin/<rama>`; queda en HEAD desacoplado), `git merge --no-edit origin/main` y,
+   si queda limpio, `git push origin HEAD:<rama>` (un `git push` a secas falla con «not currently on a branch»; nunca `--force`). Quitar el worktree.
+3. Si el push es rechazado (alguien empujó en medio): reportar y no reintentar ni forzar.
+4. Si hay conflicto: `git merge --abort`, no tocar la rama y reportar al director PR y archivos en conflicto; los resuelve el corrector.
+5. Informar tabla: PR, al día / conflicto / saltado (motivo) / sin cambios. Aviso: tras el merge el SHA cambia, así que el CI debe volver a pasar antes de fusionar un PR ya aprobado.
 
 ## `limpiar`: worktrees y ramas fusionados
 Solo lo que ya está fusionado. Nunca ramas con PR abierto ni sin fusionar.
