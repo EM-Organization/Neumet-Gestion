@@ -112,6 +112,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: Enter con una coincidencia no abre el detalle');
     if($('.nav-item.active').dataset.view !== 'vehiculos') fail('detalle: el menú debe resaltar Vehículos');
     if(!/Volver a Inicio/.test($('#vd-volver').textContent)) fail('detalle: "Volver" debe nombrar la vista de origen: '+$('#vd-volver').textContent);
+    if(!$('#breadcrumb-parent').hidden || !$('#breadcrumb-sep').hidden || !/\S/.test($('#breadcrumb-current').textContent)) fail('detalle: la barra no debe repetir «Vehículos ›» junto a «Volver»: '+$('#breadcrumb-parent').textContent+' > '+$('#breadcrumb-current').textContent);
     $('#vd-volver').click(); await sleep(500);
     if(!$('#view-inicio').classList.contains('active') || $('.nav-item.active').dataset.view !== 'inicio') fail('detalle: "Volver" no regresa a Inicio');
     await escribirB(bi, '205'); await enviar(bi); // por número de coche

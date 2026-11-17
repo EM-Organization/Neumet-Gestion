@@ -84,7 +84,7 @@ function cabecera() {
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
-  setTitulo(etiquetaCoche(veh.nombre), 'vehiculos');
+  setTitulo(etiquetaCoche(veh.nombre)); // sin «Vehículos ›»: «Volver a …» ya lleva a la vista de origen (puede ser Alertas o Inicio)
 }
 
 // Posiciones del tipo de vehículo sin neumático montado (el auxilio vacío no cuenta: es opcional).
@@ -549,4 +549,4 @@ export function init() {
   });
 }
 
-registerView('vehiculo-detalle', 'Vehículo', load, { menu: 'vehiculos' });
+registerView('vehiculo-detalle', 'Vehículo', load, { menu: 'vehiculos', sinMigas: true });

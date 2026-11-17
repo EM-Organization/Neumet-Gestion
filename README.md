@@ -83,7 +83,7 @@ Menú del cliente: Inicio, Vehículos, Neumáticos (pestañas Stock y Recauchuta
 | Clientes y ficha de cliente (administrador) | Alta con invitación o contraseña, baja lógica, umbrales de desgaste, sucursales y usuarios (todo en solo lectura, salvo asignar dispositivos a sucursal), cuenta de API |
 | Estado de la flota, Mediciones y Balance (administrador) | Vista de flota entre clientes, historial por vehículo o dispositivo, ingresos, gastos y valor del inventario |
 
-Con perfil global y sucursales, un selector «Sucursal» en la barra superior filtra las pantallas. Con perfil de sucursal el selector no aparece porque la base ya limita los datos.
+Con perfil global y sucursales, un selector «Sucursal» en la barra superior filtra Inicio, Vehículos, Alertas y Reportes (y, para el equipo Neumet, Flota, Mediciones y Dispositivos); Stock lo toma como valor inicial de su filtro propio y en el resto de las pantallas, incluida la búsqueda de la barra, la selección no se aplica. Con perfil de sucursal el selector no aparece porque la base ya limita los datos.
 
 ## 5. Modelo de datos y aislamiento por cliente
 

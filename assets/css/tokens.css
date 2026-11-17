@@ -104,7 +104,7 @@
 .sec-selector { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; margin-right: 12px; }
 @media (max-width: 640px) {
   .sec-selector { font-size: 0; gap: 0; margin-right: 0; }
-  .sec-selector select { font-size: 13px; max-width: 170px; }
+  .sec-selector select { font-size: 13px; }
   .breadcrumb { max-width: 34vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 .sec-alta { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -141,8 +141,9 @@
 .badge.cond-reparado { background: var(--accent-light); color: var(--accent-dark); border: 1px solid var(--accent-border); }
 .badge.cond-recauchutado { background: var(--surface-secondary); color: var(--accent-dark); border: 1px solid var(--border-strong); }
 .cambio-retorno { display: none; }
-/* El filtro por sucursal de la barra superior es de vehículos: en Stock la ubicación se filtra en la propia vista */
-body:has(#contenido[data-vista="stock"]) #sec-selector { display: none !important; }
+/* Neumáticos: el título de cada pestaña ya está en la ruta de la barra y en la propia pestaña (docs/14 §1 regla 3);
+   queda solo para lectores de pantalla y el botón primario conserva su lugar. */
+.tabs + [role="tabpanel"] > .page-header .page-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @media (max-width: 760px) {
   .stk-cab { display: none; }
   .stk-fila { grid-template-columns: 1fr auto; grid-template-areas: "quema cond" "desc desc" "loc compra" "acc acc"; gap: 6px 12px; padding: 12px 14px; }
