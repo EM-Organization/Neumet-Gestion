@@ -123,16 +123,18 @@
 /* ── Stock de cubiertas individuales ── */
 .stk-resumen { color: var(--text-secondary); font-size: 13px; margin: 0 0 12px; min-height: 1em; }
 .stk-lista { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(80px, .8fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) minmax(236px, 430px); gap: 12px; align-items: center; padding: 11px 16px; }
+.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(72px, .7fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) 232px; gap: 12px; align-items: center; padding: 11px 16px; }
+/* Recauchutado: la cubierta (quema, marca y modelo en líneas propias) y acciones con texto más largo. */
+.reca-fila { grid-template-columns: minmax(140px, 1.2fr) minmax(110px, 1fr) 100px minmax(90px, .8fr) minmax(110px, .9fr) 310px; }
 .stk-cab { font-size: 12px; font-weight: 600; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
 .stk-fila { border-bottom: 1px solid var(--border); font-size: 14px; }
 .stk-fila:last-child { border-bottom: 0; }
 .stk-quema { font-family: var(--font-mono); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.reca-fila .stk-quema { overflow-wrap: break-word; }
 .stk-sub { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 400; font-family: var(--font); }
 .stk-sin { color: var(--text-tertiary); }
 .stk-acc { display: flex; gap: 6px; justify-content: flex-end; }
 .stk-btn { padding: 4px 10px; font-size: 13px; }
-.stk-btn.stk-del:hover:not(:disabled) { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
 .stk-subtitulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 10px; }
 .stk-subtitulo h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-secondary); }
 /* Condición: color apagado y siempre con texto */
@@ -143,7 +145,25 @@
 .cambio-retorno { display: none; }
 /* Neumáticos: el título de cada pestaña ya está en la ruta de la barra y en la propia pestaña (docs/14 §1 regla 3);
    queda solo para lectores de pantalla y el botón primario conserva su lugar. */
-.tabs + [role="tabpanel"] > .page-header .page-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > .page-header .page-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Con pestañas, la acción primaria (Agregar cubierta / Enviar a recauchutar) sube a la fila de las pestañas en lugar de ocupar una fila propia
+   de ~60 px; sin acción visible la cabecera no ocupa nada. En móvil no cabe junto a las pestañas y vuelve a su línea. */
+@media (min-width: 761px) {
+  .view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > .page-header { position: relative; height: 0; min-height: 0; margin: 0; }
+  .view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > .page-header > .btn { position: absolute; right: 0; top: -53px; }
+  .view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > .toolbar, .view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > #reca-lista { margin-top: 0; }
+}
+@media (max-width: 760px) {
+  .view:not(.neu-sin-pestanas) .tabs + [role="tabpanel"] > .page-header { min-height: 0; margin-bottom: 12px; }
+}
+/* Entre el móvil y ~1240 px (con el menú lateral, el contenido mide menos de 960 px) las seis columnas no caben: las cinco de datos quedan
+   en una fila y las acciones pasan a una segunda, alineadas a la derecha, en lugar de apilarse dentro de una columna angosta. */
+@media (min-width: 761px) and (max-width: 1240px) {
+  .stk-cab, .stk-fila { grid-template-columns: minmax(70px, .8fr) minmax(100px, 1.3fr) 112px minmax(90px, 1fr) minmax(76px, .8fr); }
+  .reca-fila { grid-template-columns: minmax(120px, 1.3fr) minmax(100px, 1fr) 100px minmax(84px, .8fr) minmax(100px, .9fr); }
+  .stk-cab span:last-child { display: none; }
+  .stk-fila .stk-acc { grid-column: 1 / -1; }
+}
 @media (max-width: 760px) {
   .stk-cab { display: none; }
   .stk-fila { grid-template-columns: 1fr auto; grid-template-areas: "quema cond" "desc desc" "loc compra" "acc acc"; gap: 6px 12px; padding: 12px 14px; }

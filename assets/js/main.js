@@ -7,6 +7,7 @@ import { initAuth, checkAuth } from './core/auth.js';
 import './core/seccional.js'; // sus hooks de login deben registrarse antes que los de las vistas
 import { initModales } from './core/modal-a11y.js';
 import { initBuscador } from './core/buscador.js';
+import { initMenuMas } from './core/menu-mas.js';
 import * as inicio from './views/inicio.js';
 import * as clientes from './views/clientes.js';
 import * as balance from './views/balance.js';
@@ -40,5 +41,6 @@ initNav();
 initModales();
 initConexion();
 initBuscador();
+initMenuMas();
 [inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos,islaHumo,uso].forEach(v=>v.init());
 checkAuth();
