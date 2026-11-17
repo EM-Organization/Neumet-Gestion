@@ -185,7 +185,7 @@ Antes, una patente que no existía devolvía `guardado:false` con motivo `vehicu
 
 ### Motivo agregado en `ingesta_log.motivo`
 
-`no_encontrado` (vehículo no creable), `vehiculo_creado` (alta sin otras fallas), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno` y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta y el mismo motivo.
+`no_encontrado` (vehículo no creable), `vehiculo_creado` (alta sin otras fallas), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno` y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta (`{posicion, guardado}`) sin volver a crear nada; el motivo se repite salvo en un alta: el replay no repite `vehiculo_creado` (queda con motivo vacío y `payload_resumen.replay = true`).
 
 ### Contrato de `obtener_montaje`
 
