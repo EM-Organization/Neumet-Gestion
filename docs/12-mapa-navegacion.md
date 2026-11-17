@@ -56,7 +56,7 @@ flowchart TD
   VD -->|Volver| ORIGEN[Pantalla de origen]
   VD -->|click en una rueda| PR[Panel de la rueda]
   PR --> CN[Cambiar neumático]
-  PR --> RO[Rotar con otra posición]
+  PR --> RO[Rotar con otra posición, sin confirmar]
   VD --> OD[Odómetro y ciclo de vida]
   R -->|CSV / versión imprimible| X[Descarga]
 ```

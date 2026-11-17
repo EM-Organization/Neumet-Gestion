@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarCambio, traducirErrorCambio, stockDisponible, validarRotacion, DESTINOS } from '../../assets/js/domain/cambio-neumatico.js';
+import { validarCambio, traducirErrorCambio, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
 
 const neum = { id: 5, vehiculo_id: 10, posicion: 3, marca: 'Michelin', modelo: 'X', estado: 'montado', vida: 0 };
 const stock = [{ id: 1, marca: 'Pirelli', modelo: 'FR', cantidad: 2 }, { id: 2, marca: 'Vacio', cantidad: 0 }];
@@ -12,11 +12,12 @@ test('stockDisponible descarta lotes sin unidades', () => {
 });
 
 test('validarCambio: del stock arma los parámetros de la RPC', () => {
-  const r = validarCambio(base);
+  const r = validarCambio({ ...base, tipo: 10 });
   assert.equal(r.ok, true);
   assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: 'Desgaste',
     p_odometro_km: null, p_stock_id: 1, p_nuevo: null, p_numero_quema: null, p_km_previos: 0 });
-  assert.match(r.resumen, /P3: sale Michelin X/);
+  assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X/);
+  assert.doesNotMatch(r.resumen, /\bP\d/);
 });
 
 test('validarCambio: neumático nuevo ingresado y odómetro', () => {
@@ -122,8 +123,8 @@ test('el resumen menciona quema, km previos y odómetro solo cuando se informan'
   assert.doesNotMatch(validarCambio(base).resumen, /quema|previos|odómetro/);
   const r = validarCambio({ ...base, numeroQuema: 'Q-9', kmPrevios: '1200', odometro: '1500' });
   assert.match(r.resumen, /quema Q-9/);
-  assert.match(r.resumen, /1200 km previos/);
-  assert.match(r.resumen, /odómetro 1500 km/);
+  assert.match(r.resumen, /1\.200 km previos/);
+  assert.match(r.resumen, /odómetro 1\.500 km/);
 });
 
 // --- Cubierta individual del stock y devolución del neumático retirado al stock -----------------------------------
@@ -192,4 +193,38 @@ test('traducirErrorCambio: cubierta y devolución al stock', () => {
   assert.match(traducirErrorCambio({ code: 'P0002', message: 'cubierta del stock inexistente o ya montada' }), /Esa cubierta ya no está disponible/);
   assert.match(traducirErrorCambio({ code: '22023', message: 'el neumático retirado necesita número de quema para volver al stock' }), /necesita número de quema/);
   assert.match(traducirErrorCambio({ message: 'el stock lo gestiona el perfil global: dejar el neumático retirado en el vehículo' }), /no puede usar el stock/);
+});
+
+test('nombrePos: nombre legible de la posición, nunca «P<n>» a secas', () => {
+  assert.equal(nombrePos(1, 10), 'Delantera izquierda');
+  assert.equal(nombrePos(2, 10), 'Delantera derecha');
+  assert.equal(nombrePos(99), 'Auxilio');
+  assert.match(nombrePos(5, 10), /^Eje 2 (izquierda|derecha)/);
+  assert.equal(nombrePos(500), 'Posición 500');
+  for (const p of [1, 2, 3, 4, 5, 6, 9, 10, 17, 20, 99]) assert.doesNotMatch(nombrePos(p, p > 10 ? 16 : 10), /^P\d+$/);
+});
+
+test('validarRotacion: el aviso nombra el intercambio con nombres de posición', () => {
+  const ns = [{ vehiculo_id: 10, posicion: 1, estado: 'montado' }, { vehiculo_id: 10, posicion: 2, estado: 'montado' }];
+  assert.equal(validarRotacion(ns, 10, 1, 2, 10).aviso, 'Delantera izquierda ↔ Delantera derecha');
+  assert.match(validarRotacion(ns, 10, 1, 4, 10).aviso, /^neumático movido de Delantera izquierda a Eje 2/);
+  assert.equal(validarRotacion(ns, 10, 5, 1, 10).error, 'No hay neumático en ' + nombrePos(5, 10));
+  assert.doesNotMatch(validarRotacion(ns, 10, 1, 2, 10).aviso, /\bP\d/);
+});
+
+test('etiquetaVida: vida 0 es neumático nuevo, sin el código «vida»', () => {
+  assert.equal(etiquetaVida(0), 'Neumático nuevo');
+  assert.equal(etiquetaVida(undefined), 'Neumático nuevo');
+  assert.equal(etiquetaVida(2), 'recauchutado 2');
+});
+
+test('avisoRotacion: lo que informó la RPC manda sobre lo leído antes', () => {
+  assert.equal(avisoRotacion(1, 2, 10, true), 'Delantera izquierda ↔ Delantera derecha');
+  assert.equal(avisoRotacion(1, 2, 10, false), 'neumático movido de Delantera izquierda a Delantera derecha');
+});
+
+test('validarRotacion: los errores por neumático dado de baja nombran la posición, no «P<n>»', () => {
+  const ns = [{ vehiculo_id: 10, posicion: 1, estado: 'baja' }, { vehiculo_id: 10, posicion: 2, estado: 'montado' }];
+  assert.equal(validarRotacion(ns, 10, 1, 2, 10).error, 'El neumático de Delantera izquierda está dado de baja');
+  assert.equal(validarRotacion(ns, 10, 2, 1, 10).error, 'Delantera izquierda está ocupada por un neumático dado de baja');
 });

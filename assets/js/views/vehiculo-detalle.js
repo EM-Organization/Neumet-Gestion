@@ -28,6 +28,7 @@ import {
 import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { nombrePos, etiquetaVida } from '../domain/cambio-neumatico.js';
 import { agruparPorNeumatico, soloObservadas, textoObservaciones, detalleObservaciones } from '../domain/calidad.js';
 import { listaCalidad, SEL_CALIDAD } from './calidad.js';
 
@@ -41,9 +42,11 @@ let vehiculoId = null;
 let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, porPos, obs, calPorPos }
 let calAbierto = false; // detalle de «mediciones con observaciones» desplegado (se conserva al recargar tras una acción)
 let seleccion = null;
+let focoTrasCarga = null; // rueda a enfocar cuando el detalle se redibuje tras una rotación o un cambio
 let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace desde Inicio)
 let ultimoFoco = null;
 let tokenGrafico = 0;
+let tokenCarga = 0; // dos load() superpuestos (rotación + recarga manual): solo el último pinta
 const cacheMediciones = new Map();
 
 // Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
@@ -131,7 +134,7 @@ function leyenda() {
 }
 
 function etiquetaAria(r, info, mm, ind) {
-  const base = `Posición ${r.posicion}${r.eje ? `, ${r.etiqueta}` : ', auxilio'}`;
+  const base = nombrePos(r.posicion, datos.veh.tipo_ruedas);
   const medida = nulo(mm) ? 'sin datos' : `${fmtNum(mm, 1)} milímetros, ${info.texto}`;
   return `${base}: ${medida}.${ind && ind.mayorAlNormal ? ' Desgaste mayor al normal.' : ''}`;
 }
@@ -139,7 +142,7 @@ function etiquetaAria(r, info, mm, ind) {
 // Posición sin neumático: contorno punteado, sin color de desgaste. Selecciona la rueda y el panel ofrece montarlo.
 function dibujarRuedaVacia(svg, r) {
   const sel = r.posicion === seleccion;
-  const donde = r.auxilio ? 'Auxilio' : `Posición ${r.posicion}, ${r.etiqueta}`;
+  const donde = nombrePos(r.posicion, datos.veh.tipo_ruedas);
   const etq = `${donde}: vacía. Elegir para montar un neumático.`;
   const g = svgEl('g', {
     class: `vd-rueda vd-vacia${sel ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-pressed': String(sel), 'aria-label': etq,
@@ -309,12 +312,12 @@ function seccionEventos(pos, fila) {
 function acciones(pos) {
   if (!puedeOperar()) return '';
   const args = JSON.stringify([vehiculoId, pos]);
-  const cambiar = html`<button type="button" class="btn" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
+  const cambiar = html`<button type="button" class="btn primary" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
   // Rotar: el usuario elige la posición de destino; el botón lleva data-args='[vehiculoId, posA, posB]' (se actualiza al elegir).
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
-    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${r.auxilio ? 'Auxilio (P' + r.posicion + ')' : `P${r.posicion} · ${r.etiqueta}`}</option>`)}</select>
+    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, datos.veh.tipo_ruedas)}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
   const retirar = html`<button type="button" class="btn" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}${retirar}</div>${rotar}</div>`;
@@ -337,8 +340,8 @@ function renderPanel() {
   if (!fila) {
     setHtml(body, html`
       <div class="vd-p-head">
-        <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
-          <div class="vd-p-sub">${r ? r.etiqueta : ''}</div></div>
+        <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
+          <div class="vd-p-sub">${r && !r.auxilio ? `P${pos}` : ''}</div></div>
         <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle de la posición">&times;</button>
       </div>
       <div class="vd-p-scroll"><div class="vd-p-estado">${chip('gray', 'Vacía', '–')}</div>
@@ -348,8 +351,8 @@ function renderPanel() {
   }
   setHtml(body, html`
     <div class="vd-p-head">
-      <div><h3 id="vd-panel-titulo" tabindex="-1">${r && r.auxilio ? 'Neumático auxilio' : `Posición ${pos}`}</h3>
-        <div class="vd-p-sub">${r ? r.etiqueta : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · recauchutado ${fila.vida}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
+      <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
+        <div class="vd-p-sub">${r && !r.auxilio ? `P${pos}` : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · ${etiquetaVida(fila.vida)}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
       <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
     </div>
     <div class="vd-p-scroll">
@@ -460,6 +463,7 @@ function cerrarPanel() {
 
 export async function load() {
   if (nulo(vehiculoId)) { switchView('vehiculos'); return; }
+  const miCarga = ++tokenCarga;
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren(); $('vd-calidad').replaceChildren();
   await contextoListo();
@@ -479,6 +483,7 @@ export async function load() {
     db.from('mediciones').select(SEL_CALIDAD).eq('vehiculo_id', vehiculoId).in('calidad', ['sospechosa', 'invalidada'])
       .order('created_at', { ascending: false }).limit(200),
   ]);
+  if (miCarga !== tokenCarga) return;
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
@@ -501,6 +506,11 @@ export async function load() {
     $('vd-panel').classList.remove('abierto'); $('vd-backdrop').classList.remove('abierto');
   }
   renderPanel();
+  if (!nulo(focoTrasCarga)) {
+    const g = document.querySelector(`#vd-diagrama .vd-rueda[data-pos="${focoTrasCarga}"]`);
+    focoTrasCarga = null;
+    if (g) g.focus();
+  }
   if (!nulo(preseleccion)) { const p = preseleccion; preseleccion = null; if (datos.porPos.has(p)) seleccionarRueda(p); }
 }
 
@@ -521,6 +531,13 @@ registerActions({
 });
 
 export function init() {
+  // Tras rotar o cambiar, el detalle se recarga y el foco caería en <body>: se devuelve a la rueda de origen.
+  document.addEventListener('neumet:neumatico-cambiado', e => {
+    const d = e.detail || {};
+    if (Number(d.vehiculoId) !== Number(vehiculoId)) return; // el evento de otro vehículo no mueve el foco de este
+    if (!$('view-vehiculo-detalle').classList.contains('active')) return;
+    focoTrasCarga = d.rotacion ? d.rotacion[0] : (d.posicion ?? null);
+  });
   // El evento «toggle» no burbujea: se escucha en captura para recordar si el detalle está desplegado.
   $('vd-calidad').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('cal-detalle')) calAbierto = e.target.open; }, true);
   const dia = $('vd-diagrama');

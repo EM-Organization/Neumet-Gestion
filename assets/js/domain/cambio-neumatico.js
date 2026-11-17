@@ -3,6 +3,14 @@
 import { VIDA_MAX } from './ciclo-vida.js';
 import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo } from './quema.js';
 import { cubiertasMontables, nombreUbicacion } from './stock-cubiertas.js';
+import { nombrePosicion } from './posicion.js';
+import { fmtNum } from './formato.js';
+
+// Nombre de la posición como lo ve el operario («Eje 2 izquierda interior»); nunca «P4» a secas. `tipo` = tipo_ruedas del vehículo.
+export const nombrePos = (posicion, tipo) => nombrePosicion(posicion, tipo) || `Posición ${Number(posicion)}`;
+
+// Vida 0 es un neumático nuevo; el operario no maneja el código «vida».
+export const etiquetaVida = vida => (Number(vida) > 0 ? `recauchutado ${fmtNum(vida)}` : 'Neumático nuevo');
 
 export const DESTINOS = [
   { id: 'baja', label: 'Baja por desgaste', ayuda: 'El neumático se retira definitivamente.' },
@@ -115,7 +123,7 @@ export function validarCambio(f) {
     ok: true,
     params,
     resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo, {
-      quema: q.valor, kmPrevios: kmNuevo,
+      tipo: f.tipo, quema: q.valor, kmPrevios: kmNuevo,
       stockDestino: devolver ? nombreUbicacion(sucursalStock, f.sucursales) : null,
     })
   };
@@ -123,10 +131,10 @@ export function validarCambio(f) {
 
 export function resumenCambio(n, destino, motivo, nuevoTxt, odo, extra = {}) {
   const viejo = [n.marca, n.modelo].filter(Boolean).join(' ') || 'Sin marca';
-  return `P${n.posicion}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}${extra.stockDestino ? ' · vuelve al stock, ' + extra.stockDestino : ''}) y entra ${nuevoTxt}`
+  return `${nombrePos(n.posicion, extra.tipo)}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}${extra.stockDestino ? ' · vuelve al stock, ' + extra.stockDestino : ''}) y entra ${nuevoTxt}`
     + (extra.quema ? ` · quema ${extra.quema}` : '')
-    + (extra.kmPrevios > 0 ? ` · ${extra.kmPrevios} km previos` : '')
-    + (odo != null ? ` · odómetro ${odo} km` : '');
+    + (extra.kmPrevios > 0 ? ` · ${fmtNum(extra.kmPrevios)} km previos` : '')
+    + (odo != null ? ` · odómetro ${fmtNum(odo)} km` : '');
 }
 
 // Error de la RPC (PostgREST: {code, message}) -> mensaje comprensible para el gomero.
@@ -163,7 +171,7 @@ export function traducirErrorCambio(err) {
 }
 
 // Rotación desde un botón de posición: valida y detecta el intercambio.
-export function validarRotacion(neumaticos, vehiculoId, posA, posB) {
+export function validarRotacion(neumaticos, vehiculoId, posA, posB, tipo) {
   const a = Number(posA), b = Number(posB);
   if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 99 || b < 1 || b > 99) {
     return { ok: false, error: 'Posiciones válidas: 1 a 99' };
@@ -171,9 +179,16 @@ export function validarRotacion(neumaticos, vehiculoId, posA, posB) {
   if (a === b) return { ok: false, error: 'La posición de destino es la misma' };
   const montados = (neumaticos || []).filter(n => n.vehiculo_id === vehiculoId);
   const na = montados.find(n => n.posicion === a);
-  if (!na) return { ok: false, error: `No hay neumático en P${a}` };
-  if (na.estado === 'baja') return { ok: false, error: `El neumático de P${a} está dado de baja` };
+  if (!na) return { ok: false, error: `No hay neumático en ${nombrePos(a, tipo)}` };
+  if (na.estado === 'baja') return { ok: false, error: `El neumático de ${nombrePos(a, tipo)} está dado de baja` };
   const nb = montados.find(n => n.posicion === b);
-  if (nb && nb.estado === 'baja') return { ok: false, error: `P${b} está ocupada por un neumático dado de baja` };
-  return { ok: true, intercambio: nb || null, params: { p_vehiculo_id: vehiculoId, p_pos_a: a, p_pos_b: b } };
+  if (nb && nb.estado === 'baja') return { ok: false, error: `${nombrePos(b, tipo)} está ocupada por un neumático dado de baja` };
+  return { ok: true, intercambio: nb || null, params: { p_vehiculo_id: vehiculoId, p_pos_a: a, p_pos_b: b },
+    aviso: avisoRotacion(a, b, tipo, !!nb) };
+}
+
+// Aviso del resultado: «A ↔ B» si había neumático en destino; «movido de A a B» si estaba libre.
+// `huboIntercambio` es lo que informó la RPC (la base manda: pudo cambiar entre la lectura y la rotación).
+export function avisoRotacion(a, b, tipo, huboIntercambio) {
+  return huboIntercambio ? `${nombrePos(a, tipo)} ↔ ${nombrePos(b, tipo)}` : `neumático movido de ${nombrePos(a, tipo)} a ${nombrePos(b, tipo)}`;
 }

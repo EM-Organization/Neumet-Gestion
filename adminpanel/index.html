@@ -1018,7 +1018,7 @@
 
 <!-- Modal Cambio de neumático (taller): una pantalla, RPC neumatico_cambiar -->
 <div class="modal-backdrop" id="modal-cambio" data-backdrop-close="neumatico-cambiar-cerrar">
-  <div class="modal cambio-modal">
+  <form class="modal cambio-modal" id="cambio-form" novalidate>
     <div class="modal-header">
       <div class="modal-title" id="cambio-title">Cambiar neumático</div>
       <div class="modal-sub" id="cambio-sub">Registro del cambio hecho en el taller</div>
@@ -1065,10 +1065,10 @@
       <div id="cambio-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" data-action="neumatico-cambiar-cerrar">Cancelar</button>
-      <button class="btn primary" id="cambio-confirmar" data-action="neumatico-cambiar-confirmar">Confirmar cambio</button>
+      <button type="button" class="btn ghost" data-action="neumatico-cambiar-cerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="cambio-confirmar">Confirmar cambio</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Modal Montar neumático (posición libre: cubierta del stock o cubierta nueva) -->

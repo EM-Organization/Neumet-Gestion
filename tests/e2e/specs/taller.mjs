@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, abrirDetallePorMatricula, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
+import { nombrePos, avisoRotacion } from '../../../assets/js/domain/cambio-neumatico.js';
+import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
 const neumaticos = (env, id) => json(env, `select posicion, id, idneumatico, estado, marca from public.neumaticos where vehiculo_id = ${id} order by posicion`);
@@ -15,6 +17,10 @@ const foto = (env, id) => env.sql(`select json_build_object(
   'eventos', (select count(*) from public.eventos_neumatico where vehiculo_id = ${id}),
   'odo', (select odometro_km from public.vehiculos where id = ${id}),
   'stock', (select json_agg(s order by s.id) from public.stock_neumaticos s))`);
+// Nombre de coche y de posición tal como los ve el operario en avisos y modales (la interfaz no muestra «P<n>» a secas).
+const veh = (env, id) => json(env, `select nombre, tipo_ruedas from public.vehiculos where id = ${id}`)[0];
+const cocheDe = (env, id) => etiquetaCoche(veh(env, id).nombre);
+const posDe = (env, id, pos) => nombrePos(pos, veh(env, id).tipo_ruedas);
 const rpcsDesde = (env, desde, nombre) => env.peticiones.slice(desde).filter(r => r.path.startsWith(`/rpc/${nombre}`));
 
 // Llama a una RPC con el cliente REAL del panel (supabase-js + sesión de prueba) y devuelve {data, error}.
@@ -25,15 +31,14 @@ async function seleccionarRueda(p, pos) {
   await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-rotar-btn') && document.querySelector('#vd-rotar-btn').dataset.posicion === '${pos}'`, { que: `panel de la rueda ${pos}` });
 }
 
-async function rotarPorUI(p, posA, posB, { confirmar }) {
+// Rotar es reversible: no pide confirmación; el aviso nombra el vehículo y el intercambio (o el movimiento a una posición libre).
+async function rotarPorUI(p, posA, posB, avisoEsperado) {
   await seleccionarRueda(p, posA);
   await p.eval(`(() => { const s = document.querySelector('#vd-rotar-destino'); s.value = '${posB}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   await p.click('#vd-rotar-btn');
-  if (confirmar) {
-    await p.esperar(`document.querySelector('#modal-confirm').classList.contains('show')`, { que: 'confirmación del intercambio' });
-    await p.click('#confirm-ok');
-  }
   await p.esperar(`/Rotación registrada/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de rotación registrada' });
+  assert.equal(await p.eval(`document.querySelector('#toast-msg').textContent`), avisoEsperado);
+  assert.equal(await p.eval(`document.querySelector('#modal-confirm').classList.contains('show')`), false, 'rotar no pide confirmación');
 }
 
 export function registrar(env) {
@@ -42,7 +47,7 @@ export function registrar(env) {
     ['global', 'DEMO010', 5, 1, true], ['salto', 'DEMO011', 1, 2, true], ['montevideo', 'DEMO002', 1, 4, true],
     ['global', 'DEMO003', 1, 9, false] // P9 está libre en el camión de 6 neumáticos: mueve sin intercambiar
   ]) {
-    test(`Taller (${rol}): rotar P${a} con P${b} de ${patente} por la interfaz queda en la base`, async () => {
+    test(`Taller (${rol}): rotar la posición ${a} con la ${b} de ${patente} por la interfaz queda en la base`, async () => {
       const id = vehId(env, patente);
       const antes = neumaticos(env, id);
       const na = antes.find(n => n.posicion === a), nb = antes.find(n => n.posicion === b);
@@ -51,7 +56,7 @@ export function registrar(env) {
       const ev0 = nEventos(env, id, 'rotacion');
       await flujo(env, `rotar-${patente}`, rol, async p => {
         await abrirDetallePorMatricula(p, patente);
-        await rotarPorUI(p, a, b, { confirmar: intercambio });
+        await rotarPorUI(p, a, b, `Rotación registrada en ${cocheDe(env, id)}: ${avisoRotacion(a, b, veh(env, id).tipo_ruedas, intercambio)}`);
       });
       const despues = neumaticos(env, id);
       assert.equal(despues.find(n => n.id === na.id).posicion, b, 'el neumático A quedó en el destino');
@@ -115,7 +120,9 @@ export function registrar(env) {
     const desde = env.peticiones.length;
     await flujo(env, 'rotar-ui-ajeno', 'salto', async p => {
       await p.eval(`import('/assets/js/core/actions.js').then(m => m.ACTIONS['neumatico-rotar-pos'](${id}, 1, 2))`);
-      await p.esperar(`/No hay neumático en P1/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de que no hay neumático (la RLS lo oculta)' });
+      await p.esperar(`/No hay neumático en/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de que no hay neumático (la RLS lo oculta)' });
+      // El vehículo no es visible para esta sucursal: el tipo de ruedas se desconoce y la posición se nombra con el diseño por defecto.
+      assert.equal(await p.eval(`document.querySelector('#toast-msg').textContent`), `No hay neumático en ${nombrePos(1, null)}`);
     });
     assert.equal(rpcsDesde(env, desde, 'neumatico_rotar').length, 0);
     assert.equal(foto(env, id), antes);
@@ -146,7 +153,7 @@ export function registrar(env) {
       await abrirDetallePorMatricula(p, 'DEMO013');
       await seleccionarRueda(p, 3);
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
-      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && /P3/.test(document.querySelector('#cambio-actual').textContent)`, { que: 'modal de cambio de P3' });
+      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && document.querySelector('#cambio-actual').textContent.includes(${JSON.stringify('Neumático actual en ' + posDe(env, id, 3))})`, { que: 'modal de cambio de la posición 3' });
       assert.ok(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]') && !!document.querySelector('input[name="cambio-origen"][value="cubierta"]')`), 'el perfil global puede elegir un lote o una cubierta del stock');
       await p.eval(`document.querySelector('input[name="cambio-origen"][value="stock"]').click()`);   // lote anterior (la cubierta individual es la opción por defecto)
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
@@ -154,7 +161,7 @@ export function registrar(env) {
       await p.eval(`(() => { const s = document.querySelector('#cambio-stock'); s.value = '${stock.id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
       await p.esperar(`/sale .* y entra/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen del cambio' });
       await p.click('#cambio-confirmar');
-      await p.esperar(`/Cambio registrado en P3/.test(document.querySelector('#toast-msg').textContent) && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
+      await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 3) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
     });
     const despues = neumaticos(env, id);
     const nuevo = despues.find(n => n.posicion === 3);
@@ -183,7 +190,7 @@ export function registrar(env) {
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Pinchazo'); set('#cambio-marca', 'MarcaE2E'); set('#cambio-modelo', 'Modelo X'); })()`);
       await p.click('#cambio-confirmar');
-      await p.esperar(`/Cambio registrado en P2/.test(document.querySelector('#toast-msg').textContent)`, { que: 'cambio registrado' });
+      await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 2) + ': el neumático nuevo ya figura montado')}`, { que: 'cambio registrado' });
     });
     const despues = neumaticos(env, id);
     assert.equal(despues.find(n => n.posicion === 2).marca, 'MarcaE2E');
@@ -236,14 +243,14 @@ export function registrar(env) {
       await seleccionarRueda(p, 4);
       assert.match(await texto(p, '#vd-panel'), /Número de quema Q13-04/, 'el panel muestra la quema del neumático montado');
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
-      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && /P4/.test(document.querySelector('#cambio-actual').textContent)`, { que: 'modal de cambio de P4' });
+      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && document.querySelector('#cambio-actual').textContent.includes(${JSON.stringify('Neumático actual en ' + posDe(env, id, 4))})`, { que: 'modal de cambio de la posición 4' });
       assert.equal(await p.eval(`document.querySelector('#cambio-km-previos').value`), '0', 'los km previos empiezan en 0');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`document.querySelector('input[name="cambio-origen"][value="nuevo"]').click()`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Desgaste'); set('#cambio-marca', 'MarcaQuema'); set('#cambio-quema', '  E2E-001 '); set('#cambio-km-previos', '0'); })()`);
       await p.esperar(`/quema E2E-001/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen con la quema' });
       await p.click('#cambio-confirmar');
-      await p.esperar(`/Cambio registrado en P4/.test(document.querySelector('#toast-msg').textContent) && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
+      await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 4) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
       // El panel de la rueda muestra la quema nueva y 0 km previos
       await seleccionarRueda(p, 4);
       await p.esperar(`/Número de quema\\s+E2E-001/.test(document.querySelector('#vd-panel').innerText)`, { que: 'quema nueva en el panel' });

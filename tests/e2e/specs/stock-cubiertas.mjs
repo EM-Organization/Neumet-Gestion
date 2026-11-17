@@ -7,6 +7,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, irA, texto, abrirDetallePorMatricula } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
+import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
+import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
 const OTRA = `(select id from public.clientes where nombre = 'Otra Empresa SA')`;
 const RECHAZO = [{ ruta: /rpc\/(stock_cubierta_|neumatico_cambiar)/, status: [400, 403, 404, 409, 500] }];
@@ -318,11 +320,12 @@ export function registrar(env) {
     assert.ok(medAntes > 5);
     const montadosAntes = Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id = ${veh} and estado = 'montado'`));
     const salto = sucId(env, 'Salto');
+    const dv = json(env, `select nombre, tipo_ruedas from public.vehiculos where id = ${veh}`)[0];
     await flujo(env, 'montar-cubierta', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO004');
       await seleccionarRueda(p, 5);
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
-      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && /P5/.test(document.querySelector('#cambio-actual').textContent)`, { que: 'modal de cambio de P5' });
+      await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && document.querySelector('#cambio-actual').textContent.includes(${JSON.stringify('Neumático actual en ' + nombrePos(5, dv.tipo_ruedas))})`, { que: 'modal de cambio de la posición 5' });
       assert.equal(await p.eval(`document.querySelector('input[name="cambio-origen"][value="cubierta"]').checked`), true, 'la cubierta del stock es la opción por defecto');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="almacenado"]').click()`);
       await p.esperar(`!!document.querySelector('#cambio-retorno-wrap').offsetParent`, { que: 'sucursal donde queda en stock' });
@@ -333,7 +336,7 @@ export function registrar(env) {
       await elegir(p, '#cambio-retorno-suc', salto);
       await p.esperar(`/vuelve al stock, Salto/.test(document.querySelector('#cambio-resumen').textContent) && /cubierta S-003 del stock/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen del cambio' });
       await p.click('#cambio-confirmar');
-      await p.esperar(`/Cambio registrado en P5/.test(document.querySelector('#toast-msg').textContent) && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
+      await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + etiquetaCoche(dv.nombre) + ', ' + nombrePos(5, dv.tipo_ruedas) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
     });
     // La cubierta: misma fila, ocupa P5, Nuevo -> Usado, sin sucursal
     const m = json(env, `select id, idneumatico, numero_quema, vehiculo_id, posicion, estado, condicion, sucursal_id from public.neumaticos where id = ${cub.id}`)[0];
