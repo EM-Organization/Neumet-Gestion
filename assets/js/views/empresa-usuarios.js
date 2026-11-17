@@ -49,11 +49,11 @@ function botonesFila(u) {
   } else if (a.reponer) {
     out.push(html`<button type="button" class="btn" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer acceso</button>`);
   }
-  // Fila quitada: «Repetir bloqueo» (botón secundario) reaplica el bloqueo en Auth; fila vigente: «Quitar» con la baja del panel.
+  // Fila quitada: «Bloquear de nuevo» (botón secundario) reaplica el bloqueo en Auth; fila vigente: «Quitar» con la baja del panel.
   if (a.quitar) {
     const args = JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null]);
     out.push(u.estado === ESTADO_QUITADO
-      ? html`<button type="button" class="btn ghost" data-action="empresaQuitar" data-args="${args}">Repetir bloqueo</button>`
+      ? html`<button type="button" class="btn ghost" data-action="empresaQuitar" data-args="${args}">Bloquear de nuevo</button>`
       : html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${args}">Quitar</button>`);
   }
   if (p && p.ofrecer === 'actualizar') out.push(html`<button type="button" class="btn ghost" data-action="empresaActualizar">Actualizar lista</button>`);
@@ -153,6 +153,7 @@ async function crearUsuario() {
     // «Toda la empresa» no queda elegida para el siguiente alta: con solo email + Enter daría acceso a toda la empresa sin querer.
     if (alcance.sucursalId === '') $('emp-user-sucursal').value = alcanceInicial(sucursales, sucursalSeleccionada());
     showToast(password ? 'Usuario creado' : 'Invitación enviada por email');
+    $('emp-user-email').focus(); // listo para el siguiente alta (el foco podía haber quedado en el select de sucursal)
   } finally { btn.disabled = false; ocupado = false; }
   await loadEmpresaUsuarios();
 }

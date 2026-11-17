@@ -24,6 +24,7 @@
     c.rpc = function(name, args){
       if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar') return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
+      if(fx.rpcThrow) return Promise.reject(new TypeError('Failed to fetch')); // sin red: la promesa se rechaza
       if(fx.rpcError) return Promise.resolve({data: null, error: fx.rpcError});
       var pos = args.p_posicion;
       if(name === 'neumatico_montar'){

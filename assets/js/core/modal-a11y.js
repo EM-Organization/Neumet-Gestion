@@ -17,16 +17,28 @@ function abrir(bd) {
   dlg.setAttribute('aria-modal', 'true');
   if (titulo && titulo.id) dlg.setAttribute('aria-labelledby', titulo.id);
   dlg.setAttribute('tabindex', '-1');
-  abiertos.push({ bd, dlg, previo: document.activeElement });
+  const previo = document.activeElement;
+  abiertos.push({ bd, dlg, previo, firma: firmaDe(previo) });
   const items = focusables(dlg);
   (items.find(el => !el.closest('.modal-footer')) || items[0] || dlg).focus();
+}
+
+// Si la vista se repintó mientras el modal estaba abierto (p. ej. tras montar un neumático), el botón que lo abrió ya no es el mismo
+// nodo: se busca su equivalente por id o por acción + argumentos, para que el foco no caiga en <body>.
+const firmaDe = el => (el && el.getAttribute ? { id: el.id || '', accion: el.getAttribute('data-action') || '', args: el.getAttribute('data-args') || '' } : null);
+function equivalente(f) {
+  if (!f) return null;
+  if (f.id) return document.getElementById(f.id);
+  if (!f.accion) return null;
+  return [...document.querySelectorAll('[data-action]')].find(e => e.getAttribute('data-action') === f.accion && (e.getAttribute('data-args') || '') === f.args && visible(e)) || null;
 }
 
 function cerrar(bd) {
   const i = abiertos.findIndex(o => o.bd === bd);
   if (i < 0) return;
-  const [{ previo }] = abiertos.splice(i, 1);
-  if (previo && previo.isConnected && typeof previo.focus === 'function') previo.focus();
+  const [{ previo, firma }] = abiertos.splice(i, 1);
+  const destino = previo && previo.isConnected ? previo : equivalente(firma);
+  if (destino && typeof destino.focus === 'function') destino.focus();
 }
 
 function alTeclear(e) {

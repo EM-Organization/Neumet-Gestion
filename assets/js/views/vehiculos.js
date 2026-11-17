@@ -1,11 +1,12 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, avatarFor } from '../core/ui.js';
+import { enSucursal, AYUDA_TODAS_SUCURSALES } from '../domain/seccional.js';
 import { chip, chipEstado, estadoVacio, estadoError } from '../core/componentes.js';
 import { isClienteMode, currentClienteId, esAdminEmpresa } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
-import { contextoListo, filtrarConsulta, filtrarFilas, listaSucursales, sucursalSeleccionada, refrescarSucursales } from '../core/seccional.js';
+import { contextoListo, filtrarConsulta, filtrarFilas, listaSucursales, sucursalSeleccionada, refrescarSucursales, hayFiltroSeccional, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { agruparVehiculos } from '../domain/flota.js';
 import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda.js';
@@ -69,6 +70,7 @@ function renderLista(){
   if(!res.length){
     setHtml(lista, html`<li>${activos.length
       ?estadoVacio('Ningún vehículo coincide','Revisar la matrícula o el número de coche.')
+      :hayFiltroSeccional()?estadoVacio(enSucursal('Sin vehículos',nombreSucursal(sucursalSeleccionada())),AYUDA_TODAS_SUCURSALES)
       :estadoVacio('Sin vehículos registrados')}</li>`);
     return;
   }
@@ -105,7 +107,7 @@ function renderVehiculos(){
       <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${etiquetaCoche(v.nombre)}</div></td>
       <td class="mono-cell">${v.patente?v.patente:'—'}</td>
       <td>${clientNom}</td>
-      <td><span class="badge blue">${v.tipo_ruedas} WHL</span></td>
+      <td><span class="badge blue">${v.tipo_ruedas} ruedas</span></td>
       <td>${estadoBadge}</td>
       <td><div class="actions">
         <button class="icon-btn" data-va="detalle" data-vid="${v.id}" title="Ver detalle del vehículo" aria-label="Ver detalle de ${etiquetaCoche(v.nombre)}">

@@ -9,6 +9,9 @@ export function fmtNum(v, decimales = 0) {
   return Number(v).toLocaleString(LOCALE, { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
 }
 
+// Texto armado en la base («Neumático crítico: 4.2 mm»): pasa el punto decimal a coma (es-AR) sin tocar el resto del texto.
+export const comaDecimal = t => String(t ?? '').replace(/(\d)\.(\d)/g, '$1,$2');
+
 // Milímetros con un decimal: 6.25 -> "6,3 mm".
 export const fmtMm = v => (noNum(v) ? '—' : `${fmtNum(v, 1)} mm`);
 
