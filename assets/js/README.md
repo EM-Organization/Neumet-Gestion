@@ -24,6 +24,7 @@ core/
   nav.js                registerView(nombre, etiqueta, load, {menu, sinMigas}), switchView, setTitulo (migas), onEntrarVista(fn) (gancho al cambiar de vista), sidebar móvil
   islas.js              registrarIsla(nombre, etiqueta): monta una pantalla Svelte de /panel/islas.js con el `ctx` versionado (API_ISLAS) y la desmonta al salir de la vista (docs/19 §5.2)
   buscador.js           buscador de vehículos por matrícula o número (barra superior, Inicio; atajo «/»)
+  menu-mas.js           menuMas({etiqueta, items}) + initMenuMas(): menú «Más» de acciones secundarias de una fila (aria-expanded, Esc devuelve el foco, cierra al elegir o al hacer clic fuera)
   brand.js              BRAND (paleta para SVG generados por JS)
   svg.js                svgEl(tag, attrs)
 domain/

@@ -237,7 +237,7 @@ export function registrar(env) {
       await p.esperar(`document.activeElement && document.activeElement.id === 'reca-proveedor'`, { que: 'foco en el proveedor' });
       await p.escribir('#reca-proveedor', 'Recauchutadora E2E');
       await p.enter(); await p.enter(); // doble Enter: un solo envío
-      await toast(p, /Recauchutado actualizado/);
+      await toast(p, /^S-011 enviada a Recauchutadora E2E$/);
       await p.esperar(`!document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal cerrado' });
       assert.equal(await p.eval(`!!document.querySelector('[data-cubierta="${c.id}"] [data-action="recaEnviar"]')`), false, 'la cubierta enviada ya no ofrece el envío');
     });

@@ -9,6 +9,7 @@ import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { isClienteMode, esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
+import { menuMas } from '../core/menu-mas.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { contextoListo, filtrarFilas, filtrarConsulta } from '../core/seccional.js';
 import { ordenarAlertas, filtrarAlertas } from '../domain/flota.js';
@@ -48,13 +49,16 @@ function acciones(a, estado) {
   const arg = JSON.stringify(a.posicion === null || a.posicion === undefined ? [a.vehiculo_id] : [a.vehiculo_id, a.posicion]);
   const id = JSON.stringify([a.alerta_id]);
   // El equipo Neumet no opera dentro de una empresa (docs/17 P1): ve las alertas sin reconocer, silenciar ni resolver.
+  // Reconocer es lo frecuente y queda a la vista; Silenciar y Resolver (más raros) van en «Más».
   const gestion = esAdmin() || a.alerta_id === null || a.alerta_id === undefined ? '' : html`
-    ${a.estado === 'reconocida' ? '' : html`<button class="btn ghost" data-action="alertasReconocer" data-args="${id}">Reconocer</button>`}
-    ${estado === 'silenciada'
-      ? html`<button class="btn ghost" data-action="alertasQuitarSilencio" data-args="${id}">Quitar silencio</button>`
-      : html`<button class="btn ghost" data-action="alertasSilenciar" data-args="${id}">Silenciar ${DIAS_SILENCIO} días</button>`}
-    <button class="btn ghost" data-action="alertasResolver" data-args="${id}">Resolver</button>`;
-  return html`<div class="alert-acciones"><button class="btn ghost" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button>${gestion}</div>`;
+    ${a.estado === 'reconocida' ? '' : html`<button type="button" class="btn stk-btn stk-primaria" data-action="alertasReconocer" data-args="${id}">Reconocer</button>`}
+    ${menuMas({ etiqueta: `Más acciones de la alerta de ${etiquetaCoche(a.vehiculo_nombre)}`, items: [
+      estado === 'silenciada'
+        ? { label: 'Quitar silencio', action: 'alertasQuitarSilencio', args: [a.alerta_id] }
+        : { label: `Silenciar ${DIAS_SILENCIO} días`, action: 'alertasSilenciar', args: [a.alerta_id] },
+      { label: 'Resolver', action: 'alertasResolver', args: [a.alerta_id] },
+    ] })}`;
+  return html`<div class="alert-acciones">${gestion}<button type="button" class="btn ghost stk-btn alert-ver" data-action="verVehiculo" data-args="${arg}">Ver vehículo</button></div>`;
 }
 
 function fila(a, mostrarCliente) {

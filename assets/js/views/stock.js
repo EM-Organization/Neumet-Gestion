@@ -3,6 +3,7 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
+import { menuMas } from '../core/menu-mas.js';
 import { registerView, switchView } from '../core/nav.js';
 import { sucursalSeleccionada } from '../core/seccional.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -100,10 +101,12 @@ function renderCubiertas(){
         <span class="stk-loc${c.sucursal_id===null&&!reca?' stk-sin':''}">${loc}</span>
         <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
         <span class="stk-acc">${alta?html`
-          <button type="button" class="btn ghost stk-btn" data-action="cubiertaEditar" data-args="[${c.id}]" aria-label="Editar la cubierta ${etq}">Editar</button>
-          ${reca?'':html`<button type="button" class="btn ghost stk-btn" data-action="cubiertaMover" data-args="[${c.id}]" aria-label="Cambiar de sucursal la cubierta ${etq}">Cambiar sucursal</button>`}
-          ${reca||!puedeReca||(c.vida??0)>=VIDA_MAXIMA?'':html`<button type="button" class="btn ghost stk-btn" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
-          <button type="button" class="btn ghost stk-btn stk-del" data-action="cubiertaEliminar" data-args="[${c.id}]" aria-label="Eliminar la cubierta ${etq}">Eliminar</button>`:''}</span>
+          ${reca||!puedeReca||(c.vida??0)>=VIDA_MAXIMA?'':html`<button type="button" class="btn stk-btn stk-primaria" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
+          ${menuMas({ etiqueta: `Más acciones de la cubierta ${etq}`, items: [
+            { label: 'Editar', action: 'cubiertaEditar', args: [c.id], aria: `Editar la cubierta ${etq}` },
+            ...(reca ? [] : [{ label: 'Cambiar sucursal', action: 'cubiertaMover', args: [c.id], aria: `Cambiar de sucursal la cubierta ${etq}` }]),
+            { label: 'Eliminar', action: 'cubiertaEliminar', args: [c.id], aria: `Eliminar la cubierta ${etq}`, peligro: true },
+          ] })}`:''}</span>
       </li>`;
     })}</ul>`);
 }

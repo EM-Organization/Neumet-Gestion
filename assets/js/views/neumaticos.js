@@ -13,7 +13,11 @@ const visibles = () => pestanasVisibles({ admin: esAdmin(), adminEmpresa: esAdmi
 
 function aplicarRol() {
   const v = visibles();
-  document.querySelectorAll('[data-neu-tabs]').forEach(t => { t.style.display = hayPestanas(v) ? '' : 'none'; });
+  document.querySelectorAll('[data-neu-tabs]').forEach(t => {
+    t.style.display = hayPestanas(v) ? '' : 'none';
+    // Sin pestañas (perfil de sucursal) el título de la página deja de ser solo para lectores de pantalla: es lo único que rotula la vista.
+    t.closest('.view')?.classList.toggle('neu-sin-pestanas', !hayPestanas(v));
+  });
   document.querySelectorAll('[data-neu-reca]').forEach(b => { b.style.display = v.includes(PESTANA_RECAUCHUTADO) ? '' : 'none'; });
 }
 
