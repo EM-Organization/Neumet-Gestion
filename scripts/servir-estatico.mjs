@@ -16,9 +16,10 @@ const TIPOS = {
 
 const srv = http.createServer(async (req, res) => {
   try {
-    const ruta = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    let ruta;
+    try { ruta = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400).end(); return; } // URL mal codificada (/%)
     let archivo = resolve(join(raiz, ruta));
-    // Sin salir de la raíz (../)
+    // Sin salir de la raíz (../, también como ..%2f). Los symlinks dentro de la raíz se siguen a propósito: es un servidor de pruebas local.
     if (archivo !== raiz && !archivo.startsWith(raiz + sep)) { res.writeHead(403).end(); return; }
     let st = await stat(archivo).catch(() => null);
     if (st?.isDirectory()) { archivo = join(archivo, 'index.html'); st = await stat(archivo).catch(() => null); }

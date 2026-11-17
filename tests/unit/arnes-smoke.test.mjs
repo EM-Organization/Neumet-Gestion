@@ -43,13 +43,15 @@ test('servidor estático: puerto libre automático, 100 pedidos en paralelo sin 
     assert.ok(respuestas.every(r => r.status === 200));
     assert.match(respuestas[0].headers.get('content-type'), /text\/javascript/);
     assert.equal((await fetch(`${base}/no-existe.js`)).status, 404);
-    // --path-as-is equivalente: fetch normaliza «..», así que se manda a mano
-    const raro = await new Promise(ok => {
-      import('node:net').then(({ default: net }) => {
-        const s = net.connect(puerto, '127.0.0.1', () => s.write('GET /tests/../../etc/hosts HTTP/1.0\r\n\r\n'));
+    // fetch normaliza «..» y «%2e%2e» pero no «..%2f»: llega al servidor y solo la guarda de la raíz lo frena (sin ella sirve /etc/hosts).
+    const pedir = async (linea) => {
+      const { default: net } = await import('node:net');
+      return new Promise(ok => {
+        const s = net.connect(puerto, '127.0.0.1', () => s.write(`GET ${linea} HTTP/1.0\r\n\r\n`));
         let t = ''; s.on('data', d => { t += d; }); s.on('close', () => ok(t));
       });
-    });
-    assert.match(raro, /^HTTP\/1\.\d (403|404)/);
+    };
+    assert.match(await pedir('/' + '..%2f'.repeat(8) + 'etc/hosts'), /^HTTP\/1\.\d 403/);
+    assert.match(await pedir('/%'), /^HTTP\/1\.\d 400/); // URL mal codificada: 400, no 500
   } finally { srv.kill('SIGTERM'); }
 });
