@@ -121,7 +121,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   for(var i = 0; i < 12; i++) enter(true);
   enter(false); enter(false); $('#mont-confirmar').click(); await sleep(400);
   if(rpcs('neumatico_montar').length !== 3) fail('montar: Enter mantenido, doble Enter o clic inmediato montaron de más: ' + rpcs('neumatico_montar').length);
-  if(!/Completar la quema/.test(txt('#mont-error'))) fail('montar: el envío bloqueado debe explicar qué completar: ' + txt('#mont-error'));
+  if(!/Escribir la quema/.test(txt('#mont-error'))) fail('montar: el envío bloqueado debe explicar qué completar: ' + txt('#mont-error'));
   if(d.activeElement !== $('#mont-quema')) fail('montar: el foco debe ir a la quema');
   poner('#mont-quema', 'N-78');
   if(txt('#mont-error') !== '') fail('montar: al editar la quema debe limpiarse el aviso');

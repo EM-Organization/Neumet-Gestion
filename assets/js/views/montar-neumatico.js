@@ -137,7 +137,7 @@ function cerrarMontar() {
 }
 
 const ESPERA_CLIC_MS = 1500;
-const MSG_BLOQUEADO = 'Completar la quema de esta posición para montar la siguiente';
+const MSG_BLOQUEADO = 'Escribir la quema de esta posición o hacer clic en Montar para montar la siguiente';
 
 // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 // `viaClic`: el envío vino de un clic real del puntero (no de Enter, que llega con detail 0): único gesto deliberado que
