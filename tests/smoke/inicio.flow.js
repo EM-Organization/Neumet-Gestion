@@ -66,6 +66,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var hPx = $('#inicio-h-proximos'), hRs = $('#inicio-h-resumen'), hUl = $('#inicio-h-ultimas');
   var antes = function(a, b){ return !!(a.compareDocumentPosition(b) & w.Node.DOCUMENT_POSITION_FOLLOWING); };
   if(!hPx || !hRs || !hUl || !antes(hPx, hRs) || !antes(hRs, hUl)) fail('inicio('+rol+'): el resumen "N de M neumáticos" debe ir después de Próximos cambios y antes de Últimas mediciones');
+  // Sin las secciones el resto del recorrido solo lanzaría un TypeError («reading 'closest'») que tapa la causa real ya registrada arriba.
+  if(!hPx) return;
   // Sin etiquetas «P1, P2…»: posiciones con nombre y mini vehículo
   if(/(^|[^A-Za-z0-9])P\d/.test(txt.replace(/CR0001|XY987ZZ|AB123CD|NN0003/g, ''))) fail('inicio('+rol+'): quedan etiquetas «P<n>»: '+txt.slice(0,200));
   if(!/Delantera izquierda/.test(txt)) fail('inicio('+rol+'): falta el nombre de la posición');
