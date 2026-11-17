@@ -869,3 +869,24 @@
 .alert-ver { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
 /* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
 .th-natural th { text-transform: none; letter-spacing: normal; }
+
+/* ── Umbrales de desgaste: la altura de la etiqueta y la ayuda no desalinea los inputs entre columnas ── */
+.ficha-umbrales .field label {
+  line-height: 1.4;
+  min-height: 2.8em;
+  display: grid;
+  align-items: end;
+}
+.ficha-umbrales .field .ficha-ayuda {
+  line-height: 1.4;
+  min-height: 2.8em;
+}
+@media (max-width: 480px) {
+  .ficha-umbrales .field label,
+  .ficha-umbrales .field .ficha-ayuda {
+    min-height: 0;
+  }
+  .ficha-umbrales .field label {
+    display: block;
+  }
+}

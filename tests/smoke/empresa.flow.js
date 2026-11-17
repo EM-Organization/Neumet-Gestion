@@ -172,6 +172,15 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
   if (all('#emp-umb-campos [data-umbral]').length !== 6) fail('empresa: faltan campos de umbrales');
+  var grupos = {};
+  Array.prototype.forEach.call(all('#emp-umb-campos .field'), function (f) {
+    var key = Math.round(f.getBoundingClientRect().top);
+    var inp = f.querySelector('input');
+    if (inp) { grupos[key] = grupos[key] || []; grupos[key].push(inp.offsetTop); }
+  });
+  for (var k in grupos) {
+    if (grupos[k].length > 1 && new Set(grupos[k]).size !== 1) fail('empresa: los inputs de umbrales no están alineados verticalmente');
+  }
   if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0,5') fail('empresa: la histéresis actual no se cargó');
   var ordenCampos = Array.prototype.slice.call(all('#emp-umb-campos [data-umbral]')).map(function (i) { return i.dataset.umbral; }).slice(0, 3).join(',');
   if (ordenCampos !== 'umbral_bajo_mm,umbral_critico_mm,umbral_retiro_mm') fail('empresa: los umbrales deben ir de mayor a menor: ' + ordenCampos);
