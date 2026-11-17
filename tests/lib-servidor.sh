@@ -13,6 +13,6 @@ iniciar_servidor() {
     kill -0 "$SRV" 2>/dev/null || break
     sleep 0.1
   done
-  if [ -z "$PORT" ]; then echo "No se pudo iniciar el servidor estático:"; cat "$log"; rm -f "$log"; return 1; fi
+  if [ -z "$PORT" ]; then kill "$SRV" 2>/dev/null; echo "No se pudo iniciar el servidor estático:"; cat "$log"; rm -f "$log"; return 1; fi
   rm -f "$log"
 }
