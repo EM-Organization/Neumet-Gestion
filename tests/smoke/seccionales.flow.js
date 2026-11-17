@@ -317,6 +317,29 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var ultimoB = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 10; }).pop();
   if (selFila(10).value !== real10 || !ultimoB || String(ultimoB.args.p_sucursal_id === null ? '' : ultimoB.args.p_sucursal_id) !== real10) fail('sucursales: re-elegir el valor anterior con el mover colgado no quedó en lo último elegido (' + selFila(10).value + ', esperado ' + real10 + ')');
   fx.rpcDelayFn = null;
+  // Vuelta al origen con lecturas CLONADAS (como PostgREST) y lentas: la recarga del mover anterior se descarta y la lista queda vieja.
+  // El destino pendiente (volver a «Sin sucursal») no puede compararse con ese origen viejo: debe ejecutarse y el aviso nombrar el origen real.
+  fx.clonar = true;
+  var salto = otra;
+  var nombreSalto = Array.prototype.filter.call(selFila(15).options, function(o){ return o.value === salto; })[0].textContent;
+  var vueltaAlOrigen = async function(etiqueta, intermedio){
+    fx.rpcDelayFn = null; fx.selectDelay = 0;
+    setSel(selFila(15), ''); await sleep(1200);
+    if (selFila(15).value !== '') { fail('sucursales: ' + etiqueta + ': no se pudo preparar el origen «Sin sucursal»'); return; }
+    var antes = movs(15);
+    fx.rpcDelayFn = function(nm){ return nm === 'vehiculo_mover_sucursal' ? 400 : 0; }; fx.selectDelay = 300;
+    setSel(selFila(15), salto); await sleep(100);
+    intermedio(); await sleep(100);
+    setSel(selFila(15), ''); await sleep(2500);
+    var ult = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 15; }).pop();
+    if (selFila(15).value !== '' || !ult || ult.args.p_sucursal_id !== null) fail('sucursales: ' + etiqueta + ': el vehículo no volvió a «Sin sucursal» (select ' + selFila(15).value + ', última RPC ' + JSON.stringify(ult && ult.args) + ')');
+    if (movs(15) - antes !== 2) fail('sucursales: ' + etiqueta + ': se esperaban 2 RPC del vehículo y hubo ' + (movs(15) - antes));
+    if (toast().indexOf('movido de «' + nombreSalto + '» a «Sin sucursal»') === -1) fail('sucursales: ' + etiqueta + ': el aviso debe nombrar el origen real (' + nombreSalto + '), dice «' + toast() + '»');
+  };
+  var otroDest = salto === '1' ? otra : '1';
+  await vueltaAlOrigen('vuelta al origen con otro mover', function(){ setSel(selFila(10), selFila(10).value === otroDest ? '' : otroDest); });
+  await vueltaAlOrigen('vuelta al origen con «Recargar»', function(){ $('[data-action="sucursalesRecargar"]').click(); });
+  fx.clonar = false; fx.rpcDelayFn = null; fx.selectDelay = 0;
   // Buscador del listado
   $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');

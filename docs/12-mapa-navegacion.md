@@ -40,7 +40,7 @@ flowchart TD
   M --> R[Reportes]
   M -->|Empresa: solo administrador de empresa| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
-  SU -->|mover vehículo con confirmación| SU
+  SU -->|mover vehículo, sin confirmación y con aviso| SU
   V -->|solo administrador de empresa: Agregar vehículo| VA[Diálogo Agregar vehículo]
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   B -->|quema de una cubierta en stock| S
@@ -101,7 +101,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Neumáticos › Stock (administrador de empresa) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, cambiar sucursal, enviar a recauchutar (por fila) y eliminar cubiertas que nunca se usaron. «Enviar a recauchutar» también está en la pestaña Recauchutado: se ofrece en los dos lugares a propósito, porque desde la fila de Stock la tarea baja de 4 clics a 2 (sin recorrer el menú ni elegir la cubierta de nuevo). Debajo, los lotes anteriores (solo lectura) |
 | Neumáticos › Stock (usuario de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el administrador de empresa. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
-| Sucursales (solo administrador de empresa) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |
+| Sucursales (solo administrador de empresa) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal» (la elección se aplica de inmediato, sin confirmación, y un aviso informa el resultado) |
 
 ## 3. Rol administrador (NEUMET)
 

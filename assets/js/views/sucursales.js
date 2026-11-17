@@ -105,25 +105,30 @@ async function ejecutar(nombre, args, okMsg) {
   await recargar();
   return data || true;
 }
-// id de vehículo -> destino pendiente ({valor}) o null; presente mientras hay un mover de ese vehículo en vuelo.
+// id de vehículo -> {pendiente}: presente mientras hay un mover de ese vehículo en vuelo; `pendiente` es el último destino pedido ({valor}) o null.
 const moviendo = new Map();
 async function moverVehiculo(id, valor) {
-  if (moviendo.has(id)) { moviendo.set(id, { valor }); return false; } // gana el último; la corrida activa lo toma al terminar
-  moviendo.set(id, null);
+  const activo = moviendo.get(id);
+  if (activo) { activo.pendiente = { valor }; return false; } // gana el último; la corrida activa lo toma al terminar
+  const mia = { pendiente: null };
+  moviendo.set(id, mia);
   let ok = false;
   try {
+    const v = vehPorId(id);
+    // El origen NO se relee de `vehiculos` en cada vuelta: la recarga de un mover anterior puede haberse descartado y la lista quedar vieja.
+    // Se parte del valor de la lista al empezar y, tras cada RPC exitosa, el origen es el destino que se acaba de aplicar.
+    let origen = v ? v.sucursal_id : null;
     let destino = { valor };
-    while (destino) {
-      // Origen y destino se leen al ejecutar: tras el mover anterior el vehículo ya está en su sucursal real.
-      const v = vehPorId(id);
-      if (v && String(v.sucursal_id ?? '') !== String(destino.valor)) {
+    while (destino && v) {
+      if (String(origen ?? '') !== String(destino.valor)) {
         // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-        ok = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(destino.valor, sucursales)));
+        const hecho = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(origen, sucursales), textoSucursal(destino.valor, sucursales)));
+        if (hecho) { ok = true; origen = destino.valor === '' ? null : destino.valor; }
       }
-      destino = moviendo.get(id);
-      moviendo.set(id, null);
+      destino = mia.pendiente;
+      mia.pendiente = null;
     }
-  } finally { moviendo.delete(id); }
+  } finally { if (moviendo.get(id) === mia) moviendo.delete(id); } // una corrida nueva (tras cerrar sesión) conserva su entrada
   return ok;
 }
 function rpc(clave, nombre, args, okMsg) {
