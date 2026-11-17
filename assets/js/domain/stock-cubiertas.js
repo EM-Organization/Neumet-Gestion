@@ -165,7 +165,7 @@ export function traducirErrorStock(err) {
   if (code === '23505' || msg.includes('quema ya')) return 'Ese número de quema ya está registrado en otro neumático';
   if (code === 'P0002' || msg.includes('inexistente')) return 'La cubierta ya no existe. Actualizar la lista';
   if (code === '55000' && msg.includes('montada')) return 'La cubierta está montada en un vehículo. Gestionarla desde el vehículo';
-  if (code === '55000' || msg.includes('ya tuvo uso')) return 'La cubierta ya tuvo uso: no se puede eliminar';
+  if (code === '55000' || msg.includes('ya tuvo uso')) return 'La cubierta ya tuvo uso y no se puede eliminar. Gestionarla desde el vehículo o desde Recauchutado';
   if (msg.includes('quema')) return `El número de quema es obligatorio y admite hasta 40 caracteres`;
   if (msg.includes('marca')) return `Falta la marca (hasta ${MAX_TXT} caracteres)`;
   if (msg.includes('fecha')) return 'La fecha de compra no es válida';

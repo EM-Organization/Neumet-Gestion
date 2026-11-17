@@ -178,6 +178,12 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   // «Enviar a recauchutar» abre el modal con la cubierta elegida, sugiere proveedores ya usados y, con doble Enter, envía una sola vez.
   fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
   if(!$('#modal-reca').classList.contains('show') || $('#reca-cubierta').value !== '31') fail('stock: «Enviar a recauchutar» no abrió el modal con la cubierta elegida: ' + $('#reca-cubierta').value);
+  if(!visible($('#reca-cubierta-buscar'))) fail('stock: falta el buscador de cubiertas en el modal');
+  if(!/S-001 · Michelin X <Multi> Z/.test($('#reca-cubierta-lista').textContent)) fail('stock: el buscador no muestra la cubierta elegida: ' + $('#reca-cubierta-lista').textContent);
+  // El buscador filtra por quema, marca o modelo.
+  set('#reca-cubierta-buscar', 'Pirelli'); await sleep(100);
+  if($('#reca-cubierta-lista').textContent.indexOf('S-002') === -1 || $('#reca-cubierta-lista').textContent.indexOf('S-001') !== -1) fail('stock: el buscador no filtró por marca: ' + $('#reca-cubierta-lista').textContent);
+  set('#reca-cubierta-buscar', ''); await sleep(100);
   var prov = all('#reca-proveedores option').map(function(o){ return o.value; }).sort().join('|');
   if(prov !== 'Recauchutadora Norte|Recauchutadora Sur' || $('#reca-proveedor').getAttribute('list') !== 'reca-proveedores') fail('stock: sugerencias de proveedor: ' + prov);
   $('#reca-proveedor').value = 'Recauchutadora Sur';

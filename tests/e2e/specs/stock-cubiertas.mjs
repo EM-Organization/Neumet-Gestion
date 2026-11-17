@@ -233,6 +233,7 @@ export function registrar(env) {
       await p.click(`[data-cubierta="${c.id}"] [data-action="recaEnviar"]`);
       await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
       assert.equal(await p.eval(`document.querySelector('#reca-cubierta').value`), String(c.id), 'la cubierta llega elegida');
+      assert.equal(await p.eval(`!!document.querySelector('#reca-cubierta-buscar').offsetParent`), true, 'el buscador de cubiertas está visible');
       // El foco inicial queda en el proveedor (lo único que falta) y «Enter» envía.
       await p.esperar(`document.activeElement && document.activeElement.id === 'reca-proveedor'`, { que: 'foco en el proveedor' });
       await p.escribir('#reca-proveedor', 'Recauchutadora E2E');
@@ -244,6 +245,33 @@ export function registrar(env) {
     assert.equal(abiertos(), 1, 'un solo proceso, aunque llegaron dos Enter');
   });
 
+  test('Recauchutado (global): el buscador del modal filtra por quema, marca o modelo y Enter envía la cubierta elegida', async () => {
+    const c = unaCubierta(env, 'S-012');
+    assert.ok(c && c.estado === 'almacenado');
+    const abiertos = () => Number(env.sql(`select count(*) from public.recauchutados where neumatico_id = ${c.id}`));
+    assert.equal(abiertos(), 0);
+    await flujo(env, 'enviar-desde-recauchutado', 'global', async p => {
+      await irA(p, 'stock');
+      await p.click('#view-stock [data-neu-tab="recauchutado"]');
+      await p.esperar(`document.querySelector('#view-recauchutado').classList.contains('active')`, { que: 'vista Recauchutado' });
+      // loadRecauchutado() carga cubiertas y procesos de forma asíncrona: esperar a que desaparezca el spinner.
+      await p.esperar(`!document.querySelector('#reca-lista .loading-state')`, { que: 'vista Recauchutado cargada' });
+      await p.click('#btn-reca-enviar');
+      await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
+      // El foco empieza en el buscador de cubiertas.
+      await p.esperar(`document.activeElement && document.activeElement.id === 'reca-cubierta-buscar'`, { que: 'foco en el buscador' });
+      await poner(p, '#reca-cubierta-buscar', 'S-012');
+      await p.esperar(`document.querySelector('#reca-cubierta-lista').textContent.includes('S-012')`, { que: 'el buscador muestra S-012' });
+      await p.click('#reca-cubierta-lista .reca-cubierta-fila input[value="' + c.id + '"]');
+      await p.esperar(`document.querySelector('#reca-cubierta').value === ${JSON.stringify(String(c.id))}`, { que: 'S-012 seleccionada' });
+      await p.escribir('#reca-proveedor', 'Recauchutadora E2E');
+      await p.enter();
+      await toast(p, /^S-012 enviada a Recauchutadora E2E$/);
+      await p.esperar(`!document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal cerrado' });
+    });
+    assert.equal(abiertos(), 1);
+  });
+
   test('Stock (global): editar condición y datos, mover y eliminar (si nunca se usó) por la interfaz', async () => {
     const c = unaCubierta(env, 'OTRA-Q1');
     const mvd = sucId(env, 'Montevideo'), salto = sucId(env, 'Salto');
@@ -252,6 +280,9 @@ export function registrar(env) {
     const fotoUso = env.sql(`select json_agg(n) from public.neumaticos n where id = ${uso.id}`);
     await flujo(env, 'edicion-traslado-baja', 'global', async p => {
       await abrirStock(p, cubiertas(env, `n.cliente_id = ${DEMO}`).length);
+      // Una cubierta en un proceso de recauchutado abierto no ofrece Eliminar.
+      const enReca = unaCubierta(env, 'S-011');
+      assert.equal(await p.eval(`!!document.querySelector('[data-cubierta="${enReca.id}"] [data-action="cubiertaEliminar"]')`), false, 'cubierta en recauchutado no ofrece Eliminar');
       // Editar: la quema no se edita; condición Reparado y marca nueva
       await p.click(`[data-cubierta="${c.id}"] [data-action="cubiertaEditar"]`);
       await p.esperar(`document.querySelector('#modal-cubierta').classList.contains('show') && document.querySelector('#cb-quema').disabled`, { que: 'modal de edición' });

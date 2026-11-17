@@ -9,6 +9,8 @@ import { registerView, vistaActiva, reloadActiveView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
 import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { ordenarCubiertas, etiquetaCubierta } from '../domain/stock-cubiertas.js';
+import { claveBusqueda } from '../domain/vehiculo-busqueda.js';
 import {
   etiquetaEstado, etiquetaBanda, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo, validarAceptacion,
   traducirErrorRecauchutado, ERROR_GENERICO_RECAUCHUTADO, proveedoresUsados, avisoEnvio, identificadorCubierta,
@@ -28,6 +30,41 @@ const etiquetaProceso = p => `${p.numero_quema || p.idneumatico || 'Sin quema'} 
 const enfocar = id => setTimeout(() => { const el = $(id); if (el && el.getClientRects().length) el.focus(); }, 60);
 const err = msg => { $('reca-error').textContent = msg || ''; };
 const fechaTxt = f => (f ? fmtFecha(new Date(f + 'T00:00:00')) : '—');
+const MAX_LISTA_RECA = 50;
+
+// Texto visible de una cubierta en el buscador del modal (mismo formato que en el selector de Montar).
+const textoCubierta = c => etiquetaCubierta(c, sucursales);
+
+function filtrarCubiertasReca(libres, texto) {
+  const needle = claveBusqueda(texto);
+  if (!needle) return (libres || []).slice();
+  return (libres || []).filter(c => claveBusqueda(textoCubierta(c)).includes(needle));
+}
+
+function pintarCubiertas(libres, texto, seleccionadaId) {
+  const filtradas = ordenarCubiertas(filtrarCubiertasReca(libres, texto)).slice(0, MAX_LISTA_RECA);
+  const lista = $('reca-cubierta-lista');
+  if (!filtradas.length) {
+    setHtml(lista, html`<div class="reca-cubierta-vacio">${libres.length ? 'Ninguna cubierta coincide. Cambiar la búsqueda.' : 'Sin cubiertas disponibles.'}</div>`);
+    $('reca-cubierta').value = '';
+    return;
+  }
+  setHtml(lista, html`${filtradas.map(c => html`<label class="reca-cubierta-fila"><input type="radio" name="reca-cubierta-opt" value="${c.id}" ${String(seleccionadaId) === String(c.id) ? 'checked' : ''} data-change="recaCubiertaElegir"/>
+    <span class="reca-cubierta-txt">${textoCubierta(c)}</span></label>`)}${
+    libres.length > MAX_LISTA_RECA ? html`<div class="reca-cubierta-vacio">Se muestran ${filtradas.length} de ${libres.length}. Usar el buscador para acotar.</div>` : ''}`);
+  $('reca-cubierta').value = seleccionadaId === undefined || seleccionadaId === null ? '' : String(seleccionadaId);
+}
+
+function fijarCubierta(id) {
+  if (!modal || modal.modo !== 'enviar') return;
+  $('reca-cubierta').value = String(id);
+  modal.cubiertaId = Number(id);
+}
+
+const recaFiltrarCubiertas = () => {
+  if (!modal || modal.modo !== 'enviar') return;
+  pintarCubiertas(modal.libres || [], $('reca-cubierta-buscar').value, modal.cubiertaId);
+};
 
 function render() {
   const lista = $('reca-lista');
@@ -110,21 +147,21 @@ registerActions({
     // Si la lectura falla ya avisó con su propio mensaje: no se suma un segundo aviso («ya no se puede enviar»).
     if (elegida !== null && await loadRecauchutado() === false) return;
     const libres = cubiertasEnviables(cubiertas, procesos);
-    modal = { modo: 'enviar' };
+    modal = { modo: 'enviar', libres, cubiertaId: elegida };
     $('reca-title').textContent = TITULOS.enviar; $('reca-sub').textContent = '';
-    setHtml($('reca-cubierta'), joinHtml([html`<option value="">Elegir cubierta</option>`,
-      libres.map(c => html`<option value="${c.id}">${c.numero_quema || c.idneumatico || 'Sin quema'} · ${c.marca || 'Sin marca'}${c.modelo ? ' ' + c.modelo : ''} (${etiquetaBanda(c.vida).toLowerCase()})</option>`)]));
+    $('reca-cubierta-buscar').value = '';
     setHtml($('reca-proveedores'), joinHtml(proveedoresUsados(procesos).map(n => html`<option value="${n}"></option>`)));
     ['reca-proveedor', 'reca-motivo', 'reca-banda-marca', 'reca-banda-modelo', 'reca-profundidad', 'reca-costo'].forEach(id => { $(id).value = ''; });
     $('reca-moneda').value = 'UYU'; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
     if (elegida !== null) {
       if (!libres.some(c => c.id === elegida)) { modal = null; showToast('La cubierta ya no se puede enviar a recauchutar', true); return; }
-      $('reca-cubierta').value = String(elegida);
+      $('reca-cubierta-buscar').value = textoCubierta(libres.find(c => c.id === elegida));
     }
+    pintarCubiertas(libres, $('reca-cubierta-buscar').value, modal.cubiertaId);
     mostrarCampos('enviar'); err('');
     $('reca-guardar').textContent = 'Enviar';
     $('modal-reca').classList.add('show');
-    enfocar(elegida !== null ? 'reca-proveedor' : 'reca-cubierta');
+    enfocar(elegida !== null ? 'reca-proveedor' : 'reca-cubierta-buscar');
   },
   recaAbrir(modo, id) {
     const p = procesos.find(x => x.id === id);
@@ -141,6 +178,7 @@ registerActions({
     enfocar({ dictamen: 'reca-dictamen', aceptar: 'reca-profundidad', rechazar: 'reca-motivo' }[modo]);
   },
   recaDictamenCambio() { mostrarCampos('dictamen', $('reca-dictamen').value); },
+  recaCubiertaElegir(id) { fijarCubierta(id); },
   recaCerrar() { $('modal-reca').classList.remove('show'); modal = null; },
   // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
   async recaGuardar() {
@@ -191,4 +229,5 @@ onLogout(() => { procesos = []; cubiertas = []; sucursales = []; clientes = []; 
 export function init() {
   // «Enter» en cualquier campo guarda (docs/14 §5, regla 3).
   $('reca-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS.recaGuardar(); });
+  $('reca-cubierta-buscar').addEventListener('input', recaFiltrarCubiertas);
 }
