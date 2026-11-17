@@ -288,6 +288,34 @@ export function registrar(env) {
     });
   });
 
+  test('Recauchutado (global): si el filtro deja fuera la cubierta elegida, Enter pide elegir cubierta y no envía la anterior', async () => {
+    const elegida = unaCubierta(env, 'S-010');
+    const otra = unaCubierta(env, 'S-001');
+    assert.ok(elegida && elegida.estado === 'almacenado');
+    assert.ok(otra && otra.estado === 'almacenado');
+    const abiertos = () => Number(env.sql(`select count(*) from public.recauchutados where neumatico_id = ${elegida.id}`));
+    assert.equal(abiertos(), 0);
+    await flujo(env, 'reca-filtro-limpia-seleccion', 'global', async p => {
+      await irA(p, 'stock');
+      await p.click('#view-stock [data-neu-tab="recauchutado"]');
+      await p.esperar(`!document.querySelector('#reca-lista .loading-state')`, { que: 'vista Recauchutado cargada' });
+      await p.click('#btn-reca-enviar');
+      await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
+      await p.click(`#reca-cubierta-lista .reca-cubierta-fila input[value="${elegida.id}"]`);
+      await p.esperar(`document.querySelector('#reca-cubierta').value === ${JSON.stringify(String(elegida.id))}`, { que: 'cubierta elegida' });
+      await poner(p, '#reca-cubierta-buscar', otra.numero_quema);
+      await p.esperar(`document.querySelector('#reca-cubierta-lista').textContent.includes('${otra.numero_quema}')`, { que: 'lista filtrada a la otra' });
+      await p.esperar(`!document.querySelector('#reca-cubierta-lista').textContent.includes('${elegida.numero_quema}')`, { que: 'elegida fuera de la lista' });
+      assert.equal(await p.eval(`document.querySelector('#reca-cubierta').value`), '', 'hidden de cubierta vacío tras filtrar');
+      assert.equal(await p.eval(`document.querySelector('#reca-cubierta-lista input:checked')`), null, 'ningún radio seleccionado');
+      await p.escribir('#reca-proveedor', 'Recauchutadora E2E');
+      await p.enter();
+      await p.esperar(`/Elegir la cubierta/.test(document.querySelector('#reca-error').textContent)`, { que: 'error de cubierta no elegida' });
+      assert.equal(abiertos(), 0, 'no se creó proceso para la cubierta anterior');
+    });
+    assert.equal(abiertos(), 0);
+  });
+
   test('Stock (global): editar condición y datos, mover y eliminar (si nunca se usó) por la interfaz', async () => {
     const c = unaCubierta(env, 'OTRA-Q1');
     const mvd = sucId(env, 'Montevideo'), salto = sucId(env, 'Salto');

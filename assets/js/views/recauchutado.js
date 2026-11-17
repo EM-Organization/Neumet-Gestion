@@ -44,6 +44,12 @@ function filtrarCubiertasReca(libres, texto) {
 function pintarCubiertas(libres, texto, seleccionadaId) {
   const filtradas = ordenarCubiertas(filtrarCubiertasReca(libres, texto)).slice(0, MAX_LISTA_RECA);
   const lista = $('reca-cubierta-lista');
+  // Si la elegida quedó fuera de la lista filtrada, limpiarla para no enviar una cubierta que ya no se ve (mismo patrón que Montar).
+  const elegidaVisible = seleccionadaId !== undefined && seleccionadaId !== null && filtradas.some(c => String(c.id) === String(seleccionadaId));
+  if (!elegidaVisible) {
+    if (modal) modal.cubiertaId = null;
+    seleccionadaId = null;
+  }
   if (!filtradas.length) {
     setHtml(lista, html`<div class="reca-cubierta-vacio">${libres.length ? 'Ninguna cubierta coincide. Cambiar la búsqueda.' : 'Sin cubiertas disponibles.'}</div>`);
     $('reca-cubierta').value = '';

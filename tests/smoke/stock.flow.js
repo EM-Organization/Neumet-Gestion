@@ -184,6 +184,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   set('#reca-cubierta-buscar', 'Pirelli'); await sleep(100);
   if($('#reca-cubierta-lista').textContent.indexOf('S-002') === -1 || $('#reca-cubierta-lista').textContent.indexOf('S-001') !== -1) fail('stock: el buscador no filtró por marca: ' + $('#reca-cubierta-lista').textContent);
   set('#reca-cubierta-buscar', ''); await sleep(100);
+  // Tras filtrar y volver a mostrar todas, se vuelve a elegir S-001 para no depender de que la selección anterior sobreviva.
+  $('#reca-cubierta-lista .reca-cubierta-fila input[value="31"]').click(); await sleep(100);
+  if($('#reca-cubierta').value !== '31') fail('stock: S-001 no quedó seleccionada tras el reset del buscador');
   var prov = all('#reca-proveedores option').map(function(o){ return o.value; }).sort().join('|');
   if(prov !== 'Recauchutadora Norte|Recauchutadora Sur' || $('#reca-proveedor').getAttribute('list') !== 'reca-proveedores') fail('stock: sugerencias de proveedor: ' + prov);
   $('#reca-proveedor').value = 'Recauchutadora Sur';
