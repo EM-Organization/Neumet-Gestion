@@ -51,11 +51,20 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(all('#view-alertas ' + GESTION.split(',').join(',#view-alertas ')).length) fail('alertas(admin): ofrece reconocer/silenciar/resolver al equipo Neumet');
   if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('[data-action="verVehiculo"]'); }).length !== 4) fail('alertas(admin): cada alerta debe seguir ofreciendo «Ver vehículo»');
   if(rows()[0].querySelector('[data-action="verVehiculo"]').dataset.args !== '[12,1]') fail('alertas: el enlace debe llevar al vehículo y la posición');
-  setSel('#alert-estado', 'reconocida'); await sleep(100);
+  // Un solo mecanismo de estado: los chips con conteo (sin select «Todos los estados»); clic filtra, otro clic quita el filtro.
+  if($('#alert-estado')) fail('alertas: sigue el select de estado junto a los chips');
+  var chipN = function(i){ return all('#alert-chips [data-action="alertasEstado"]')[i]; };
+  chipN(1).click(); await sleep(100);
   if(rows().length !== 1 || rows()[0].querySelector('[data-action="alertasReconocer"]')) fail('alertas: filtro reconocidas');
-  setSel('#alert-estado', 'silenciada'); await sleep(100);
+  if(chipN(1).getAttribute('aria-pressed') !== 'true' || chipN(0).getAttribute('aria-pressed') !== 'false') fail('alertas: aria-pressed del chip activo');
+  chipN(2).click(); await sleep(100);
   if(rows().length !== 1 || rows()[0].querySelector('[data-action="alertasQuitarSilencio"]')) fail('alertas: filtro silenciadas');
-  setSel('#alert-estado', ''); setSel('#alert-cliente', '1'); await sleep(100);
+  chipN(2).click(); await sleep(100);
+  if(rows().length !== 4) fail('alertas: el segundo clic en el chip activo no quitó el filtro');
+  // Rojo solo para lo crítico: ningún chip de estado de la alerta va en rojo y todos llevan texto y símbolo.
+  if(all('#alert-chips .badge.red, #alert-tbody td[data-label="Estado"] .badge.red').length) fail('alertas: el estado de la alerta usa rojo');
+  if(Array.prototype.some.call(all('#alert-chips .badge'), function(b){ return !/\S+\s+\S/.test(b.textContent.trim()); })) fail('alertas: chip de estado sin símbolo o sin texto');
+  setSel('#alert-cliente', '1'); await sleep(100);
   if(rows().length !== 2) fail('alertas: filtro cliente');
   setSel('#alert-cliente', '');
   var chip = $('#alert-chips [data-action="alertasEstado"]'); // primer chip = Abiertas (la silenciada no cuenta como abierta)

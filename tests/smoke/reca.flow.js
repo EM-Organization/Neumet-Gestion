@@ -30,6 +30,10 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
   }
   if(!visible) { fail('reca('+rol+'): falta la pestaña Recauchutado'); return; }
   // Teclado: flecha derecha en Stock pasa a Recauchutado (foco en la pestaña activa) y flecha izquierda vuelve.
+  // Las dos pestañas comparten la ruta «Neumáticos › …», y el título de la página no repite el de la pestaña.
+  if($('#breadcrumb-current').textContent !== 'Stock' || $('#breadcrumb-parent').textContent !== 'Neumáticos' || $('#breadcrumb-parent').hidden) fail('reca('+rol+'): migas de Stock '+$('#breadcrumb-parent').textContent+' > '+$('#breadcrumb-current').textContent);
+  var tit = $('#view-stock .page-title');
+  if(tit && tit.getClientRects().length && tit.getBoundingClientRect().width > 2) fail('reca('+rol+'): el título bajo las pestañas repite la ruta');
   tabStock.focus();
   tabStock.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await sleep(700);
   if(!$('#view-recauchutado').classList.contains('active') || $('.nav-item.active').dataset.view !== 'stock') fail('reca('+rol+'): ArrowRight no abrió Recauchutado con Neumáticos resaltado');

@@ -735,6 +735,9 @@
 @media (max-width: 760px) {
   .topbar { height: auto; flex-wrap: wrap; padding: 8px 12px; row-gap: 8px; }
   .topbar .busq-barra { order: 3; flex: 1 1 100%; margin-left: 0; }
+  /* El selector de sucursal baja a su propia fila, a todo el ancho: en la fila del título quedaba cortado («Todas las sucursale…») */
+  .topbar .sec-selector { order: 4; flex: 1 1 100%; margin: 0; min-width: 0; }
+  .topbar .sec-selector select { width: 100%; max-width: none; min-width: 0; }
   .busq-atajo { display: none; }
   .breadcrumb-parent, .breadcrumb-sep { display: none; }
 }

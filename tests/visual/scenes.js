@@ -74,6 +74,11 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   await sleep(300);
   var nv = $('.nav-item.active'), vw = $('.view.active');
   log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
+  // Ninguna escena desborda a lo ancho (barra superior en 390 px incluida: selector de sucursal y buscador dentro del viewport).
+  var de = d.documentElement;
+  if(de.scrollWidth > w.innerWidth + 1) fail('escena '+name+': desborde horizontal ('+de.scrollWidth+' > '+w.innerWidth+')');
+  var tb = $('.topbar');
+  if(tb) Array.prototype.forEach.call(tb.querySelectorAll('.sec-selector, .busq-barra, .breadcrumb'), function(e){ if(e.getClientRects().length && e.getBoundingClientRect().right > w.innerWidth + 1) fail('escena '+name+': la barra superior se sale por la derecha ('+(e.className||e.id)+')'); });
   var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes','view-calidad':'inicio','view-recauchutado':'stock'};
   if(nv && vw && (colgadas[vw.id] ? colgadas[vw.id] !== nv.dataset.view : vw.id !== 'view-'+nv.dataset.view)) fail('escena '+name+': el menu resalta "'+nv.dataset.view+'" pero la vista activa es '+vw.id);
 };

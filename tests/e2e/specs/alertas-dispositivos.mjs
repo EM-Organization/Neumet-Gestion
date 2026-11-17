@@ -17,6 +17,9 @@ export function registrar(env) {
         await p.esperar(`/${filas.length} alertas?/.test(document.querySelector('#alert-count').textContent)`, { que: `${filas.length} alertas` });
         const chips = await p.eval(`[...document.querySelectorAll('#alert-chips > *')].map(c => c.innerText.replace(/\\s+/g, ' ').trim())`);
         assert.deepEqual(chips.map(c => Number(c.replace(/\D/g, ''))), [porEstado('abierta'), porEstado('reconocida'), filas.filter(f => f.silenciada_hasta).length], `chips de estado: ${chips}`);
+        // Un solo mecanismo de estado (los chips) y sin rojo: el rojo queda para lo crítico.
+        assert.equal(await p.eval(`!document.querySelector('#alert-estado')`), true, 'sin select de estado junto a los chips');
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-chips .badge.red, #alert-tbody td[data-label="Estado"] .badge.red').length`), 0, 'el estado de la alerta no usa rojo');
         const tabla = await p.eval(`[...document.querySelectorAll('#alert-tbody tr')].map(r => r.innerText.replace(/\\s+/g, ' ').trim())`);
         assert.equal(tabla.length, filas.length, 'una fila por alerta');
         // Cada alerta aparece con su matrícula; ninguna de otro alcance.

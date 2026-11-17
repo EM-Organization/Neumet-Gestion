@@ -5,15 +5,16 @@ import { isClienteMode, panelHabilitado, esAdmin, esAdminEmpresa } from './auth.
 const NAV_LABELS={};
 const LOADERS={};
 const MENU={};
-const SOLO_ADMIN=new Set(), SOLO_EMPRESA=new Set(), VETOS={};
+const SOLO_ADMIN=new Set(), SOLO_EMPRESA=new Set(), SIN_MIGAS=new Set(), VETOS={};
 // `soloAdmin`: vista de administración (equipo Neumet); el rol cliente que la pida (menú, buscador o código) vuelve a Inicio.
 // `soloEmpresa`: vista del administrador de empresa; el equipo Neumet y el usuario de sucursal vuelven a Inicio.
+// `sinMigas`: la vista no muestra «Padre ›» en la barra (tiene su propio «Volver», que sabe a dónde regresar).
 // `vetoA`: {vista, cuando}: si `cuando()` es verdadero, pedir esta vista abre `vista` (p. ej. Recauchutado para el usuario de sucursal).
-export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa,vetoA}={}){
+export function registerView(name,label,load,{menu,soloAdmin,soloEmpresa,sinMigas,vetoA}={}){
   if(vetoA) VETOS[name]=vetoA;
   // Defensa en profundidad: ningún loader consulta datos si la sesión no es admin/cliente (los de administración, solo admin;
   // los de empresa, solo el administrador de empresa).
-  NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name); if(soloEmpresa) SOLO_EMPRESA.add(name);
+  NAV_LABELS[name]=label; if(menu) MENU[name]=menu; if(soloAdmin) SOLO_ADMIN.add(name); if(soloEmpresa) SOLO_EMPRESA.add(name); if(sinMigas) SIN_MIGAS.add(name);
   const permitido=soloAdmin?esAdmin:soloEmpresa?esAdminEmpresa:panelHabilitado;
   LOADERS[name]=(...a)=>(permitido()?load(...a):undefined);
   // Devuelve el loader con el filtro: lo registran como acción las vistas que se invocan también desde un botón del DOM.
@@ -28,6 +29,10 @@ export const hayVista=v=>Object.prototype.hasOwnProperty.call(NAV_LABELS,v);
 // Las islas (core/islas.js) se desmontan aquí, sin que nav.js sepa nada de ellas.
 const SALIDA_HOOKS=[];
 export function onSalirVista(fn){ SALIDA_HOOKS.push(fn); }
+// Hooks de entrada: se ejecutan en cada switchView (también al recargar la misma vista), ya con el título puesto y antes del loader.
+// Los usan el selector de sucursal (qué vistas lo muestran) y las pestañas de Neumáticos (migas iguales en ambas).
+const ENTRADA_HOOKS=[];
+export function onEntrarVista(fn){ ENTRADA_HOOKS.push(fn); }
 export const etiquetaVista=v=>NAV_LABELS[v]||v;
 // Recarga la vista activa (p. ej. al cambiar el selector de sucursal).
 export function reloadActiveView(){ if(activa&&LOADERS[activa]) LOADERS[activa](); }
@@ -57,7 +62,8 @@ export function switchView(v){
   document.querySelectorAll('.view').forEach(vw=>vw.classList.toggle('active',vw.id===`view-${v}`));
   const main=document.getElementById('contenido');
   if(main) main.dataset.vista=v;
-  setTitulo(NAV_LABELS[v]||v, MENU[v]&&MENU[v]!==v?MENU[v]:null);
+  setTitulo(NAV_LABELS[v]||v, MENU[v]&&MENU[v]!==v&&!SIN_MIGAS.has(v)?MENU[v]:null);
+  ENTRADA_HOOKS.forEach(fn=>fn(v));
   if(LOADERS[v]) LOADERS[v]();
 }
 
