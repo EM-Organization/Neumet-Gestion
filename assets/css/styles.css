@@ -409,7 +409,7 @@
   }
 
   /* Reportes */
-  .rep-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; max-width:860px; }
+  .rep-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; }
   .rep-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
   .rep-field { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; color:var(--text-secondary); }
   .rep-field select, .rep-field input { background:var(--surface-secondary); border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:14px; font-family:var(--font); font-weight:400; color:var(--text-primary); outline:none; }
@@ -527,11 +527,11 @@
 
 /* ── Vehículos: buscador y lista (cliente), pestañas con aire ── */
 .sub-tabs-bar { margin-bottom: 22px; }
-.search.search-grande { max-width: 480px; }
+.search.search-grande { max-width: none; }
 .search.search-grande input { font-size: 16px; padding: 10px 12px 10px 36px; }
 .search.search-grande svg { left: 12px; width: 15px; height: 15px; }
 .veh-contador { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px; }
-.veh-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+.veh-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .veh-fila { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; min-height: 52px; font-family: var(--font); color: var(--text-primary); cursor: pointer; }
 .veh-fila:hover { border-color: var(--border-strong); background: var(--surface-secondary); }
 .veh-fila:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
@@ -837,7 +837,6 @@
 .cal-motivo { margin-top: 4px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .cal-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .cal-acciones .btn { min-height: 36px; }
-#view-calidad .cal-lista { max-width: 760px; }
 
 /* Empresa > Sucursales en móvil: cada fila de las dos tablas pasa a tarjeta apilada, así el selector y las acciones quedan a la vista
    sin desplazar la tabla (la etiqueta de cada dato sale de data-label). */
