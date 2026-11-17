@@ -13,8 +13,9 @@ El corrector **no es el revisor**: arregla lo señalado y no emite veredicto.
 gh pr view <n> --json headRefName,baseRefName
 git fetch origin
 git worktree add .claude/worktrees/corregir-<n> origin/<rama>   # o usar el worktree de la rama si ya existe
+npm run preparar        # en el worktree: npm ci propio, lint y check corren
 ```
-Trabajar en ese worktree, en la rama del PR. Correr localmente lo que correría el CI para lo tocado (`neumet-verificar`; `scripts/preparar-worktree.sh` y el servidor de smoke, pendientes del PR de pruebas locales, cuando existan) en lugar de enterarse de un rojo por el CI. `git merge origin/main` primero si la rama está atrás o en conflicto.
+Trabajar en ese worktree, en la rama del PR. Correr localmente lo que correría el CI para lo tocado (`neumet-verificar`; `npm run verificar:rapido`; `scripts/smoke-modos.sh` corre los once modos; smoke y visual toman un puerto libre) en lugar de enterarse de un rojo por el CI. `git merge origin/main` primero si la rama está atrás o en conflicto.
 
 ## 2. Por cada bloqueante, en orden
 1. **Reproducir** el escenario concreto que describió el revisor. Si no se reproduce, no inventar un arreglo: anotarlo para devolverlo al revisor con lo que se intentó.
