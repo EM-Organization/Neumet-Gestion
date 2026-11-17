@@ -84,10 +84,12 @@ async function recargar() {
 }
 
 // Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
-// La guarda es por operación y objetivo (`crear`, `renombrar:<id>`, `mover:<vehiculoId>`): con Enter repetido cada envío
-// lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»), así que el doble envío de la MISMA operación
-// se descarta. Operaciones distintas no se pierden y corren sin esperarse: una cola global dejaba todo detrás de una RPC lenta o
-// colgada y ejecutaba después elecciones que el operario ya había reemplazado. Las recargas superadas las descarta `cargando`.
+// Guarda por operación y objetivo, SOLO en los formularios `crear`, `renombrar:<id>` y `eliminar:<id>`: con Enter repetido cada envío
+// lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»), así que el doble envío de la MISMA operación se descarta.
+// «Mover» NO se guarda: un cambio de select es idempotente y descartar la re-elección dejaba al vehículo en el destino anterior
+// (corregir de Montevideo a Salto con la primera RPC en curso, o bajar dos opciones con el teclado). Se serializa por vehículo (ver
+// `moverVehiculo`): la siguiente espera a la anterior de ESE vehículo y corre solo el último destino pedido. Operaciones sobre otros
+// vehículos o formularios no se esperan: una cola global dejaba todo detrás de una RPC lenta. Las recargas superadas las descarta `cargando`.
 const enCurso = new Set();
 async function ejecutar(nombre, args, okMsg) {
   err('');
@@ -102,6 +104,27 @@ async function ejecutar(nombre, args, okMsg) {
   if (okMsg) showToast(okMsg);
   await recargar();
   return data || true;
+}
+// id de vehículo -> destino pendiente ({valor}) o null; presente mientras hay un mover de ese vehículo en vuelo.
+const moviendo = new Map();
+async function moverVehiculo(id, valor) {
+  if (moviendo.has(id)) { moviendo.set(id, { valor }); return false; } // gana el último; la corrida activa lo toma al terminar
+  moviendo.set(id, null);
+  let ok = false;
+  try {
+    let destino = { valor };
+    while (destino) {
+      // Origen y destino se leen al ejecutar: tras el mover anterior el vehículo ya está en su sucursal real.
+      const v = vehPorId(id);
+      if (v && String(v.sucursal_id ?? '') !== String(destino.valor)) {
+        // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
+        ok = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(destino.valor, sucursales)));
+      }
+      destino = moviendo.get(id);
+      moviendo.set(id, null);
+    }
+  } finally { moviendo.delete(id); }
+  return ok;
 }
 function rpc(clave, nombre, args, okMsg) {
   if (enCurso.has(clave)) { loadSucursales(); return Promise.resolve(false); } // el control vuelve a su valor real
@@ -135,16 +158,16 @@ const ACCIONES = {
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);
     if (!v) return;
-    if (String(v.sucursal_id ?? '') === String(valor)) return;
-    // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-    await rpc(`mover:${vehiculoId}`, 'vehiculo_mover_sucursal', argsMover(vehiculoId, valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(valor, sucursales)));
+    // Sin mover en vuelo, el mismo valor no hace nada; con uno en vuelo se encola (el valor real aún puede cambiar).
+    if (!moviendo.has(vehiculoId) && String(v.sucursal_id ?? '') === String(valor)) return;
+    await moverVehiculo(vehiculoId, valor);
   },
 };
 registerActions(ACCIONES);
 
 registerView('sucursales', 'Sucursales', loadSucursales);
 // La entrada del menú (sección Empresa, `data-empresa-only`) la muestra core/auth.js solo al administrador de empresa.
-onLogout(() => { sucursales = []; vehiculos = []; enCurso.clear(); });
+onLogout(() => { sucursales = []; vehiculos = []; enCurso.clear(); moviendo.clear(); });
 
 export function init() {
   $('suc-buscar').addEventListener('input', renderVehiculos);

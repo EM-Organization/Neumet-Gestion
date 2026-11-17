@@ -296,6 +296,27 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (selFila(10).value !== '') fail('sucursales: el mover lento no terminó bien (' + selFila(10).value + ')');
   fx.rpcDelayFn = null;
   setSel(selFila(15), '1'); await sleep(400);
+  // Re-elegir el destino del MISMO vehículo con su mover en curso: no se descarta, gana la última elección (como en main)
+  var opts = Array.prototype.map.call(selFila(15).options, function(o){ return o.value; }).filter(function(v){ return v !== '' && v !== '1'; });
+  var otra = opts[0];
+  if (!otra) fail('sucursales: el fixture necesita una segunda sucursal');
+  fx.rpcDelayFn = function(nm){ return nm === 'vehiculo_mover_sucursal' ? 400 : 0; };
+  setSel(selFila(15), ''); await sleep(1000);
+  var mA = movs(15);
+  setSel(selFila(15), '1'); await sleep(150);
+  setSel(selFila(15), otra); await sleep(1500);
+  var ultimoA = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 15; }).pop();
+  if (!ultimoA || String(ultimoA.args.p_sucursal_id) !== otra || selFila(15).value !== otra) fail('sucursales: re-elegir el destino del mismo vehículo con su mover en curso dejó ' + selFila(15).value + ' (RPC final ' + (ultimoA && ultimoA.args.p_sucursal_id) + ', esperado ' + otra + ')');
+  if (movs(15) > mA + 2) fail('sucursales: el mover del mismo vehículo se ejecutó de más (' + (movs(15) - mA) + ')');
+  // Mover colgado y el operario re-elige el valor anterior (el real): se ejecuta y termina en lo último elegido
+  fx.rpcDelayFn = function(nm, a){ return nm === 'vehiculo_mover_sucursal' && a.p_vehiculo_id === 10 ? 1200 : 0; };
+  var real10 = selFila(10).value;
+  var dest10 = real10 === '1' ? otra : '1';
+  setSel(selFila(10), dest10); await sleep(200);
+  setSel(selFila(10), real10); await sleep(2800);
+  var ultimoB = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 10; }).pop();
+  if (selFila(10).value !== real10 || !ultimoB || String(ultimoB.args.p_sucursal_id === null ? '' : ultimoB.args.p_sucursal_id) !== real10) fail('sucursales: re-elegir el valor anterior con el mover colgado no quedó en lo último elegido (' + selFila(10).value + ', esperado ' + real10 + ')');
+  fx.rpcDelayFn = null;
   // Buscador del listado
   $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');

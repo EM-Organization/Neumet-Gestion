@@ -849,11 +849,10 @@
   #view-sucursales .sec-tabla input[type="text"], #view-sucursales .sec-tabla select { max-width: none; width: 100%; }
   #view-sucursales .sec-tabla .sec-acciones { padding-top: 6px; }
 }
-=======
+
 /* UX: «Eliminar» en la fila de cubiertas es secundario frente a Editar (texto atenuado); solo se destaca al apuntarlo (el hover rojo vive en tokens.css). */
 .stk-acc .stk-btn.stk-del:not(:hover):not(:focus-visible) { color: var(--text-secondary); }
 /* Cuatro acciones por fila no caben en una línea de la grilla: pasan a la siguiente en lugar de desbordar. */
 .stk-acc { flex-wrap: wrap; }
 /* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
 .th-natural th { text-transform: none; letter-spacing: normal; }
->>>>>>> origin/main
