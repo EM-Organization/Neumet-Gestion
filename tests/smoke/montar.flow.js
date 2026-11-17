@@ -14,9 +14,12 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   // Abrir el coche 301 por número exacto
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
   var inp = $('#search-vehiculos'); inp.value = '301'; inp.dispatchEvent(new w.Event('input', {bubbles: true})); await sleep(150);
+  // Un vehículo sin neumáticos dice «Sin neumáticos» (no «Sin datos») en la lista.
+  if(txt('#veh-lista').indexOf('Sin neumáticos') === -1 || /Sin datos/.test(txt('#veh-lista'))) fail('montar: la lista debe decir «Sin neumáticos»: ' + txt('#veh-lista'));
   inp.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true})); await sleep(900);
   if(!$('#view-vehiculo-detalle').classList.contains('active') || txt('#vd-cab').indexOf('Coche 301') === -1) { fail('montar: no abrió el coche 301: ' + txt('#vd-cab')); return; }
 
+  if(txt('.vd-cab-titulo').indexOf('Sin neumáticos') === -1 || /Sin datos/.test(txt('#vd-cab'))) fail('montar: el encabezado debe decir «Sin neumáticos»: ' + txt('#vd-cab'));
   // Estado vacío claro, con «Cargar neumáticos»; diagrama con 10 ruedas punteadas y sin datos de desgaste
   var vacio = txt('#vd-resumen');
   log.push('vacio=' + vacio.slice(0, 120));
@@ -35,7 +38,10 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(!bm || bm.dataset.posicion !== '3' || bm.textContent.trim() !== 'Montar neumático') { fail('montar: falta «Montar neumático» en el panel'); return; }
   bm.click();
   if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'el modal de montar')) return;
-  if($('#mont-pos').value !== '3') fail('montar: la posición inicial debe ser P3: ' + $('#mont-pos').value);
+  if($('#mont-pos').value !== '3') fail('montar: la posición inicial debe ser la 3: ' + $('#mont-pos').value);
+  // Sin «P3» (docs/14 §3): nombres como en Alertas; el subtítulo cuenta ruedas y el auxilio aparte, como el diagrama.
+  if(/\bP\d/.test(txt('#mont-pos')) || txt('#mont-pos option[value="3"]') !== 'Eje 2 izquierda exterior') fail('montar: nombres de posición: ' + txt('#mont-pos'));
+  if(!/ · 10 posiciones libres · auxilio libre$/.test(txt('#mont-sub'))) fail('montar: subtítulo de posiciones libres: ' + txt('#mont-sub'));
   var opciones = Array.prototype.map.call(all('#mont-pos option'), function(o){ return o.value; });
   if(opciones.length !== 11 || opciones[10] !== '99') fail('montar: posiciones libres de un coche de 10 ruedas + auxilio: ' + opciones.join(','));
   if($('#mont-tab-stock').getAttribute('aria-selected') !== 'true' || $('#mont-tab-nuevo').getAttribute('aria-selected') !== 'false') fail('montar: «Del stock» debe ser la pestaña inicial');
@@ -59,7 +65,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
 
   // Montar la cubierta S-002 en P3 (odómetro menor al actual: rechazo local)
   d.querySelector('input[name="mont-cubierta"][value="3102"]').click(); await sleep(100);
-  if(!/^P3: entra cubierta S-002/.test(txt('#mont-resumen'))) fail('montar: resumen del montaje desde el stock: ' + txt('#mont-resumen'));
+  if(!/^Eje 2 izquierda exterior: entra cubierta S-002/.test(txt('#mont-resumen'))) fail('montar: resumen del montaje desde el stock: ' + txt('#mont-resumen'));
   poner('#mont-odo', '4000'); $('#mont-confirmar').click(); await sleep(200);
   if(rpcs('neumatico_montar').length || !/no puede ser menor al actual/.test(txt('#mont-error'))) fail('montar: odómetro menor debe rechazarse localmente: ' + txt('#mont-error'));
   poner('#mont-odo', '');
@@ -69,11 +75,11 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(JSON.stringify([a.p_vehiculo_id, a.p_posicion, a.p_cubierta_id, a.p_nuevo, a.p_odometro_km]) !== '[13,3,3102,null,null]') fail('montar: argumentos de la RPC: ' + JSON.stringify(a));
 
   // Sigue con la siguiente posición libre sin cerrar el flujo
-  await esperar(function(){ return /Montado en P3/.test(txt('#mont-aviso')); }, 'el aviso de la siguiente posición');
+  await esperar(function(){ return /Montado: Eje 2 izquierda exterior/.test(txt('#mont-aviso')); }, 'el aviso de la siguiente posición');
   log.push('aviso=' + txt('#mont-aviso'));
   if(!$('#modal-montar').classList.contains('show')) fail('montar: el modal debe seguir abierto tras montar');
-  if(!/Siguiente posición libre: P4/.test(txt('#mont-aviso')) || $('#mont-pos').value !== '4') fail('montar: debe ofrecer P4: ' + txt('#mont-aviso') + ' / ' + $('#mont-pos').value);
-  if(Array.prototype.some.call(all('#mont-pos option'), function(o){ return o.value === '3'; })) fail('montar: P3 ya no está libre');
+  if(!/Siguiente posición libre: Eje 2 izquierda interior/.test(txt('#mont-aviso')) || $('#mont-pos').value !== '4') fail('montar: debe ofrecer la posición 4: ' + txt('#mont-aviso') + ' / ' + $('#mont-pos').value);
+  if(Array.prototype.some.call(all('#mont-pos option'), function(o){ return o.value === '3'; })) fail('montar: la posición 3 ya no está libre');
   if(all('#mont-lista .mont-fila').length !== 2) fail('montar: la cubierta montada debe salir de la lista (' + all('#mont-lista .mont-fila').length + ')');
   if($('#mont-cerrar').textContent.trim() !== 'Terminar') fail('montar: el botón debe pasar a «Terminar»');
   await esperar(function(){ return /1 neumático/.test(txt('#vd-resumen')); }, 'recargar el detalle');
@@ -97,12 +103,28 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(rpcs('neumatico_montar').length !== 2 || !/La posición ya tiene un neumático/.test(txt('#mont-error')) || !$('#modal-montar').classList.contains('show')) fail('montar: error de la RPC no mostrado: ' + txt('#mont-error'));
   if($('#mont-confirmar').disabled) fail('montar: el botón quedó bloqueado tras el error');
 
-  $('#mont-confirmar').click();
+  // «Enter» en un campo envía: el envío del formulario monta una sola vez aunque llegue dos veces (doble Enter).
+  poner('#mont-fecha', '2026-05-01');
+  $('#mont-form').requestSubmit(); $('#mont-form').requestSubmit();
   await esperar(function(){ return rpcs('neumatico_montar').length === 3; }, 'montar la cubierta nueva');
+  await sleep(300);
+  if(rpcs('neumatico_montar').length !== 3) fail('montar: doble envío (Enter) llegó a la RPC ' + rpcs('neumatico_montar').length + ' veces');
   var b = rpcs('neumatico_montar')[2].args;
-  if(JSON.stringify([b.p_posicion, b.p_cubierta_id, b.p_nuevo]) !== JSON.stringify([4, null, {marca: 'Pirelli', vida: 1, km_previos: 1200, modelo: 'FR85', numero_quema: 'N-77'}])) fail('montar: argumentos de la cubierta nueva: ' + JSON.stringify(b));
-  await esperar(function(){ return /Siguiente posición libre: P5/.test(txt('#mont-aviso')); }, 'ofrecer P5');
-  if($('#mont-marca').value !== '' || $('#mont-km-previos').value !== '0') fail('montar: el formulario debe limpiarse para la siguiente posición');
+  if(JSON.stringify([b.p_posicion, b.p_cubierta_id, b.p_nuevo]) !== JSON.stringify([4, null, {marca: 'Pirelli', vida: 1, km_previos: 1200, modelo: 'FR85', numero_quema: 'N-77', fecha_compra: '2026-05-01'}])) fail('montar: argumentos de la cubierta nueva: ' + JSON.stringify(b));
+  await esperar(function(){ return /Siguiente posición libre: Eje 2 derecha interior/.test(txt('#mont-aviso')); }, 'ofrecer P5');
+  // Marca, modelo y fecha de compra pasan a la siguiente posición; lo propio de cada neumático se borra.
+  if($('#mont-marca').value !== 'Pirelli' || $('#mont-modelo').value !== 'FR85' || $('#mont-fecha').value !== '2026-05-01') fail('montar: marca, modelo y fecha deben conservarse');
+  if($('#mont-quema').value !== '' || $('#mont-km-previos').value !== '0' || $('#mont-odo').value !== '') fail('montar: quema, km previos y odómetro deben limpiarse para la siguiente posición');
+
+  // Neumáticos fantasma: tras montar, el formulario conserva marca y modelo; Enter mantenido, doble Enter o clic inmediato no montan otro.
+  var enter = function(rep){ var ev = new w.KeyboardEvent('keydown', {key: 'Enter', repeat: rep, bubbles: true, cancelable: true}); $('#mont-marca').dispatchEvent(ev); if(!ev.defaultPrevented) $('#mont-form').requestSubmit(); };
+  for(var i = 0; i < 12; i++) enter(true);
+  enter(false); enter(false); $('#mont-confirmar').click(); await sleep(400);
+  if(rpcs('neumatico_montar').length !== 3) fail('montar: Enter mantenido, doble Enter o clic inmediato montaron de más: ' + rpcs('neumatico_montar').length);
+  if(!/Escribir la quema/.test(txt('#mont-error'))) fail('montar: el envío bloqueado debe explicar qué completar: ' + txt('#mont-error'));
+  if(d.activeElement !== $('#mont-quema')) fail('montar: el foco debe ir a la quema');
+  poner('#mont-quema', 'N-78');
+  if(txt('#mont-error') !== '') fail('montar: al editar la quema debe limpiarse el aviso');
 
   // Terminar: cierra; el detalle muestra 2 neumáticos y ya no el estado vacío
   $('#mont-cerrar').click(); await sleep(400);

@@ -36,7 +36,7 @@ flowchart TD
   M --> N[Neumáticos]
   N --> S[Pestaña Stock]
   N -->|solo administrador de empresa| RC[Pestaña Recauchutado]
-  S -->|administrador de empresa: agregar, editar, mover, eliminar| SC[Cubierta: formulario o traslado]
+  S -->|administrador de empresa: agregar, editar, cambiar sucursal, enviar a recauchutar, eliminar| SC[Cubierta: formulario o traslado]
   M --> R[Reportes]
   M -->|Empresa: solo administrador de empresa| SU[Sucursales]
   SU -->|crear, renombrar, eliminar| SU
@@ -98,7 +98,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Vehículos | Encontrar un camión | Buscar por matrícula o número de coche, abrir el detalle |
 | Detalle de vehículo | Ver el estado de cada rueda | Elegir una rueda, ver mediciones y gráfico, cambiar neumático, rotar, registrar odómetro |
 | Alertas | Lista de problemas activos | Filtrar por estado con los chips (un solo mecanismo; otro clic quita el filtro), abrir el vehículo. «Abierta» va en naranja con ●, el estado siempre en texto y símbolo |
-| Neumáticos › Stock (administrador de empresa) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, mover entre sucursales y eliminar cubiertas que nunca se usaron. Debajo, los lotes anteriores (solo lectura) |
+| Neumáticos › Stock (administrador de empresa) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, cambiar sucursal, enviar a recauchutar (por fila) y eliminar cubiertas que nunca se usaron. «Enviar a recauchutar» también está en la pestaña Recauchutado: se ofrece en los dos lugares a propósito, porque desde la fila de Stock la tarea baja de 4 clics a 2 (sin recorrer el menú ni elegir la cubierta de nuevo). Debajo, los lotes anteriores (solo lectura) |
 | Neumáticos › Stock (usuario de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el administrador de empresa. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |
 | Sucursales (solo administrador de empresa) | Organizar la flota por sucursal | Crear, renombrar y eliminar sucursales (solo vacías); mover un vehículo a otra sucursal o a «Sin sucursal», con confirmación |

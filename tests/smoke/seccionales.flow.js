@@ -214,6 +214,10 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (toast().indexOf('número de coche') === -1 || nv('error').textContent.indexOf('número de coche') === -1 || !$('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: sin mensaje de número duplicado: ' + toast());
   $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   if ($('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: Cancelar no cerró el diálogo');
+  // Reabrir tras un error: el mensaje previo no debe quedar (regresión: errNuevo('') quedó dentro de un comentario)
+  $('#btn-veh-agregar').click(); await sleep(200);
+  if (nv('error').textContent !== '') fail('vehiculos: el diálogo reabierto conserva el error previo: ' + nv('error').textContent);
+  $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   // La sucursal elegida en la barra superior es la sucursal por defecto del alta
   $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
   if (vrows().length !== 4) fail('sucursales: el vehículo nuevo no aparece (' + vrows().length + ')');
@@ -244,7 +248,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#suc-buscar').value = ''; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true }));
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
   $('#btn-veh-agregar').click(); await sleep(200);
-  if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || nv('cargar').checked) fail('vehiculos: falta la opción «Cargar neumáticos ahora» (sin marcar por defecto)');
+  if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || !nv('cargar').checked) fail('vehiculos: «Cargar neumáticos ahora» debe venir marcada por defecto');
   nv('numero').value = '322'; nv('cargar').checked = true;
   $('#veh-nuevo-guardar').click(); await sleep(1200);
   // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).

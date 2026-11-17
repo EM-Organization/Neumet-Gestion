@@ -30,7 +30,7 @@
     {id:31,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X <Multi> Z',condicion:'nuevo',sucursal_id:1,sucursales:{nombre:'Montevideo'},fecha_compra:'2026-01-10',precio_unidad:455,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
     {id:32,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:0,km_previos:42000,clientes:{nombre:cl[0].nombre}},
     {id:33,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,sucursales:{nombre:'Salto'},fecha_compra:'2025-11-02',precio_unidad:410.5,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
-    {id:34,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-011',marca:'Bridgestone',modelo:'R249',condicion:'recauchutado',sucursal_id:2,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:1,km_previos:0,clientes:{nombre:cl[0].nombre}},
+    {id:34,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-011',marca:'Bridgestone',modelo:'R249',condicion:'recauchutado',sucursal_id:2,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:3,km_previos:0,clientes:{nombre:cl[0].nombre}},
     {id:35,vehiculo_id:null,cliente_id:2,posicion:null,numero_quema:'Z-900',marca:'Ajena',modelo:null,condicion:'nuevo',sucursal_id:null,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[1].nombre}}
   ];
   var stock = [

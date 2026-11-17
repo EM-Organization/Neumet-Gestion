@@ -11,10 +11,10 @@ import { ACTIONS } from '../core/actions.js';
 import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { reloadActiveView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
-import { fmtNum, plural } from '../domain/formato.js';
+import { fmtNum } from '../domain/formato.js';
 import { etiquetaCondicion, nombreUbicacion, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
 import {
-  DESTINOS_RETIRO, MAX_LISTA, posicionesLibres, siguienteLibre, etiquetaPosicion, cubiertasParaMontar,
+  DESTINOS_RETIRO, MAX_LISTA, posicionesLibres, siguienteLibre, etiquetaPosicion, resumenLibres, cubiertasParaMontar,
   validarMontaje, validarRetiro, traducirErrorMontaje, traducirErrorRetiro,
 } from '../domain/montaje.js';
 import { POS_AUXILIO } from '../domain/vehiculo-diagrama.js';
@@ -22,7 +22,10 @@ import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 
 const $ = id => document.getElementById(id);
 const val = id => { const el = $(id); return el ? el.value : ''; };
-const nombrePos = pos => (Number(pos) === POS_AUXILIO ? 'el auxilio' : `P${pos}`);
+// Nombre legible de la posición («Eje 2 izquierda exterior»); «P3» solo existe en el diagrama (docs/14, sección 3).
+const nombrePos = (pos, tipo) => etiquetaPosicion({ posicion: Number(pos), auxilio: Number(pos) === POS_AUXILIO }, tipo);
+// El foco se fija tras el turno del observador de core/modal-a11y.js, que al abrir el modal enfoca el primer campo (la posición).
+const enfocar = id => setTimeout(() => { const el = $(id); if (el && el.getClientRects().length) el.focus(); }, 60);
 const puedeUsarStock = () => esAdminEmpresa();
 
 let mont = null; // {veh, ocupadas, libres, cubiertas, sucursales, puedeStock, origen, cubiertaId, montados}
@@ -41,7 +44,7 @@ function estadoMontar() {
     cubiertaId: mont.cubiertaId, cubiertas: mont.cubiertas,
     marca: val('mont-marca'), modelo: val('mont-modelo'), quema: val('mont-quema'), kmPrevios: val('mont-km-previos'),
     fechaCompra: val('mont-fecha'), precio: val('mont-precio'), vida: val('mont-vida'),
-    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km,
+    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km, tipoRuedas: mont.veh.tipo_ruedas,
   };
 }
 
@@ -74,14 +77,17 @@ function actualizarMontar() {
 }
 
 function pintarPosiciones(posicion) {
-  setHtml($('mont-pos'), joinHtml(mont.libres.map(p => html`<option value="${p.posicion}">${etiquetaPosicion(p)}</option>`)));
+  setHtml($('mont-pos'), joinHtml(mont.libres.map(p => html`<option value="${p.posicion}">${etiquetaPosicion(p, mont.veh.tipo_ruedas)}</option>`)));
   $('mont-pos').value = String(posicion);
-  $('mont-sub').textContent = `${etiquetaCoche(mont.veh.nombre)} · ${plural(mont.libres.length, 'posición libre', 'posiciones libres')}`;
+  $('mont-sub').textContent = `${etiquetaCoche(mont.veh.nombre)} · ${resumenLibres(mont.libres)}`;
 }
 
-function limpiarFormulario() {
+// `conservar`: al pasar a la siguiente posición de una carga manual se mantienen marca, modelo y fecha de compra (suelen ser
+// los mismos del lote) y se borra solo lo propio de cada neumático. El odómetro es un dato medido: nunca se arrastra (docs/14 §5).
+function limpiarFormulario({ conservar = false } = {}) {
   mont.cubiertaId = null;
-  for (const id of ['mont-buscar', 'mont-marca', 'mont-modelo', 'mont-quema', 'mont-fecha', 'mont-precio', 'mont-odo']) $(id).value = '';
+  const propios = ['mont-buscar', 'mont-quema', 'mont-precio', 'mont-odo'];
+  for (const id of conservar ? propios : [...propios, 'mont-marca', 'mont-modelo', 'mont-fecha']) $(id).value = '';
   $('mont-km-previos').value = '0'; $('mont-vida').value = '0';
   const odo = mont.veh.odometro_km;
   $('mont-odo-hint').textContent = odo !== null && odo !== undefined
@@ -110,6 +116,8 @@ async function abrirMontar(vehiculoId, posicion) {
   const cubiertas = rc.error ? [] : (rc.data || []);
   mont = { veh, ocupadas, libres, cubiertas, sucursales: rs.error ? [] : (rs.data || []), puedeStock, origen: 'nuevo', cubiertaId: null, montados: 0 };
   mont.origen = puedeStock && cubiertas.length ? 'stock' : 'nuevo';
+  // Con un solo origen posible («Cubierta nueva») las pestañas no aportan: se ocultan.
+  $('mont-tabs').hidden = !puedeStock;
   $('mont-tab-stock').hidden = !puedeStock;
   $('mont-aviso').textContent = '';
   $('mont-cerrar').textContent = 'Cancelar';
@@ -120,6 +128,7 @@ async function abrirMontar(vehiculoId, posicion) {
   pintarLista();
   actualizarMontar();
   $('modal-montar').classList.add('show');
+  enfocar(mont.origen === 'stock' ? 'mont-buscar' : 'mont-marca');
 }
 
 function cerrarMontar() {
@@ -127,9 +136,20 @@ function cerrarMontar() {
   mont = null;
 }
 
+const ESPERA_CLIC_MS = 1500;
+const MSG_BLOQUEADO = 'Escribir la quema de esta posición o hacer clic en Montar para montar la siguiente';
+
 // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
-async function confirmarMontar() {
+// `viaClic`: el envío vino de un clic real del puntero (no de Enter, que llega con detail 0): único gesto deliberado que
+// desbloquea el formulario sin editar nada (para una cubierta sin quema). Se exige que haya pasado un momento desde el montaje anterior.
+async function confirmarMontar({ viaClic = false } = {}) {
   if (!mont || ocupado || esAdmin()) return;
+  // Tras montar una «Cubierta nueva» el formulario conserva marca y modelo para la siguiente posición: un Enter mantenido, un doble
+  // Enter o un clic seguido de Enter montaría neumáticos fantasma. Hasta que se edite algún campo (o se haga clic en Montar) no envía.
+  if (mont.origen === 'nuevo' && mont.bloqueado) {
+    if (!(viaClic && Date.now() - mont.montadoEn > ESPERA_CLIC_MS)) { $('mont-error').textContent = MSG_BLOQUEADO; enfocar('mont-quema'); return; }
+    mont.bloqueado = false;
+  }
   const r = validarMontaje(estadoMontar());
   if (!r.ok) { $('mont-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('mont-confirmar').disabled = true;
@@ -143,20 +163,22 @@ async function confirmarMontar() {
     if (r.params.p_cubierta_id) mont.cubiertas = mont.cubiertas.filter(c => c.id !== r.params.p_cubierta_id);
     if (data && data.odometro_km !== null && data.odometro_km !== undefined) mont.veh.odometro_km = data.odometro_km;
     mont.libres = posicionesLibres(mont.ocupadas, mont.veh.tipo_ruedas);
-    showToast(`Neumático montado en ${nombrePos(pos)}`);
+    showToast(`Neumático montado: ${nombrePos(pos, mont.veh.tipo_ruedas)}`);
     document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     notificarCambio({ vehiculoId, posicion: pos, montaje: data });
     // Sigue con la siguiente posición libre sin cerrar el flujo; al no quedar ninguna, se cierra.
     const sig = siguienteLibre(mont.libres, pos);
     if (!sig) { cerrarMontar(); showToast('Todas las posiciones tienen un neumático montado'); return; }
+    const eraNuevo = mont.origen === 'nuevo';
+    mont.bloqueado = eraNuevo; mont.montadoEn = Date.now();
     pintarPosiciones(sig.posicion);
-    limpiarFormulario();
+    limpiarFormulario({ conservar: eraNuevo });
     pintarLista();
-    $('mont-aviso').textContent = `Montado en ${nombrePos(pos)}. Siguiente posición libre: ${etiquetaPosicion(sig)}.`;
+    $('mont-aviso').textContent = `Montado: ${nombrePos(pos, mont.veh.tipo_ruedas)}. Siguiente posición libre: ${etiquetaPosicion(sig, mont.veh.tipo_ruedas)}.`;
     $('mont-cerrar').textContent = 'Terminar';
     actualizarMontar();
-    const primero = mont.origen === 'stock' ? $('mont-buscar') : $('mont-marca');
-    if (primero) primero.focus();
+    // Con marca y modelo conservados, lo primero por completar es la quema.
+    enfocar(mont.origen === 'stock' ? 'mont-buscar' : 'mont-quema');
   } catch (e) {
     console.error(e);
     const msg = traducirErrorMontaje(e);
@@ -171,7 +193,7 @@ function estadoRetirar() {
   return {
     vehiculoId: ret.veh.id, posicion: ret.neum.posicion, neum: ret.neum, destino: d ? d.value : '', motivo: val('ret-motivo'),
     sucursalStock: val('ret-suc'), quema: val('ret-quema'), odometro: val('ret-odo'), odometroActual: ret.veh.odometro_km,
-    puedeStock: ret.puedeStock,
+    puedeStock: ret.puedeStock, tipoRuedas: ret.veh.tipo_ruedas,
   };
 }
 
@@ -191,17 +213,17 @@ async function abrirRetirar(vehiculoId, posicion) {
   if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a retirar', true); return; }
   const puedeStock = puedeUsarStock();
   const [rv, rn] = await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,odometro_km').eq('id', vehiculoId).maybeSingle(),
+    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km').eq('id', vehiculoId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,posicion,marca,modelo,idneumatico,vida,estado,numero_quema').eq('vehiculo_id', vehiculoId).eq('posicion', posicion).maybeSingle(),
   ]);
   if (rv.error || rn.error || !rv.data) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático. Reintentar', true); return; }
   const neum = rn.data;
-  if (!neum || neum.estado !== 'montado') { showToast(`No hay un neumático montado en ${nombrePos(posicion)}`, true); return; }
+  if (!neum || neum.estado !== 'montado') { showToast(`No hay un neumático montado en ${nombrePos(posicion, rv.data.tipo_ruedas)}`, true); return; }
   const rs = puedeStock ? await db.from('sucursales').select('id,nombre').eq('cliente_id', rv.data.cliente_id).order('nombre') : { data: [] };
   ret = { veh: rv.data, neum, sucursales: rs.error ? [] : (rs.data || []), puedeStock };
   const destinos = DESTINOS_RETIRO.filter(d => puedeStock || d.id !== 'almacenado');
   $('ret-sub').textContent = etiquetaCoche(rv.data.nombre);
-  setHtml($('ret-actual'), html`<div>Neumático en <strong>${posicion === POS_AUXILIO ? 'auxilio' : `P${posicion}`}</strong>:
+  setHtml($('ret-actual'), html`<div>Neumático en <strong>${nombrePos(posicion, rv.data.tipo_ruedas)}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>${neum.numero_quema ? html` · quema ${neum.numero_quema}` : ''}${neum.vida ? html` · recauchutado ${neum.vida}` : ''}</div>`);
   setHtml($('ret-destinos'), joinHtml(destinos.map((d, i) => html`<label class="cambio-op"><input type="radio" name="ret-destino" value="${d.id}" ${i === 0 ? 'checked' : ''}
     data-change="neumatico-retirar-resumen"/> <span>${d.label}</span></label>`)));
@@ -225,8 +247,9 @@ async function confirmarRetirar() {
     const { data, error } = await db.rpc('neumatico_desmontar', r.params);
     if (error) throw error;
     const pos = r.params.p_posicion, vehiculoId = r.params.p_vehiculo_id;
+    const tipo = ret.veh.tipo_ruedas;
     cerrarRetirar();
-    showToast(`Neumático retirado de ${nombrePos(pos)}`);
+    showToast(`Neumático retirado: ${nombrePos(pos, tipo)}`);
     document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     notificarCambio({ vehiculoId, posicion: pos, retiro: data });
   } catch (e) {
@@ -254,7 +277,6 @@ ACTIONS['neumatico-montar-tab'] = function (origen) {
   mont.origen = origen === 'stock' ? 'stock' : 'nuevo';
   actualizarMontar();
 };
-ACTIONS['neumatico-montar-confirmar'] = confirmarMontar;
 
 ACTIONS['neumatico-retirar'] = async function (vehiculoId, posicion) { if (esAdmin()) return; await abrirRetirar(Number(vehiculoId), Number(posicion)); };
 ACTIONS['neumatico-retirar-cerrar'] = function () { cerrarRetirar(); };
@@ -262,6 +284,15 @@ ACTIONS['neumatico-retirar-resumen'] = function () { if (ret) actualizarRetirar(
 ACTIONS['neumatico-retirar-confirmar'] = confirmarRetirar;
 
 export function init() {
+  // «Enter» en cualquier campo envía (docs/14 §5, regla 3); confirmarMontar ignora un segundo envío mientras guarda.
+  // El clic en «Montar» llega primero como click y luego como submit: se anota si fue un clic real del puntero.
+  let clicReal = false;
+  $('mont-confirmar').addEventListener('click', e => { clicReal = e.detail > 0; });
+  $('mont-form').addEventListener('submit', e => { e.preventDefault(); const v = clicReal; clicReal = false; confirmarMontar({ viaClic: v }); });
+  // Enter mantenido (autorepetición): solo cuenta la primera pulsación.
+  $('mont-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
+  // Editar cualquier campo es la señal de que el formulario ya se revisó para la nueva posición.
+  for (const ev of ['input', 'change']) $('mont-form').addEventListener(ev, () => { if (mont) mont.bloqueado = false; });
   // El buscador filtra mientras se escribe (data-change solo dispara al salir del campo).
   $('mont-buscar').addEventListener('input', () => { if (mont) { pintarLista(); actualizarMontar(); } });
   // Pestañas: flechas izquierda y derecha cambian de origen (patrón de tabs).

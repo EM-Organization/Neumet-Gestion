@@ -120,7 +120,7 @@
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
   .search { position: relative; flex: 1; max-width: 300px; }
   .search input { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 9px; padding: 7px 12px 7px 32px; color: var(--text-primary); font-family: var(--font); font-size: 14px; outline: none; transition: all .15s; }
-  .search input::placeholder { color: var(--text-tertiary); }
+  .search input::placeholder { color: var(--text-secondary); }
   .search input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
   .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--text-tertiary); pointer-events: none; }
   .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 8px; font-size: 14px; font-family: var(--font); font-weight: 500; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); cursor: pointer; transition: all .12s; }
@@ -728,7 +728,7 @@
 .breadcrumb-parent { background: none; border: 0; padding: 0; font: inherit; color: var(--text-secondary); cursor: pointer; }
 .breadcrumb-parent:hover { text-decoration: underline; }
 .breadcrumb-parent[hidden], .breadcrumb-sep[hidden] { display: none; }
-.breadcrumb-sep { color: var(--text-tertiary); }
+.breadcrumb-sep { color: var(--text-secondary); }
 .link-fila { background: none; border: 0; padding: 0; font: inherit; font-weight: 500; color: var(--text-primary); cursor: pointer; text-align: left; }
 .link-fila:hover { text-decoration: underline; }
 .link-fila:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; border-radius: 4px; }
@@ -750,7 +750,7 @@
 .um-mm { color: var(--text-primary); white-space: nowrap; }
 .um-dif { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
 .um-dif.alto { color: var(--warning); }
-.um-sin { color: var(--text-tertiary); }
+.um-sin { color: var(--text-secondary); }
 
 /* ── Mini vehículo (reemplaza las etiquetas «P1, P2…»): ruedas por desgaste, la señalada con trazo oscuro ── */
 .mini-veh { height: 84px; width: auto; flex: none; display: block; }
@@ -788,6 +788,7 @@
 .vd-muestra-vacia { background: transparent; border: 1.4px dashed rgba(56,52,36,0.45); }
 .mont-aviso { font-size: 13px; color: var(--text-primary); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; }
 .mont-aviso:empty { display: none; }
+.mont-tabs[hidden] { display: none; }
 .mont-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 0 0 12px; }
 .mont-tabs button { flex: 1; padding: 9px 12px; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-secondary); background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; min-height: 40px; }
 .mont-tabs button[aria-selected="true"] { color: var(--accent-dark); border-bottom-color: var(--accent-dark); font-weight: 600; }
@@ -834,3 +835,10 @@
 .cal-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .cal-acciones .btn { min-height: 36px; }
 #view-calidad .cal-lista { max-width: 760px; }
+
+/* UX: «Eliminar» en la fila de cubiertas es secundario frente a Editar (texto atenuado); solo se destaca al apuntarlo (el hover rojo vive en tokens.css). */
+.stk-acc .stk-btn.stk-del:not(:hover):not(:focus-visible) { color: var(--text-secondary); }
+/* Cuatro acciones por fila no caben en una línea de la grilla: pasan a la siguiente en lugar de desbordar. */
+.stk-acc { flex-wrap: wrap; }
+/* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
+.th-natural th { text-transform: none; letter-spacing: normal; }

@@ -19,6 +19,13 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(!/X <Multi> Z/.test($('#stk-lista').textContent)) fail('stock: no muestra el modelo con signos');
   if(!/Sin sucursal/.test($('#stk-lista').textContent) || !/Montevideo/.test($('#stk-lista').textContent)) fail('stock: ubicaciones');
   if(!/^\d+ cubiertas · /.test($('#stk-resumen').textContent)) fail('stock: resumen: ' + $('#stk-resumen').textContent);
+  // «Lotes anteriores»: el rol cliente ve un solo cliente (sin columna Cliente) y los encabezados no se fuerzan a mayúsculas.
+  if(visible($('#stock-lotes'))){
+    var thCli = visible($('#th-stock-cliente'));
+    if(thCli === cliMode) fail('stock(' + rol + '): columna Cliente de lotes visible=' + thCli);
+    if(w.getComputedStyle($('#stock-lotes th')).textTransform !== 'none') fail('stock: encabezados de lotes con mayúsculas forzadas');
+    if(all('#tbody-stock tr[data-srow]').some(function(tr){ return tr.children.length !== (cliMode ? 6 : 7); })) fail('stock(' + rol + '): columnas de lotes no coinciden con el encabezado');
+  }
   // Sin segunda persona, exclamaciones ni «Todavía» en la vista
   if(/[¡!]|\bTodavía\b|\bacá\b/.test($('#view-stock').textContent)) fail('stock: texto fuera de la guía');
 
@@ -70,6 +77,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   var opcionesSuc = all('#cb-sucursal option').map(function(o){ return o.textContent; });
   if(opcionesSuc[0] !== 'Sin sucursal' || opcionesSuc.indexOf('Montevideo') === -1 || opcionesSuc.indexOf('Ajena') !== -1) fail('stock: sucursales del alta: ' + opcionesSuc.join('|'));
   var antes = rpcs('stock_cubierta_agregar').length;
+  // «Enter» en un campo envía el formulario (docs/14 §5, regla 3): con la quema vacía muestra el error y no llama a la RPC.
+  $('#cubierta-form').requestSubmit(); await sleep(200);
+  if(rpcs('stock_cubierta_agregar').length !== antes || !/número de quema/.test($('#cb-error').textContent)) fail('stock: Enter con la quema vacía: ' + $('#cb-error').textContent);
   $('#cb-guardar').click(); await sleep(200);
   if(rpcs('stock_cubierta_agregar').length !== antes || !/número de quema/.test($('#cb-error').textContent)) fail('stock: quema vacía llegó a la RPC: ' + $('#cb-error').textContent);
   $('#cb-quema').value = ' S-100 '; $('#cb-guardar').click(); await sleep(200);
@@ -86,7 +96,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if($('#cb-guardar').disabled) fail('stock: botón bloqueado tras el error');
   $('#cb-modelo').value = 'FH88'; $('#cb-fecha').value = '2026-05-01'; $('#cb-precio').value = '390.5'; $('#cb-sucursal').value = '1';
   if(!cliMode) $('#cb-cliente').value = '1';
-  $('#cb-guardar').click(); await sleep(400);
+  // Doble Enter: se envía una sola vez.
+  $('#cubierta-form').requestSubmit(); $('#cubierta-form').requestSubmit(); await sleep(500);
+  if(rpcs('stock_cubierta_agregar').length !== antes + 2) fail('stock: doble Enter llegó a la RPC ' + (rpcs('stock_cubierta_agregar').length - antes - 1) + ' veces');
   var alta = rpcs('stock_cubierta_agregar'), a = alta[alta.length - 1].args;
   var esperado = {p_numero_quema: 'S-100', p_marca: 'Pirelli', p_modelo: 'FH88', p_fecha_compra: '2026-05-01', p_precio: 390.5, p_sucursal_id: 1};
   if(!cliMode) esperado.p_cliente_id = 1;
@@ -107,8 +119,29 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(ed.length !== 1 || JSON.stringify(ed[0].args) !== JSON.stringify({p_id: 31, p_datos: {marca: 'Michelin XZ', condicion: 'reparado'}})) fail('stock: args de stock_cubierta_editar: ' + JSON.stringify(ed.map(function(e){ return e.args; })));
   if($('#modal-cubierta').classList.contains('show')) fail('stock: el modal de edición no se cerró');
 
-  // Mover: destino distinto; mismo destino no llama a la RPC
+  // Acciones de la fila: «Enviar a recauchutar» recupera el clic perdido; «Cambiar sucursal» reemplaza a «Mover»; Eliminar es el más discreto.
+  var fila31 = d.querySelector('[data-cubierta="31"]');
+  var textosAcc = all('[data-cubierta="31"] .stk-acc button').map(function(b){ return b.textContent.trim(); }).join('|');
+  if(textosAcc !== 'Editar|Cambiar sucursal|Enviar a recauchutar|Eliminar') fail('stock: acciones de la fila: ' + textosAcc);
+  if(w.getComputedStyle(fila31.querySelector('.stk-del')).color === w.getComputedStyle(fila31.querySelector('[data-action="cubiertaEditar"]')).color) fail('stock: Eliminar no es más discreto que Editar');
+  fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
+  if(!$('#modal-reca').classList.contains('show') || $('#reca-cubierta').value !== '31') fail('stock: «Enviar a recauchutar» no abrió el modal con la cubierta elegida: ' + $('#reca-cubierta').value);
+  $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200);
+
+  // Si no se pueden leer los recauchutados, «Enviar a recauchutar» avisa una vez del fallo y no abre el modal (sin segundo aviso engañoso).
+  var ceR = w.console.error; w.console.error = function(){};
+  fx.failTable = 'recauchutados';
+  fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
+  fx.failTable = null; w.console.error = ceR;
+  if($('#modal-reca').classList.contains('show') || /ya no se puede enviar/.test($('#toast-msg').textContent)) fail('stock: con la lectura caída «Enviar a recauchutar» no debe abrir el modal ni avisar «ya no se puede»: ' + $('#toast-msg').textContent);
+
+  // Con la vida máxima (S-011, recauchutada 3 veces) no se ofrece «Enviar a recauchutar»: no hay más recauchutados posibles.
+  var textos34 = all('[data-cubierta="34"] .stk-acc button').map(function(b){ return b.textContent.trim(); }).join('|');
+  if(textos34 !== 'Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 no debe ofrecer «Enviar a recauchutar»: ' + textos34);
+
+  // Cambiar sucursal: destino distinto; mismo destino no llama a la RPC
   d.querySelector('[data-cubierta="31"] [data-action="cubiertaMover"]').click(); await sleep(300);
+  if($('#cubierta-mover-title').textContent !== 'Cambiar sucursal') fail('stock: título del traslado: ' + $('#cubierta-mover-title').textContent);
   if(!$('#modal-cubierta-mover').classList.contains('show')) { fail('stock: el modal de traslado no se abrió'); return; }
   if(!/Quema S-001/.test($('#cubierta-mover-sub').textContent) || !/Montevideo/.test($('#cubierta-mover-sub').textContent)) fail('stock: subtítulo del traslado: ' + $('#cubierta-mover-sub').textContent);
   $('#cbm-guardar').click(); await sleep(200);

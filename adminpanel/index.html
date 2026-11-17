@@ -475,12 +475,12 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr>
+                <thead class="th-natural"><tr>
                   <th scope="col">Marca</th>
                   <th scope="col">Modelo</th>
-                  <th scope="col">Cliente</th>
-                  <th scope="col">Precio/ud</th>
-                  <th scope="col">Fecha compra</th>
+                  <th scope="col" id="th-stock-cliente">Cliente</th>
+                  <th scope="col">Precio por unidad</th>
+                  <th scope="col">Fecha de compra</th>
                   <th scope="col">Asignados</th>
                   <th scope="col">Notas</th>
                 </tr></thead>
@@ -1075,7 +1075,7 @@
 
 <!-- Modal Montar neumático (posición libre: cubierta del stock o cubierta nueva) -->
 <div class="modal-backdrop" id="modal-montar" data-backdrop-close="neumatico-montar-cerrar">
-  <div class="modal cambio-modal">
+  <form class="modal cambio-modal" id="mont-form" novalidate>
     <div class="modal-header">
       <div class="modal-title" id="mont-title">Montar neumático</div>
       <div class="modal-sub" id="mont-sub"></div>
@@ -1084,7 +1084,7 @@
       <div id="mont-aviso" class="mont-aviso" role="status" aria-live="polite"></div>
       <div class="field"><label for="mont-pos">Posición</label>
         <select id="mont-pos" data-change="neumatico-montar-pos"></select></div>
-      <div class="mont-tabs" role="tablist" aria-label="Origen del neumático">
+      <div class="mont-tabs" id="mont-tabs" role="tablist" aria-label="Origen del neumático">
         <button type="button" role="tab" id="mont-tab-stock" aria-controls="mont-panel-stock" aria-selected="true" data-action="neumatico-montar-tab" data-args='["stock"]'>Del stock</button>
         <button type="button" role="tab" id="mont-tab-nuevo" aria-controls="mont-panel-nuevo" aria-selected="false" tabindex="-1" data-action="neumatico-montar-tab" data-args='["nuevo"]'>Cubierta nueva</button>
       </div>
@@ -1125,10 +1125,10 @@
       <div id="mont-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" id="mont-cerrar" data-action="neumatico-montar-cerrar">Cancelar</button>
-      <button class="btn primary" id="mont-confirmar" data-action="neumatico-montar-confirmar">Montar</button>
+      <button type="button" class="btn ghost" id="mont-cerrar" data-action="neumatico-montar-cerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="mont-confirmar">Montar</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Modal Resolver alerta (nota obligatoria) -->
@@ -1254,7 +1254,7 @@
 
 <!-- Modal Recauchutado (enviar, dictamen, aceptar, rechazar) -->
 <div class="modal-backdrop" id="modal-reca" data-backdrop-close="recaCerrar">
-  <div class="modal modal-wide">
+  <form class="modal modal-wide" id="reca-form" novalidate>
     <div class="modal-header">
       <div class="modal-title" id="reca-title">Enviar a recauchutar</div>
       <div class="modal-sub" id="reca-sub"></div>
@@ -1282,15 +1282,15 @@
       <div id="reca-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" data-action="recaCerrar">Cancelar</button>
-      <button class="btn primary" id="reca-guardar" data-action="recaGuardar">Guardar</button>
+      <button type="button" class="btn ghost" data-action="recaCerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="reca-guardar">Guardar</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Modal Cubierta de stock (alta y edición) -->
 <div class="modal-backdrop" id="modal-cubierta" data-backdrop-close="cubiertaCerrar">
-  <div class="modal modal-wide">
+  <form class="modal modal-wide" id="cubierta-form" novalidate>
     <div class="modal-header">
       <div class="modal-title" id="cubierta-title">Agregar cubierta</div>
     </div>
@@ -1316,17 +1316,17 @@
       <div id="cb-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn ghost" data-action="cubiertaCerrar">Cancelar</button>
-      <button class="btn primary" id="cb-guardar" data-action="cubiertaGuardar">Guardar</button>
+      <button type="button" class="btn ghost" data-action="cubiertaCerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="cb-guardar">Guardar</button>
     </div>
-  </div>
+  </form>
 </div>
 
 <!-- Modal Mover cubierta de sucursal -->
 <div class="modal-backdrop" id="modal-cubierta-mover" data-backdrop-close="cubiertaMoverCerrar">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="cubierta-mover-title">Mover cubierta</div>
+      <div class="modal-title" id="cubierta-mover-title">Cambiar sucursal</div>
       <div class="modal-sub" id="cubierta-mover-sub"></div>
     </div>
     <div class="modal-body">
@@ -1335,7 +1335,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn ghost" data-action="cubiertaMoverCerrar">Cancelar</button>
-      <button class="btn primary" id="cbm-guardar" data-action="cubiertaMoverGuardar">Mover</button>
+      <button class="btn primary" id="cbm-guardar" data-action="cubiertaMoverGuardar">Guardar</button>
     </div>
   </div>
 </div>

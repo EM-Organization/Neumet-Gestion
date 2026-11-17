@@ -235,7 +235,7 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   var falsos = [['neumatico-cambiar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['neumatico-montar', { 'data-vehiculo-id': '10' }],
     ['neumatico-retirar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['cicloRegistrarCosto', { 'data-args': '[1]' }],
     // F10 PR 10: la rotación no pide confirmación cuando el destino está libre; sin guarda propia llegaría a neumatico_rotar.
-    ['neumatico-rotar-pos', { 'data-args': '[10,3,99]' }], ['neumatico-cambiar-confirmar', {}], ['neumatico-montar-confirmar', {}], ['neumatico-retirar-confirmar', {}]];
+    ['neumatico-rotar-pos', { 'data-args': '[10,3,99]' }], ['neumatico-cambiar-confirmar', {}], ['neumatico-retirar-confirmar', {}]];
   for(var i = 0; i < falsos.length; i++){
     var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i][0]);
     Object.keys(falsos[i][1]).forEach(function(k){ f.setAttribute(k, falsos[i][1][k]); });

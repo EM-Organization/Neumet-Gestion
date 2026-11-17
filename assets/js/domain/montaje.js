@@ -5,6 +5,7 @@ import { layoutRuedas, POS_AUXILIO } from './vehiculo-diagrama.js';
 import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo, MAX_QUEMA } from './quema.js';
 import { cubiertasMontables, filtrarCubiertas, parsePrecio, parseFecha, etiquetaCubierta, MAX_TXT } from './stock-cubiertas.js';
 import { VIDA_MAX } from './ciclo-vida.js';
+import { nombrePosicion } from './posicion.js';
 
 export const MAX_MOTIVO = 200;
 export const MAX_LISTA = 50; // cubiertas visibles en la lista del modal; el buscador acota el resto
@@ -36,7 +37,19 @@ export function siguienteLibre(libres, actual) {
   return l.find(x => x.posicion > Number(actual)) || l[0];
 }
 
-export const etiquetaPosicion = p => (p.auxilio ? 'Auxilio' : `P${p.posicion} · ${p.etiqueta}`);
+// Nombre de la posición para listas y avisos («Eje 2 izquierda exterior»); el número «P3» solo vive en el diagrama (docs/14, sección 3).
+// `tipo` = tipo_ruedas del vehículo; sin él el nombre se deduce de la posición.
+export const etiquetaPosicion = (p, tipo) => (p.auxilio ? 'Auxilio' : nombrePosicion(p.posicion, tipo) || `Posición ${p.posicion}`);
+const nombreDe = (posicion, tipo) => (Number(posicion) === POS_AUXILIO ? 'Auxilio' : nombrePosicion(posicion, tipo) || `Posición ${posicion}`);
+
+// Subtítulo del modal: las posiciones libres coinciden con las ruedas vacías del diagrama; el auxilio se cuenta aparte.
+export function resumenLibres(libres) {
+  const ruedas = (libres || []).filter(p => !p.auxilio).length;
+  const aux = (libres || []).some(p => p.auxilio);
+  const r = ruedas === 1 ? '1 posición libre' : `${ruedas} posiciones libres`;
+  if (!aux) return r;
+  return ruedas ? `${r} · auxilio libre` : 'Auxilio libre';
+}
 
 // Lista del modal «Del stock»: solo cubiertas montables que coinciden con el texto (quema, marca o modelo).
 export function cubiertasParaMontar(cubiertas, texto) {
@@ -68,7 +81,7 @@ export function validarMontaje(f) {
   const od = validarOdometroVehiculo(x.odometro, x.odometroActual);
   if (!od.ok) return od;
   const params = { p_vehiculo_id: Number(x.vehiculoId), p_posicion: pos, p_cubierta_id: null, p_nuevo: null, p_odometro_km: od.valor };
-  const donde = pos === POS_AUXILIO ? 'auxilio' : `P${pos}`;
+  const donde = nombreDe(pos, x.tipoRuedas);
   let que;
   if (x.origen === 'stock') {
     const c = cubiertasMontables(x.cubiertas).find(k => String(k.id) === String(x.cubiertaId));
@@ -132,7 +145,7 @@ export function validarRetiro(f) {
   const quien = [n.marca, n.modelo].filter(Boolean).join(' ') || 'Sin marca';
   return {
     ok: true, params,
-    resumen: `${Number(x.posicion) === POS_AUXILIO ? 'Auxilio' : `P${x.posicion}`}: sale ${quien} (${etiquetaDestinoRetiro(x.destino).toLowerCase()}${motivo ? `: ${motivo}` : ''}) y la posición queda libre`,
+    resumen: `${nombreDe(x.posicion, x.tipoRuedas)}: sale ${quien} (${etiquetaDestinoRetiro(x.destino).toLowerCase()}${motivo ? `: ${motivo}` : ''}) y la posición queda libre`,
   };
 }
 
