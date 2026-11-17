@@ -86,17 +86,17 @@ async function recargar() {
 // Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
 // La guarda es por operación y objetivo (`crear`, `renombrar:<id>`, `mover:<vehiculoId>`): con Enter repetido cada envío
 // lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»), así que el doble envío de la MISMA operación
-// se descarta. Operaciones distintas no se pierden: se encolan y corren en serie, cada una con su recarga del estado real.
+// se descarta. Operaciones distintas no se pierden y corren sin esperarse: una cola global dejaba todo detrás de una RPC lenta o
+// colgada y ejecutaba después elecciones que el operario ya había reemplazado. Las recargas superadas las descarta `cargando`.
 const enCurso = new Set();
-let cola = Promise.resolve();
 async function ejecutar(nombre, args, okMsg) {
   err('');
   const { data, error } = await db.rpc(nombre, args);
   if (error) {
     const m = mensajeErrorGestion(error);
     if (m.startsWith('No se pudo')) userError(error);
-    err(m); showToast(m, true);
     await loadSucursales(); // deja el select en el valor real
+    err(m); showToast(m, true); // después de la recarga, que limpia el error
     return false;
   }
   if (okMsg) showToast(okMsg);
@@ -106,8 +106,7 @@ async function ejecutar(nombre, args, okMsg) {
 function rpc(clave, nombre, args, okMsg) {
   if (enCurso.has(clave)) { loadSucursales(); return Promise.resolve(false); } // el control vuelve a su valor real
   enCurso.add(clave);
-  const corrida = cola.then(() => ejecutar(nombre, args, okMsg));
-  cola = corrida.catch(() => {});
+  const corrida = ejecutar(nombre, args, okMsg);
   return corrida.finally(() => enCurso.delete(clave));
 }
 
@@ -145,7 +144,7 @@ registerActions(ACCIONES);
 
 registerView('sucursales', 'Sucursales', loadSucursales);
 // La entrada del menú (sección Empresa, `data-empresa-only`) la muestra core/auth.js solo al administrador de empresa.
-onLogout(() => { sucursales = []; vehiculos = []; });
+onLogout(() => { sucursales = []; vehiculos = []; enCurso.clear(); });
 
 export function init() {
   $('suc-buscar').addEventListener('input', renderVehiculos);

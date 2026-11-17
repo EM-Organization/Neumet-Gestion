@@ -104,7 +104,9 @@
       var e = h();
       var out = { data: e ? null : (name === 'vehiculo_crear' ? { id: seq, cliente_id: 1 } : {}), error: e || null };
       // fx.rpcDelay (ms) simula una RPC lenta para probar operaciones superpuestas
-      return fx.rpcDelay ? new Promise(function(ok){ setTimeout(function(){ ok(out); }, fx.rpcDelay); }) : Promise.resolve(out);
+      // fx.rpcDelayFn(name, args) -> ms por llamada (una RPC colgada para un vehículo y las demás rápidas)
+      var ms = fx.rpcDelayFn ? fx.rpcDelayFn(name, args) : fx.rpcDelay;
+      return ms ? new Promise(function(ok){ setTimeout(function(){ ok(out); }, ms); }) : Promise.resolve(out);
     };
     c.from = function(t){
       if (t === 'sucursales' || t === 'perfiles') return MQ(t);

@@ -272,6 +272,26 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if ($('#suc-n-' + ids[2]).value !== 'Sin guardar') fail('sucursales: la recarga pisó el texto sin guardar de otra fila');
   fx.rpcDelay = 0;
   setSel(selFila(10), ''); setSel(selFila(15), '1'); await sleep(400);
+  // Una RPC colgada para un vehículo no bloquea el resto (sin cola global): otro mover y «Agregar sucursal» corren sin esperarla
+  var movs = function(id){ return fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === id; }).length; };
+  fx.rpcDelayFn = function(nm, a){ return nm === 'vehiculo_mover_sucursal' ? (a.p_vehiculo_id === 10 ? 1500 : 300) : 0; };
+  var m1 = cnt('vehiculo_mover_sucursal'), c1 = cnt('sucursal_crear');
+  setSel(selFila(10), '1'); await sleep(100);
+  setSel(selFila(15), ''); $('#suc-nombre').value = 'Sin esperar'; $('#suc-form').requestSubmit();
+  await sleep(500);
+  if (cnt('vehiculo_mover_sucursal') !== m1 + 2 || cnt('sucursal_crear') !== c1 + 1) fail('sucursales: con un mover colgado, otro mover y «Agregar sucursal» deben ejecutarse sin esperar (mover ' + (cnt('vehiculo_mover_sucursal') - m1) + ', crear ' + (cnt('sucursal_crear') - c1) + ')');
+  // Re-elegir el destino de un vehículo mientras otra operación sobre OTRO vehículo sigue en curso: se ejecuta y gana la última elección
+  var m15 = movs(15);
+  await sleep(1200);
+  setSel(selFila(10), ''); await sleep(100);
+  setSel(selFila(15), '1'); await sleep(500);
+  setSel(selFila(15), ''); await sleep(600);
+  if (movs(15) !== m15 + 2) fail('sucursales: re-elegir el destino de un vehículo con otra operación en curso se descartó (' + (movs(15) - m15) + ' de 2)');
+  if (selFila(15).value !== '') fail('sucursales: el estado final no refleja la última elección (' + selFila(15).value + ')');
+  await sleep(1500);
+  if (selFila(10).value !== '') fail('sucursales: el mover lento no terminó bien (' + selFila(10).value + ')');
+  fx.rpcDelayFn = null;
+  setSel(selFila(15), '1'); await sleep(400);
   // Buscador del listado
   $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');
