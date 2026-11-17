@@ -317,6 +317,85 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var ultimoB = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 10; }).pop();
   if (selFila(10).value !== real10 || !ultimoB || String(ultimoB.args.p_sucursal_id === null ? '' : ultimoB.args.p_sucursal_id) !== real10) fail('sucursales: re-elegir el valor anterior con el mover colgado no quedó en lo último elegido (' + selFila(10).value + ', esperado ' + real10 + ')');
   fx.rpcDelayFn = null;
+  // Vuelta al origen con lecturas CLONADAS (como PostgREST) y lentas: la recarga del mover anterior se descarta y la lista queda vieja.
+  // El destino pendiente (volver a «Sin sucursal») no puede compararse con ese origen viejo: debe ejecutarse y el aviso nombrar el origen real.
+  fx.clonar = true;
+  var salto = otra;
+  var nombreSalto = Array.prototype.filter.call(selFila(15).options, function(o){ return o.value === salto; })[0].textContent;
+  // tInter: ms desde el primer cambio hasta el evento intermedio; tFinal: ms hasta la re-elección. Con «Recargar» el clic cae DESPUÉS
+  // de la respuesta de la RPC (400 ms): así la recarga del mover queda superada por otra más nueva y se descarta.
+  var vueltaAlOrigen = async function(etiqueta, intermedio, tInter, tFinal){
+    fx.rpcDelayFn = null; fx.selectDelay = 0;
+    setSel(selFila(15), ''); await sleep(1200);
+    if (selFila(15).value !== '') { fail('sucursales: ' + etiqueta + ': no se pudo preparar el origen «Sin sucursal»'); return; }
+    var antes = movs(15);
+    fx.rpcDelayFn = function(nm){ return nm === 'vehiculo_mover_sucursal' ? 400 : 0; }; fx.selectDelay = 300;
+    setSel(selFila(15), salto); await sleep(tInter);
+    intermedio(); await sleep(tFinal - tInter);
+    setSel(selFila(15), ''); await sleep(2500);
+    var ult = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 15; }).pop();
+    if (selFila(15).value !== '' || !ult || ult.args.p_sucursal_id !== null) fail('sucursales: ' + etiqueta + ': el vehículo no volvió a «Sin sucursal» (select ' + selFila(15).value + ', última RPC ' + JSON.stringify(ult && ult.args) + ')');
+    if (movs(15) - antes !== 2) fail('sucursales: ' + etiqueta + ': se esperaban 2 RPC del vehículo y hubo ' + (movs(15) - antes));
+    if (toast().indexOf('movido de «' + nombreSalto + '» a «Sin sucursal»') === -1) fail('sucursales: ' + etiqueta + ': el aviso debe nombrar el origen real (' + nombreSalto + '), dice «' + toast() + '»');
+  };
+  var otroDest = salto === '1' ? otra : '1';
+  var nombreOtro = Array.prototype.filter.call(selFila(15).options, function(o){ return o.value === otroDest; })[0].textContent;
+  await vueltaAlOrigen('vuelta al origen con otro mover', function(){ setSel(selFila(10), selFila(10).value === otroDest ? '' : otroDest); }, 100, 200);
+  await vueltaAlOrigen('vuelta al origen con «Recargar»', function(){ $('[data-action="sucursalesRecargar"]').click(); }, 500, 600);
+  // Elección que se pierde: la corrida del vehículo 15 termina (t=700) con su recarga descartada porque la del otro mover (t=500) es más
+  // nueva y aún no llegó; a t=750 se elige otra vez. La lista local no puede contradecir lo ya aplicado: sin esto el «mismo valor» se
+  // descartaba sin RPC ni aviso y el select volvía solo a Salto; con otro destino el aviso nombraba un origen falso.
+  var eleccionPerdida = async function(etiqueta, eleccion, nombreDestino){
+    fx.rpcDelayFn = null; fx.selectDelay = 0;
+    setSel(selFila(15), ''); await sleep(1200);
+    if (selFila(15).value !== '') { fail('sucursales: ' + etiqueta + ': no se pudo preparar el origen «Sin sucursal»'); return; }
+    var antes = movs(15);
+    fx.rpcDelayFn = function(nm){ return nm === 'vehiculo_mover_sucursal' ? 400 : 0; }; fx.selectDelay = 300;
+    setSel(selFila(15), salto); await sleep(100);
+    setSel(selFila(10), selFila(10).value === otroDest ? '' : otroDest); await sleep(650);
+    setSel(selFila(15), eleccion); await sleep(2500);
+    var ult = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 15; }).pop();
+    if (selFila(15).value !== eleccion || !ult || String(ult.args.p_sucursal_id === null ? '' : ult.args.p_sucursal_id) !== eleccion) fail('sucursales: ' + etiqueta + ': la elección se perdió sin aviso (select ' + selFila(15).value + ', última RPC ' + JSON.stringify(ult && ult.args) + ', esperado «' + eleccion + '»)');
+    if (movs(15) - antes !== 2) fail('sucursales: ' + etiqueta + ': se esperaban 2 RPC del vehículo y hubo ' + (movs(15) - antes));
+    if (toast().indexOf('movido de «' + nombreSalto + '» a «' + nombreDestino + '»') === -1) fail('sucursales: ' + etiqueta + ': el aviso debe nombrar el origen real (' + nombreSalto + '), dice «' + toast() + '»');
+  };
+  await eleccionPerdida('elección perdida (a «Sin sucursal»)', '', 'Sin sucursal');
+  await eleccionPerdida('elección perdida (a otro destino)', otroDest, nombreOtro);
+  fx.clonar = false; fx.rpcDelayFn = null; fx.selectDelay = 0;
+  // Cerrar sesión con movers en vuelo. Estado de la vista: `moviendo` se vacía al salir; la corrida vieja no puede tocar la del siguiente usuario.
+  var reloguear = async function(){
+    $('#logout-btn').click(); await sleep(300);
+    $('#login-email').value = 'cliente@demo.test'; $('#login-password').value = 'x';
+    $('#login-form').requestSubmit(); await sleep(700);
+    $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
+  };
+  var rpcs15 = function(){ return fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal' && r.args.p_vehiculo_id === 15; }); };
+  var otroQue = function(excluir){ return Array.prototype.map.call(selFila(15).options, function(o){ return o.value; }).filter(function(v){ return excluir.indexOf(v) === -1; })[0]; };
+  // Un destino pedido ANTES de cerrar sesión no se ejecuta con la sesión del siguiente usuario
+  var actual15 = selFila(15).value;
+  var dA = otroQue([actual15]), dB = otroQue([actual15, dA]);
+  var antesS2 = rpcs15().length;
+  fx.rpcDelayFn = function(nm){ return nm === 'vehiculo_mover_sucursal' ? 800 : 0; };
+  setSel(selFila(15), dA); await sleep(100);
+  setSel(selFila(15), dB); await sleep(100);
+  await reloguear(); await sleep(1500);
+  if (rpcs15().length - antesS2 !== 1) fail('sucursales: el destino pendiente de antes de cerrar sesión se ejecutó con la sesión del siguiente usuario (' + (rpcs15().length - antesS2) + ' RPC, esperada 1)');
+  // La entrada de `moviendo` de la corrida nueva no la borra el final de la vieja: la re-elección se encola en la nueva y gana la última
+  fx.rpcDelayFn = null; await sleep(300);
+  var base = selFila(15).value;
+  var eA = otroQue([base]), eB = otroQue([base, eA]), eC = otroQue([base, eA, eB]) || base;
+  var antesM2 = rpcs15().length, llamada = 0;
+  // 1.ª RPC (sesión vieja) y 2.ª (sesión nueva) colgadas 3 s; la 3.ª, rápida. La vieja termina con la nueva todavía en vuelo.
+  fx.rpcDelayFn = function(nm, a){ if (nm !== 'vehiculo_mover_sucursal' || a.p_vehiculo_id !== 15) return 0; llamada++; return llamada <= 2 ? 3000 : 300; };
+  setSel(selFila(15), eA); await sleep(100);   // t=0: mover colgado de la sesión vieja
+  await reloguear();                           // t~1.7 s: sesión nueva
+  setSel(selFila(15), eB); await sleep(1800);  // t~3.5 s: el mover viejo ya volvió; el nuevo sigue en vuelo hasta ~4.7 s
+  setSel(selFila(15), eC); await sleep(300);
+  if (rpcs15().length - antesM2 !== 2) fail('sucursales: la re-elección con el mover nuevo en vuelo no se encoló en la corrida nueva (' + (rpcs15().length - antesM2) + ' RPC, esperadas 2: la vieja y la nueva)');
+  await sleep(4500);
+  var ultM2 = rpcs15().pop();
+  if (rpcs15().length - antesM2 !== 3 || !ultM2 || String(ultM2.args.p_sucursal_id === null ? '' : ultM2.args.p_sucursal_id) !== eC || selFila(15).value !== eC) fail('sucursales: tras cerrar sesión y volver, el vehículo no terminó en lo último elegido (select ' + selFila(15).value + ', RPC ' + (rpcs15().length - antesM2) + ', esperado ' + eC + ')');
+  fx.rpcDelayFn = null;
   // Buscador del listado
   $('#suc-buscar').value = 'sab1234'; $('#suc-buscar').dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(100);
   if (vrows().length !== 1 || vrows()[0].dataset.vehiculo !== '15') fail('sucursales: el buscador no filtró por matrícula');

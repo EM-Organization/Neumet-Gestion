@@ -91,7 +91,7 @@ async function recargar() {
 // `moverVehiculo`): la siguiente espera a la anterior de ESE vehículo y corre solo el último destino pedido. Operaciones sobre otros
 // vehículos o formularios no se esperan: una cola global dejaba todo detrás de una RPC lenta. Las recargas superadas las descarta `cargando`.
 const enCurso = new Set();
-async function ejecutar(nombre, args, okMsg) {
+async function ejecutar(nombre, args, okMsg, alAplicar) {
   err('');
   const { data, error } = await db.rpc(nombre, args);
   if (error) {
@@ -101,29 +101,40 @@ async function ejecutar(nombre, args, okMsg) {
     err(m); showToast(m, true); // después de la recarga, que limpia el error
     return false;
   }
+  if (alAplicar) alAplicar(); // antes de recargar: una recarga descartada no puede dejar la lista contradiciendo lo ya aplicado
   if (okMsg) showToast(okMsg);
   await recargar();
   return data || true;
 }
-// id de vehículo -> destino pendiente ({valor}) o null; presente mientras hay un mover de ese vehículo en vuelo.
+// id de vehículo -> {pendiente}: presente mientras hay un mover de ese vehículo en vuelo; `pendiente` es el último destino pedido ({valor}) o null.
 const moviendo = new Map();
 async function moverVehiculo(id, valor) {
-  if (moviendo.has(id)) { moviendo.set(id, { valor }); return false; } // gana el último; la corrida activa lo toma al terminar
-  moviendo.set(id, null);
+  const activo = moviendo.get(id);
+  if (activo) { activo.pendiente = { valor }; return false; } // gana el último; la corrida activa lo toma al terminar
+  const mia = { pendiente: null };
+  moviendo.set(id, mia);
   let ok = false;
   try {
+    const v = vehPorId(id);
+    // El origen NO se relee de `vehiculos` en cada vuelta: la recarga de un mover anterior puede haberse descartado y la lista quedar vieja.
+    // Se parte del valor de la lista al empezar y, tras cada RPC exitosa, el origen es el destino que se acaba de aplicar.
+    let origen = v ? v.sucursal_id : null;
     let destino = { valor };
-    while (destino) {
-      // Origen y destino se leen al ejecutar: tras el mover anterior el vehículo ya está en su sucursal real.
-      const v = vehPorId(id);
-      if (v && String(v.sucursal_id ?? '') !== String(destino.valor)) {
+    // Tras cerrar sesión `moviendo` se vacía: si esta corrida ya no es la vigente, no ejecuta lo que quedó pendiente con la sesión del siguiente usuario.
+    while (destino && v && moviendo.get(id) === mia) {
+      if (String(origen ?? '') !== String(destino.valor)) {
         // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-        ok = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(destino.valor, sucursales)));
+        const nuevo = destino.valor === '' ? null : destino.valor;
+        // La lista local se actualiza apenas la RPC se aplica: la recarga que sigue puede descartarse (otra más nueva) y `sucursalMover`
+        // compararía el «mismo valor» contra un dato viejo, perdiendo la elección siguiente sin RPC ni aviso.
+        const alAplicar = () => { const l = vehPorId(id); if (l && moviendo.get(id) === mia) l.sucursal_id = nuevo; };
+        const hecho = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(origen, sucursales), textoSucursal(destino.valor, sucursales)), alAplicar);
+        if (hecho) { ok = true; origen = nuevo; }
       }
-      destino = moviendo.get(id);
-      moviendo.set(id, null);
+      destino = mia.pendiente;
+      mia.pendiente = null;
     }
-  } finally { moviendo.delete(id); }
+  } finally { if (moviendo.get(id) === mia) moviendo.delete(id); } // una corrida nueva (tras cerrar sesión) conserva su entrada
   return ok;
 }
 function rpc(clave, nombre, args, okMsg) {

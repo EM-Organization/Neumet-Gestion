@@ -71,6 +71,10 @@
           else { store[table] = store[table].filter(function(r){ return rows.indexOf(r) === -1; }); out = { data: null, error: null }; }
         } else if (op === 'single') out = { data: rows[0] || null, error: null };
         else out = { data: rows, error: null };
+        // fx.clonar: como PostgREST, la lectura devuelve COPIAS; sin esto la lista de la vista y la RPC simulada comparten objetos y una lista vieja nunca se ve.
+        if (fx.clonar && out.data) out = { data: JSON.parse(JSON.stringify(out.data)), error: out.error };
+        // fx.selectDelay (ms): lectura lenta de la lista de vehículos de Sucursales
+        if (op === 'select' && table === 'vehiculos' && fx.selectDelay) return new Promise(function(ok){ setTimeout(function(){ ok(out); }, fx.selectDelay); }).then(res, rej);
         return Promise.resolve(out).then(res, rej);
       }
     };
