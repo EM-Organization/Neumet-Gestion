@@ -62,7 +62,9 @@ export function registrar(env) {
       // Duplicado (sin distinguir mayúsculas)
       await p.escribir('#suc-nombre', 'rivera e2e');
       await p.click('#suc-agregar');
-      await p.esperar(`/Ya existe una sucursal/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de nombre repetido' });
+      // El error sale una sola vez, en línea (#suc-error), sin toast rojo.
+      await p.esperar(`document.querySelector('#suc-error').classList.contains('show') && /Ya existe una sucursal/.test(document.querySelector('#suc-error').textContent)`, { que: 'aviso de nombre repetido' });
+      assert.equal(await p.eval(`document.querySelector('#toast').classList.contains('error') && document.querySelector('#toast').classList.contains('show')`), false, 'el error no se repite en un toast');
 
       // Renombrar
       await p.escribir(`#suc-n-${fila[0].id}`, 'Rivera Norte');

@@ -219,6 +219,7 @@
   .toast.show { display: flex; }
   .toast.error { background: var(--danger); }
   .toast svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .toast svg[hidden] { display: none; } /* el atributo hidden no oculta elementos SVG por sí solo */
   @keyframes slideIn { from { transform: translateX(10px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
 
   /* VIEWS */
@@ -509,11 +510,13 @@
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
 
-/* Móvil: objetivos táctiles de 40 px, cabeceras apiladas, modales casi a pantalla completa, toast sin tapar el borde. */
+/* Móvil: objetivos táctiles de 44 px, cabeceras apiladas, modales casi a pantalla completa, toast sin tapar el borde. */
 @media (max-width:640px) {
   .page-header { flex-direction:column; align-items:stretch; gap:12px; }
   .page-header > .btn, .page-header .ficha-actions { align-self:flex-start; }
-  .btn, .nav-item, .alert-chip, .salud-chip { min-height:40px; }
+  .btn, .nav-item, .alert-chip, .salud-chip, .icon-btn.con-texto { min-height:44px; }
+  /* Enlaces de acción de Inicio («Revisar ›», «Ver todas las alertas ›»): con padding vertical sin cambiar el aspecto de escritorio. */
+  .inicio-enlace, .inicio-linea .inicio-enlace, .inicio-aviso .inicio-enlace { min-height:44px; display:inline-flex; align-items:center; padding-top:0; padding-bottom:0; }
   .toolbar { flex-wrap:wrap; }
   .toolbar .search, .toolbar select, .flota-select, .select-filter { flex:1 1 100%; max-width:100%; }
   .modal, .modal.modal-wide { width:100%; max-width:calc(100vw - 16px); max-height:92vh; overflow-y:auto; }

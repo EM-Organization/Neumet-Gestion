@@ -5,13 +5,14 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
 import { chip, estadoVacio, estadoCarga, estadoError, filaEstado, miniVehiculo } from '../core/componentes.js';
-import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
+import { fmtNum, fmtFecha, plural, comaDecimal } from '../domain/formato.js';
 import { isClienteMode, esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { menuMas } from '../core/menu-mas.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { contextoListo, filtrarFilas, filtrarConsulta } from '../core/seccional.js';
+import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
+import { enSucursal, AYUDA_TODAS_SUCURSALES } from '../domain/seccional.js';
 import { ordenarAlertas, filtrarAlertas } from '../domain/flota.js';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, hastaSilencio, validarNota,
@@ -67,7 +68,7 @@ function fila(a, mostrarCliente) {
   const silencio = estado === 'silenciada' ? html`<div class="flota-cliente">Hasta ${fmtFecha(a.silenciada_hasta)}</div>` : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}" data-estado="${estado}">
     <td data-label="Estado">${chipEstado(estado)}${silencio}</td>
-    <td data-label="Mensaje">${a.mensaje}</td>
+    <td data-label="Mensaje">${comaDecimal(a.mensaje)}</td>
     <td data-label="Vehículo">${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
     <td data-label="Posición">${celdaPosicion(a)}</td>
     <td data-label="Última medición">${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>
@@ -88,6 +89,7 @@ export function render() {
     ? joinHtml(lista.map(a => fila(a, mostrarCliente)))
     : filaEstado(6, alertas.length
       ? estadoVacio('Ninguna alerta coincide con el filtro')
+      : hayFiltroSeccional() ? estadoVacio(enSucursal('Sin alertas críticas abiertas', nombreSucursal(sucursalSeleccionada())), AYUDA_TODAS_SUCURSALES)
       : estadoVacio('Sin alertas críticas abiertas')));
 }
 
@@ -161,7 +163,7 @@ registerActions({
     if (esAdmin()) return;
     const a = alertas.find(x => String(x.alerta_id) === String(id));
     pendiente = Number(id);
-    $('alerta-sub').textContent = a ? [etiquetaCoche(a.vehiculo_nombre), a.mensaje].filter(Boolean).join(' · ') : '';
+    $('alerta-sub').textContent = a ? [etiquetaCoche(a.vehiculo_nombre), comaDecimal(a.mensaje)].filter(Boolean).join(' · ') : '';
     $('alerta-nota').value = '';
     $('alerta-error').textContent = '';
     $('alerta-confirmar').disabled = false;

@@ -10,6 +10,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   var teclear = function(sel, v){ var e = $(sel); e.value = v; e.dispatchEvent(new w.Event('input', {bubbles: true})); };
   var esperar = async function(cond, que){ for(var t = 0; t < 60; t++){ if(cond()) return true; await sleep(50); } fail('montar: timeout esperando ' + que); return false; };
   var visible = function(sel){ var e = $(sel); return !!e && e.getClientRects().length > 0; };
+  // Un error se dice una sola vez: cuenta los lugares visibles (aviso en línea del modal y toast) que contienen el texto.
+  var veces = function(t){ return ['#mont-error', '#toast.show #toast-msg'].filter(function(sel){ return visible(sel) && txt(sel).indexOf(t) !== -1; }).length; };
 
   // Abrir el coche 301 por número exacto
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
@@ -87,6 +89,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
 
   // Cubierta nueva en P4: validación local y datos completos
   $('#mont-tab-nuevo').click(); await sleep(100);
+  if(!visible('#mont-precio')) fail('montar: el perfil global debe ver el precio');
+  if($('#mont-km-previos').value !== '') fail('montar: «Km que ya traía» debe empezar vacío: ' + $('#mont-km-previos').value);
   if($('#mont-panel-nuevo').hidden || !$('#mont-panel-stock').hidden) fail('montar: la pestaña «Cubierta nueva» no se mostró');
   $('#mont-confirmar').click(); await sleep(200);
   if(rpcs('neumatico_montar').length !== 1 || !/Falta la marca/.test(txt('#mont-error'))) fail('montar: sin marca no debe llegar a la RPC: ' + txt('#mont-error'));
@@ -102,6 +106,14 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   w.console.error = ce; fx.rpcError = null;
   if(rpcs('neumatico_montar').length !== 2 || !/La posición ya tiene un neumático/.test(txt('#mont-error')) || !$('#modal-montar').classList.contains('show')) fail('montar: error de la RPC no mostrado: ' + txt('#mont-error'));
   if($('#mont-confirmar').disabled) fail('montar: el botón quedó bloqueado tras el error');
+  if(veces('La posición ya tiene un neumático') !== 1) fail('montar: el error de la RPC debe verse una sola vez, se ve ' + veces('La posición ya tiene un neumático'));
+  // Error de red (la promesa se rechaza): también una sola vez y visible dentro del modal
+  w.console.error = function(){}; fx.rpcThrow = true;
+  $('#mont-confirmar').click(); await sleep(300);
+  w.console.error = ce; fx.rpcThrow = false;
+  if(rpcs('neumatico_montar').length !== 3 || txt('#mont-error') === '' || veces(txt('#mont-error')) !== 1) fail('montar: el error de red debe verse una sola vez: ' + txt('#mont-error') + ' / ' + veces(txt('#mont-error')));
+  if(!visible('#mont-error') || $('#modal-montar').classList.contains('show') === false) fail('montar: el error de red debe quedar visible dentro del modal');
+  fx.rpcs.pop(); // el intento sin red no cuenta para el recuento de montajes que sigue
 
   // «Enter» en un campo envía: el envío del formulario monta una sola vez aunque llegue dos veces (doble Enter).
   poner('#mont-fecha', '2026-05-01');
@@ -114,7 +126,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   await esperar(function(){ return /Siguiente posición libre: Eje 2 derecha interior/.test(txt('#mont-aviso')); }, 'ofrecer P5');
   // Marca, modelo y fecha de compra pasan a la siguiente posición; lo propio de cada neumático se borra.
   if($('#mont-marca').value !== 'Pirelli' || $('#mont-modelo').value !== 'FR85' || $('#mont-fecha').value !== '2026-05-01') fail('montar: marca, modelo y fecha deben conservarse');
-  if($('#mont-quema').value !== '' || $('#mont-km-previos').value !== '0' || $('#mont-odo').value !== '') fail('montar: quema, km previos y odómetro deben limpiarse para la siguiente posición');
+  if($('#mont-quema').value !== '' || $('#mont-km-previos').value !== '' || $('#mont-odo').value !== '') fail('montar: quema, km previos y odómetro deben limpiarse para la siguiente posición');
 
   // Neumáticos fantasma: tras montar, el formulario conserva marca y modelo; Enter mantenido, doble Enter o clic inmediato no montan otro.
   var enter = function(rep){ var ev = new w.KeyboardEvent('keydown', {key: 'Enter', repeat: rep, bubbles: true, cancelable: true}); $('#mont-marca').dispatchEvent(ev); if(!ev.defaultPrevented) $('#mont-form').requestSubmit(); };
@@ -129,6 +141,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   // Terminar: cierra; el detalle muestra 2 neumáticos y ya no el estado vacío
   $('#mont-cerrar').click(); await sleep(400);
   if($('#modal-montar').classList.contains('show')) fail('montar: «Terminar» no cerró el modal');
+  // El detalle se repintó detrás del modal: el foco vuelve a un «Montar neumático», no queda en <body>
+  if(!d.activeElement || d.activeElement === d.body || !$('#view-vehiculo-detalle').contains(d.activeElement)) fail('montar: tras «Terminar» el foco debe volver al detalle del vehículo, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   if(all('#vd-diagrama .vd-vacia').length !== 8 || !/2 neumáticos/.test(txt('#vd-resumen')) || /Sin neumáticos montados/.test(txt('#vd-resumen'))) fail('montar: detalle tras montar 2: ' + txt('#vd-resumen'));
   if(!$('#vd-resumen [data-action="neumatico-montar"]') || txt('#vd-resumen [data-action="neumatico-montar"]') !== 'Montar neumático') fail('montar: con posiciones libres debe quedar «Montar neumático»');
 
@@ -153,6 +167,56 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if($('#modal-retirar').classList.contains('show')) fail('montar: el modal de retirar no se cerró');
   if($('#vd-panel').classList.contains('abierto')) fail('montar: el panel debe cerrarse al quedar la posición vacía');
   if(!/1 neumático/.test(txt('#vd-resumen'))) fail('montar: tras retirar queda 1 neumático: ' + txt('#vd-resumen'));
+  // Enter en la búsqueda del stock: con UNA coincidencia elige y monta; con ninguna o varias, no. Stock restante: S-001 y S-010.
+  var abrir = $('#vd-resumen [data-action="neumatico-montar"]'); abrir.click();
+  if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'reabrir el modal de montar')) return;
+  var antes = rpcs('neumatico_montar').length;
+  var enviar = function(){ $('#mont-form').requestSubmit(); };
+  enviar(); await sleep(200);
+  if(rpcs('neumatico_montar').length !== antes) fail('montar: Enter sin texto de búsqueda no debe montar nada');
+  teclear('#mont-buscar', 'zzz'); enviar(); await sleep(200);
+  if(rpcs('neumatico_montar').length !== antes) fail('montar: Enter sin coincidencias no debe montar');
+  teclear('#mont-buscar', 'e'); // coincide con las dos cubiertas
+  if(all('#mont-lista .mont-fila').length !== 2) fail('montar: la búsqueda «e» debía dejar 2 cubiertas: ' + all('#mont-lista .mont-fila').length);
+  enviar(); await sleep(200);
+  if(rpcs('neumatico_montar').length !== antes || !/Elegir una cubierta/.test(txt('#mont-error'))) fail('montar: Enter con varias coincidencias no debe elegir: ' + txt('#mont-error'));
+  teclear('#mont-buscar', 'goodyear'); enviar();
+  await esperar(function(){ return rpcs('neumatico_montar').length === antes + 1; }, 'montar con Enter y una coincidencia');
+  if(rpcs('neumatico_montar')[antes].args.p_cubierta_id !== 3103) fail('montar: Enter con una coincidencia montó otra cubierta: ' + JSON.stringify(rpcs('neumatico_montar')[antes].args));
+  await esperar(function(){ return /Montado:/.test(txt('#mont-aviso')); }, 'el aviso tras montar con Enter');
+  // Queda una sola cubierta en el stock; con la búsqueda ya vacía, un Enter inmediato (o repetido) no monta otra
+  if(all('#mont-lista .mont-fila').length !== 1 || $('#mont-buscar').value !== '') fail('montar: tras montar debe quedar 1 cubierta y la búsqueda vacía');
+  enviar(); enviar(); await sleep(300);
+  if(rpcs('neumatico_montar').length !== antes + 1) fail('montar: un Enter inmediato tras montar montó la cubierta que quedaba en el stock');
+  $('#mont-cerrar').click(); await sleep(300);
+
+  // Toast de error: sin la marca de éxito (no mezclar ✓ con un mensaje de falla). Se prueba con el módulo real de la interfaz.
+  var ui = await new w.Function('return import("/assets/js/core/ui.js")')();
+  ui.showToast('Algo falló', true); await sleep(50);
+  if(visible('#toast-ico-ok') || !visible('#toast-ico-error')) fail('montar: el toast de error no debe llevar ✓ sino su propio ícono');
+  ui.showToast('Todo bien'); await sleep(50);
+  if(!visible('#toast-ico-ok') || visible('#toast-ico-error')) fail('montar: el toast de éxito debe llevar ✓');
   log.push('montar-ok rpcs=' + fx.rpcs.length);
 
+};
+
+// Perfil de sucursal montando una cubierta nueva (?cliente=1&secuser=1&detalle=1&montar=1): no ve el precio (la base se lo oculta
+// con privilegios por columna, ver precios.flow.js) y «Km que ya traía» arranca vacío, no en 0. El perfil global (montarFlow) sí ve
+// el precio. «Del stock» sigue deshabilitado para sucursal: requiere una migración y revisión del DBA (queda fuera de este PR).
+window.montarSucursalFlow = async function(w, d, sleep, fail, log){
+  var $ = function(s){ return d.querySelector(s); };
+  var visible = function(sel){ var e = $(sel); return !!e && e.getClientRects().length > 0; };
+  var esperar = async function(cond, que){ for(var t = 0; t < 60; t++){ if(cond()) return true; await sleep(50); } fail('montar-sucursal: timeout esperando ' + que); return false; };
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
+  var inp = $('#search-vehiculos'); inp.value = '301'; inp.dispatchEvent(new w.Event('input', {bubbles: true})); await sleep(150);
+  inp.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true})); await sleep(900);
+  var abrir = $('#vd-resumen [data-action="neumatico-montar"]');
+  if(!abrir){ fail('montar-sucursal: el perfil de sucursal debe poder montar (falta «Cargar neumáticos»)'); return; }
+  abrir.click();
+  if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'el modal de montar')) return;
+  $('#mont-tab-nuevo').click(); await sleep(100);
+  if(!visible('#mont-km-previos')) fail('montar-sucursal: falta «Km que ya traía»');
+  if($('#mont-km-previos').value !== '') fail('montar-sucursal: «Km que ya traía» debe empezar vacío, no «' + $('#mont-km-previos').value + '»');
+  if(visible('#mont-precio') || visible('label[for="mont-precio"]')) fail('montar-sucursal: el precio no debe verse para el perfil de sucursal');
+  log.push('montar-sucursal-ok');
 };

@@ -63,8 +63,16 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   await nav('alertas');   // la selección (Salto) persiste entre vistas
   var rows = function(){ return all('#alert-tbody tr[data-severidad]'); };
   if (rows().length !== 2) fail('selector: Alertas/Salto debía tener 2 filas, hay ' + rows().length);
+  // El servidor manda el mensaje con punto decimal; la interfaz lo muestra con coma (docs/14)
+  var tablaAl = $('#alert-tbody').textContent;
+  if (tablaAl.indexOf('3,5 mm') === -1 || /\d\.\d mm/.test(tablaAl)) fail('selector: Alertas debe mostrar los mm con coma decimal: ' + tablaAl.replace(/\s+/g, ' ').slice(0, 200));
   setSel('#sec-select', '1'); await sleep(500);
   if (rows().length !== 0) fail('selector: Alertas/Montevideo debía estar vacía, hay ' + rows().length);
+  // El estado vacío con filtro dice de QUÉ sucursal es y cómo ver el resto (no «Sin alertas» a secas)
+  var vacioAl = $('#view-alertas').textContent.replace(/\s+/g, ' ');
+  if (vacioAl.indexOf('Sin alertas críticas abiertas en Montevideo') === -1 || vacioAl.indexOf('Elegir «Todas las sucursales» para ver el resto.') === -1) fail('selector: el estado vacío de Alertas con filtro debe nombrar la sucursal: ' + vacioAl.slice(0, 300));
+  await nav('vehiculos'); await sleep(300);
+  await nav('alertas');
   setSel('#sec-select', ''); await sleep(500);
   if (rows().length !== 4) fail('selector: Alertas/Todas debía tener 4 filas, hay ' + rows().length);
 
@@ -131,6 +139,9 @@ window.seccionalesUsuarioFlow = async function(w, d, sleep, fail, log){
   if (!d.querySelector('#rep-cpk-card').hidden) fail('sucursal: el perfil de sucursal no debe ver Costo por km');
   d.querySelector('.nav-item[data-view="flota"]').click(); await sleep(500);
   if (d.querySelectorAll('#flota-grid .flota-card').length < 1) fail('sucursal: Flota vacía');
+  // Inicio dice a qué sucursal pertenece el perfil (sin selector, el operario no tendría cómo saberlo)
+  d.querySelector('.nav-item[data-view="inicio"]').click(); await sleep(500);
+  if (!/Sucursal \S/.test(d.querySelector('#inicio-subtitle').textContent)) fail('sucursal: Inicio debe indicar «Sucursal <nombre>»: ' + d.querySelector('#inicio-subtitle').textContent);
   log.push('seccional-usuario-flow: ok');
 };
 
@@ -143,6 +154,8 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var setSel = function(el, v){ el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
   var filas = function(){ return all('#suc-lista tr[data-sucursal]').length; };
   var visible = function(el){ return !!el && el.getClientRects().length > 0; };
+  // Un error se muestra una sola vez: cuenta los lugares visibles que lo dicen (aviso en línea de la vista y toast).
+  var vecesVisible = function(t){ return ['#suc-error', '#toast.show #toast-msg'].filter(function(sel){ var e = $(sel); return e && visible(e) && e.textContent.indexOf(t) !== -1; }).length; };
   fx.rpcs.length = 0;
   $('.nav-item[data-view="sucursales"]').click(); await sleep(600);
   if (!$('#view-sucursales').classList.contains('active')) { fail('sucursales: vista no activa'); return; }
@@ -167,7 +180,8 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (filas() !== 3) fail('sucursales: la lista no creció (' + filas() + ')');
   if (all('#sec-select option').length !== 4) fail('sucursales: el selector de la barra no se actualizó (' + all('#sec-select option').length + ' opciones)');
   $('#suc-nombre').value = 'rivera'; $('#suc-form').requestSubmit(); await sleep(400);
-  if (toast().indexOf('Ya existe una sucursal') === -1) fail('sucursales: sin mensaje de duplicado: ' + toast());
+  if ($('#suc-error').textContent.indexOf('Ya existe una sucursal') === -1) fail('sucursales: sin mensaje de duplicado: ' + $('#suc-error').textContent);
+  if (vecesVisible('Ya existe una sucursal') !== 1) fail('sucursales: el error de duplicado debe verse una sola vez, se ve ' + vecesVisible('Ya existe una sucursal') + ' veces');
 
   // Renombrar: tres Enter seguidos en el nombre guardan una sola vez
   var nRen0 = fx.rpcs.filter(function(r){ return r.name === 'sucursal_renombrar'; }).length;
@@ -179,11 +193,18 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   // Renombrar con el botón
   $('#suc-n-1').value = 'Montevideo Centro'; $('#suc-lista tr[data-sucursal="1"] [data-action="sucursalRenombrar"]').click(); await sleep(400);
   if (!fx.rpcs.some(function(r){ return r.name === 'sucursal_renombrar' && r.args.p_sucursal_id === 1 && r.args.p_nombre === 'Montevideo Centro'; })) fail('sucursales: renombrar incorrecto');
+  if (d.activeElement !== $('#suc-n-1')) fail('sucursales: tras renombrar el foco debe volver al nombre, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  // La recarga que sigue a una operación no pisa lo escrito y sin guardar en OTRA fila
+  $('#suc-n-2').value = 'Texto sin guardar';
+  $('#suc-n-1').value = 'Montevideo Centro'; $('#suc-lista tr[data-sucursal="1"] [data-action="sucursalRenombrar"]').click(); await sleep(400);
+  if ($('#suc-n-2').value !== 'Texto sin guardar') fail('sucursales: la recarga pisó el nombre sin guardar de otra fila: ' + $('#suc-n-2').value);
+  $('#suc-n-2').value = $('#suc-n-2').defaultValue;
 
   // Eliminar con vehículos: no llama a la base y explica
   var n = fx.rpcs.length;
   $('#suc-lista tr[data-sucursal="2"] [data-action="sucursalEliminar"]').click(); await sleep(200);
   if (fx.rpcs.length !== n || $('#suc-error').textContent.indexOf('Moverlos') === -1) fail('sucursales: eliminar con vehículos debía bloquearse: ' + $('#suc-error').textContent);
+  if (vecesVisible('Moverlos') !== 1) fail('sucursales: eliminar con vehículos debe avisar una sola vez, avisa ' + vecesVisible('Moverlos') + ' veces');
   if (filas() !== 3) fail('sucursales: se borró una sucursal con vehículos');
   // Eliminar vacía: pide confirmación; cancelar no hace nada
   var vacia = all('#suc-lista tr[data-sucursal]')[2].dataset.sucursal;
@@ -195,6 +216,8 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#suc-lista tr[data-sucursal="' + vacia + '"] [data-action="sucursalEliminar"]').click(); await sleep(150);
   $('#confirm-ok').click(); await sleep(400);
   if (filas() !== 2) fail('sucursales: no eliminó la sucursal vacía (' + filas() + ')');
+  // La fila eliminada era la última: el foco pasa a la anterior (nunca queda en <body>)
+  if (!d.activeElement || !/^suc-n-/.test(d.activeElement.id)) fail('sucursales: tras eliminar el foco debe pasar a otra fila, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
 
   // El alta de vehículos ya no vive en Sucursales (se hace desde la vista Vehículos)
   ['suc-veh-numero', 'suc-veh-patente', 'suc-veh-sucursal', 'suc-veh-cargar'].forEach(function(id){ if ($('#' + id)) fail('sucursales: queda el campo de alta de vehículo #' + id); });
@@ -242,6 +265,14 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();
   if (!mv || mv.args.p_vehiculo_id !== 15 || mv.args.p_sucursal_id !== 1) fail('sucursales: mover con argumentos incorrectos: ' + JSON.stringify(mv));
   if (selFila(15).value !== '1' || toast().indexOf('movido de «') === -1) fail('sucursales: el movimiento no se reflejó: ' + toast());
+  if (d.activeElement !== selFila(15)) fail('sucursales: tras mover el foco debe volver al select del vehículo, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  // Un foco que el operario ya puso en otro control vivo no se le quita al terminar la operación
+  fx.rpcDelay = 300;
+  setSel(selFila(15), ''); await sleep(100);
+  $('#suc-buscar').focus(); await sleep(500);
+  fx.rpcDelay = 0;
+  if (d.activeElement !== $('#suc-buscar')) fail('sucursales: la recarga le robó el foco a otro control vivo: ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  setSel(selFila(15), '1'); await sleep(400);
   // Reversible: volver a la sucursal anterior es otro cambio de select, sin pasos intermedios
   setSel(selFila(15), ''); await sleep(400);
   mv = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_mover_sucursal'; }).pop();

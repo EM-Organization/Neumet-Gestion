@@ -89,7 +89,7 @@ export function registrar(env) {
       await p.enter();
       await enEstado(p, /Montado: Delantera derecha\. Siguiente posición libre: Eje 2 izquierda exterior/);
       // Marca, modelo y fecha de compra pasan a la siguiente posición; quema, km previos y odómetro se borran.
-      assert.deepEqual(await p.eval(`['#mont-marca', '#mont-modelo', '#mont-fecha', '#mont-quema', '#mont-km-previos', '#mont-odo'].map(s => document.querySelector(s).value)`), ['Goodyear', 'G661', '2026-03-04', '', '0', '']);
+      assert.deepEqual(await p.eval(`['#mont-marca', '#mont-modelo', '#mont-fecha', '#mont-quema', '#mont-km-previos', '#mont-odo'].map(s => document.querySelector(s).value)`), ['Goodyear', 'G661', '2026-03-04', '', '', '']);
       // Otra del stock en P3 (reparada) y terminar
       await p.click('#mont-tab-stock');
       await p.escribir('#mont-buscar', 'E2EM-S2');

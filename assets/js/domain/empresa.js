@@ -43,7 +43,7 @@ export function ordenarUsuarios(lista) {
 // Acciones que ofrece cada fila. `propio`: el usuario de la sesión no se quita a sí mismo (la base responde 22023).
 // `suprimir`: acción que el contrato de la función prohíbe mientras haya un pendiente ('reponer' | 'quitar' | null).
 // Una fila ya quitada ofrece siempre «Quitar» (contrato de docs/17 sección 10): la marca de Auth es informativa y no distingue un
-// Auth desbloqueado, y repetir la baja es idempotente. La vista lo rotula «Repetir bloqueo» para no confundir.
+// Auth desbloqueado, y repetir la baja es idempotente. La vista lo rotula «Bloquear de nuevo» para no confundir.
 export function accionesFila(u, { propio = false, suprimir = null } = {}) {
   const a = u.estado === ESTADO_QUITADO
     ? { reponer: true, quitar: true }

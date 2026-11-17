@@ -123,3 +123,15 @@ describe('la sucursal elegida solo filtra donde el selector se ve', () => {
     assert.equal(seleccionAplica('inicio', ''), false, 'sin elección no hay filtro');
   });
 });
+
+describe('estado vacío con sucursal elegida', async () => {
+  const { enSucursal, AYUDA_TODAS_SUCURSALES } = await import('../../assets/js/domain/seccional.js');
+  test('enSucursal nombra la sucursal y sin nombre deja el texto igual', () => {
+    assert.equal(enSucursal('Sin vehículos', 'Salto'), 'Sin vehículos en Salto');
+    assert.equal(enSucursal('Sin vehículos', ''), 'Sin vehículos');
+  });
+  test('la ayuda dice cómo ver el resto, sin segunda persona', () => {
+    assert.match(AYUDA_TODAS_SUCURSALES, /Todas las sucursales/);
+    assert.doesNotMatch(AYUDA_TODAS_SUCURSALES, /\b(puedes|elige|ver el resto\?)\b/i);
+  });
+});

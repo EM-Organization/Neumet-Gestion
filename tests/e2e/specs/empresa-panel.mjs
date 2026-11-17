@@ -36,7 +36,8 @@ export function registrar(env) {
         // Umbrales: editar y guardar con Enter
         await irA(p, 'empresa-umbrales');
         await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === 6 && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
-        assert.equal(Number(await p.eval(`document.querySelector('#eu-alerta_histeresis_mm').value`)), Number(previo.alerta_histeresis_mm), 'la histéresis actual viene de la base');
+        // El campo muestra el decimal con coma (es-AR), no con el punto de la base.
+        assert.equal(await p.eval(`document.querySelector('#eu-alerta_histeresis_mm').value`), String(Number(previo.alerta_histeresis_mm)).replace('.', ','), 'la histéresis actual viene de la base');
         const nuevo = Number(previo.umbral_bajo_mm) + 0.5;
         const nuevaHist = Number(previo.alerta_histeresis_mm) === 1.2 ? 1.4 : 1.2;
         await p.escribir('#eu-umbral_bajo_mm', String(nuevo));

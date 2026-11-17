@@ -8,6 +8,7 @@ import { currentClienteId, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { refrescarSucursales } from '../core/seccional.js';
+import { devolverFoco } from '../core/foco.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import {
   validarNombreSucursal, argsMover, contarPorSucursal, filtrarVehiculos,
@@ -98,7 +99,7 @@ async function ejecutar(nombre, args, okMsg, alAplicar) {
     const m = mensajeErrorGestion(error);
     if (m.startsWith('No se pudo')) userError(error);
     await loadSucursales(); // deja el select en el valor real
-    err(m); showToast(m, true); // después de la recarga, que limpia el error
+    err(m); // después de la recarga, que limpia el error; solo en línea (un error, un lugar)
     return false;
   }
   if (alAplicar) alAplicar(); // antes de recargar: una recarga descartada no puede dejar la lista contradiciendo lo ya aplicado
@@ -134,6 +135,8 @@ async function moverVehiculo(id, valor) {
       destino = mia.pendiente;
       mia.pendiente = null;
     }
+    // Una sola vez al terminar la corrida (no por RPC): no pelea con las flechas del select. Si el buscador ya no muestra la fila, al buscador.
+    if (moviendo.get(id) === mia) devolverFoco(`tr[data-vehiculo="${id}"] select`, '#suc-buscar');
   } finally { if (moviendo.get(id) === mia) moviendo.delete(id); } // una corrida nueva (tras cerrar sesión) conserva su entrada
   return ok;
 }
@@ -155,6 +158,7 @@ const ACCIONES = {
     const v = validarNombreSucursal($(`suc-n-${id}`).value);
     if (!v.ok) { err(v.error); return; }
     await rpc(`renombrar:${id}`, 'sucursal_renombrar', { p_sucursal_id: Number(id), p_nombre: v.valor }, 'Sucursal actualizada');
+    devolverFoco(`#suc-n-${id}`); // la recarga repintó la fila: el foco vuelve al nombre (también tras un error, para corregirlo)
   },
   async sucursalEliminar(id) {
     const s = porId(id);
@@ -162,9 +166,13 @@ const ACCIONES = {
     const n = vehiculos.filter(v => String(v.sucursal_id) === String(id)).length;
     const c = confirmacionEliminar(s.nombre, n);
     // Con vehículos asociados no hay nada que confirmar: se informa y no se llama a la base.
-    if (n > 0) { err(c.mensaje); showToast(c.mensaje, true); return; }
+    if (n > 0) { err(c.mensaje); return; } // un solo aviso: en línea, junto a la lista (antes salía además en un toast)
     if (!await confirmDialog(c.titulo, c.mensaje, 'Eliminar', true)) return;
+    // La fila desaparece: el foco pasa a la siguiente (o a la anterior) y, sin filas, al alta. El vecino se calcula antes de recargar.
+    const i = sucursales.findIndex(x => String(x.id) === String(id));
+    const vecina = sucursales[i + 1] || sucursales[i - 1];
     await rpc(`eliminar:${id}`, 'sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
+    devolverFoco(`#suc-n-${id}`, vecina && `#suc-n-${vecina.id}`, '#suc-nombre');
   },
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);
