@@ -25,6 +25,7 @@
 - Tasa de desgaste robusta (al menos 3 mediciones y 14 días, ventana reiniciada por evento) y `v_estado_neumaticos` por neumático (migración `20261111000000`, función `posiciones_medidas_sin_neumatico`); referencia de flota con `MIN_MUESTRAS` = 5 (ver [15](15-rotacion-alertas-rendimiento.md), C.6 y C.7).
 - Mini vehículos con posiciones legibles en Alertas y en el ciclo de vida del neumático.
 - Motivo `sin_neumaticos` en la API de proveedor (migración `20261112000000`).
+- La API crea el vehículo y sus neumáticos al guardar mediciones de una patente nueva (migración `20261121000000_api_crea_vehiculo.sql`, **sin aplicar**, apéndice R de `docs/08`, docs/07 apéndice B): orden de despliegue migración aplicada y verificada, luego la función `api-proveedor`. Sin cambios de interfaz del panel (0 clics afectados).
 - Pantalla «Sin acceso» para sesiones sin perfil o con perfil `api` (sin menú ni consultas de datos).
 - Montar y retirar neumáticos sin reemplazo, para un coche sin neumáticos (migración `20261114500000`; `docs/08` apéndice G).
 - Km por cubierta: `v_km_cubierta` y diagnóstico de odómetro (migración `20261115000000`; apéndice H, F2).

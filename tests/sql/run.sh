@@ -169,6 +169,10 @@ echo "== migración C2: cerrar escrituras del equipo Neumet (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120500000_cerrar_escrituras_neumet.sql"
 echo "== migración C2: cerrar escrituras del equipo Neumet (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261120500000_cerrar_escrituras_neumet.sql"
+echo "== migración API crea vehículo (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261121000000_api_crea_vehiculo.sql"
+echo "== migración API crea vehículo (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261121000000_api_crea_vehiculo.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
@@ -187,4 +191,6 @@ done
 # Concurrencia con dos sesiones reales (datos propios, confirmados y borrados al terminar)
 # shellcheck source=tests/sql/concurrencia_admin_empresa.sh
 source "$SQL/concurrencia_admin_empresa.sh"
+# shellcheck source=tests/sql/concurrencia_api_alta.sh
+source "$SQL/concurrencia_api_alta.sh"
 echo "TODOS LOS TESTS SQL PASARON"

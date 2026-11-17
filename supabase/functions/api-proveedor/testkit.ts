@@ -122,13 +122,68 @@ export function crearEntorno() {
               : { ...prev.resp, replay: true },
           );
         }
-        const v = vehiculos.find((x) => x.cliente_id === a.cliente_id && x.patente_norm === a.patente);
+        let v = vehiculos.find((x) => x.cliente_id === a.cliente_id && x.patente_norm === a.patente);
+        // Alta (20261121000000): patente inexistente del cliente + al menos una posición válida
+        // (1..16 o 99, sin rechazo y con las tres lecturas) crea el vehículo y los neumáticos.
+        const valida = (m: GuardarArgs['montajes'][number]) =>
+          !m.rechazar && ((m.posicion >= 1 && m.posicion <= 16) || m.posicion === 99) &&
+          m.mm1 !== null && m.mm2 !== null && m.mm3 !== null;
+        let alta = false;
+        if (!v && a.montajes.some(valida)) {
+          v = { id: 1000 + vehiculos.length, cliente_id: a.cliente_id, patente_norm: a.patente, numero: null };
+          vehiculos.push(v);
+          alta = true;
+        }
         if (!v) {
           return Promise.resolve({
             estado: 'no_encontrado',
             replay: false,
             resultados: a.montajes.map((m) => ({ posicion: m.posicion, guardado: false, motivo: 'vehiculo' })),
           });
+        }
+        if (alta) {
+          let creados = 0;
+          const resultados = a.montajes.map((m) => {
+            if (m.rechazar) return { posicion: m.posicion, guardado: false, motivo: m.rechazar };
+            if (m.mm1 === null && m.mm2 === null && m.mm3 === null) {
+              return m.posicion === 99
+                ? { posicion: m.posicion, guardado: true, motivo: null }
+                : { posicion: m.posicion, guardado: false, motivo: 'sin_medicion' };
+            }
+            if (m.mm1 === null || m.mm2 === null || m.mm3 === null) {
+              return { posicion: m.posicion, guardado: false, motivo: 'incompleta' };
+            }
+            if (!valida(m)) return { posicion: m.posicion, guardado: false, motivo: 'posicion' };
+            neumaticos.push({
+              vehiculo_id: v!.id,
+              posicion: m.posicion,
+              idneumatico: `API-${v!.id}-P${m.posicion}`,
+              codigo: '',
+              auxilio: m.posicion === 99,
+            });
+            mediciones.push({
+              vehiculo_id: v!.id,
+              cliente_id: a.cliente_id,
+              posicion: m.posicion,
+              mm1: m.mm1,
+              mm2: m.mm2,
+              mm3: m.mm3,
+              sesion_id: a.sesion_id,
+              device_id: 'api:' + a.cuenta,
+            });
+            creados++;
+            return { posicion: m.posicion, guardado: true, motivo: null };
+          });
+          const out: GuardarRpc = {
+            estado: 'ok',
+            replay: false,
+            vehiculo_id: v.id,
+            creado: true,
+            neumaticos_creados: creados,
+            resultados,
+          };
+          idem.set(a.cuenta + '|' + a.clave, { hash: a.hash, resp: out });
+          return Promise.resolve(out);
         }
         const tiene = neumaticos.some((x) => x.vehiculo_id === v.id && x.idneumatico !== null);
         const resultados = a.montajes.map((m) => {

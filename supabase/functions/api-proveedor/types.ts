@@ -33,6 +33,9 @@ export interface GuardarRpc {
   estado: 'ok' | 'no_encontrado' | 'conflicto';
   replay: boolean;
   vehiculo_id?: number;
+  /** true solo en la request que creó el vehículo (en un replay se repite el valor guardado). */
+  creado?: boolean;
+  neumaticos_creados?: number;
   resultados: { posicion: number; guardado: boolean; motivo?: string | null }[];
 }
 

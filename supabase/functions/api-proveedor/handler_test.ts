@@ -331,7 +331,8 @@ Deno.test('límites: patente obligatoria, numero vacío, montajes 1..40, cuerpo 
 Deno.test('AISLAMIENTO: guardar sobre vehículo de otro cliente == inexistente, sin escrituras', async () => {
   const e = crearEntorno();
   const antes = e.mediciones.length;
-  const cuerpo = (p: string) => montaje([{ posicion: 1, mm1: 1, mm2: 1, mm3: 1, mm4: 1 }], p);
+  // Sin posición creable (auxilio no medido en 1): no se crea nada ni se revela si es de otro cliente.
+  const cuerpo = (p: string) => montaje([{ posicion: 1 }], p);
   const ajeno = await e.handler(post(R_GUA, cuerpo('ZZZZ99'), { token: T }));
   const nada = await e.handler(post(R_GUA, cuerpo('NOEXISTE1'), { token: T }));
   assertEquals(ajeno.status, nada.status);
@@ -354,8 +355,11 @@ Deno.test('el cuerpo no puede elegir cliente_id', async () => {
       cliente_id: 2,
     }, { token: T })),
   );
-  assertEquals(r.data.guardados[0].guardado, false);
-  assertEquals(e.mediciones.length, antes);
+  // El coche ZZZZ99 es del cliente 2: la cuenta del cliente 1 crea el suyo, nunca escribe en el ajeno.
+  assertEquals(r.data.guardados[0].guardado, true);
+  assertEquals(e.vehiculos.filter((v) => v.patente_norm === 'ZZZZ99').map((v) => v.cliente_id).sort(), [1, 2]);
+  assertEquals(e.mediciones.filter((m) => m.vehiculo_id === 20).length, 0);
+  assertEquals(e.mediciones.length, antes + 1);
 });
 
 Deno.test('idempotencia: misma Idempotency-Key -> misma respuesta, sin doble escritura', async () => {
@@ -514,7 +518,10 @@ Deno.test('coche de otro cliente o inexistente: motivo no_encontrado en el log, 
   const e = crearEntorno();
   // Vehículo 20 (cliente 2) tiene neumáticos; el de cliente 1 sin neumáticos no cambia nada para él.
   for (const p of ['ZZZZ99', 'NOEXISTE1']) {
-    const r = await e.handler(post(R_GUA, montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], p), { token: T }));
+    // Sin posición creable (desde 20261121000000 una medición válida crearía el coche).
+    const r = await e.handler(
+      post(R_GUA, montaje([{ posicion: 1, mm1: 99, mm2: 99, mm3: 99, mm4: 99 }], p), { token: T }),
+    );
     assertEquals(await j(r), { code: 200, data: { guardados: [{ posicion: 1, guardado: false }] } });
     assertEquals(e.logs.at(-1)!.motivo, 'no_encontrado');
   }
@@ -649,4 +656,71 @@ Deno.test('login: si falla el registro del log, el login igual responde 200 con 
   const r = await e.handler(post(R_LOGIN, { email: 'dac@x.cl', clave: 'clave-dac', tipoLogin: 2 }));
   assertEquals(r.status, 200);
   assertEquals(await j(r), { code: 200, access_token: T });
+});
+
+Deno.test('alta: patente nueva con posiciones válidas crea vehículo y neumáticos; la respuesta conserva su forma', async () => {
+  const e = crearEntorno();
+  const nVeh = e.vehiculos.length;
+  const r = await e.handler(post(
+    R_GUA,
+    montaje([
+      { posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 },
+      { posicion: 99, mm1: 6, mm2: 5, mm3: 5, mm4: 4 },
+      { posicion: 2, mm1: 50, mm2: 8, mm3: 8, mm4: 7 }, // fuera de rango: no crea su neumático
+    ], ' nueva 01 '),
+    { token: T },
+  ));
+  assertEquals(r.status, 200);
+  assertEquals(await j(r), {
+    code: 200,
+    data: {
+      guardados: [{ posicion: 1, guardado: true }, { posicion: 99, guardado: true }, { posicion: 2, guardado: false }],
+    },
+  });
+  assertEquals(e.vehiculos.length, nVeh + 1);
+  const v = e.vehiculos.at(-1)!;
+  assertEquals([v.cliente_id, v.patente_norm], [1, 'NUEVA01']);
+  assertEquals(e.neumaticos.filter((n) => n.vehiculo_id === v.id).map((n) => [n.posicion, n.auxilio]), [[1, false], [
+    99,
+    true,
+  ]]);
+  const l = e.logs.at(-1)!;
+  assertEquals([l.status, l.motivo, l.vehiculo_id, l.n_guardados], ['ok', 'fallo_parcial', v.id, 2]);
+  assertEquals(l.payload_resumen.vehiculo_creado, true);
+  assertEquals(l.payload_resumen.neumaticos_creados, 2);
+  assertEquals(JSON.stringify(l.payload_resumen).includes('NUEVA01'), false); // sin datos del cliente
+});
+
+Deno.test('alta sin fallos: ingesta_log status ok, motivo vehiculo_creado; el replay no vuelve a registrar el alta', async () => {
+  const e = crearEntorno();
+  const cuerpo = montaje([{ posicion: 1, mm1: 9, mm2: 8, mm3: 8, mm4: 7 }], 'NUEVA02');
+  const h = { 'idempotency-key': 'alta-1' };
+  assertEquals((await e.handler(post(R_GUA, cuerpo, { token: T, headers: h }))).status, 200);
+  const alta = e.logs.at(-1)!;
+  assertEquals([alta.status, alta.motivo, alta.n_fallidos], ['ok', 'vehiculo_creado', 0]);
+  const nVeh = e.vehiculos.length;
+  const nMed = e.mediciones.length;
+  await e.handler(post(R_GUA, cuerpo, { token: T, headers: h }));
+  const rep = e.logs.at(-1)!;
+  assertEquals([rep.motivo, rep.payload_resumen.replay, rep.payload_resumen.vehiculo_creado], [null, true, undefined]);
+  assertEquals([e.vehiculos.length, e.mediciones.length], [nVeh, nMed]);
+});
+
+Deno.test('alta: ninguna posición válida no crea nada y responde como un vehículo inexistente', async () => {
+  const e = crearEntorno();
+  const nVeh = e.vehiculos.length;
+  const r = await e.handler(post(
+    R_GUA,
+    montaje([
+      { posicion: 1, mm1: 50, mm2: 8, mm3: 8, mm4: 7 },
+      { posicion: 2, mm1: 9, mm2: 8, mm3: 7, mm4: 7 }, // mm3 distinto de mm2
+      { posicion: 99 },
+    ], 'NUEVA03'),
+    { token: T },
+  ));
+  assertEquals((await j(r)).data.guardados.map((g: { guardado: boolean }) => g.guardado), [false, false, false]);
+  assertEquals(e.vehiculos.length, nVeh);
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.vehiculo_id], ['no_encontrado', null]);
+  assertEquals(l.payload_resumen.vehiculo_creado, undefined);
 });
