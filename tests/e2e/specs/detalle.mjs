@@ -4,6 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, abrirDetallePorMatricula, texto } from '../lib/flujo.mjs';
 import { json, vehiculosVisibles } from '../lib/verdad.mjs';
+import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
+
+const tipoDe = (env, patente) => Number(env.sql(`select tipo_ruedas from public.vehiculos where patente = '${patente}'`));
 
 const ETIQUETA = { ok: 'OK', bajo: 'Desgaste bajo', critico: 'Crítico', retiro: 'Retirar' };
 
@@ -90,7 +93,10 @@ export function registrar(env) {
       await p.click('#vd-diagrama .vd-rueda[data-pos="5"]');
       await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto')`);
       const panel = await texto(p, '#vd-panel');
-      assert.match(panel, /Posición 5/);
+      // El título nombra la posición (el operario no maneja «P5»); el código queda como apoyo en el subtítulo
+      assert.match(panel, new RegExp(nombrePos(5, tipoDe(env, 'DEMO010'))));
+      assert.match(panel, /\bP5\b/);
+      assert.doesNotMatch(panel, /Posición 5/);
       assert.match(panel, /Crítico/);
       assert.ok(await p.eval(`!!document.querySelector('#vd-panel [data-action="neumatico-cambiar"]') && !!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]')`));
     });
