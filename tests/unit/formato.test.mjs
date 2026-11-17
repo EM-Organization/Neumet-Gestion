@@ -37,3 +37,11 @@ test('plural', () => {
   assert.equal(plural(0, 'alerta'), '0 alertas');
   assert.equal(plural(1500, 'vez', 'veces'), '1.500 veces');
 });
+
+import { comaDecimal } from '../../assets/js/domain/formato.js';
+test('comaDecimal: punto decimal entre dígitos pasa a coma; el resto del texto no cambia', () => {
+  assert.equal(comaDecimal('Neumático crítico: 4.2 mm (límite 5 mm)'), 'Neumático crítico: 4,2 mm (límite 5 mm)');
+  assert.equal(comaDecimal(0.5), '0,5');
+  assert.equal(comaDecimal(null), '');
+  assert.equal(comaDecimal('Fin de frase. Otra 12.'), 'Fin de frase. Otra 12.');
+});

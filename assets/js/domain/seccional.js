@@ -56,6 +56,10 @@ export const selectorEnVista = vista => VISTAS_CON_SELECTOR.includes(vista);
 // de la barra desde ellas) un filtro invisible dejaría sin resultados a una búsqueda sin dar ninguna pista del motivo.
 export const seleccionAplica = (vista, seleccion) => !!seleccion && selectorEnVista(vista);
 
+// Estado vacío con una sucursal elegida: nombra la sucursal y dice qué hacer (docs/14 §1: qué pasó y qué hacer). `nombre` vacío = sin filtro.
+export const AYUDA_TODAS_SUCURSALES = 'Elegir «Todas las sucursales» para ver el resto.';
+export const enSucursal = (texto, nombre) => (nombre ? `${texto} en ${nombre}` : texto);
+
 // Traduce errores de la base al ABM de sucursales (mensajes en español para el admin).
 export function mensajeErrorSeccional(err) {
   const code = err && err.code;

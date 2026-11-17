@@ -5,10 +5,11 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
-import { isClienteMode, currentClienteNombre, onLogin } from '../core/auth.js';
+import { isClienteMode, currentClienteNombre, currentSucursalId, esUsuarioSucursal, onLogin } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
 import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
+import { enSucursal, AYUDA_TODAS_SUCURSALES } from '../domain/seccional.js';
 import { estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../core/componentes.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
@@ -34,6 +35,7 @@ const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-
 // Mini vehículo de un vehículo con sus ruedas coloreadas; `filas` = v_estado_neumaticos de ese vehículo.
 // tipo_ruedas por vehículo (el estado de neumáticos no lo trae): define el chasis dibujado y el nombre de la posición.
 let tipos = new Map();
+let filtroSucursal = ''; // nombre de la sucursal elegida en la barra (vacío = todas); solo para nombrarla en los estados vacíos
 const tipoDe = id => tipos.get(id);
 const miniDe = (filas, destacadas, id) => miniVehiculo(modeloMini(filas, { destacadas, tipo: tipoDe(id) }));
 
@@ -134,6 +136,11 @@ function filaMedida(v, porVeh) {
 }
 
 // `ultimas` = filas de ultimas_mediciones; null si la consulta falló (el resto de Inicio sigue mostrándose).
+// Estado vacío que, con una sucursal elegida, la nombra y dice cómo ver el resto (docs/14 §1).
+const vacioFiltrado = (titulo, ayuda) => (filtroSucursal
+  ? estadoVacio(enSucursal(titulo.replace(/ registradas?$/, ''), filtroSucursal), AYUDA_TODAS_SUCURSALES)
+  : estadoVacio(titulo, ayuda));
+
 function bloqueUltimas(ultimas, porVeh) {
   const lista = ultimas === null ? [] : ultimasMediciones(ultimas);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-ultimas">
@@ -141,7 +148,7 @@ function bloqueUltimas(ultimas, porVeh) {
     ${ultimas === null ? estadoError('', 'loadInicio')
       : lista.length ? html`<ul class="inicio-lista">${joinHtml(lista.map(v => filaMedida(v, porVeh)))}</ul>
         <p class="inicio-meta">Medición anterior → última · diferencia en mm.</p>`
-      : estadoVacio('Sin mediciones registradas')}
+      : vacioFiltrado('Sin mediciones registradas')}
   </section>`;
 }
 
@@ -155,16 +162,19 @@ export function render(datos) {
   return html`${avisoRevision(datos.revision)}${renderContenido(datos)}`;
 }
 
-function renderContenido({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map() }) {
+function renderContenido({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map(), sucursal = '' }) {
   tipos = tiposRuedas;
+  filtroSucursal = sucursal;
   const cliente = isClienteMode();
   const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
   if (estado === 'vacio') {
+    if (filtroSucursal) return vacioFiltrado('Sin vehículos registrados');
     return estadoVacio('Sin vehículos registrados',
       cliente ? 'Los vehículos aparecerán aquí cuando se registren y se midan.' : 'Registrar un cliente, cargar sus vehículos y asignar un dispositivo.',
       cliente ? null : { label: 'Ir a Clientes', action: 'irA', args: ['clientes'], primaria: true });
   }
   if (estado === 'sin_mediciones') {
+    if (filtroSucursal && !vehiculosTotal) return vacioFiltrado('Sin mediciones registradas');
     return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones` : 'Sin mediciones registradas',
       'El estado de los neumáticos se muestra desde la primera medición.',
       cliente ? null : { label: 'Ver dispositivos', action: 'irA', args: ['dispositivos'], primaria: true });
@@ -186,7 +196,7 @@ export async function load() {
   await contextoListo();
   const sel = hayFiltroSeccional() ? sucursalSeleccionada() : '';
   $('inicio-title').textContent = 'Inicio';
-  $('inicio-subtitle').textContent = [isClienteMode() ? currentClienteNombre : '', fmtFechaLarga(new Date()), sel ? nombreSucursal(sel) : ''].filter(Boolean).join(' · ');
+  $('inicio-subtitle').textContent = [isClienteMode() ? currentClienteNombre : '', esUsuarioSucursal() && nombreSucursal(currentSucursalId) ? `Sucursal ${nombreSucursal(currentSucursalId)}` : '', fmtFechaLarga(new Date()), sel ? nombreSucursal(sel) : ''].filter(Boolean).join(' · ');
   cont.setAttribute('aria-busy', 'true');
   setHtml(cont, estadoCarga('Cargando…'));
   const [est, al, sa, res, veh, dis, ult, vtp, rev] = await Promise.all([
@@ -215,6 +225,7 @@ export async function load() {
     vehiculosTotal: veh.count ?? 0, ultimas: ult.error ? null : (ult.data || []),
     revision: rev.error ? 0 : filtrarFilas((rev.data || []).filter(r => r.calidad === 'sospechosa')).length,
     tiposRuedas: vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas])),
+    sucursal: sel ? nombreSucursal(sel) : '',
   }));
 }
 

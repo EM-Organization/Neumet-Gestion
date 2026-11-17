@@ -1055,7 +1055,7 @@
             <input id="cambio-quema" type="text" maxlength="40" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
           <div class="field"><label for="cambio-km-previos">Km que ya traía el neumático</label>
             <input id="cambio-km-previos" type="number" inputmode="numeric" min="0" step="1" value="0" data-change="neumatico-cambiar-resumen"/>
-            <div class="field-hint">0 para un neumático nuevo.</div></div>
+            <div class="field-hint">Dejar vacío si es nuevo o no se sabe.</div></div>
         </div>
       </fieldset>
       <div class="field"><label for="cambio-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
@@ -1103,14 +1103,14 @@
             <input id="mont-quema" type="text" maxlength="40" data-change="neumatico-montar-resumen" autocomplete="off"/>
             <div class="field-hint">Único por cliente.</div></div>
           <div class="field"><label for="mont-km-previos">Km que ya traía el neumático</label>
-            <input id="mont-km-previos" type="number" inputmode="numeric" min="0" step="1" value="0" data-change="neumatico-montar-resumen"/>
-            <div class="field-hint">0 para un neumático nuevo.</div></div>
+            <input id="mont-km-previos" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-montar-resumen"/>
+            <div class="field-hint">Dejar vacío si es nuevo o no se sabe.</div></div>
         </div>
         <div class="field-row">
           <div class="field"><label for="mont-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label>
             <input id="mont-fecha" type="date" data-change="neumatico-montar-resumen"/></div>
           <div class="field"><label for="mont-precio">Precio <span class="label-opt">(opcional)</span></label>
-            <input id="mont-precio" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" data-change="neumatico-montar-resumen"/></div>
+            <input id="mont-precio" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" data-change="neumatico-montar-resumen"/></div>
         </div>
         <div class="field"><label for="mont-vida">Recauchutados previos</label>
           <select id="mont-vida" data-change="neumatico-montar-resumen">
@@ -1439,7 +1439,8 @@
 <div class="sr-only" id="sr-live" role="status" aria-live="polite" aria-atomic="true"></div>
 <div class="sr-only" id="sr-alert" role="alert" aria-live="assertive" aria-atomic="true"></div>
 <div class="toast" id="toast" aria-hidden="true">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+  <svg id="toast-ico-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+  <svg id="toast-ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" hidden><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
   <span id="toast-msg">OK</span>
 </div>
 

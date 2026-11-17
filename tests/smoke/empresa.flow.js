@@ -24,10 +24,10 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (d.body.innerHTML.indexOf('<Norte>') !== -1) fail('empresa: nombre de sucursal sin escapar');
   if (btn('u-1', 'empresaQuitar')) fail('empresa: el usuario de la sesión puede quitarse a sí mismo');
   if (!btn('u-5', 'empresaQuitar')) fail('empresa: falta Quitar en un usuario vigente');
-  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Repetir bloqueo');
+  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Bloquear de nuevo');
   if (btn('u-5', 'empresaQuitar').className.indexOf('icon-btn danger') === -1 || /(^| )btn( |$)/.test(btn('u-5', 'empresaQuitar').className)) fail('empresa: Quitar debe usar el estilo de baja del panel (icon-btn danger), no un botón rojo sólido: ' + btn('u-5', 'empresaQuitar').className);
-  if (!btn('u-21', 'empresaQuitar') || btn('u-21', 'empresaQuitar').textContent.trim() !== 'Repetir bloqueo') fail('empresa: toda fila quitada debe ofrecer Quitar rotulado «Repetir bloqueo» (docs/17 sección 10), incluso sin bloqueo de Auth pendiente');
-  if (/danger/.test(btn('u-21', 'empresaQuitar').className)) fail('empresa: «Repetir bloqueo» debe ser un botón secundario, no el estilo de baja');
+  if (!btn('u-21', 'empresaQuitar') || btn('u-21', 'empresaQuitar').textContent.trim() !== 'Bloquear de nuevo') fail('empresa: toda fila quitada debe ofrecer Quitar rotulado «Bloquear de nuevo» (docs/17 sección 10), incluso sin bloqueo de Auth pendiente');
+  if (/danger/.test(btn('u-21', 'empresaQuitar').className)) fail('empresa: «Bloquear de nuevo» debe ser un botón secundario, no el estilo de baja');
   if (!btn('u-20', 'empresaReponer') || /primary/.test(btn('u-20', 'empresaReponer').className)) fail('empresa: Reponer acceso debe ser un botón secundario (un solo primario por pantalla)');
   if (!($('#emp-user-form').compareDocumentPosition($('#tbody-empresa-usuarios')) & 4)) fail('empresa: el formulario Nuevo usuario debe ir arriba de la lista');
   if (!fila('u-1') || fila('u-1').textContent.indexOf('Sesión actual') === -1) fail('empresa: la fila propia no se marca como sesión actual');
@@ -56,6 +56,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!alta || alta.body.email !== 'nuevo@demo.test' || alta.body.cliente_id !== 1 || alta.body.sucursal_id != null) fail('empresa: alta incorrecta ' + JSON.stringify(alta));
   if (!fila('u-31')) fail('empresa: la lista no mostró al usuario creado');
   if ($('#emp-user-email').value !== '') fail('empresa: el formulario no se vació');
+  if (d.activeElement !== $('#emp-user-email')) fail('empresa: tras el alta el foco debe volver al email (siguiente alta sin clics), está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   if ($('#emp-user-sucursal').value === 'empresa') fail('empresa: tras crear con «Toda la empresa» el campo conserva «empresa» (el siguiente email + Enter daría acceso a toda la empresa)');
   // Alta en una sucursal concreta
   $('#emp-user-email').value = 'enclave@demo.test'; $('#emp-user-sucursal').value = '2';
@@ -171,7 +172,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
   if (all('#emp-umb-campos [data-umbral]').length !== 6) fail('empresa: faltan campos de umbrales');
-  if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0.5') fail('empresa: la histéresis actual no se cargó');
+  if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0,5') fail('empresa: la histéresis actual no se cargó');
   var ordenCampos = Array.prototype.slice.call(all('#emp-umb-campos [data-umbral]')).map(function (i) { return i.dataset.umbral; }).slice(0, 3).join(',');
   if (ordenCampos !== 'umbral_bajo_mm,umbral_critico_mm,umbral_retiro_mm') fail('empresa: los umbrales deben ir de mayor a menor: ' + ordenCampos);
   var textoUmb = $('#view-empresa-umbrales').textContent;
@@ -184,6 +185,10 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   var cfg = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).pop();
   if (!cfg || cfg.args.p_cliente_id !== 1 || cfg.args.p_umbral_bajo_mm !== 9 || cfg.args.p_histeresis_mm !== 1.2) fail('empresa: alerta_configurar ' + JSON.stringify(cfg));
   if (!/Umbrales actualizados/.test(toast())) fail('empresa: sin aviso al guardar umbrales: ' + toast());
+  if (d.activeElement !== $('#emp-umb-guardar')) fail('empresa: tras guardar umbrales el foco debe volver a Guardar, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  // Si el operario ya puso el foco en otro campo mientras guardaba, no se le quita
+  $('#eu-dias_sin_medir_alerta').focus(); $('#emp-umb-form').requestSubmit(); await sleep(500);
+  if (d.activeElement !== $('#eu-dias_sin_medir_alerta')) fail('empresa: guardar umbrales le robó el foco al campo en uso: ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   if (w.__saludFx && w.__saludFx.updates.length !== upd0) fail('empresa: guardó con UPDATE directo sobre clientes');
   var nCfg = fx.rpcs.length;
   $('#eu-umbral_bajo_mm').value = '2'; $('#emp-umb-form').requestSubmit(); await sleep(200);
@@ -208,6 +213,23 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (all('#tbody-empresa-dispositivos tr[data-estado]').length !== 2) fail('empresa: se esperaban 2 dispositivos del cliente 1, hay ' + all('#tbody-empresa-dispositivos tr[data-estado]').length);
   var acc = all('#view-empresa-dispositivos button, #view-empresa-dispositivos input, #view-empresa-dispositivos select');
   for (var k = 0; k < acc.length; k++) if (acc[k].dataset.action !== 'loadEmpresaDispositivos') fail('empresa: dispositivos no es de solo lectura: ' + acc[k].outerHTML.slice(0, 80));
+  // Móvil (390 px): lo que se toca con el dedo mide al menos 44 px de alto (enlaces de Inicio, botones de Usuarios, menú)
+  var marco = w.frameElement, anchoAntes = marco.style.width;
+  marco.style.width = '390px'; await sleep(300);
+  var chicos = function (sel) {
+    return Array.prototype.filter.call(all(sel), function (e) { return e.getClientRects().length && e.getBoundingClientRect().height < 43.5; })
+      .map(function (e) { return (e.id || e.className || e.tagName) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px'; });
+  };
+  $('.nav-item[data-view="inicio"]').click(); await sleep(500);
+  if (!all('#view-inicio .inicio-enlace').length) fail('empresa: Inicio sin enlaces para medir el tamaño táctil');
+  var cI = chicos('#view-inicio .inicio-enlace, #view-inicio .btn, #view-inicio .alert-chip');
+  if (cI.length) fail('móvil: objetivos táctiles de Inicio menores a 44 px: ' + cI.join(', '));
+  $('.nav-item[data-view="empresa-usuarios"]').click(); await sleep(500);
+  var cU = chicos('#view-empresa-usuarios .btn, #view-empresa-usuarios .icon-btn');
+  if (!all('#view-empresa-usuarios .btn').length || cU.length) fail('móvil: botones de Usuarios menores a 44 px: ' + cU.join(', '));
+  var cN = chicos('.nav-item');
+  if (cN.length) fail('móvil: ítems del menú menores a 44 px: ' + cN.join(', '));
+  marco.style.width = anchoAntes; await sleep(200);
   log.push('empresa: llamadas=' + fx.llamadas.length + ' rpcs=' + fx.rpcs.length);
 };
 

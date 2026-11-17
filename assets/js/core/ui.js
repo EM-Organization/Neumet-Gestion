@@ -25,6 +25,9 @@ export function showToast(msg,err=false){
   const t=document.getElementById('toast');
   document.getElementById('toast-msg').textContent=msg;
   t.classList.toggle('error',err);
+  // El aviso de error lleva su propio ícono (círculo con cruz), nunca el ✓: no se comunica solo con el color (docs/14).
+  const ok=document.getElementById('toast-ico-ok'), ko=document.getElementById('toast-ico-error');
+  if(ok) ok.toggleAttribute('hidden',!!err); if(ko) ko.toggleAttribute('hidden',!err);
   t.classList.add('show');
   // Anuncio para lectores de pantalla: región viva aparte (el toast se muestra/oculta con display, que no se anuncia).
   const live=document.getElementById(err?'sr-alert':'sr-live');

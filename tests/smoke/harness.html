@@ -111,7 +111,7 @@
     if(/[?&]detalle=1/.test(location.search)){
       // Vehículos como cliente: buscador + detalle con diagrama (vehiculo.fixture.js): tests/smoke/vehiculo.flow.js
       // Con ?montar=1: coche sin neumáticos, montar y retirar (montar.fixture.js): tests/smoke/montar.flow.js
-      if(/[?&]montar=1/.test(location.search)) await window.montarFlow(w,d,sleep,fail,log);
+      if(/[?&]montar=1/.test(location.search)) await (/[?&]secuser=1/.test(location.search) ? window.montarSucursalFlow : window.montarFlow)(w,d,sleep,fail,log);
       else if(!cliMode) await window.detalleAdminFlow(w,d,sleep,fail,log); // equipo Neumet: solo mira (tests/smoke/vehiculo.flow.js)
       else await window.detalleFlow(w,d,sleep,fail,log);
       log.push('handlers-inline='+d.querySelectorAll('[onclick],[onchange],[oninput],[onsubmit]').length);
@@ -163,6 +163,7 @@
     nav('vehiculos'); await sleep(500);
     if(d.querySelector('#tbody-vehiculos [data-va="edit"],#tbody-vehiculos [data-va="del"],#tbody-vehiculos [data-va="neum"]')) fail('vehiculos: quedan botones de editar, eliminar o neumáticos');
     if($('#modal-neumaticos')) fail('vehiculos: queda el editor de neumáticos del equipo Neumet');
+    if(!cliMode && (!/\d+ ruedas/.test($('#tbody-vehiculos').textContent) || /WHL/.test($('#tbody-vehiculos').textContent))) fail('vehiculos: el tipo de vehículo debe decir «N ruedas», no «WHL»: '+$('#tbody-vehiculos').textContent.replace(/\s+/g,' ').slice(0,160));
     nav('mediciones'); await sleep(500);
     var dm=d.querySelector('[data-mode="device"],[data-mode="dispositivo"]');
     if(dm){ dm.click(); await sleep(600); } else log.push('sin tab modo dispositivo');

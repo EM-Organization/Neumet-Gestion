@@ -8,7 +8,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
-import { esAdmin, esAdminEmpresa } from '../core/auth.js';
+import { esAdmin, esAdminEmpresa, puedeVerPrecios } from '../core/auth.js';
 import { reloadActiveView } from '../core/nav.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { fmtNum } from '../domain/formato.js';
@@ -88,7 +88,7 @@ function limpiarFormulario({ conservar = false } = {}) {
   mont.cubiertaId = null;
   const propios = ['mont-buscar', 'mont-quema', 'mont-precio', 'mont-odo'];
   for (const id of conservar ? propios : [...propios, 'mont-marca', 'mont-modelo', 'mont-fecha']) $(id).value = '';
-  $('mont-km-previos').value = '0'; $('mont-vida').value = '0';
+  $('mont-km-previos').value = ''; $('mont-vida').value = '0'; // km vacío: lo no medido no se inventa como 0 (docs/14 §5, regla 6)
   const odo = mont.veh.odometro_km;
   $('mont-odo-hint').textContent = odo !== null && odo !== undefined
     ? `Opcional. No puede ser menor al actual (${fmtNum(odo)} km).` : 'Opcional. Lectura actual del vehículo, aparte de los km del neumático.';
@@ -119,6 +119,8 @@ async function abrirMontar(vehiculoId, posicion) {
   // Con un solo origen posible («Cubierta nueva») las pestañas no aportan: se ocultan.
   $('mont-tabs').hidden = !puedeStock;
   $('mont-tab-stock').hidden = !puedeStock;
+  // Sin permiso de precios (usuario de sucursal) no se pide el precio: la base igualmente lo niega; esto solo evita un campo inútil.
+  $('mont-precio').closest('.field').hidden = !puedeVerPrecios();
   $('mont-aviso').textContent = '';
   $('mont-cerrar').textContent = 'Cancelar';
   $('mont-confirmar').disabled = false;
@@ -136,6 +138,15 @@ function cerrarMontar() {
   mont = null;
 }
 
+// El error se muestra una sola vez, en línea dentro del modal (es role=alert: lo anuncian los lectores). Se acerca a la vista por si
+// el modal hace scroll y, si hay un campo que corregir, se le da el foco.
+function errorEnLinea(msg, campoId) {
+  const el = $('mont-error');
+  el.textContent = msg;
+  if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  if (campoId) $(campoId).focus();
+}
+
 const ESPERA_CLIC_MS = 1500;
 const MSG_BLOQUEADO = 'Escribir la quema de esta posición o hacer clic en Montar para montar la siguiente';
 
@@ -150,8 +161,14 @@ async function confirmarMontar({ viaClic = false } = {}) {
     if (!(viaClic && Date.now() - mont.montadoEn > ESPERA_CLIC_MS)) { $('mont-error').textContent = MSG_BLOQUEADO; enfocar('mont-quema'); return; }
     mont.bloqueado = false;
   }
+  // Con una sola coincidencia en la búsqueda, Enter la elige y monta (docs/14 §5). Exige texto en la búsqueda: sin él, una única cubierta
+  // que quedó en el stock se montaría con un Enter suelto o repetido tras el montaje anterior (la búsqueda se vacía al montar).
+  if (mont.origen === 'stock' && mont.cubiertaId === null && val('mont-buscar').trim()) {
+    const unica = cubiertasParaMontar(mont.cubiertas, val('mont-buscar'));
+    if (unica.length === 1) { mont.cubiertaId = unica[0].id; pintarLista(); }
+  }
   const r = validarMontaje(estadoMontar());
-  if (!r.ok) { $('mont-error').textContent = r.error; showToast(r.error, true); return; }
+  if (!r.ok) { errorEnLinea(r.error, mont.origen === 'stock' ? 'mont-buscar' : null); return; }
   ocupado = true; $('mont-confirmar').disabled = true;
   try {
     const { data, error } = await db.rpc('neumatico_montar', r.params);
@@ -181,9 +198,7 @@ async function confirmarMontar({ viaClic = false } = {}) {
     enfocar(mont.origen === 'stock' ? 'mont-buscar' : 'mont-quema');
   } catch (e) {
     console.error(e);
-    const msg = traducirErrorMontaje(e);
-    $('mont-error').textContent = msg;
-    showToast(msg, true);
+    if (mont) errorEnLinea(traducirErrorMontaje(e)); // un solo aviso, dentro del modal (antes se repetía en un toast rojo)
   } finally { ocupado = false; if ($('mont-confirmar')) $('mont-confirmar').disabled = false; }
 }
 
