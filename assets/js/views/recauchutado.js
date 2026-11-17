@@ -11,7 +11,7 @@ import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js'
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   etiquetaEstado, etiquetaBanda, accionesDe, cubiertasEnviables, validarEnvio, validarDictamen, validarRechazo, validarAceptacion,
-  traducirErrorRecauchutado, ERROR_GENERICO_RECAUCHUTADO,
+  traducirErrorRecauchutado, ERROR_GENERICO_RECAUCHUTADO, proveedoresUsados, avisoEnvio, identificadorCubierta,
 } from '../domain/recauchutado.js';
 
 const $ = id => document.getElementById(id);
@@ -41,7 +41,7 @@ function render() {
   setHtml(lista, html`${ver ? html`<p class="stk-resumen">Vista de solo lectura: los procesos los gestiona el administrador de cada empresa.</p>` : ''}<ul class="stk-lista reca-lista" aria-label="Recauchutados">
     <li class="stk-cab reca-fila" aria-hidden="true"><span>Cubierta${ver ? ' y cliente' : ''}</span><span>Proveedor</span><span>Estado</span><span>Envío</span><span>Banda</span><span></span></li>
     ${procesos.map(p => html`<li class="stk-fila reca-fila" data-proceso="${p.id}">
-      <span class="stk-quema">${etiquetaProceso(p)}${ver ? html`<span class="stk-sub">${nombreCliente(p.cliente_id) || 'Sin cliente'}</span>` : ''}</span>
+      <span class="stk-quema">${identificadorCubierta(p)}<span class="stk-sub">${p.marca || 'Sin marca'}${p.modelo ? ' ' + p.modelo : ''}</span>${ver ? html`<span class="stk-sub">${nombreCliente(p.cliente_id) || 'Sin cliente'}</span>` : ''}</span>
       <span class="stk-desc">${p.proveedor}</span>
       <span class="stk-cond"><span class="badge">${etiquetaEstado(p.estado)}</span>${p.motivo ? html`<span class="stk-sub">${p.motivo}</span>` : ''}</span>
       <span class="stk-loc">${fechaTxt(p.fecha_envio)}</span>
@@ -114,6 +114,7 @@ registerActions({
     $('reca-title').textContent = TITULOS.enviar; $('reca-sub').textContent = '';
     setHtml($('reca-cubierta'), joinHtml([html`<option value="">Elegir cubierta</option>`,
       libres.map(c => html`<option value="${c.id}">${c.numero_quema || c.idneumatico || 'Sin quema'} · ${c.marca || 'Sin marca'}${c.modelo ? ' ' + c.modelo : ''} (${etiquetaBanda(c.vida).toLowerCase()})</option>`)]));
+    setHtml($('reca-proveedores'), joinHtml(proveedoresUsados(procesos).map(n => html`<option value="${n}"></option>`)));
     ['reca-proveedor', 'reca-motivo', 'reca-banda-marca', 'reca-banda-modelo', 'reca-profundidad', 'reca-costo'].forEach(id => { $(id).value = ''; });
     $('reca-moneda').value = 'UYU'; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
     if (elegida !== null) {
@@ -161,6 +162,8 @@ registerActions({
       rpc = 'recauchutado_aceptar';
     }
     if (!r.ok) { err(r.error); return; }
+    // Solo el envío nombra cubierta y proveedor; el resto de los pasos conserva el aviso genérico.
+    const aviso = modal.modo === 'enviar' ? avisoEnvio(cubiertas.find(c => c.id === r.args.p_neumatico_id) || {}, r.args.p_proveedor) : 'Recauchutado actualizado';
     const btn = $('reca-guardar'); const txt = btn.textContent;
     btn.disabled = true; btn.textContent = 'Guardando…'; guardando = true;
     try {
@@ -172,7 +175,7 @@ registerActions({
         return;
       }
       ACTIONS.recaCerrar();
-      showToast('Recauchutado actualizado');
+      showToast(aviso);
       document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
       // El envío puede haberse iniciado desde Stock: se refresca la vista que está a la vista.
       if (vistaActiva() === 'recauchutado') await loadRecauchutado(); else reloadActiveView();

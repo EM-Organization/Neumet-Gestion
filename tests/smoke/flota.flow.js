@@ -103,6 +103,30 @@ window.alertasClienteFlow = async function(w, d, sleep, fail, log){
   if(!filas.length) { fail('alertas(cliente): sin filas'); return; }
   var conAcciones = Array.prototype.filter.call(filas, function(r){ return r.querySelector('[data-action="alertasResolver"]') && r.querySelector('[data-action="alertasSilenciar"], [data-action="alertasQuitarSilencio"]'); });
   if(conAcciones.length !== filas.length) fail('alertas(cliente): cada alerta debe ofrecer reconocer/silenciar/resolver (' + conAcciones.length + ' de ' + filas.length + ')');
+  // Jerarquía de acciones (H10): «Reconocer» y «Ver vehículo» a la vista; Silenciar y Resolver dentro de «Más».
+  var vis = function(e){ return !!(e && e.getClientRects().length); };
+  var fila1 = filas[0], tx = function(e){ return e.textContent.trim(); };
+  var visibles1 = Array.prototype.filter.call(fila1.querySelectorAll('.alert-acciones button'), vis).map(tx).join('|');
+  if(visibles1 !== 'Reconocer|Más|Ver vehículo') fail('alertas(cliente): acciones visibles de la primera fila: ' + visibles1);
+  var menu1 = Array.prototype.map.call(fila1.querySelectorAll('.menu-mas-item'), tx).join('|');
+  if(!/^(Silenciar \d+ días|Quitar silencio)\|Resolver$/.test(menu1)) fail('alertas(cliente): ítems del menú Más: ' + menu1);
+  var mas1 = fila1.querySelector('[data-menu-mas-btn]');
+  mas1.click(); await sleep(100);
+  if(mas1.getAttribute('aria-expanded') !== 'true' || !vis(fila1.querySelector('.menu-mas-lista'))) fail('alertas(cliente): Más no abrió el menú');
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(100);
+  if(mas1.getAttribute('aria-expanded') !== 'false' || d.activeElement !== mas1) fail('alertas(cliente): Esc no cerró el menú ni devolvió el foco');
+  // Ancho (H1/H10): sin desplazamiento horizontal del documento y con las acciones dentro de la tarjeta, a 940 y 390 px.
+  var marco = w.frameElement, anchoOrig = marco.style.width;
+  for(var wi = 0, anchos = [360, 390, 940, 1280, 1400]; wi < anchos.length; wi++){
+    marco.style.width = anchos[wi] + 'px'; await sleep(250);
+    var de = d.documentElement, tarj = $('#alert-tbody').closest('.card, .table-wrap').getBoundingClientRect();
+    if(de.scrollWidth > de.clientWidth) fail('alertas(' + anchos[wi] + 'px): el documento se desplaza en horizontal (' + de.scrollWidth + ' > ' + de.clientWidth + ')');
+    Array.prototype.forEach.call(all('#alert-tbody .alert-acciones > *'), function(b){
+      var r = b.getBoundingClientRect();
+      if(r.width && (r.left < tarj.left - 1 || r.right > tarj.right + 1)) fail('alertas(' + anchos[wi] + 'px): una acción se sale de la tarjeta (' + Math.round(r.left) + '-' + Math.round(r.right) + ' vs ' + Math.round(tarj.left) + '-' + Math.round(tarj.right) + ')');
+    });
+  }
+  marco.style.width = anchoOrig; await sleep(250);
   var rec = $('#alert-tbody [data-action="alertasReconocer"]');
   if(!rec) { fail('alertas(cliente): sin «Reconocer»'); return; }
   rec.click(); await sleep(500);
