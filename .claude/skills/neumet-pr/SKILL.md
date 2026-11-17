@@ -17,6 +17,9 @@ Argumento: descripción del cambio o la fase (p. ej. «F8 rotación y reposició
 - Si hay otros agentes o PR en curso, trabajar en un worktree (`.claude/worktrees/`, ignorado por git) en lugar del repo principal.
 
 ## 3. Implementar con las pruebas
+- **Concurrencia o estado compartido** (guardas, colas, doble envío, reintentos, recargas superpuestas, estado de interfaz compartido): antes de escribir código, poner en el brief o en el PR media página de diseño
+  (qué operaciones hay, claves de guarda, qué pasa si dos llegan a la vez o una nunca responde) y esperar que el director la contraste. Regla: **el arreglo más simple que alcance**; p. ej. guardar solo formularios, no controles idempotentes como un select.
+  Casos que el diseño y las pruebas deben cubrir (lista completa en `docs/13` §1.b): doble envío; Enter mantenido (`e.repeat`); cambios superpuestos del mismo control; operaciones distintas simultáneas; fallo a mitad; respuesta que nunca llega; recarga que pisa texto sin guardar.
 - Lógica de dominio nueva → `assets/js/domain/` (pura) + `tests/unit/<tema>.test.mjs` con casos límite (vacío, `null`, un registro, muchos).
 - SQL (tabla, vista, RPC, política) → skill `neumet-migracion` + `tests/sql/t_NN_<tema>.sql` con un caso por rol permitido y por rol denegado.
 - Vista o flujo del panel → smoke (`tests/smoke/*.flow.js` + fixture) **y** spec e2e (`tests/e2e/specs/<tema>.mjs`) si toca la base.
@@ -34,7 +37,8 @@ Argumento: descripción del cambio o la fase (p. ej. «F8 rotación y reposició
 2. `git status` y `git add <rutas explícitas>`; nunca `-A` ni `.`. Revisar `git diff --cached --stat`: nada de `tests/visual/out/`, capturas, `.env` ni archivos fuera del alcance.
 3. Commit con prefijo de fase si aplica (`F7: ...`) y push de la rama.
 4. `gh pr create` con cuerpo: qué cambia y por qué, qué migración trae (si trae, **sin aplicar**), qué se probó y qué no, y qué debe mirar el revisor.
-5. Si hay migración, decirlo explícitamente: el orden de fusión es migración aplicada → fusionar front.
+5. Al abrir el PR corren el CI y los revisores en paralelo; el autor no fusiona ni espera: queda disponible para el corrector.
+6. Si hay migración, decirlo explícitamente: el orden de fusión es migración aplicada → fusionar front.
 
 ## 6. Cierre
 El autor no fusiona su propio PR: lo revisa otro agente o persona con `neumet-revisar-pr`. Tras la fusión, la rama remota se borra sola

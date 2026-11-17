@@ -5,7 +5,7 @@ description: Tareas operativas de NEUMET sobre producción y el entorno local: d
 
 # Operación
 
-Argumento: la tarea (`funcion <nombre>`, `demo`, `estado`, `limpiar`). Procedimientos de fondo en `docs/11-runbook-operacion.md`.
+Argumento: la tarea (`funcion <nombre>`, `demo`, `estado`, `limpiar`, `ramas`). Procedimientos de fondo en `docs/11-runbook-operacion.md`.
 Mostrar qué se va a tocar (en el informe) y seguir; con la compuerta cumplida no se espera confirmación.
 
 ## `estado`: solo lectura
@@ -31,6 +31,12 @@ Funciones: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-
 2. Ejecutar el archivo completo con un rol que no esté sujeto a RLS. El método con el CLI (`supabase db query --remote -f supabase/seed/demo.sql`) no está
    verificado para este script: probarlo primero y, si el rol no alcanza, usar el SQL Editor de Supabase o `psql`. Nunca contra un cliente real.
 3. Verificar en el panel que Inicio, Alertas y Stock muestran datos con fechas actuales (recarga forzada).
+
+## `ramas`: poner al día los PR abiertos tras una fusión
+1. `gh pr list --state open --json number,headRefName`.
+2. Por cada rama: worktree propio (`git worktree add .claude/worktrees/ramas-<n> origin/<rama>`), `git merge origin/main` y, si queda limpio, `git push` normal (nunca `--force`). Quitar el worktree.
+3. Si hay conflicto: `git merge --abort`, no tocar la rama y reportar al director PR y archivos en conflicto; los resuelve el corrector.
+4. Informar tabla: PR, al día / conflicto / sin cambios.
 
 ## `limpiar`: worktrees y ramas fusionados
 Solo lo que ya está fusionado. Nunca ramas con PR abierto ni sin fusionar.

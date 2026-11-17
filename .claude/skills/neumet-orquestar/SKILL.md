@@ -15,7 +15,12 @@ El agente principal **no implementa**: planifica, lanza, decide y habla con el u
    - **Letra del apéndice de `docs/08`**: asignar una distinta por área.
    - **Archivos compartidos** (`tests/visual/run.sh`, `tests/e2e/e2e.test.mjs`, `tests/smoke/run.sh`, `docs/10`): decir quién los toca y que cada autor haga `git merge origin/main` antes de abrir el PR.
    - **Orden de fusión** (las que dependen de una migración van en serie; las independientes, en cualquier orden).
+   - **Archivos «calientes»** (`docs/10`, `docs/12`, `adminpanel/index.html`, `assets/js/README.md`, `README.md`): como máximo **un PR en vuelo** los edita; si dos los necesitan, declarar el orden de fusión en los briefs.
 3. Tope de **3 autores en paralelo**. Más agentes no aceleran si se agota el límite de uso (ya pasó el 2026-11-08 y 11-09); con límite cerca, lanzar menos y avisar.
+   Los revisores en paralelo (sección 3) también cuentan contra ese límite.
+4. **Diseño previo** si el área toca concurrencia o estado compartido (guardas, colas, doble envío, reintentos, recargas superpuestas, estado de interfaz compartido): el brief pide al autor media página de diseño
+   **antes de implementar** (operaciones, claves de guarda, qué pasa si dos llegan a la vez o una nunca responde). El director la contrasta (¿hay un arreglo más simple?, ¿cubre los casos de `neumet-pr` §3?) y recién entonces da luz verde.
+   Motivo: el PR 96 llevó 5 rondas porque cada corrección de una guarda de doble envío traía otro defecto (guarda global, cola en serie, guarda por clave que descartaba la re-elección de un select); el diseño complejo nunca se revisó antes de escribirlo.
 
 ## 2. Lanzar autores (uno por área, cada uno en su worktree)
 Roles definidos en `.claude/agents/` (cargan al iniciar la sesión; si no aparecen, reiniciar Claude Code o usar `/agents`):
@@ -35,8 +40,15 @@ No fusionar. No aplicar migraciones. No tocar producción.
 Tareas independientes se lanzan **en la misma respuesta** (varias llamadas `Agent` juntas) para que corran a la vez.
 
 ## 3. Compuerta de calidad (por PR, en este orden)
-1. **Revisor** (`subagent_type: "neumet-revisor"`, agente nuevo, distinto del autor, con worktree propio): skill `neumet-revisar-pr`. Devuelve veredicto; **no corrige ni fusiona** (no tiene herramientas de edición).
-2. Si hay bloqueantes → **Corrector** (`subagent_type: "neumet-corrector"`): skill `neumet-corregir-pr` sobre la rama del PR, con la lista de bloqueantes copiada tal cual. Luego **vuelve al paso 1** con un revisor nuevo que re-ejecute lo que falló.
+1. **Revisores en paralelo** (`subagent_type: "neumet-revisor"`, agentes nuevos, distintos del autor y del corrector, cada uno con worktree propio): lanzarlos **al abrir el PR**, mientras corre el CI, en la misma respuesta.
+   Hasta tres, uno por foco; cada brief nombra su foco y le dice que no repita lo de los otros ni lo que el CI ya valida:
+   - (a) **Seguridad, base y RLS por rol** (migraciones, privilegios por columna, API real con el JWT de cada rol).
+   - (b) **UX y textos en pantalla real** (`neumet-ux` cuando toca interfaz; clics y `docs/12`).
+   - (c) **Concurrencia y pruebas mutantes** sobre lo nuevo: el test falla sin el arreglo y se prueban los casos de `docs/13` §1.b.
+   PR chico o solo docs: **un solo revisor**, sin focos. Un foco se reparte solo si el PR lo toca (sin interfaz, no hay foco b).
+   Skill `neumet-revisar-pr`; devuelven veredicto y **no corrigen ni fusionan**. El director **consolida un único veredicto** (APROBADO solo si todos lo son; los bloqueantes se unen sin duplicados).
+   Desde la ronda 1 distinguen **bloqueante real** (pérdida de datos, elección del usuario perdida, fuga entre roles, afirmación falsa en docs) de **sugerencia**; una afirmación falsa en docs es siempre bloqueante.
+2. Si hay bloqueantes → **Corrector** (`subagent_type: "neumet-corrector"`): skill `neumet-corregir-pr` sobre la rama del PR, con la lista de bloqueantes copiada tal cual. Luego **vuelve al paso 1** con un revisor nuevo que re-ejecute lo que falló (ronda 2: solo bloqueantes y diff; un revisor basta).
    Máximo **2 rondas**. Si en la segunda siguen los bloqueantes, parar y escalar al usuario con el resumen (es una de las pocas razones para consultarlo); no seguir iterando a ciegas.
 3. Aprobado con el CI verde y la rama al día con `main` → pasar a producción (sección 4).
 
@@ -44,7 +56,7 @@ Tareas independientes se lanzan **en la misma respuesta** (varias llamadas `Agen
 Nunca dos PR con migración a la vez: serializar.
 1. Si trae migración: `neumet-aplicar-migracion` (`neumet-operativo` para lo mecánico, o el director). **Autorización duradera del dueño**: la compuerta cumplida basta, no se pide confirmación.
    Solo se para y se consulta si la migración es destructiva (borra o reescribe datos), si hay datos de clientes reales en juego o si el dry-run lista algo inesperado. Preguntar por lógica de negocio, no por trámite de desarrollo.
-2. `gh pr merge <n> --merge --delete-branch`.
+2. `gh pr merge <n> --merge --delete-branch`. Enseguida, con `neumet-operativo` (`neumet-operar ramas`): poner al día con `main` las ramas de los demás PR abiertos y reportar conflictos; los resuelve el corrector.
 3. Si hay Edge Function que depende de la migración: `neumet-operar funcion <nombre>` **después** de la migración.
 4. **Verificación posterior** sobre `main` actualizado: `git pull`, `neumet-verificar` nivel rápido, y humo en producción (recarga forzada, la vista tocada con datos reales del demo).
 5. `neumet-docs-sync` y actualizar `docs/10-tablero.md` (puede ir en un PR `chore/`).
@@ -57,4 +69,5 @@ Lo no ejecutado o no verificado se dice como tal. Si un agente reporta "listo", 
 ## Reglas de convivencia
 - Un agente por rama; nunca dos agentes escribiendo en el mismo worktree.
 - Los agentes no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`. Para retomar, lanzar uno nuevo apuntando a la rama/worktree, o `SendMessage` si sigue vivo.
+- Si un agente corta por «monthly spend limit» (u otro tope de uso), **reanudarlo con `SendMessage`** cuando el límite se libere; relanzarlo desde cero repite el contexto y gasta más.
 - El director tampoco hace `git add -A` ni empuja a `main`.

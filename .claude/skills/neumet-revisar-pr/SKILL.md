@@ -7,6 +7,8 @@ description: Revisar un PR de NEUMET con el checklist de docs/13: ejecutar los c
 
 Argumento: número de PR. El rigor completo está en `docs/13-checklist-revision-prs.md`; esto es el procedimiento.
 **Revisar no es fusionar**: este skill termina en un veredicto. Fusionar es un paso aparte, después de aplicar la migración si la hay.
+**Foco**: el brief puede acotar la revisión a un foco (a: seguridad/base/RLS; b: UX y textos; c: concurrencia y pruebas mutantes). Con foco, ejecutar a fondo solo esa parte y decir qué quedó fuera; sin foco, todo.
+Desde la ronda 1, separar **bloqueante real** (pérdida de datos, elección del usuario perdida, fuga entre roles, afirmación falsa en docs) de **sugerencia**. En la ronda 2: solo los bloqueantes previos y el diff de la corrección.
 
 ## 1. Contexto
 ```
@@ -26,11 +28,12 @@ git worktree add .claude/worktrees/revisar-<n> revisar-<n>
 Trabajar ahí. Al terminar, quitar el worktree y la rama local `revisar-<n>`.
 
 ## 3. Ejecutar, no solo leer
-1. Skill `neumet-verificar` en el worktree. Un test que "pasa" porque nunca corrió el camino nuevo no cuenta: confirmar que los tests nuevos fallan sin el cambio
+1. Skill `neumet-verificar` en el worktree (`scripts/preparar-worktree.sh` y el servidor de smoke, pendientes del PR de pruebas locales, cuando existan). Un test que "pasa" porque nunca corrió el camino nuevo no cuenta: confirmar que los tests nuevos fallan sin el cambio
    (`git stash`/checkout del archivo de producción y re-correr el test).
-2. Probar los casos de `docs/13` §1: datos vacíos, `null`, un registro, muchos; cada rol (admin, global, sucursal, sin perfil, `api`); consulta que falla; campo inexistente; sin permiso.
-3. Datos ocultos por rol (precios, costos): pedir la columna directa, `select=*`, con filtro/orden y embebida, con el JWT de cada rol. La RLS no filtra columnas.
-4. Si cambia algo servido por Vercel, pensar en la caché de módulos ES.
+2. Foco c: por cada guarda, cola o reintento nuevo, probar los casos de `docs/13` §1.b y **mutar**: quitar el arreglo y comprobar que el test falla. Preguntar si había un arreglo más simple.
+3. Probar los casos de `docs/13` §1: datos vacíos, `null`, un registro, muchos; cada rol (admin, global, sucursal, sin perfil, `api`); consulta que falla; campo inexistente; sin permiso.
+4. Datos ocultos por rol (precios, costos): pedir la columna directa, `select=*`, con filtro/orden y embebida, con el JWT de cada rol. La RLS no filtra columnas.
+5. Si cambia algo servido por Vercel, pensar en la caché de módulos ES.
 
 ## 4. Migración (si hay)
 Leerla **entera**, no el diff por encima:
