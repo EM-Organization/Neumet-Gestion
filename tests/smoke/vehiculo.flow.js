@@ -111,20 +111,32 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);
     br.click(); br.click(); await sleep(500);   // doble clic: una sola rotación
     if($('#modal-confirm').classList.contains('show')) fail('detalle: rotar no debe pedir confirmación (es reversible)');
-    if($('#toast-msg').textContent !== 'Rotación registrada: Eje 2 izquierda exterior ↔ Delantera izquierda') fail('detalle: aviso de rotación: '+$('#toast-msg').textContent);
+    if($('#toast-msg').textContent !== 'Rotación registrada en Camión 01: Eje 2 izquierda exterior ↔ Delantera izquierda') fail('detalle: aviso de rotación: '+$('#toast-msg').textContent);
     if(!d.activeElement || !d.activeElement.classList.contains('vd-rueda') || d.activeElement.dataset.pos !== '3') fail('detalle: tras rotar el foco debe volver a la rueda: '+(d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
     var rot = rpcs('neumatico_rotar');
     if(rot.length !== 1) fail('detalle: la rotacion (con doble clic) debe llegar una sola vez a la RPC ('+rot.length+')');
     else if(JSON.stringify([rot[0].args.p_vehiculo_id, rot[0].args.p_pos_a, rot[0].args.p_pos_b]) !== '[10,3,1]') fail('detalle: args de rotar: '+JSON.stringify(rot[0].args));
+    // Otra rotación mientras una lenta sigue en curso: se avisa (no se descarta en silencio) y sale una sola RPC
+    var ACr = (await (new w.Function('return import("/assets/js/core/actions.js")'))()).ACTIONS;
+    for(var u0 = 0; u0 < 20 && !$('#vd-rotar-destino'); u0++) await sleep(50);
+    sel = $('#vd-rotar-destino'); sel.value = '2'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
+    w.__cicloFx.rpcDelay = 500; var rot0 = rpcs('neumatico_rotar').length;
+    $('#vd-rotar-btn').click(); await sleep(100);
+    $('#toast-msg').textContent = '';
+    await ACr['neumatico-rotar-pos'](10, 3, 4);
+    if($('#toast-msg').textContent !== 'Esperar a que termine la rotación') fail('detalle: rotar otra rueda con una rotación en curso debe avisar: '+$('#toast-msg').textContent);
+    await sleep(700); w.__cicloFx.rpcDelay = 0;
+    if(rpcs('neumatico_rotar').length !== rot0 + 1) fail('detalle: durante una rotación en curso debe salir una sola RPC ('+(rpcs('neumatico_rotar').length - rot0)+')');
+    for(var u1 = 0; u1 < 20 && !$('#vd-rotar-destino'); u1++) await sleep(50);
     // Respuesta que nunca llega: no se reintenta, se recarga el detalle y la respuesta tardía no pinta nada
     var cambioMod = await (new w.Function('return import("/assets/js/views/cambio-neumatico.js")'))();
     cambioMod.config.timeoutMs = 300; w.__cicloFx.rpcDelay = 1000;
     evRot = 0; var lect0 = w.__cicloFx.lecturas.v_estado_neumaticos || 0;
     sel = $('#vd-rotar-destino'); sel.value = '2'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
     $('#vd-rotar-btn').click(); await sleep(700);
-    if($('#toast-msg').textContent !== 'No se pudo confirmar la rotación. Revisar el vehículo antes de reintentar') fail('detalle: rotar sin respuesta debe avisar que no se pudo confirmar: '+$('#toast-msg').textContent);
+    if($('#toast-msg').textContent !== 'No se pudo confirmar la rotación en Camión 01. Revisar el vehículo antes de reintentar') fail('detalle: rotar sin respuesta debe avisar que no se pudo confirmar: '+$('#toast-msg').textContent);
     if((w.__cicloFx.lecturas.v_estado_neumaticos || 0) <= lect0) fail('detalle: rotar sin respuesta debe recargar el detalle');
-    if(rpcs('neumatico_rotar').length !== 2) fail('detalle: rotar sin respuesta no debe reintentar solo');
+    if(rpcs('neumatico_rotar').length !== 3) fail('detalle: rotar sin respuesta no debe reintentar solo');
     await sleep(900);
     if($('#toast-msg').textContent.indexOf('Rotación registrada') !== -1 || evRot) fail('detalle: la respuesta tardía de rotar pintó éxito: '+$('#toast-msg').textContent);
     w.__cicloFx.rpcDelay = 0; cambioMod.config.timeoutMs = 20000;
@@ -154,7 +166,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
       $('#cambio-motivo').value = 'Desgaste';
       $('#cambio-confirmar').click(); await sleep(700);
       if($('#modal-cambio').classList.contains('show')) fail('detalle: sin respuesta, el modal de cambio debe cerrarse (no dejarlo listo para reintentar)');
-      if($('#toast-msg').textContent !== 'No se pudo confirmar el cambio. Revisar el vehículo antes de reintentar') fail('detalle: aviso de cambio sin respuesta: '+$('#toast-msg').textContent);
+      if($('#toast-msg').textContent !== 'No se pudo confirmar el cambio en Camión 01. Revisar el vehículo antes de reintentar') fail('detalle: aviso de cambio sin respuesta: '+$('#toast-msg').textContent);
       if((w.__cicloFx.lecturas.v_estado_neumaticos || 0) <= lect1) fail('detalle: cambio sin respuesta debe recargar el detalle');
       await sleep(900);
       if($('#toast-msg').textContent.indexOf('Cambio registrado') !== -1 || evCam || $('#modal-cambio').classList.contains('show')) fail('detalle: la respuesta tardía del cambio pintó algo: '+$('#toast-msg').textContent);

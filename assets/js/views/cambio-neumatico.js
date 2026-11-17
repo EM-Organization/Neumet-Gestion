@@ -11,7 +11,7 @@ import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { reloadActiveView } from '../core/nav.js';
 import {
-  DESTINOS, MOTIVO_POR_DEFECTO, nombrePos, etiquetaVida, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion
+  DESTINOS, MOTIVO_POR_DEFECTO, nombrePos, etiquetaVida, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion, avisoRotacion
 } from '../domain/cambio-neumatico.js';
 import { fmtNum } from '../domain/formato.js';
 import { cubiertasMontables, etiquetaCubierta, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
@@ -105,7 +105,11 @@ function pintar() {
   actualizar();
 }
 
+const AVISO_EN_CURSO = 'Esperar a que termine el cambio en curso';
+
 async function abrir(vehiculoId, posicion) {
+  // Un cambio en vuelo es de otro neumático: abrir otro modal ahora haría que su respuesta cerrara el equivocado.
+  if (ocupado) { showToast(AVISO_EN_CURSO, true); return; }
   if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a cambiar', true); return; }
   const [rv, rn] = await Promise.all([
     db.from('vehiculos').select('id,nombre,cliente_id,odometro_km,tipo_ruedas').eq('id', vehiculoId).maybeSingle(),
@@ -129,6 +133,8 @@ async function abrir(vehiculoId, posicion) {
   const stock = rs.error ? [] : stockDisponible(rs.data);
   const cubiertas = rc.error ? [] : cubiertasMontables(rc.data);
   const sucursales = rsu.error ? [] : (rsu.data || []);
+  // Un cambio pudo empezar mientras se cargaba este: no se reemplaza el contexto del que está en vuelo.
+  if (ocupado) { showToast(AVISO_EN_CURSO, true); return; }
   ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, sucursales, puedeStock };
   pintar();
   $('modal-cambio').classList.add('show');
@@ -147,33 +153,36 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   const r = validarCambio(estado());
   if (!r.ok) { $('cambio-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('cambio-confirmar').disabled = true;
+  const mio = ctx; // la respuesta solo toca el modal del neumático que la originó
   const { posicion, vehiculo_id: vehiculoId } = ctx.neum, ctxTipo = ctx.veh && ctx.veh.tipo_ruedas;
+  const coche = ctx.veh && ctx.veh.nombre ? etiquetaCoche(ctx.veh.nombre) : '';
   try {
     const res = await conLimite(db.rpc('neumatico_cambiar', r.params));
     if (res === TARDE) {
-      ACTIONS['neumatico-cambiar-cerrar']();
-      showToast('No se pudo confirmar el cambio. Revisar el vehículo antes de reintentar', true);
+      if (ctx === mio) ACTIONS['neumatico-cambiar-cerrar']();
+      showToast(`No se pudo confirmar el cambio${coche ? ' en ' + coche : ''}. Revisar el vehículo antes de reintentar`, true);
       try { reloadActiveView(); } catch (e) { console.error(e); }
       return;
     }
     if (res.error) throw res.error;
-    ACTIONS['neumatico-cambiar-cerrar']();
-    showToast(`Cambio registrado en ${nombrePos(posicion, ctxTipo)}: el neumático nuevo ya figura montado`);
+    if (ctx === mio) ACTIONS['neumatico-cambiar-cerrar']();
+    showToast(`Cambio registrado en ${coche ? coche + ', ' : ''}${nombrePos(posicion, ctxTipo)}: el neumático nuevo ya figura montado`);
     document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     notificarCambio({ vehiculoId, posicion, resultado: res.data });
   } catch (e) {
     console.error(e);
     const msg = traducirErrorCambio(e);
-    $('cambio-error').textContent = msg;
+    if (ctx === mio) $('cambio-error').textContent = msg;
     showToast(msg, true);
-    $('cambio-confirmar').disabled = false;
+    if (ctx === mio) $('cambio-confirmar').disabled = false;
   } finally { ocupado = false; }
 };
 
 // Rotación desde un botón de posición: reutiliza la RPC atómica neumatico_rotar. Es reversible (rotar de nuevo la deshace),
 // por eso no pide confirmación (docs/14 §5 r.5); el aviso nombra el intercambio. Una rotación a la vez (`rotando`).
 ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
-  if (esAdmin() || rotando) return;
+  if (esAdmin()) return;
+  if (rotando) { showToast('Esperar a que termine la rotación', true); return; }
   rotando = true;
   const btn = document.getElementById('vd-rotar-btn');
   if (btn) btn.disabled = true;
@@ -181,15 +190,16 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
     const vid = Number(vehiculoId);
     const [rn, rv] = await Promise.all([
       db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vid),
-      db.from('vehiculos').select('id,tipo_ruedas').eq('id', vid).maybeSingle()
+      db.from('vehiculos').select('id,nombre,tipo_ruedas').eq('id', vid).maybeSingle()
     ]);
     if (rn.error) { console.error(rn.error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }
     const tipo = rv.data ? rv.data.tipo_ruedas : null;
+    const coche = rv.data && rv.data.nombre ? etiquetaCoche(rv.data.nombre) : '';
     const r = validarRotacion(rn.data || [], vid, posA, posB, tipo);
     if (!r.ok) { showToast(r.error, true); return; }
     const res = await conLimite(db.rpc('neumatico_rotar', { ...r.params, p_odometro_km: null }));
     if (res === TARDE) {
-      showToast('No se pudo confirmar la rotación. Revisar el vehículo antes de reintentar', true);
+      showToast(`No se pudo confirmar la rotación${coche ? ' en ' + coche : ''}. Revisar el vehículo antes de reintentar`, true);
       try { reloadActiveView(); } catch (e) { console.error(e); }
       return;
     }
@@ -198,7 +208,8 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
       showToast(res.error.code === '42501' ? 'Sin permiso para rotar neumáticos de este vehículo' : 'No se pudo registrar la rotación. No se guardó nada', true);
       return;
     }
-    showToast(`Rotación registrada: ${r.aviso}`);
+    const hubo = res.data && typeof res.data.intercambio === 'boolean' ? res.data.intercambio : !!r.intercambio;
+    showToast(`Rotación registrada${coche ? ' en ' + coche : ''}: ${avisoRotacion(r.params.p_pos_a, r.params.p_pos_b, tipo, hubo)}`);
     notificarCambio({ vehiculoId: vid, rotacion: [r.params.p_pos_a, r.params.p_pos_b] });
   } finally { rotando = false; if (btn && btn.isConnected) btn.disabled = false; }
 };

@@ -184,6 +184,11 @@ export function validarRotacion(neumaticos, vehiculoId, posA, posB, tipo) {
   const nb = montados.find(n => n.posicion === b);
   if (nb && nb.estado === 'baja') return { ok: false, error: `${nombrePos(b, tipo)} está ocupada por un neumático dado de baja` };
   return { ok: true, intercambio: nb || null, params: { p_vehiculo_id: vehiculoId, p_pos_a: a, p_pos_b: b },
-    // Aviso del resultado: «A ↔ B» si había neumático en destino; «movido de A a B» si estaba libre.
-    aviso: nb ? `${nombrePos(a, tipo)} ↔ ${nombrePos(b, tipo)}` : `neumático movido de ${nombrePos(a, tipo)} a ${nombrePos(b, tipo)}` };
+    aviso: avisoRotacion(a, b, tipo, !!nb) };
+}
+
+// Aviso del resultado: «A ↔ B» si había neumático en destino; «movido de A a B» si estaba libre.
+// `huboIntercambio` es lo que informó la RPC (la base manda: pudo cambiar entre la lectura y la rotación).
+export function avisoRotacion(a, b, tipo, huboIntercambio) {
+  return huboIntercambio ? `${nombrePos(a, tipo)} ↔ ${nombrePos(b, tipo)}` : `neumático movido de ${nombrePos(a, tipo)} a ${nombrePos(b, tipo)}`;
 }

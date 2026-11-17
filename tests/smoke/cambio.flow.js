@@ -132,5 +132,26 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   fx.rpcDelay = 0;
   if(cambios().length !== antesE + 1) fail('cambio: Enter/doble envío debe registrar un solo cambio, registró ' + (cambios().length - antesE));
   if(modal.classList.contains('show')) fail('cambio: el modal no se cerró tras enviar con Enter');
+
+  // Un cambio en vuelo no debe mezclarse con otro neumático: abrir otro se rechaza con aviso, el modal sigue siendo el del
+  // neumático que se está cambiando, y la respuesta cierra ese modal y avisa éxito una sola vez
+  btn.setAttribute('data-posicion', '1');
+  btn.click(); await sleep(600);
+  d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); await sleep(100);
+  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'Desgaste';
+  var antesV = cambios().length; fx.rpcDelay = 500;
+  $('#cambio-form').requestSubmit(); await sleep(50);
+  var btn2 = d.createElement('button');
+  btn2.setAttribute('data-action', 'neumatico-cambiar'); btn2.setAttribute('data-vehiculo-id', '10'); btn2.setAttribute('data-posicion', '3');
+  d.body.appendChild(btn2);
+  $('#toast-msg').textContent = '';
+  btn2.click(); await sleep(100);
+  if($('#toast-msg').textContent !== 'Esperar a que termine el cambio en curso') fail('cambio: abrir otro neumático con un cambio en curso debe avisar: ' + $('#toast-msg').textContent);
+  if($('#cambio-actual').textContent.indexOf('Delantera izquierda') === -1) fail('cambio: el modal en vuelo pasó a otro neumático: ' + $('#cambio-actual').textContent);
+  await sleep(700); fx.rpcDelay = 0;
+  if(cambios().length !== antesV + 1) fail('cambio: con un cambio en curso debe salir una sola RPC, salieron ' + (cambios().length - antesV));
+  if(modal.classList.contains('show')) fail('cambio: el modal del cambio terminado debe cerrarse');
+  if($('#toast-msg').textContent.indexOf('Cambio registrado en Camión 01, Delantera izquierda') !== 0) fail('cambio: aviso de éxito con vehículo y posición: ' + $('#toast-msg').textContent);
+  btn2.remove();
   btn.remove();
 };

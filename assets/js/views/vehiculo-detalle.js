@@ -46,6 +46,7 @@ let focoTrasCarga = null; // rueda a enfocar cuando el detalle se redibuje tras 
 let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace desde Inicio)
 let ultimoFoco = null;
 let tokenGrafico = 0;
+let tokenCarga = 0; // dos load() superpuestos (rotación + recarga manual): solo el último pinta
 const cacheMediciones = new Map();
 
 // Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
@@ -462,6 +463,7 @@ function cerrarPanel() {
 
 export async function load() {
   if (nulo(vehiculoId)) { switchView('vehiculos'); return; }
+  const miCarga = ++tokenCarga;
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren(); $('vd-calidad').replaceChildren();
   await contextoListo();
@@ -481,6 +483,7 @@ export async function load() {
     db.from('mediciones').select(SEL_CALIDAD).eq('vehiculo_id', vehiculoId).in('calidad', ['sospechosa', 'invalidada'])
       .order('created_at', { ascending: false }).limit(200),
   ]);
+  if (miCarga !== tokenCarga) return;
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
   if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
@@ -531,6 +534,7 @@ export function init() {
   // Tras rotar o cambiar, el detalle se recarga y el foco caería en <body>: se devuelve a la rueda de origen.
   document.addEventListener('neumet:neumatico-cambiado', e => {
     const d = e.detail || {};
+    if (Number(d.vehiculoId) !== Number(vehiculoId)) return; // el evento de otro vehículo no mueve el foco de este
     if (!$('view-vehiculo-detalle').classList.contains('active')) return;
     focoTrasCarga = d.rotacion ? d.rotacion[0] : (d.posicion ?? null);
   });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarCambio, traducirErrorCambio, stockDisponible, validarRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
+import { validarCambio, traducirErrorCambio, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
 
 const neum = { id: 5, vehiculo_id: 10, posicion: 3, marca: 'Michelin', modelo: 'X', estado: 'montado', vida: 0 };
 const stock = [{ id: 1, marca: 'Pirelli', modelo: 'FR', cantidad: 2 }, { id: 2, marca: 'Vacio', cantidad: 0 }];
@@ -12,11 +12,11 @@ test('stockDisponible descarta lotes sin unidades', () => {
 });
 
 test('validarCambio: del stock arma los parámetros de la RPC', () => {
-  const r = validarCambio(base);
+  const r = validarCambio({ ...base, tipo: 10 });
   assert.equal(r.ok, true);
   assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: 'Desgaste',
     p_odometro_km: null, p_stock_id: 1, p_nuevo: null, p_numero_quema: null, p_km_previos: 0 });
-  assert.match(r.resumen, /^Eje 2 [a-z]+( [a-z]+)?: sale Michelin X/);
+  assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X/);
   assert.doesNotMatch(r.resumen, /\bP\d/);
 });
 
@@ -216,4 +216,15 @@ test('etiquetaVida: vida 0 es neumático nuevo, sin el código «vida»', () => 
   assert.equal(etiquetaVida(0), 'Neumático nuevo');
   assert.equal(etiquetaVida(undefined), 'Neumático nuevo');
   assert.equal(etiquetaVida(2), 'recauchutado 2');
+});
+
+test('avisoRotacion: lo que informó la RPC manda sobre lo leído antes', () => {
+  assert.equal(avisoRotacion(1, 2, 10, true), 'Delantera izquierda ↔ Delantera derecha');
+  assert.equal(avisoRotacion(1, 2, 10, false), 'neumático movido de Delantera izquierda a Delantera derecha');
+});
+
+test('validarRotacion: los errores por neumático dado de baja nombran la posición, no «P<n>»', () => {
+  const ns = [{ vehiculo_id: 10, posicion: 1, estado: 'baja' }, { vehiculo_id: 10, posicion: 2, estado: 'montado' }];
+  assert.equal(validarRotacion(ns, 10, 1, 2, 10).error, 'El neumático de Delantera izquierda está dado de baja');
+  assert.equal(validarRotacion(ns, 10, 2, 1, 10).error, 'Delantera izquierda está ocupada por un neumático dado de baja');
 });
