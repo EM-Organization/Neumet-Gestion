@@ -91,7 +91,7 @@ async function recargar() {
 // `moverVehiculo`): la siguiente espera a la anterior de ESE vehículo y corre solo el último destino pedido. Operaciones sobre otros
 // vehículos o formularios no se esperan: una cola global dejaba todo detrás de una RPC lenta. Las recargas superadas las descarta `cargando`.
 const enCurso = new Set();
-async function ejecutar(nombre, args, okMsg) {
+async function ejecutar(nombre, args, okMsg, alAplicar) {
   err('');
   const { data, error } = await db.rpc(nombre, args);
   if (error) {
@@ -101,6 +101,7 @@ async function ejecutar(nombre, args, okMsg) {
     err(m); showToast(m, true); // después de la recarga, que limpia el error
     return false;
   }
+  if (alAplicar) alAplicar(); // antes de recargar: una recarga descartada no puede dejar la lista contradiciendo lo ya aplicado
   if (okMsg) showToast(okMsg);
   await recargar();
   return data || true;
@@ -119,11 +120,16 @@ async function moverVehiculo(id, valor) {
     // Se parte del valor de la lista al empezar y, tras cada RPC exitosa, el origen es el destino que se acaba de aplicar.
     let origen = v ? v.sucursal_id : null;
     let destino = { valor };
-    while (destino && v) {
+    // Tras cerrar sesión `moviendo` se vacía: si esta corrida ya no es la vigente, no ejecuta lo que quedó pendiente con la sesión del siguiente usuario.
+    while (destino && v && moviendo.get(id) === mia) {
       if (String(origen ?? '') !== String(destino.valor)) {
         // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
-        const hecho = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(origen, sucursales), textoSucursal(destino.valor, sucursales)));
-        if (hecho) { ok = true; origen = destino.valor === '' ? null : destino.valor; }
+        const nuevo = destino.valor === '' ? null : destino.valor;
+        // La lista local se actualiza apenas la RPC se aplica: la recarga que sigue puede descartarse (otra más nueva) y `sucursalMover`
+        // compararía el «mismo valor» contra un dato viejo, perdiendo la elección siguiente sin RPC ni aviso.
+        const alAplicar = () => { const l = vehPorId(id); if (l && moviendo.get(id) === mia) l.sucursal_id = nuevo; };
+        const hecho = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(origen, sucursales), textoSucursal(destino.valor, sucursales)), alAplicar);
+        if (hecho) { ok = true; origen = nuevo; }
       }
       destino = mia.pendiente;
       mia.pendiente = null;
