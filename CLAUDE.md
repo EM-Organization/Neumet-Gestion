@@ -58,15 +58,16 @@ Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
 | `neumet-autor` | `sonnet` | todas | Implementa un área en su rama, con pruebas, y abre el PR |
 | `neumet-revisor` | `opus` | solo lectura y Bash | Encuentra bloqueantes y emite veredicto; sin herramientas de edición; no edita ni fusiona |
 | `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
-| `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees |
+| `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees, poner al día con `main` las ramas de los PR abiertos tras cada fusión |
 | `neumet-dba` | `opus` | solo lectura + MCP de lectura de Supabase | Consultor de BD: audita rendimiento, RLS e índices; no aplica nada |
 | `neumet-ux` | `opus` | solo lectura, Bash, `Skill`, `ToolSearch` y navegador (`mcp__claude-in-chrome__*`); sin MCP de Supabase | Auditor de UX/UI: navega el panel con datos simulados, cuenta clics y revisa visualmente PR de interfaz |
 
 El director lanza `neumet-ux` para la auditoría de clics (`docs/10`) o para revisar la interfaz de un PR; necesita la extensión de Chrome conectada (`/chrome`), de preferencia con un perfil de Chrome sin sesiones reales y en primer plano (sin ella cae a capturas). Los agentes cargan al iniciar la sesión: reiniciar Claude Code tras agregarlo.
 El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
 
-Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisor → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
-**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (revisor APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
+Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisores (en paralelo, un foco cada uno) → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
+**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (veredicto consolidado APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
+**Agilidad sin bajar calidad**: diseño previo para concurrencia, revisores en paralelo con foco y ramas al día tras cada fusión; detalle y límites en `neumet-orquestar`, `neumet-pr` y `docs/13`.
 Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migración al mismo tiempo en producción. Los agentes en segundo plano no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`.
 
 ## Skills del proyecto (`.claude/skills/`)

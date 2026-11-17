@@ -1,6 +1,8 @@
 # 13 · Checklist de revisión de PR y criterio de pruebas
 
 Lo que debe cumplir un PR para fusionarse. Lo aplica el revisor y el autor lo verifica antes de abrir el PR.
+Un PR chico o solo de docs lo revisa uno; uno grande, hasta tres revisores en paralelo con foco acotado (seguridad/base/RLS; UX y textos; concurrencia y pruebas mutantes) y el director consolida un solo veredicto (ver `neumet-orquestar`).
+**Bloqueante** es todo incumplimiento de una regla de `CLAUDE.md` o de este checklist (p. ej. arreglo de bug sin test que falle sin el arreglo, `SECURITY DEFINER` sin `search_path` vacío, RLS nueva sin pruebas por rol, clics aumentados sin justificación, texto en segunda persona o color como único indicador, cambio de comportamiento sin actualizar `docs/08` o `docs/10`), además de pérdida de datos, elección del usuario perdida, fuga entre roles y afirmación falsa en la documentación (ejemplos, no lista cerrada). **Sugerencia** es lo opinable o de estilo que no viola una regla. Desde la ronda 1 el revisor las separa.
 
 ## 1. Rigor al buscar bugs
 El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
@@ -11,6 +13,17 @@ El revisor no se limita a leer el diff: ejecuta los caminos nuevos.
 - Un PR que arregla un bug incluye un test que **falla sin el arreglo**.
 - Una regla de visibilidad de datos («la sucursal no ve precios») se hace cumplir en la base, no solo en la interfaz: la RLS filtra filas, no columnas. Se prueba con la API real y el JWT de cada rol, pidiendo la columna directa, con `select=*`, con filtro/orden y embebida.
 - `select('*')` sobre `clientes` da `42501` desde C2 (privilegios por columna, `precio_mensual` sin SELECT): revisar que toda lectura o `.update().select()` de `clientes` en el front y en las pruebas nombre sus columnas.
+
+### 1.b Concurrencia y estado compartido (guardas, colas, doble envío, reintentos, recargas)
+Antes de implementar, el autor deja media página de diseño (operaciones, claves de guarda, qué pasa si dos llegan a la vez o una nunca responde) y prefiere el arreglo más simple (guardar formularios, no controles idempotentes como un select).
+Autor y revisor comprueban, con una prueba que falla sin el arreglo, cada caso aplicable:
+- Doble envío (dos clics o dos Enter seguidos).
+- Enter mantenido (`e.repeat`).
+- Cambios superpuestos del mismo control (queda la última elección del usuario).
+- Operaciones distintas simultáneas (una no bloquea ni descarta a la otra).
+- Fallo a mitad de la operación (estado coherente, mensaje claro, se puede reintentar).
+- Respuesta que nunca llega (la interfaz no queda bloqueada para siempre).
+- Recarga que pisa texto sin guardar.
 
 ## 2. Pruebas completas
 - Toda lógica nueva tiene pruebas unitarias con casos límite, no solo el camino feliz.
