@@ -26,7 +26,8 @@
 --     solo en la posición 99. vehiculos.sucursal_id queda NULL: perfiles_sucursal_rol_ck impide
 --     que una cuenta api tenga sucursal, así que el coche es visible para perfiles globales.
 --   * Concurrencia: lock de transacción por (cliente, patente) antes de crear + insert ... on conflict
---     sobre el índice único; la request perdedora ve el coche ya creado y sigue el camino de siempre.
+--     sobre el índice único (se cubren mutuamente: el lock serializa y el on conflict protege si el lock
+--     no alcanzara); la request perdedora ve el coche ya creado y sigue el camino de siempre.
 --   * Atomicidad: savepoint por posición (neumático + medición juntos). Si tras el bucle no se guardó
 --     ninguna posición, se deshace el alta del vehículo y se responde como "no encontrado".
 --   * Idempotencia: sin cambios; la respuesta (con creado/neumaticos_creados) se guarda y el replay la

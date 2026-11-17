@@ -1003,7 +1003,7 @@ El comentario de `20261120500000_cerrar_escrituras_neumet.sql:765` dice que con 
 
 ## R.4 Límites
 
-Una patente mal escrita crea un vehículo huérfano (acotado por el límite de 120 requests/min); las posiciones 17..98 no se crean; en un vehículo existente las posiciones nuevas siguen respondiendo `posicion`; el tipo de ruedas puede quedar mal deducido si la primera request es parcial.
+Una patente mal escrita crea un vehículo huérfano (acotado por el límite de 120 requests/min). Hoy no hay forma de archivarlo desde el panel (ninguna RPC ni vista pone `vehiculos.activo = false` y `authenticated` no tiene UPDATE sobre `vehiculos`): el equipo Neumet solo puede darlo de baja con SQL manual, y mientras tanto suma a `vehiculos_activos` de `uso_cliente_mensual` y al KPI «Vehículos activos» (riesgo asumido); las posiciones 17..98 no se crean; en un vehículo existente las posiciones nuevas siguen respondiendo `posicion`; el tipo de ruedas puede quedar mal deducido si la primera request es parcial.
 
 ## R.5 Pruebas
 

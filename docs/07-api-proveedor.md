@@ -181,7 +181,7 @@ Antes, una patente que no existía devolvía `guardado:false` con motivo `vehicu
 - **Idempotencia y concurrencia:** el replay (misma clave) repite la respuesta sin crear; dos altas simultáneas de la misma patente se serializan con un lock de transacción más `insert ... on conflict`, y la segunda ve el vehículo ya creado (sus posiciones nuevas responden `posicion`).
 - **Protección:** siempre activa para todas las cuentas `api` (sin bandera por cuenta). Límites existentes: 40 montajes por request y 120 requests/min por cuenta.
 - **Respuesta a DAC:** sin cambios (`{posicion, guardado}`). El alta se ve en `ingesta_log`: `motivo = 'vehiculo_creado'` (status `ok`; si además falló alguna posición prevalece `fallo_parcial`) y en `payload_resumen` `vehiculo_creado` y `neumaticos_creados` (sin patente ni valores). Un replay no registra otra alta.
-- **Riesgo asumido:** una patente mal escrita crea un vehículo huérfano; el límite de requests acota el volumen y el panel puede archivar el vehículo.
+- **Riesgo asumido:** una patente mal escrita crea un vehículo huérfano; el límite de requests acota el volumen. Hoy no hay forma de archivarlo desde el panel: ninguna RPC ni vista pone `vehiculos.activo = false` y `authenticated` no tiene UPDATE sobre `vehiculos`; el equipo Neumet puede darlo de baja solo con SQL manual. Mientras tanto, el vehículo huérfano sigue activo y suma a `vehiculos_activos` de `uso_cliente_mensual` y al KPI «Vehículos activos» (riesgo asumido; la vía de archivo está pendiente en `docs/10`).
 
 ### Motivo agregado en `ingesta_log.motivo`
 
