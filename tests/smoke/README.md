@@ -37,10 +37,10 @@ Equivale a servir el repo con `node scripts/servir-estatico.mjs <puerto> .` (no 
 
 ```
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
-  --virtual-time-budget=15000 --dump-dom http://localhost:<puerto>/tests/smoke/harness.html
+  --virtual-time-budget=250000 --dump-dom http://127.0.0.1:<puerto>/tests/smoke/harness.html
 ```
 
-Variables: `PORT` (por defecto 8791), `CHROME` (ruta del binario). Capturas: añadir
+Variables: `PORT` (sin él, el primer puerto libre), `CHROME` (ruta del binario). Capturas: añadir
 `--window-size=1400,900 --screenshot=out.png` y `?end=<vista>` a la URL para terminar en esa vista.
 
 ## Qué NO cubre
