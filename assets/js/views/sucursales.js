@@ -8,9 +8,10 @@ import { currentClienteId, esAdminEmpresa, onLogout } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { registerView } from '../core/nav.js';
 import { refrescarSucursales } from '../core/seccional.js';
+import { etiquetaCoche } from '../domain/coche.js';
 import {
   validarNombreSucursal, argsMover, contarPorSucursal, filtrarVehiculos,
-  textoSucursal, confirmacionMover, confirmacionEliminar, mensajeErrorGestion,
+  textoSucursal, avisoMovido, confirmacionEliminar, mensajeErrorGestion,
 } from '../domain/sucursales.js';
 
 const $ = id => document.getElementById(id);
@@ -28,17 +29,24 @@ function opciones(seleccion, primera) {
 }
 
 function renderSucursales() {
+  // La recarga de otra operación no debe pisar un nombre escrito y aún sin guardar en otra fila.
+  const sinGuardar = new Map();
+  for (const s of sucursales) {
+    const inp = $(`suc-n-${s.id}`);
+    if (inp && inp.value !== inp.defaultValue) sinGuardar.set(String(s.id), inp.value);
+  }
   const cuentas = contarPorSucursal(vehiculos);
   setHtml($('suc-lista'), sucursales.length
     ? html`<table class="sec-tabla"><thead><tr><th scope="col">Nombre</th><th scope="col">Vehículos</th><th scope="col"></th></tr></thead><tbody>${
       sucursales.map(s => html`<tr data-sucursal="${s.id}">
         <td><input type="text" id="suc-n-${s.id}" value="${s.nombre}" maxlength="100" aria-label="Nombre de la sucursal"/></td>
-        <td>${cuentas.get(String(s.id)) || 0}</td>
+        <td data-label="Vehículos">${cuentas.get(String(s.id)) || 0}</td>
         <td class="sec-acciones">
           <button type="button" class="btn ghost" data-action="sucursalRenombrar" data-args="[${s.id}]">Guardar nombre</button>
           <button type="button" class="btn ghost" data-action="sucursalEliminar" data-args="[${s.id}]">Eliminar</button>
         </td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin sucursales. Usar «Agregar sucursal» para crear la primera.</div>`);
+  for (const [id, valor] of sinGuardar) { const inp = $(`suc-n-${id}`); if (inp) inp.value = valor; }
 }
 
 function renderVehiculos() {
@@ -47,9 +55,9 @@ function renderVehiculos() {
   if (!vehiculos.length) { setHtml($('suc-vehiculos'), html`<div class="salud-muted">Sin vehículos registrados</div>`); return; }
   if (!todos.length) { setHtml($('suc-vehiculos'), html`<div class="salud-muted">Ningún vehículo coincide. Revisar la matrícula o el número de coche.</div>`); return; }
   setHtml($('suc-vehiculos'), html`<table class="sec-tabla"><thead><tr><th scope="col">Vehículo</th><th scope="col">Matrícula</th><th scope="col">Sucursal</th></tr></thead><tbody>${
-    filas.map(v => html`<tr data-vehiculo="${v.id}"><td>${v.numero ? `Coche ${v.numero}` : v.nombre}${v.activo === false ? ' (inactivo)' : ''}</td>
-      <td class="mono-cell">${v.patente || '—'}</td>
-      <td><select class="flota-select" data-change="sucursalMover" data-args="[${v.id}]" aria-label="Sucursal del vehículo">${opciones(v.sucursal_id, 'Sin sucursal')}</select></td></tr>`)}</tbody></table>${
+    filas.map(v => html`<tr data-vehiculo="${v.id}"><td>${etiquetaCoche(v.nombre)}${v.activo === false ? ' (inactivo)' : ''}</td>
+      <td class="mono-cell" data-label="Matrícula">${v.patente || '—'}</td>
+      <td data-label="Sucursal"><select class="flota-select" data-change="sucursalMover" data-args="[${v.id}]" aria-label="Sucursal del vehículo">${opciones(v.sucursal_id, 'Sin sucursal')}</select></td></tr>`)}</tbody></table>${
     todos.length > filas.length ? html`<div class="salud-muted">Se muestran ${filas.length} de ${todos.length}. Usar el buscador para acotar.</div>` : ''}`);
 }
 
@@ -76,32 +84,66 @@ async function recargar() {
 }
 
 // Ejecuta una RPC; ante error muestra el mensaje y devuelve false. Si sale bien devuelve el resultado (o true).
-async function rpc(nombre, args, okMsg) {
+// Guarda por operación y objetivo, SOLO en los formularios `crear`, `renombrar:<id>` y `eliminar:<id>`: con Enter repetido cada envío
+// lanzaba su propia RPC (la segunda creación daba 23505 tras «Sucursal creada»), así que el doble envío de la MISMA operación se descarta.
+// «Mover» NO se guarda: un cambio de select es idempotente y descartar la re-elección dejaba al vehículo en el destino anterior
+// (corregir de Montevideo a Salto con la primera RPC en curso, o bajar dos opciones con el teclado). Se serializa por vehículo (ver
+// `moverVehiculo`): la siguiente espera a la anterior de ESE vehículo y corre solo el último destino pedido. Operaciones sobre otros
+// vehículos o formularios no se esperan: una cola global dejaba todo detrás de una RPC lenta. Las recargas superadas las descarta `cargando`.
+const enCurso = new Set();
+async function ejecutar(nombre, args, okMsg) {
   err('');
   const { data, error } = await db.rpc(nombre, args);
   if (error) {
     const m = mensajeErrorGestion(error);
     if (m.startsWith('No se pudo')) userError(error);
-    err(m); showToast(m, true);
     await loadSucursales(); // deja el select en el valor real
+    err(m); showToast(m, true); // después de la recarga, que limpia el error
     return false;
   }
   if (okMsg) showToast(okMsg);
   await recargar();
   return data || true;
 }
+// id de vehículo -> destino pendiente ({valor}) o null; presente mientras hay un mover de ese vehículo en vuelo.
+const moviendo = new Map();
+async function moverVehiculo(id, valor) {
+  if (moviendo.has(id)) { moviendo.set(id, { valor }); return false; } // gana el último; la corrida activa lo toma al terminar
+  moviendo.set(id, null);
+  let ok = false;
+  try {
+    let destino = { valor };
+    while (destino) {
+      // Origen y destino se leen al ejecutar: tras el mover anterior el vehículo ya está en su sucursal real.
+      const v = vehPorId(id);
+      if (v && String(v.sucursal_id ?? '') !== String(destino.valor)) {
+        // Sin diálogo: es reversible (basta elegir la sucursal anterior) y el historial no cambia.
+        ok = await ejecutar('vehiculo_mover_sucursal', argsMover(id, destino.valor), avisoMovido(v, textoSucursal(v.sucursal_id, sucursales), textoSucursal(destino.valor, sucursales)));
+      }
+      destino = moviendo.get(id);
+      moviendo.set(id, null);
+    }
+  } finally { moviendo.delete(id); }
+  return ok;
+}
+function rpc(clave, nombre, args, okMsg) {
+  if (enCurso.has(clave)) { loadSucursales(); return Promise.resolve(false); } // el control vuelve a su valor real
+  enCurso.add(clave);
+  const corrida = ejecutar(nombre, args, okMsg);
+  return corrida.finally(() => enCurso.delete(clave));
+}
 
-registerActions({
+const ACCIONES = {
   sucursalesRecargar: () => loadSucursales(),
   async sucursalCrear() {
     const v = validarNombreSucursal($('suc-nombre').value);
     if (!v.ok) { err(v.error); return; }
-    if (await rpc('sucursal_crear', { p_nombre: v.valor }, 'Sucursal creada')) $('suc-nombre').value = '';
+    if (await rpc('crear', 'sucursal_crear', { p_nombre: v.valor }, 'Sucursal creada')) $('suc-nombre').value = '';
   },
   async sucursalRenombrar(id) {
     const v = validarNombreSucursal($(`suc-n-${id}`).value);
     if (!v.ok) { err(v.error); return; }
-    await rpc('sucursal_renombrar', { p_sucursal_id: Number(id), p_nombre: v.valor }, 'Sucursal actualizada');
+    await rpc(`renombrar:${id}`, 'sucursal_renombrar', { p_sucursal_id: Number(id), p_nombre: v.valor }, 'Sucursal actualizada');
   },
   async sucursalEliminar(id) {
     const s = porId(id);
@@ -111,22 +153,30 @@ registerActions({
     // Con vehículos asociados no hay nada que confirmar: se informa y no se llama a la base.
     if (n > 0) { err(c.mensaje); showToast(c.mensaje, true); return; }
     if (!await confirmDialog(c.titulo, c.mensaje, 'Eliminar', true)) return;
-    await rpc('sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
+    await rpc(`eliminar:${id}`, 'sucursal_eliminar', { p_sucursal_id: Number(id) }, 'Sucursal eliminada');
   },
   async sucursalMover(vehiculoId, valor) {
     const v = vehPorId(vehiculoId);
     if (!v) return;
-    if (String(v.sucursal_id ?? '') === String(valor)) return;
-    const c = confirmacionMover(v, textoSucursal(valor, sucursales));
-    if (!await confirmDialog(c.titulo, c.mensaje, 'Mover', false)) { renderVehiculos(); return; } // restablece el select
-    await rpc('vehiculo_mover_sucursal', argsMover(vehiculoId, valor), 'Vehículo movido');
+    // Sin mover en vuelo, el mismo valor no hace nada; con uno en vuelo se encola (el valor real aún puede cambiar).
+    if (!moviendo.has(vehiculoId) && String(v.sucursal_id ?? '') === String(valor)) return;
+    await moverVehiculo(vehiculoId, valor);
   },
-});
+};
+registerActions(ACCIONES);
 
 registerView('sucursales', 'Sucursales', loadSucursales);
 // La entrada del menú (sección Empresa, `data-empresa-only`) la muestra core/auth.js solo al administrador de empresa.
-onLogout(() => { sucursales = []; vehiculos = []; });
+onLogout(() => { sucursales = []; vehiculos = []; enCurso.clear(); moviendo.clear(); });
 
 export function init() {
   $('suc-buscar').addEventListener('input', renderVehiculos);
+  // Enter en «Agregar sucursal» crea la sucursal; Enter en el nombre de una fila guarda el nombre.
+  $('suc-form').addEventListener('submit', e => { e.preventDefault(); ACCIONES.sucursalCrear(); });
+  $('suc-lista').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !(e.target instanceof HTMLInputElement)) return;
+    e.preventDefault();
+    const tr = e.target.closest('tr[data-sucursal]');
+    if (tr) ACCIONES.sucursalRenombrar(tr.dataset.sucursal);
+  });
 }

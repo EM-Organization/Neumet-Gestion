@@ -5,10 +5,11 @@ import { showToast, userError, confirmDialog } from '../core/ui.js';
 import { chip, estadoVacio, estadoCarga, estadoError, filaEstado } from '../core/componentes.js';
 import { currentClienteId, onLogout } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
+import { sucursalSeleccionada } from '../core/seccional.js';
 import { ACTIONS } from '../core/actions.js';
 import { cuerpoCrearUsuario } from '../domain/seccional.js';
 import {
-  ESTADO_QUITADO, textoAlcance, ordenarUsuarios, accionesFila, cuerpoQuitar, cuerpoReponer, resultadoAcceso, mensajeCrearUsuarioEmpresa,
+  ESTADO_QUITADO, ALCANCE_EMPRESA, alcanceInicial, validarAlcanceUsuario, textoAlcance, ordenarUsuarios, accionesFila, cuerpoQuitar, cuerpoReponer, resultadoAcceso, mensajeCrearUsuarioEmpresa,
 } from '../domain/empresa.js';
 
 // Empresa > Usuarios (docs/17 §4.3): el administrador de empresa ve, crea, quita y repone a los usuarios de su empresa.
@@ -42,15 +43,18 @@ function botonesFila(u) {
   const out = [];
   if (p && p.ofrecer === 'sucursal') {
     out.push(html`<select class="flota-select" id="emp-suc-${u.user_id}" aria-label="Sucursal donde reponer">${sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)}</select>
-      <button type="button" class="btn primary" data-action="empresaReponerEn" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer en esa sucursal</button>`);
+      <button type="button" class="btn" data-action="empresaReponerEn" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer en esa sucursal</button>`);
   } else if (p && p.ofrecer === 'reponer') {
-    out.push(html`<button type="button" class="btn primary" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, p.accesoId])}">Reponer acceso</button>`);
+    out.push(html`<button type="button" class="btn" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, p.accesoId])}">Reponer acceso</button>`);
   } else if (a.reponer) {
-    out.push(html`<button type="button" class="btn primary" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer acceso</button>`);
+    out.push(html`<button type="button" class="btn" data-action="empresaReponer" data-args="${JSON.stringify([u.user_id, u.acceso_id])}">Reponer acceso</button>`);
   }
-  // «Quitar» en toda fila quitada, tenga o no la marca de Auth (es informativa; repetir es idempotente).
+  // Fila quitada: «Repetir bloqueo» (botón secundario) reaplica el bloqueo en Auth; fila vigente: «Quitar» con la baja del panel.
   if (a.quitar) {
-    out.push(html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null])}">Quitar</button>`);
+    const args = JSON.stringify([u.user_id, u.estado === ESTADO_QUITADO ? u.acceso_id : null]);
+    out.push(u.estado === ESTADO_QUITADO
+      ? html`<button type="button" class="btn ghost" data-action="empresaQuitar" data-args="${args}">Repetir bloqueo</button>`
+      : html`<button type="button" class="icon-btn danger con-texto" data-action="empresaQuitar" data-args="${args}">Quitar</button>`);
   }
   if (p && p.ofrecer === 'actualizar') out.push(html`<button type="button" class="btn ghost" data-action="empresaActualizar">Actualizar lista</button>`);
   return joinHtml(out);
@@ -58,7 +62,7 @@ function botonesFila(u) {
 
 function render() {
   const tbody = $('tbody-empresa-usuarios');
-  if (!usuarios.length) { setHtml(tbody, filaEstado(4, estadoVacio('Sin usuarios', 'Crear el primero con el formulario de abajo.'))); return; }
+  if (!usuarios.length) { setHtml(tbody, filaEstado(4, estadoVacio('Sin usuarios', 'Crear el primero con el formulario de arriba.'))); return; }
   setHtml(tbody, joinHtml(ordenarUsuarios(usuarios).map(u => {
     const quitado = u.estado === ESTADO_QUITADO;
     const p = pendientes.get(u.user_id);
@@ -71,9 +75,15 @@ function render() {
   })));
 }
 
+// «Elegir sucursal» (vacío) obliga a decidir; «Toda la empresa» es una opción explícita. Se conserva lo ya elegido al recargar.
 function renderAlcance() {
-  setHtml($('emp-user-sucursal'), joinHtml([html`<option value="">Toda la empresa</option>`,
-    ...sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
+  const sel = $('emp-user-sucursal');
+  const previo = sel.value;
+  setHtml(sel, joinHtml([html`<option value="">Elegir sucursal</option>`,
+    ...sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`),
+    html`<option value="${ALCANCE_EMPRESA}">Toda la empresa</option>`]));
+  const quedan = [...sel.options].some(o => o.value === previo && previo !== '');
+  sel.value = quedan ? previo : alcanceInicial(sucursales, sucursalSeleccionada());
 }
 
 export async function loadEmpresaUsuarios() {
@@ -129,15 +139,19 @@ async function crearUsuario() {
   err('');
   const email = $('emp-user-email').value.trim();
   const password = $('emp-user-password').value;
-  if (!email) { err('Falta el email del usuario'); return; }
+  if (!email) { err('Falta el email del usuario'); $('emp-user-email').focus(); return; }
+  const alcance = validarAlcanceUsuario($('emp-user-sucursal').value);
+  if (!alcance.ok) { err(alcance.error); $('emp-user-sucursal').focus(); return; }
   if (password && password.length < 12) { err('La contraseña debe tener al menos 12 caracteres (o dejarla vacía para enviar una invitación)'); return; }
   ocupado = true;
   const btn = $('emp-user-crear'); btn.disabled = true;
   try {
     const { status, body } = await llamarFuncion('crear-usuario-seccional',
-      cuerpoCrearUsuario({ clienteId: currentClienteId, sucursalId: $('emp-user-sucursal').value, email, password }));
+      cuerpoCrearUsuario({ clienteId: currentClienteId, sucursalId: alcance.sucursalId, email, password }));
     if (!body || !body.ok) { const m = mensajeCrearUsuarioEmpresa(status, body); err(m); showToast(m, true); return; }
     $('emp-user-email').value = ''; $('emp-user-password').value = '';
+    // «Toda la empresa» no queda elegida para el siguiente alta: con solo email + Enter daría acceso a toda la empresa sin querer.
+    if (alcance.sucursalId === '') $('emp-user-sucursal').value = alcanceInicial(sucursales, sucursalSeleccionada());
     showToast(password ? 'Usuario creado' : 'Invitación enviada por email');
   } finally { btn.disabled = false; ocupado = false; }
   await loadEmpresaUsuarios();

@@ -4,6 +4,7 @@ import { showToast, userError } from '../core/ui.js';
 import { isClienteMode } from '../core/auth.js';
 import { registerActions } from '../core/actions.js';
 import { mensajeErrorSeccional } from '../domain/seccional.js';
+import { etiquetaCoche } from '../domain/coche.js';
 import { textoAlcance, ordenarUsuarios, ESTADO_QUITADO } from '../domain/empresa.js';
 
 // Sucursales y usuarios en la ficha de cliente (solo equipo Neumet). Es SOLO LECTURA (docs/17 §4.1, PR 9): crear, renombrar o
@@ -35,7 +36,7 @@ function renderLista() {
 
 function renderAsignacion() {
   setHtml($('sec-vehiculos'), vehs.length ? html`<table class="sec-tabla"><thead><tr><th>Vehículo</th><th>Sucursal</th></tr></thead><tbody>${
-    vehs.map(v => html`<tr data-vehiculo="${v.id}"><td>${v.nombre}${v.patente ? html` <span class="dash-fleet-pat">${v.patente}</span>` : ''}</td>
+    vehs.map(v => html`<tr data-vehiculo="${v.id}"><td>${etiquetaCoche(v.nombre)}${v.patente ? html` <span class="dash-fleet-pat">${v.patente}</span>` : ''}</td>
       <td>${sinValor(v.sucursal_id) ? 'Sin sucursal' : (nombreDe(v.sucursal_id) || 'Sucursal')}</td></tr>`)}</tbody></table>`
     : html`<div class="salud-muted">Sin vehículos.</div>`);
   setHtml($('sec-dispositivos'), disps.length ? html`<table class="sec-tabla"><thead><tr><th>Dispositivo</th><th>Sucursal</th></tr></thead><tbody>${

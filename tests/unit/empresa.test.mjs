@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   textoAlcance, ordenarUsuarios, accionesFila, cuerpoQuitar, cuerpoReponer, resultadoAcceso, mensajeCrearUsuarioEmpresa,
-  argsAlertaConfigurar, mensajeErrorConfigurar
+  argsAlertaConfigurar, mensajeErrorConfigurar, ALCANCE_EMPRESA, alcanceInicial, validarAlcanceUsuario
 } from '../../assets/js/domain/empresa.js';
 
 const vig = (email, alcance = 'empresa') => ({ user_id: email, email, alcance, estado: 'vigente', acceso_id: null });
@@ -20,11 +20,34 @@ test('ordenarUsuarios: vigentes primero, empresa antes que sucursal, luego email
   assert.deepEqual(ordenarUsuarios(null), []);
 });
 
-test('accionesFila: Quitar en toda fila quitada; el propio usuario no se quita', () => {
+test('accionesFila: toda fila quitada ofrece Quitar (reintento de bloqueo en Auth); el propio usuario no se quita', () => {
   assert.deepEqual(accionesFila(vig('a')), { reponer: false, quitar: true });
   assert.deepEqual(accionesFila(vig('a'), { propio: true }), { reponer: false, quitar: false });
   assert.deepEqual(accionesFila(qui('a')), { reponer: true, quitar: true });
   assert.deepEqual(accionesFila({ ...qui('a'), bloqueo_auth_pendiente: false }), { reponer: true, quitar: true });
+  assert.deepEqual(accionesFila({ ...qui('a'), bloqueo_auth_pendiente: true }), { reponer: true, quitar: true });
+});
+
+test('alcance del usuario nuevo: vacío no se envía; «Toda la empresa» es una opción explícita', () => {
+  // Sin la corrección el valor vacío significaba «toda la empresa»: solo el email + Enter daba acceso a todo.
+  assert.equal(validarAlcanceUsuario('').ok, false);
+  assert.equal(validarAlcanceUsuario(null).ok, false);
+  assert.equal(validarAlcanceUsuario(undefined).ok, false);
+  assert.equal(validarAlcanceUsuario('cualquier cosa').ok, false);
+  assert.match(validarAlcanceUsuario('').error, /Elegir la sucursal/);
+  assert.deepEqual(validarAlcanceUsuario(ALCANCE_EMPRESA), { ok: true, sucursalId: '' });
+  assert.deepEqual(validarAlcanceUsuario('7'), { ok: true, sucursalId: '7' });
+});
+
+test('alcanceInicial: la sucursal de la barra superior; vacío si hay que decidir; toda la empresa si no hay sucursales', () => {
+  const sucs = [{ id: 1, nombre: 'Norte' }, { id: 2, nombre: 'Sur' }];
+  assert.equal(alcanceInicial(sucs, ''), '');
+  assert.equal(alcanceInicial(sucs, null), '');
+  assert.equal(alcanceInicial(sucs, '2'), '2');
+  assert.equal(alcanceInicial(sucs, 2), '2');
+  assert.equal(alcanceInicial(sucs, '99'), '', 'una sucursal que ya no existe no se usa');
+  assert.equal(alcanceInicial([], ''), ALCANCE_EMPRESA);
+  assert.equal(alcanceInicial(null, '3'), ALCANCE_EMPRESA);
 });
 
 test('cuerpos de quitar y reponer', () => {

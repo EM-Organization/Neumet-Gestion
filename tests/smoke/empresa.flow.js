@@ -24,27 +24,52 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (d.body.innerHTML.indexOf('<Norte>') !== -1) fail('empresa: nombre de sucursal sin escapar');
   if (btn('u-1', 'empresaQuitar')) fail('empresa: el usuario de la sesión puede quitarse a sí mismo');
   if (!btn('u-5', 'empresaQuitar')) fail('empresa: falta Quitar en un usuario vigente');
-  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Quitar');
+  if (!btn('u-20', 'empresaReponer') || !btn('u-20', 'empresaQuitar')) fail('empresa: la fila quitada debe ofrecer Reponer acceso y Repetir bloqueo');
   if (btn('u-5', 'empresaQuitar').className.indexOf('icon-btn danger') === -1 || /(^| )btn( |$)/.test(btn('u-5', 'empresaQuitar').className)) fail('empresa: Quitar debe usar el estilo de baja del panel (icon-btn danger), no un botón rojo sólido: ' + btn('u-5', 'empresaQuitar').className);
-  if (!btn('u-21', 'empresaQuitar')) fail('empresa: Quitar falta en una fila quitada sin bloqueo pendiente');
+  if (!btn('u-21', 'empresaQuitar') || btn('u-21', 'empresaQuitar').textContent.trim() !== 'Repetir bloqueo') fail('empresa: toda fila quitada debe ofrecer Quitar rotulado «Repetir bloqueo» (docs/17 sección 10), incluso sin bloqueo de Auth pendiente');
+  if (/danger/.test(btn('u-21', 'empresaQuitar').className)) fail('empresa: «Repetir bloqueo» debe ser un botón secundario, no el estilo de baja');
+  if (!btn('u-20', 'empresaReponer') || /primary/.test(btn('u-20', 'empresaReponer').className)) fail('empresa: Reponer acceso debe ser un botón secundario (un solo primario por pantalla)');
+  if (!($('#emp-user-form').compareDocumentPosition($('#tbody-empresa-usuarios')) & 4)) fail('empresa: el formulario Nuevo usuario debe ir arriba de la lista');
   if (!fila('u-1') || fila('u-1').textContent.indexOf('Sesión actual') === -1) fail('empresa: la fila propia no se marca como sesión actual');
-  var opciones = all('#emp-user-sucursal option').length;
-  if (opciones !== 3) fail('empresa: el alcance debe tener Toda la empresa + 2 sucursales, hay ' + opciones);
+  var opciones = all('#emp-user-sucursal option');
+  if (opciones.length !== 4) fail('empresa: el campo Sucursal debe tener Elegir sucursal + 2 sucursales + Toda la empresa, hay ' + opciones.length);
+  if ($('label[for="emp-user-sucursal"]').textContent !== 'Sucursal') fail('empresa: el campo se llama «Sucursal», no ' + $('label[for="emp-user-sucursal"]').textContent);
+  if ($('#emp-user-sucursal').value !== '' || opciones[0].textContent !== 'Elegir sucursal') fail('empresa: el campo Sucursal debe empezar en «Elegir sucursal» (vacío)');
+  if (opciones[opciones.length - 1].textContent !== 'Toda la empresa') fail('empresa: «Toda la empresa» debe ser una opción explícita');
 
-  // Alta por Enter (submit del formulario): sin contraseña = invitación; alcance toda la empresa
+  // Sin email: el foco vuelve al campo email
+  $('#emp-user-email').value = ''; $('#emp-user-form').requestSubmit(); await sleep(150);
+  if (d.activeElement !== $('#emp-user-email')) fail('empresa: sin email el foco no va al campo email');
+
+  // Solo el email + Enter NO crea el usuario (antes quedaba con acceso a toda la empresa)
+  var n1 = fx.llamadas.length;
+  $('#emp-user-email').value = 'sinsuc@demo.test';
+  $('#emp-user-form').requestSubmit(); await sleep(200);
+  if (fx.llamadas.length !== n1) fail('empresa: el alta sin elegir sucursal llegó a la función');
+  if ($('#emp-user-error').textContent.indexOf('Elegir la sucursal') === -1) fail('empresa: sin mensaje al faltar la sucursal: ' + $('#emp-user-error').textContent);
+
+  // Alta por Enter (submit del formulario): sin contraseña = invitación; alcance toda la empresa, elegido explícitamente
   $('#emp-user-email').value = 'nuevo@demo.test';
+  $('#emp-user-sucursal').value = 'empresa';
   $('#emp-user-form').requestSubmit(); await sleep(500);
   var alta = fx.llamadas.filter(function (c) { return c.fn === 'crear-usuario-seccional'; }).pop();
   if (!alta || alta.body.email !== 'nuevo@demo.test' || alta.body.cliente_id !== 1 || alta.body.sucursal_id != null) fail('empresa: alta incorrecta ' + JSON.stringify(alta));
   if (!fila('u-31')) fail('empresa: la lista no mostró al usuario creado');
   if ($('#emp-user-email').value !== '') fail('empresa: el formulario no se vació');
+  if ($('#emp-user-sucursal').value === 'empresa') fail('empresa: tras crear con «Toda la empresa» el campo conserva «empresa» (el siguiente email + Enter daría acceso a toda la empresa)');
+  // Alta en una sucursal concreta
+  $('#emp-user-email').value = 'enclave@demo.test'; $('#emp-user-sucursal').value = '2';
+  $('#emp-user-form').requestSubmit(); await sleep(500);
+  var altaSuc = fx.llamadas.filter(function (c) { return c.fn === 'crear-usuario-seccional'; }).pop();
+  if (!altaSuc || altaSuc.body.email !== 'enclave@demo.test' || altaSuc.body.sucursal_id !== 2) fail('empresa: alta en sucursal incorrecta ' + JSON.stringify(altaSuc));
   // 409 acceso_quitado: remite a Reponer acceso
+  $('#emp-user-sucursal').value = 'empresa';
   $('#emp-user-email').value = 'dup@demo.test';
   $('#emp-user-form').requestSubmit(); await sleep(400);
   if ($('#emp-user-error').textContent.indexOf('Reponer acceso') === -1) fail('empresa: 409 acceso_quitado sin remitir a Reponer acceso: ' + $('#emp-user-error').textContent);
   // Contraseña corta: validación local, sin llamada
   var n0 = fx.llamadas.length;
-  $('#emp-user-email').value = 'corta@demo.test'; $('#emp-user-password').value = 'abc';
+  $('#emp-user-email').value = 'corta@demo.test'; $('#emp-user-sucursal').value = 'empresa'; $('#emp-user-password').value = 'abc';
   $('#emp-user-form').requestSubmit(); await sleep(150);
   if (fx.llamadas.length !== n0) fail('empresa: contraseña corta llegó a la función');
   $('#emp-user-email').value = ''; $('#emp-user-password').value = '';
@@ -147,6 +172,10 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
   if (all('#emp-umb-campos [data-umbral]').length !== 6) fail('empresa: faltan campos de umbrales');
   if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0.5') fail('empresa: la histéresis actual no se cargó');
+  var ordenCampos = Array.prototype.slice.call(all('#emp-umb-campos [data-umbral]')).map(function (i) { return i.dataset.umbral; }).slice(0, 3).join(',');
+  if (ordenCampos !== 'umbral_bajo_mm,umbral_critico_mm,umbral_retiro_mm') fail('empresa: los umbrales deben ir de mayor a menor: ' + ordenCampos);
+  var textoUmb = $('#view-empresa-umbrales').textContent;
+  if (/histéresis|\((naranja|rojo)\)|[<"]/i.test(textoUmb.replace(/\s+/g, ' ')) ) fail('empresa: textos de umbrales fuera de la guía: ' + textoUmb.replace(/\s+/g, ' '));
   var upd0 = (w.__saludFx && w.__saludFx.updates.length) || 0;
   var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
   var llenar = function () { Object.keys(valores).forEach(function (k) { $('#eu-' + k).value = valores[k]; }); };
@@ -160,7 +189,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   $('#eu-umbral_bajo_mm').value = '2'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !$('#emp-umb-error').classList.contains('show')) fail('empresa: umbrales inválidos llegaron a la base o no se avisó');
   llenar(); $('#eu-alerta_histeresis_mm').value = '3,5'; $('#emp-umb-form').requestSubmit(); await sleep(200);
-  if (fx.rpcs.length !== nCfg || !/histéresis/i.test($('#emp-umb-error').textContent)) fail('empresa: histéresis fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
+  if (fx.rpcs.length !== nCfg || !/margen para resolver la alerta/i.test($('#emp-umb-error').textContent)) fail('empresa: histéresis fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
   llenar(); fx.errAlerta = { code: '42501', message: 'denegado' };
   $('#emp-umb-form').requestSubmit(); await sleep(300);
   if ($('#emp-umb-error').textContent.indexOf('Sin permiso') === -1) fail('empresa: 42501 sin mensaje: ' + $('#emp-umb-error').textContent);
