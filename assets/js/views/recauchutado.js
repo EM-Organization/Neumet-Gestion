@@ -99,7 +99,7 @@ export async function loadRecauchutado() {
       return q;
     }, { pageSize: PAGE_SIZE, max: 5000 }),
     fetchAll((from, to) => {
-      let q = db.from('neumaticos').select('id,cliente_id,numero_quema,idneumatico,marca,modelo,vida,estado')
+      let q = db.from('neumaticos').select('id,cliente_id,numero_quema,idneumatico,marca,modelo,vida,estado,condicion,sucursal_id')
         .is('vehiculo_id', null).eq('estado', 'almacenado').order('id').range(from, to);
       if (isClienteMode()) q = q.eq('cliente_id', currentClienteId);
       return q;

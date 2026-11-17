@@ -272,6 +272,22 @@ export function registrar(env) {
     assert.equal(abiertos(), 1);
   });
 
+  test('Recauchutado (global): el buscador del modal muestra el texto completo de cada fila (quema · marca modelo · condición · sucursal)', async () => {
+    const c = unaCubierta(env, 'S-012');
+    assert.ok(c && c.estado === 'almacenado');
+    await flujo(env, 'reca-texto-fila', 'global', async p => {
+      await irA(p, 'stock');
+      await p.click('#view-stock [data-neu-tab="recauchutado"]');
+      await p.esperar(`!document.querySelector('#reca-lista .loading-state')`, { que: 'vista Recauchutado cargada' });
+      await p.click('#btn-reca-enviar');
+      await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
+      await p.esperar(`document.querySelector('#reca-cubierta-lista').textContent.includes('S-012')`, { que: 'S-012 en la lista inicial' });
+      const esperado = `${c.numero_quema} · ${[c.marca, c.modelo].filter(Boolean).join(' ')} · ${ETQ[c.condicion]} · ${c.ubicacion}`;
+      const actual = await p.eval(`document.querySelector('#reca-cubierta-lista .reca-cubierta-fila input[value="${c.id}"]')?.closest('label')?.textContent.trim()`);
+      assert.equal(actual, esperado, 'texto completo de la fila del buscador');
+    });
+  });
+
   test('Stock (global): editar condición y datos, mover y eliminar (si nunca se usó) por la interfaz', async () => {
     const c = unaCubierta(env, 'OTRA-Q1');
     const mvd = sucId(env, 'Montevideo'), salto = sucId(env, 'Salto');
