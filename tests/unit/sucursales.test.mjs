@@ -3,7 +3,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validarNombreSucursal, validarVehiculoNuevo, argsMover, contarPorSucursal, filtrarVehiculos,
-  textoSucursal, confirmacionMover, confirmacionEliminar, mensajeErrorGestion,
+  textoSucursal, avisoMovido, confirmacionEliminar, mensajeErrorGestion,
 } from '../../assets/js/domain/sucursales.js';
 
 describe('validarNombreSucursal', () => {
@@ -80,12 +80,9 @@ describe('textos', () => {
     assert.equal(textoSucursal(null, sucs), 'Sin sucursal');
     assert.equal(textoSucursal(99, sucs), 'Sin sucursal');
   });
-  test('confirmación de mover nombra el coche y conserva el historial', () => {
-    const c = confirmacionMover({ numero: '101', nombre: 'Coche 101' }, 'Norte');
-    assert.match(c.mensaje, /coche 101/);
-    assert.match(c.mensaje, /«Norte»/);
-    assert.match(c.mensaje, /historial/);
-    assert.match(confirmacionMover({ numero: null, nombre: 'Camión' }, 'Sin sucursal').mensaje, /«Camión»/);
+  test('aviso de mover usa la misma etiqueta de vehículo que Vehículos (etiquetaCoche)', () => {
+    assert.equal(avisoMovido({ numero: '101', nombre: '101' }, 'Sur', 'Norte'), 'Coche 101 movido de «Sur» a «Norte»');
+    assert.equal(avisoMovido({ numero: null, nombre: 'Unidad Sur' }, 'Norte', 'Sin sucursal'), 'Unidad Sur movido de «Norte» a «Sin sucursal»');
   });
   test('confirmación de eliminar distingue con y sin vehículos', () => {
     assert.match(confirmacionEliminar('Norte', 0).mensaje, /¿Eliminar/);

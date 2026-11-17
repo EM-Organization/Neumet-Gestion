@@ -1,7 +1,7 @@
 // Tests de domain/umbrales.js (puro). Ejecutar: npm test
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarUmbrales, validarHisteresis, mensajeErrorUmbrales, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
+import { CAMPOS_UMBRAL, validarUmbrales, validarHisteresis, mensajeErrorUmbrales, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
 
 const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
 
@@ -21,7 +21,7 @@ describe('validarUmbrales', () => {
     for (const o of [{ umbral_critico_mm: '8' }, { umbral_retiro_mm: '5' }, { umbral_bajo_mm: '4' }, { umbral_retiro_mm: '6' }]) {
       const v = validarUmbrales({ ...OK, ...o });
       assert.equal(v.ok, false, JSON.stringify(o));
-      assert.match(v.error, /retiro < crítico < bajo/);
+      assert.match(v.error, /retiro debe ser menor que el crítico/);
     }
   });
   test('campo vacío o no numérico', () => {
@@ -60,10 +60,26 @@ describe('histéresis', () => {
   });
 });
 
+describe('textos y orden de los campos (docs/14)', () => {
+  test('de mayor a menor: bajo, crítico, retiro; luego los demás ajustes', () => {
+    assert.deepEqual(CAMPOS_UMBRAL.map(c => c.key).slice(0, 3), ['umbral_bajo_mm', 'umbral_critico_mm', 'umbral_retiro_mm']);
+  });
+  test('sin colores entre paréntesis, sin comillas rectas, sin «Histéresis» ni «<» en lo que ve el operario', () => {
+    const textos = CAMPOS_UMBRAL.flatMap(c => [c.lbl, c.ayuda])
+      .concat([validarUmbrales({ ...OK, umbral_critico_mm: '9' }).error, validarHisteresis('9').error]);
+    for (const t of textos) {
+      assert.doesNotMatch(t, /\((naranja|rojo|amarillo|verde)\)/i, t);
+      assert.doesNotMatch(t, /"/, t);
+      assert.doesNotMatch(t, /histéresis|[<>]/i, t);
+    }
+    assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').lbl, 'Alerta resuelta cuando supera el crítico por (mm)');
+  });
+});
+
 describe('mensajeErrorUmbrales', () => {
   test('check_violation muestra el detalle de la BD', () => {
     const m = mensajeErrorUmbrales({ code: '23514', message: 'new row for relation "clientes" violates check constraint "clientes_umbrales_orden"' });
-    assert.match(m, /rechazó/); assert.match(m, /clientes_umbrales_orden/);
+    assert.match(m, /no son válidos/); assert.match(m, /clientes_umbrales_orden/); assert.doesNotMatch(m, /</);
   });
   test('permisos', () => assert.match(mensajeErrorUmbrales({ code: '42501', message: 'permission denied' }), /permiso/));
   test('otro error conserva el mensaje', () => assert.match(mensajeErrorUmbrales({ message: 'timeout' }), /timeout/));
