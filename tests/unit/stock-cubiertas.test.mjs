@@ -185,6 +185,7 @@ describe('traducirErrorStock', () => {
     assert.match(traducirErrorStock({ code: '23505', message: 'el número de quema ya está registrado en otro neumático' }), /número de quema ya está registrado/);
     assert.match(traducirErrorStock({ code: 'P0002', message: 'cubierta inexistente' }), /ya no existe/);
     assert.match(traducirErrorStock({ code: '55000', message: 'la cubierta ya tuvo uso (montajes, mediciones o eventos): no se puede eliminar' }), /ya tuvo uso/);
+    assert.match(traducirErrorStock({ code: '55000', message: 'la cubierta ya tuvo uso (montajes, mediciones o eventos): no se puede eliminar' }), /Gestionarla desde el vehículo o desde Recauchutado/);
     assert.match(traducirErrorStock({ code: '55000', message: 'la cubierta está montada en un vehículo: no se gestiona desde el stock' }), /montada/);
     assert.match(traducirErrorStock({ code: '22023', message: 'condición inválida: solo reparado o recauchutado' }), /Reparado o Recauchutado/);
     assert.match(traducirErrorStock({ code: '22023', message: 'indicar la marca' }), /marca/);

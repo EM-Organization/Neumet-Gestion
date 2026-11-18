@@ -105,7 +105,8 @@ function renderCubiertas(){
           ${menuMas({ etiqueta: `Más acciones de la cubierta ${etq}`, items: [
             { label: 'Editar', action: 'cubiertaEditar', args: [c.id], aria: `Editar la cubierta ${etq}` },
             ...(reca ? [] : [{ label: 'Cambiar sucursal', action: 'cubiertaMover', args: [c.id], aria: `Cambiar de sucursal la cubierta ${etq}` }]),
-            { label: 'Eliminar', action: 'cubiertaEliminar', args: [c.id], aria: `Eliminar la cubierta ${etq}`, peligro: true },
+            // No se ofrece Eliminar cuando la base no lo permitiría: cubierta montada, dada de baja o en un proceso de recauchutado abierto.
+            ...((c.estado || 'almacenado') !== 'almacenado' || reca ? [] : [{ label: 'Eliminar', action: 'cubiertaEliminar', args: [c.id], aria: `Eliminar la cubierta ${etq}`, peligro: true }]),
           ] })}`:''}</span>
       </li>`;
     })}</ul>`);
