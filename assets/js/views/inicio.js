@@ -43,15 +43,15 @@ const miniDe = (filas, destacadas, id) => miniVehiculo(modeloMini(filas, { desta
 function filaMini(v, filas, { destacadas = [], detalle, pos = '', dato = '', extra = '', cls = '', nivel = '' }) {
   return html`<li class="inicio-fila inicio-fila-mini ${cls}">
     ${miniDe(filas, destacadas, v.vehiculo_id)}
-    <div class="inicio-fila-txt"><span class="inicio-fila-nom">${nivel === 'critico' ? html`<span class="inicio-punto critico" aria-hidden="true"></span>` : ''}${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
-      ${detalle ? html`<span class="inicio-fila-causa">${nivel === 'critico' ? html`<span class="sr-only">Crítico: </span>` : ''}${detalle}</span>` : ''}
+    <div class="inicio-fila-txt"><span class="inicio-fila-nom">${nivel === 'limite' ? html`<span class="inicio-punto limite" aria-hidden="true"></span>` : ''}${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
+      ${detalle ? html`<span class="inicio-fila-causa">${nivel === 'limite' ? html`<span class="sr-only">Desgaste límite: </span>` : ''}${detalle}</span>` : ''}
       ${pos ? html`<span class="inicio-fila-pos">${pos}</span>` : ''}${extra}</div>
     ${dato}${botonVer(v, destacadas.length ? destacadas[0] : null)}</li>`;
 }
 
 function filaAtencion(v, porVeh) {
   const filas = porVeh.get(v.vehiculo_id) || [];
-  return filaMini(v, filas, { destacadas: v.posiciones, detalle: v.causa, pos: resumenPosiciones(v.posiciones, tipoDe(v.vehiculo_id)), nivel: v.nivel === 'critico' ? 'critico' : '' });
+  return filaMini(v, filas, { destacadas: v.posiciones, detalle: v.causa, pos: resumenPosiciones(v.posiciones, tipoDe(v.vehiculo_id)), nivel: v.nivel === 'limite' ? 'limite' : '' });
 }
 
 function filaProximo(p, porVeh) {
@@ -65,7 +65,7 @@ function filaProximo(p, porVeh) {
 function filaCliente(r) {
   return html`<li><button type="button" class="inicio-fila" data-action="abrirFichaCliente" data-args="${JSON.stringify([r.cliente_id])}">
     <span class="inicio-fila-txt"><span class="inicio-fila-nom">${r.nombre}</span>
-      <span class="inicio-fila-causa">${plural(r.n_critico, 'neumático crítico', 'neumáticos críticos')} · ${plural(r.n_alertas_sev3, 'alerta crítica', 'alertas críticas')}</span></span>
+      <span class="inicio-fila-causa">${plural(r.n_critico, 'neumático en desgaste límite', 'neumáticos en desgaste límite')} · ${plural(r.n_alertas_sev3, 'alerta de desgaste límite', 'alertas de desgaste límite')}</span></span>
     <span class="inicio-fila-ir" aria-hidden="true">›</span></button></li>`;
 }
 
@@ -73,13 +73,14 @@ const segmento = (cls, pct, etiqueta) => (pct > 0 ? html`<span class="inicio-seg
 const cifra = (cls, n, etiqueta) => html`<li class="inicio-cifra"><span class="inicio-punto ${cls}" aria-hidden="true"></span><strong>${fmtNum(n)}</strong> ${etiqueta}</li>`;
 
 function bloqueResumen(rs, ult) {
-  const frase = rs.ok === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado` : `${fmtNum(rs.ok)} de ${fmtNum(rs.total)} neumáticos en buen estado`;
+  const buenos = rs.nuevo + rs.poco_desgaste;
+  const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en buen estado`;
   return html`<section class="inicio-card" aria-labelledby="inicio-h-resumen">
     <div class="inicio-resumen-cab"><h3 id="inicio-h-resumen" class="inicio-h">${frase}</h3>
       ${ult ? html`<span class="inicio-meta">Última medición ${relDate(ult)}</span>` : ''}</div>
-    <div class="inicio-barra" role="img" aria-label="${`OK ${rs.ok}, desgaste bajo ${rs.bajo}, críticos ${rs.critico}, sin datos ${rs.sin_datos}`}">
-      ${segmento('ok', rs.pct.ok, 'OK')}${segmento('bajo', rs.pct.bajo, 'Desgaste bajo')}${segmento('critico', rs.pct.critico, 'Crítico')}${segmento('sin', rs.pct.sin_datos, 'Sin datos')}</div>
-    <ul class="inicio-cifras">${cifra('ok', rs.ok, 'OK')}${cifra('bajo', rs.bajo, 'desgaste bajo')}${cifra(rs.critico ? 'critico' : 'cero', rs.critico, rs.critico === 1 ? 'crítico' : 'críticos')}${cifra('sin', rs.sin_datos, 'sin datos')}</ul>
+    <div class="inicio-barra" role="img" aria-label="${`Nuevo ${rs.nuevo}, poco desgaste ${rs.poco_desgaste}, mayor desgaste ${rs.mayor_desgaste}, desgaste límite ${rs.desgaste_limite}, desconocido ${rs.desconocido}`}">
+      ${segmento('ok', rs.pct.nuevo, 'Nuevo')}${segmento('bajo', rs.pct.poco_desgaste, 'Poco desgaste')}${segmento('mayor', rs.pct.mayor_desgaste, 'Mayor desgaste')}${segmento('limite', rs.pct.desgaste_limite, 'Desgaste límite')}${segmento('neutral', rs.pct.desconocido, 'Desconocido')}</div>
+    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, 'nuevo')}${cifra('bajo', rs.poco_desgaste, 'poco desgaste')}${cifra('mayor', rs.mayor_desgaste, 'mayor desgaste')}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, rs.desgaste_limite === 1 ? 'desgaste límite' : 'desgaste límite')}${cifra('neutral', rs.desconocido, 'desconocido')}</ul>
   </section>`;
 }
 
@@ -91,7 +92,7 @@ function bloqueAtencion(at, alertas, porVeh) {
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
-    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta crítica sin reconocer', 'alertas críticas sin reconocer')}.</p>` : ''}
+    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta de desgaste límite sin reconocer', 'alertas de desgaste límite sin reconocer')}.</p>` : ''}
     <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
   </section>`;
 }
@@ -101,7 +102,7 @@ function bloqueProximos(px, porVeh) {
     <h3 id="inicio-h-proximos" class="inicio-h">Próximos cambios</h3>
     ${px.items.length
       ? html`<ul class="inicio-lista">${joinHtml(px.items.map(p => filaProximo(p, porVeh)))}</ul>${px.total > px.items.length ? html`<p class="inicio-meta">${px.total - px.items.length} más.</p>` : ''}`
-      : estadoVacio('Ningún neumático cerca del nivel crítico.')}
+      : estadoVacio('Ningún neumático cerca del desgaste límite.')}
   </section>`;
 }
 

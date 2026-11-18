@@ -1046,3 +1046,77 @@ El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «
 - `supabase/functions/api-proveedor/handler_test.ts`: opcional, normalización, 400, hash, 409, forma de la respuesta y `obtener`.
 - `tests/unit/distribucion.test.mjs` y `tests/unit/sucursales.test.mjs`: catálogo, validación del alta y coincidencia de las tres copias.
 - `tests/smoke/seccionales.flow.js` (modo `cliente`): el diálogo «Agregar vehículo» exige distribución y envía los argumentos correctos.
+
+---
+
+# Apéndice T · Cinco categorías de desgaste y alerta de desgaste límite (`20261123000000_categorias_desgaste.sql`)
+
+Migración idempotente, sin `begin/commit`. Requiere `20261122000000_distribucion_vehiculo.sql` y `20261118500000_alerta_critica.sql`. **No está aplicada en producción**: la aplica el director tras la compuerta de calidad.
+
+## T.1 Qué cambia
+
+### Categorías visibles
+
+El panel y las vistas pasan a mostrar cinco categorías, calculadas a partir de los umbrales históricos que no se renombran:
+
+| Rango de `promedio` (mm) | Estado (`v_estado_neumaticos.estado`) | Etiqueta para el operario |
+|---|---|---|
+| `>= umbral_bajo_mm` | `nuevo` | Nuevo |
+| `>= umbral_critico_mm` | `poco_desgaste` | Poco desgaste |
+| `>= umbral_retiro_mm` | `mayor_desgaste` | Mayor desgaste |
+| `< umbral_retiro_mm` | `desgaste_limite` | Desgaste límite |
+| sin promedio | `desconocido` | Desconocido |
+
+Valores por defecto: `umbral_bajo_mm = 8`, `umbral_critico_mm = 5`, `umbral_retiro_mm = 3`.
+
+### Alerta única
+
+- El tipo de alerta pasa de `critico` a `limite` (`public.alertas.tipo`).
+- Se dispara cuando `promedio < umbral_retiro_mm`.
+- Se resuelve cuando `promedio >= umbral_retiro_mm + alerta_histeresis_mm` (histéresis por cliente, 0,5 mm por defecto).
+- Los demás indicadores («poco desgaste», «mayor desgaste», desgaste irregular, sin medir) no tienen estado de alerta: se muestran en la ficha, el diagrama y «Requieren atención» de Inicio.
+
+### Vistas afectadas
+
+- `v_estado_neumaticos`: columna `estado` con los cinco valores; sigue exponiendo `semanas_hasta_critico` y `semanas_hasta_retiro`.
+- `v_alertas`: solo genera filas de tipo `limite`, con mensaje «Desgaste límite: X mm (umbral Y mm)».
+- `v_resumen_flota_cliente`: conserva los nombres históricos `n_ok`, `n_bajo`, `n_critico`, `n_sin_datos` y agrega `n_mayor_desgaste`, con el mapeo semántico documentado en T.2.
+- `alerta_sincronizar` evalúa sobre `umbral_retiro_mm` y aplica la histéresis.
+- El trigger de reevaluación de `clientes` también escucha cambios en `umbral_retiro_mm`.
+
+## T.2 Mapeo de columnas históricas
+
+`v_resumen_flota_cliente` no se renombra para no romper reportes ni integraciones existentes:
+
+| Columna SQL | Significado nuevo |
+|---|---|
+| `n_ok` | neumáticos `nuevo` |
+| `n_bajo` | neumáticos `poco_desgaste` |
+| `n_mayor_desgaste` | neumáticos `mayor_desgaste` |
+| `n_critico` | neumáticos `desgaste_limite` |
+| `n_sin_datos` | neumáticos `desconocido` |
+
+El dominio del panel (`assets/js/domain/umbrales.js`, `assets/js/domain/flota.js`) y los tests traducen estos nombres.
+
+## T.3 Panel
+
+- Inicio muestra cinco cifras y la barra segmentada en el orden: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido.
+- Flota filtra por los cinco estados y sus KPIs reflejan vehículos en desgaste límite, mayor desgaste, sin medir y alertas activas.
+- El diagrama del vehículo y los chips usan cuatro niveles visuales (`neutral`/`ok`/`warn`/`crit`) y el texto completo de cada categoría.
+- El selector de estados en Flota, los contadores de Mediciones y los textos de Alertas, Ficha y Empresa > Umbrales pasan a las nuevas etiquetas.
+
+## T.4 Seed de demo
+
+`supabase/seed/demo.sql` se ajustó para que `DEMO006` posición 2 tenga un promedio de 2,5 mm (`desgaste_límite`), usado por el e2e de cambio de neumático.
+
+## T.5 Pruebas
+
+- SQL: `tests/sql/t_92_alerta_limite.sql` (apertura, resolución con histéresis, rotación, cambio de neumático, aislamiento por rol), `tests/sql/run.sh` (idempotencia, dos aplicaciones).
+- Unitarias: `tests/unit/desgaste.test.mjs`, `tests/unit/inicio.test.mjs`, `tests/unit/flota.test.mjs`.
+- Smoke: `tests/smoke/run.sh` en modos `admin`, `cliente`, `flota`, `detalle`, `detalle-admin`, `montar`, `empresa`, `empresa-sucursal`, `empresa-admin`, `sinperfil`.
+- E2E: `tests/e2e/specs/mediciones-neumatico.mjs`, `alertas-dispositivos.mjs`, `recorrido.mjs`, `taller.mjs`, `stock-cubiertas.mjs`, `inicio.mjs`, `buscador.mjs`, `detalle.mjs`, `aislamiento.mjs`.
+- Visual: `tests/visual/run.sh` escenas que incluyan Inicio, Flota, detalle y Alertas.
+
+## T.6 Compatibilidad y orden de despliegue
+
+Migración aplicada y verificada → recién entonces el front. No hay cambios de Edge Functions. Los nombres internos (`umbral_bajo_mm`, `umbral_critico_mm`, `umbral_retiro_mm`, `alerta_histeresis_mm`) se conservan; solo cambian los textos y el significado de la alerta.

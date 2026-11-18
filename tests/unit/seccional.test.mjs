@@ -32,24 +32,25 @@ describe('filtrarPorVehiculos', () => {
 
 describe('resumenDesdeFilas', () => {
   const est = [
-    { cliente_id: 1, vehiculo_id: 1, estado: 'ok', ultima_medicion_at: '2026-06-10T00:00:00Z' },
-    { cliente_id: 1, vehiculo_id: 1, estado: 'critico', ultima_medicion_at: '2026-06-12T00:00:00Z' },
-    { cliente_id: 1, vehiculo_id: 4, estado: 'bajo', ultima_medicion_at: null },
-    { cliente_id: 1, vehiculo_id: 4, estado: 'sin_datos', ultima_medicion_at: null },
+    { cliente_id: 1, vehiculo_id: 1, estado: 'nuevo', ultima_medicion_at: '2026-06-10T00:00:00Z' },
+    { cliente_id: 1, vehiculo_id: 1, estado: 'desgaste_limite', ultima_medicion_at: '2026-06-12T00:00:00Z' },
+    { cliente_id: 1, vehiculo_id: 4, estado: 'poco_desgaste', ultima_medicion_at: null },
+    { cliente_id: 1, vehiculo_id: 4, estado: 'mayor_desgaste', ultima_medicion_at: null },
+    { cliente_id: 1, vehiculo_id: 4, estado: 'desconocido', ultima_medicion_at: null },
   ];
   const al = [{ severidad: 3 }, { severidad: 2 }, { severidad: 2 }, { severidad: '1' }];
   test('cuenta estados, alertas por severidad y última medición', () => {
     const r = resumenDesdeFilas(est, al, { clienteId: 1, nombre: 'X' });
-    assert.equal(r.n_ok, 1); assert.equal(r.n_bajo, 1); assert.equal(r.n_critico, 1); assert.equal(r.n_sin_datos, 1);
-    assert.equal(r.n_neumaticos_con_datos, 3);
+    assert.equal(r.n_ok, 1); assert.equal(r.n_bajo, 1); assert.equal(r.n_mayor_desgaste, 1); assert.equal(r.n_critico, 1); assert.equal(r.n_sin_datos, 1);
+    assert.equal(r.n_neumaticos_con_datos, 4);
     assert.deepEqual([r.n_alertas_sev1, r.n_alertas_sev2, r.n_alertas_sev3], [1, 2, 1]);
     assert.equal(r.n_vehiculos_activos, 2);
     assert.equal(r.ultima_medicion_at, '2026-06-12T00:00:00Z');
   });
   test('nVehiculos explícito manda sobre el conteo de filas', () => assert.equal(resumenDesdeFilas(est, [], { nVehiculos: 5 }).n_vehiculos_activos, 5));
-  test('es compatible con kpisFlota (vehículos, críticos y alertas)', () => {
+  test('es compatible con kpisFlota (vehículos, límite y alertas)', () => {
     const k = kpisFlota(est, [resumenDesdeFilas(est, al, { clienteId: 1, nVehiculos: 2 })], '');
-    assert.equal(k.vehiculos, 2); assert.equal(k.criticos, 1); assert.equal(k.alertas, 4);
+    assert.equal(k.vehiculos, 2); assert.equal(k.limite, 1); assert.equal(k.alertas, 4);
   });
   test('vacío => ceros', () => {
     const r = resumenDesdeFilas([], []);

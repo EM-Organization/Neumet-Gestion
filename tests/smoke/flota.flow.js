@@ -13,15 +13,15 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(cards.length !== 4) fail('flota: se esperaban 4 vehiculos, hay '+cards.length);
   var orden = Array.prototype.map.call(cards, function(c){ return c.dataset.semaforo; }).join(',');
   log.push('flota-orden='+orden);
-  if(orden !== 'critico,bajo,sin_datos,ok') fail('flota: orden por severidad incorrecto: '+orden);
+  if(orden !== 'desgaste_limite,poco_desgaste,desconocido,nuevo') fail('flota: orden por severidad incorrecto: '+orden);
   var kp = Array.prototype.map.call(all('#flota-kpis .dash-kpi-val'), function(k){ return k.textContent; }).join(',');
   log.push('flota-kpis='+kp);
-  if(kp !== '4,1,2,4') fail('flota: KPIs inesperados: '+kp);
+  if(kp !== '4,1,0,2,4') fail('flota: KPIs inesperados: '+kp);
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('flota: nombre de vehiculo sin escapar');
   if(all('#flota-cliente option').length !== 3) fail('flota: select de clientes incompleto');
   setSel('#flota-cliente', '2'); await sleep(100);
   if(all('#flota-grid .flota-card').length !== 2) fail('flota: filtro por cliente');
-  setSel('#flota-cliente', ''); setSel('#flota-estado', 'critico'); await sleep(100);
+  setSel('#flota-cliente', ''); setSel('#flota-estado', 'desgaste_limite'); await sleep(100);
   if(all('#flota-grid .flota-card').length !== 1) fail('flota: filtro por estado');
   setSel('#flota-estado', '');
 
@@ -40,7 +40,7 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   log.push('alertas-filas='+rows().length);
   if(rows().length !== 4) fail('alertas: se esperaban 4 filas, hay '+rows().length);
   if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
-  if(rows()[0].textContent.indexOf('Neumático crítico: 3 mm') === -1) fail('alertas: falta mensaje');
+  if(rows()[0].textContent.indexOf('Desgaste límite: 3 mm') === -1) fail('alertas: falta mensaje');
   if(!rows()[0].querySelector('[data-action="verVehiculo"]')) fail('alertas: falta enlace al vehiculo');
   if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('.pos-mini .mini-veh .mv-dest'); }).length !== 4) fail('alertas: cada alerta de rueda debe mostrar el mini vehículo con la rueda resaltada');
   if(!/Delantera izquierda/.test(rows()[0].textContent) || /(^|\s)P\d/.test(rows()[0].textContent)) fail('alertas: posición sin nombre: '+rows()[0].textContent);

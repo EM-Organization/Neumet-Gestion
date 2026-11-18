@@ -11,8 +11,8 @@
     {dispositivo_id:103,cliente_id:1,mac_address:'AA:BB:CC:00:00:04',nombre:null,activo:true,ultima_actividad_at:null,total_mediciones:0,dias_sin_actividad:null,estado:'nunca'}
   ];
   var resumen = [
-    {cliente_id:1,nombre:'Transportes Alfa',n_vehiculos_activos:1,n_neumaticos_con_datos:10,n_ok:6,n_bajo:3,n_critico:1,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:2,n_alertas_sev3:1,ultima_medicion_at:D(1)},
-    {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:1,n_neumaticos_con_datos:0,n_ok:0,n_bajo:0,n_critico:0,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:0,n_alertas_sev3:0,ultima_medicion_at:null}
+    {cliente_id:1,nombre:'Transportes Alfa',n_vehiculos_activos:1,n_neumaticos_con_datos:10,n_ok:6,n_bajo:3,n_mayor_desgaste:0,n_critico:1,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:2,n_alertas_sev3:1,ultima_medicion_at:D(1)},
+    {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:1,n_neumaticos_con_datos:0,n_ok:0,n_bajo:0,n_mayor_desgaste:0,n_critico:0,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:0,n_alertas_sev3:0,ultima_medicion_at:null}
   ];
   var umbrales = {};
   var DEF = {umbral_bajo_mm:8,umbral_critico_mm:5,umbral_retiro_mm:3,alerta_histeresis_mm:0.5,dias_sin_medir_alerta:30,irregularidad_mm:2};

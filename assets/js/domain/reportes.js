@@ -68,7 +68,7 @@ export function latestByTire(rows) {
 
 // Resumen de flota: conteos por estado (wearStatus) sobre la última medición de cada neumático.
 export function resumenFlota(rows) {
-  const total = { neumaticos: 0, ok: 0, bajo: 0, critico: 0, sinDatos: 0 };
+  const total = { neumaticos: 0, nuevo: 0, pocoDesgaste: 0, mayorDesgaste: 0, limite: 0, desconocido: 0 };
   const porVehiculo = new Map();
   const neumaticos = latestByTire(rows).map(r => {
     const avg = rowAvg(r);
@@ -77,10 +77,14 @@ export function resumenFlota(rows) {
       estado: wearStatus(avg), created_at: r.created_at };
   }).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.posicion ?? 0) - (b.posicion ?? 0));
   neumaticos.forEach(n => {
-    const key = n.estado ?? 'sinDatos';
+    const key = n.estado ?? 'desconocido';
+    const vehKey = key === 'poco_desgaste' ? 'pocoDesgaste'
+      : key === 'mayor_desgaste' ? 'mayorDesgaste'
+      : key === 'desgaste_limite' ? 'limite'
+      : key;
     let v = porVehiculo.get(n.vehiculo_id);
-    if (!v) porVehiculo.set(n.vehiculo_id, v = { vehiculo_id: n.vehiculo_id, nombre: n.nombre, patente: n.patente, neumaticos: 0, ok: 0, bajo: 0, critico: 0, sinDatos: 0 });
-    total.neumaticos++; total[key]++; v.neumaticos++; v[key]++;
+    if (!v) porVehiculo.set(n.vehiculo_id, v = { vehiculo_id: n.vehiculo_id, nombre: n.nombre, patente: n.patente, neumaticos: 0, nuevo: 0, pocoDesgaste: 0, mayorDesgaste: 0, limite: 0, desconocido: 0 });
+    total.neumaticos++; total[vehKey]++; v.neumaticos++; v[vehKey]++;
   });
   return { ...total, vehiculos: [...porVehiculo.values()], neumaticos };
 }

@@ -1,36 +1,45 @@
 // Dominio: desgaste de neumáticos. Funciones PURAS (sin DOM, sin supabase) para poder testearlas con node:test.
 // Unidades: milímetros de profundidad de dibujo; tiempos en ms (created_at) y días.
 
-// ── Umbrales de desgaste de neumáticos (única definición) ──
-export const WEAR={OK_MM:8, LOW_MM:5};
-// Profundidad mínima segura usada para proyectar la vida útil.
-export const LIFE_LIMIT_MM=3;
+// ── Umbrales de desgaste de neumáticos (nombres internos históricos, docs/08 apéndice T) ──
+// El producto muestra cinco categorías, pero las columnas y parámetros de la base conservan sus nombres.
+export const UMBRALES = { BAJO_MM: 8, CRITICO_MM: 5, RETIRO_MM: 3 };
+// Alias de compatibilidad para código que aún usa los nombres anteriores.
+export const WEAR = { OK_MM: UMBRALES.BAJO_MM, LOW_MM: UMBRALES.CRITICO_MM };
+export const LIFE_LIMIT_MM = UMBRALES.RETIRO_MM;
 // Diferencia interno vs externo (mm1 vs mm3) a partir de la cual se considera desgaste desparejo.
-export const UNEVEN_MM=1.5;
-const MS_DAY=1000*60*60*24;
+export const UNEVEN_MM = 1.5;
+const MS_DAY = 1000 * 60 * 60 * 24;
 
-export function wearStatus(avg){ // avg en mm -> 'ok' | 'bajo' | 'critico' | null
-  if(avg==null) return null;
-  return avg<WEAR.LOW_MM?'critico':avg<WEAR.OK_MM?'bajo':'ok';
+// Estado exacto de una medida promedio en mm. null significa «desconocido» (sin medición).
+export function wearStatus(avg) {
+  if (avg == null) return null;
+  if (avg < UMBRALES.RETIRO_MM) return 'desgaste_limite';
+  if (avg < UMBRALES.CRITICO_MM) return 'mayor_desgaste';
+  if (avg < UMBRALES.BAJO_MM) return 'poco_desgaste';
+  return 'nuevo';
 }
 
 // Promedio de mm1/mm2/mm3 ignorando nulls; null si no hay ninguno.
-export function avgMm(m){ const v=[m.mm1,m.mm2,m.mm3].filter(x=>x!=null); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; }
+export function avgMm(m) { const v = [m.mm1, m.mm2, m.mm3].filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
 
 // Estado de una fila de medición.
-export function tireStatus(m){ return wearStatus(avgMm(m)); }
+export function tireStatus(m) { return wearStatus(avgMm(m)); }
 
-// Clase visual de un promedio: 'neutral' (sin datos) | 'ok' | 'warn' | 'crit'.
-export function wearClass(avg){
-  const st=wearStatus(avg);
-  if(st===null) return 'neutral';
-  return st==='ok'?'ok':st==='bajo'?'warn':'crit';
+// Clase visual de un promedio: 'neutral' (sin datos) | 'ok' (nuevo/poco desgaste) | 'warn' (mayor desgaste) | 'crit' (desgaste límite).
+// Solo cuatro niveles visuales: el operario distingue las categorías por el texto del chip, no solo por color (docs/14 §5).
+export function wearClass(avg) {
+  const st = wearStatus(avg);
+  if (st === null) return 'neutral';
+  if (st === 'desgaste_limite') return 'crit';
+  if (st === 'mayor_desgaste') return 'warn';
+  return 'ok';
 }
 
-// Cuenta promedios por estado (los null se ignoran).
-export function countByStatus(avgs){
-  const c={ok:0,bajo:0,critico:0};
-  avgs.forEach(a=>{ const st=wearStatus(a); if(st) c[st]++; });
+// Cuenta promedios por nivel visual (los null se ignoran). Mantiene el contrato {ok, warn, crit} que usan las vistas de medición.
+export function countByStatus(avgs) {
+  const c = { ok: 0, warn: 0, crit: 0 };
+  avgs.forEach(a => { const cls = wearClass(a); if (cls !== 'neutral') c[cls]++; });
   return c;
 }
 

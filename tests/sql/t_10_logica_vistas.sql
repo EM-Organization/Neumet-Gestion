@@ -3,22 +3,22 @@ begin;
 select test.become('authenticated', test.u_admin());
 
 -- Estados del fixture (cliente A, umbrales por defecto 8/5/3)
-select test.eq('pos2 promedio 8.0 => ok (límite exacto)',
-  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=2), 'ok');
-select test.eq('pos3 promedio 5.0 => bajo (límite exacto)',
-  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=3), 'bajo');
-select test.eq('pos4 promedio 4.99 => critico',
-  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=4), 'critico');
-select test.eq('pos7 sin mediciones => sin_datos',
-  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=7), 'sin_datos');
+select test.eq('pos2 promedio 8.0 => nuevo (límite exacto)',
+  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=2), 'nuevo');
+select test.eq('pos3 promedio 5.0 => poco desgaste (límite exacto)',
+  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=3), 'poco_desgaste');
+select test.eq('pos4 promedio 4.99 => mayor desgaste',
+  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=4), 'mayor_desgaste');
+select test.eq('pos7 sin mediciones => desconocido',
+  (select estado from v_estado_neumaticos where vehiculo_id=1 and posicion=7), 'desconocido');
 select test.eq('neumático en baja excluido',
   (select count(*) from v_estado_neumaticos where vehiculo_id=1 and posicion=9), 0::bigint);
 select test.eq('vehículo inactivo excluido',
   (select count(*) from v_estado_neumaticos where vehiculo_id=4), 0::bigint);
-select test.eq('umbrales por cliente: B pos1 9 mm => bajo (con 8/5 sería ok)',
-  (select estado from v_estado_neumaticos where vehiculo_id=3 and posicion=1), 'bajo');
-select test.eq('umbrales por cliente: B pos2 5.5 mm => critico (con 8/5 sería bajo)',
-  (select estado from v_estado_neumaticos where vehiculo_id=3 and posicion=2), 'critico');
+select test.eq('umbrales por cliente: B pos1 9 mm => poco desgaste (con 8/5 sería nuevo)',
+  (select estado from v_estado_neumaticos where vehiculo_id=3 and posicion=1), 'poco_desgaste');
+select test.eq('umbrales por cliente: B pos2 5.5 mm => mayor desgaste (con 8/5 sería bajo)',
+  (select estado from v_estado_neumaticos where vehiculo_id=3 and posicion=2), 'mayor_desgaste');
 
 rollback;
 
@@ -27,7 +27,7 @@ begin;
 do $$
 declare r record; v_est text;
 begin
-  for r in select * from (values (7.99,'bajo'),(8.00,'ok'),(8.01,'ok'),(5.00,'bajo'),(4.99,'critico'),(0.00,'critico')) t(val, esp) loop
+  for r in select * from (values (7.99,'poco_desgaste'),(8.00,'nuevo'),(8.01,'nuevo'),(5.00,'poco_desgaste'),(4.99,'mayor_desgaste'),(0.00,'desgaste_limite')) t(val, esp) loop
     insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3, created_at)
     values (1, 1, 3, r.val, r.val, r.val, now() + interval '1 hour');
     select estado into v_est from v_estado_neumaticos where vehiculo_id=1 and posicion=3;
@@ -78,16 +78,14 @@ select test.eq('dif 2.1 => irregular (pos6)',
 select test.eq('irregularidad por cliente: B pos3 dif 1.3 > 1.0',
   (select desgaste_irregular from v_estado_neumaticos where vehiculo_id=3 and posicion=3), true);
 
--- Alertas por tipo (cliente A)
-select test.eq('A: alertas critico', (select count(*) from v_alertas where cliente_id=1 and tipo='critico'), 1::bigint);
-select test.eq('A: alerta critico es pos4 sev 3',
-  (select posicion::int*10 + severidad from v_alertas where cliente_id=1 and tipo='critico'), 43);
--- Desde la migración 20261118500000 v_alertas solo trae la alerta crítica (con estado); «bajo», «cruza el crítico
--- pronto», «desgaste irregular» y «sin medir» son indicadores de v_estado_neumaticos (mismas reglas que antes).
-select test.eq('A: indicador bajo (pos3)', (select posicion from v_estado_neumaticos where cliente_id=1 and estado='bajo'), 3::smallint);
+-- Alertas por tipo (cliente A). Desde la migración 20261123000000 la única alerta es de
+-- «desgaste límite» (< umbral_retiro_mm); en el fixture no hay neumáticos bajo 3 mm.
+select test.eq('A: no hay alertas de desgaste límite', (select count(*) from v_alertas where cliente_id=1), 0::bigint);
+-- Indicadores de v_estado_neumaticos (no alertas)
+select test.eq('A: indicador poco desgaste (pos3)', (select posicion from v_estado_neumaticos where cliente_id=1 and estado='poco_desgaste'), 3::smallint);
 select test.eq('A: cruza el crítico pronto solo pos2 (3 sem); pos1 con 5 sem no',
   (select array_agg(posicion order by posicion) from v_estado_neumaticos
-    where cliente_id=1 and estado in ('ok','bajo') and semanas_hasta_critico <= 4), array[2::smallint]);
+    where cliente_id=1 and estado in ('nuevo','poco_desgaste') and semanas_hasta_critico <= 4), array[2::smallint]);
 select test.eq('A: semanas hasta el crítico de pos2 = 3',
   (select semanas_hasta_critico from v_estado_neumaticos where vehiculo_id=1 and posicion=2), 3.00);
 select test.eq('A: desgaste_irregular solo pos6',
@@ -99,25 +97,22 @@ select test.eq('A: sin_medir de pos7 sin días (nunca medido)',
   (select dias_desde_medicion from v_estado_neumaticos where cliente_id=1 and posicion=7 and vehiculo_id=1), null::integer);
 select test.eq('A: V2 pos2 (8 d) no figura sin medir',
   (select sin_medir from v_estado_neumaticos where vehiculo_id=2 and posicion=2), false);
-select test.eq('A: v_alertas solo trae la crítica (pos4)',
-  (select array_agg(tipo || '/' || posicion) from v_alertas where cliente_id=1), array['critico/4']);
-select test.eq('A: total alertas = 1', (select count(*) from v_alertas where cliente_id=1), 1::bigint);
-select test.eq('A: la alerta crítica nace abierta, con el umbral y los mm de apertura',
-  (select estado || '|' || umbral_mm || '|' || mm_apertura::text from v_alertas where cliente_id=1), 'abierta|5.0|' || (select promedio::text from v_estado_neumaticos where cliente_id=1 and estado='critico'));
-select test.eq('B: v_alertas solo critico',
-  (select array_agg(tipo order by tipo) from v_alertas where cliente_id=2), array['critico']);
+select test.eq('A: v_alertas vacío en el fixture',
+  (select array_agg(tipo || '/' || posicion) from v_alertas where cliente_id=1), null);
+select test.eq('B: v_alertas vacío en el fixture',
+  (select array_agg(tipo order by tipo) from v_alertas where cliente_id=2), null);
 select test.eq('alertas: mensaje no vacío y severidad 1..3',
   (select count(*) from v_alertas where mensaje is null or mensaje = '' or severidad not between 1 and 3), 0::bigint);
 
 -- Resumen de flota
 select test.eq('resumen A: vehículos activos', (select n_vehiculos_activos from v_resumen_flota_cliente where cliente_id=1), 2::bigint);
-select test.eq('resumen A: ok/bajo/critico/sin_datos',
-  (select array[n_ok,n_bajo,n_critico,n_sin_datos] from v_resumen_flota_cliente where cliente_id=1), array[8::bigint,1,1,1]);
+select test.eq('resumen A: nuevo/poco_desgaste/mayor_desgaste/desgaste_limite/desconocido',
+  (select array[n_ok,n_bajo,n_mayor_desgaste,n_critico,n_sin_datos] from v_resumen_flota_cliente where cliente_id=1), array[8::bigint,1,1,0,1]);
 select test.eq('resumen A: con datos', (select n_neumaticos_con_datos from v_resumen_flota_cliente where cliente_id=1), 10::bigint);
 select test.eq('resumen A: alertas por severidad 1/2/3',
-  (select array[n_alertas_sev1,n_alertas_sev2,n_alertas_sev3] from v_resumen_flota_cliente where cliente_id=1), array[0::bigint,0,1]);
-select test.eq('resumen B: ok/bajo/critico',
-  (select array[n_ok,n_bajo,n_critico] from v_resumen_flota_cliente where cliente_id=2), array[1::bigint,1,1]);
+  (select array[n_alertas_sev1,n_alertas_sev2,n_alertas_sev3] from v_resumen_flota_cliente where cliente_id=1), array[0::bigint,0,0]);
+select test.eq('resumen B: nuevo/poco_desgaste/mayor_desgaste/desgaste_limite/desconocido',
+  (select array[n_ok,n_bajo,n_mayor_desgaste,n_critico,n_sin_datos] from v_resumen_flota_cliente where cliente_id=2), array[1::bigint,1,1,0,0]);
 select test.eq('resumen A: última medición no nula',
   (select ultima_medicion_at is not null from v_resumen_flota_cliente where cliente_id=1), true);
 

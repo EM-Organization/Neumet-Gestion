@@ -31,7 +31,8 @@ function renderKpis(filtros) {
   const k = kpisFlota(estadoRows, resumen, filtros.clienteId);
   setHtml($('flota-kpis'), joinHtml([
     kpiCard(k.vehiculos, 'Vehículos activos'),
-    kpiCard(k.criticos, 'Neumáticos críticos', k.criticos > 0 ? 'alert' : ''),
+    kpiCard(k.limite, 'Desgaste límite', k.limite > 0 ? 'alert' : ''),
+    kpiCard(k.mayor_desgaste, 'Mayor desgaste'),
     kpiCard(k.sin_medir, 'Neumáticos sin medir'),
     kpiCard(k.alertas, 'Alertas activas', k.alertas > 0 ? 'alert' : ''),
   ]));
@@ -45,10 +46,11 @@ function card(v, mostrarCliente) {
       ${chipEstado(v.semaforo)}</div>
     ${clienteNombre ? html`<div class="flota-cliente">${clienteNombre}</div>` : ''}
     <div class="dash-fleet-stats">
-      <span class="flota-n ${v.n_critico ? 'red' : ''}">${v.n_critico} crít.</span>
-      <span class="flota-n">${v.n_bajo} bajo</span>
-      <span class="flota-n">${v.n_ok} ok</span>
-      ${v.n_sin_datos ? html`<span class="flota-n">${v.n_sin_datos} sin datos</span>` : ''}
+      ${v.n_desgaste_limite ? html`<span class="flota-n red">${v.n_desgaste_limite} límite</span>` : ''}
+      ${v.n_mayor_desgaste ? html`<span class="flota-n">${v.n_mayor_desgaste} mayor</span>` : ''}
+      ${v.n_poco_desgaste ? html`<span class="flota-n">${v.n_poco_desgaste} poco</span>` : ''}
+      ${v.n_nuevo ? html`<span class="flota-n">${v.n_nuevo} nuevo</span>` : ''}
+      ${v.n_desconocido ? html`<span class="flota-n">${v.n_desconocido} desconocido</span>` : ''}
     </div>
     <div class="flota-meta">
       ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: ${nombrePosicion(v.peor_posicion).toLowerCase()}, ${fmtMm(v.min_mm)}`}

@@ -55,10 +55,10 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (cards().length !== 4) fail('selector: sin filtro se esperaban 4 vehículos en Flota, hay ' + cards().length);
   setSel('#sec-select', '1'); await sleep(500);
   if (cards().length !== 1 || cards()[0].dataset.vehiculo !== '10') fail('selector: Flota/Montevideo debía mostrar solo el vehículo 10, hay ' + cards().length);
-  if (kp() !== '1,0,0,0') fail('selector: KPIs de Montevideo inesperados: ' + kp());
+  if (kp() !== '1,0,0,0,0') fail('selector: KPIs de Montevideo inesperados: ' + kp());
   setSel('#sec-select', '2'); await sleep(500);
   if (cards().length !== 1 || cards()[0].dataset.vehiculo !== '12') fail('selector: Flota/Salto debía mostrar solo el vehículo 12');
-  if (kp() !== '1,1,1,2') fail('selector: KPIs de Salto inesperados: ' + kp());
+  if (kp() !== '1,1,0,1,2') fail('selector: KPIs de Salto inesperados: ' + kp());
 
   await nav('alertas');   // la selección (Salto) persiste entre vistas
   var rows = function(){ return all('#alert-tbody tr[data-severidad]'); };
@@ -70,7 +70,7 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (rows().length !== 0) fail('selector: Alertas/Montevideo debía estar vacía, hay ' + rows().length);
   // El estado vacío con filtro dice de QUÉ sucursal es y cómo ver el resto (no «Sin alertas» a secas)
   var vacioAl = $('#view-alertas').textContent.replace(/\s+/g, ' ');
-  if (vacioAl.indexOf('Sin alertas críticas abiertas en Montevideo') === -1 || vacioAl.indexOf('Elegir «Todas las sucursales» para ver el resto.') === -1) fail('selector: el estado vacío de Alertas con filtro debe nombrar la sucursal: ' + vacioAl.slice(0, 300));
+  if (vacioAl.indexOf('Sin alertas de desgaste límite abiertas en Montevideo') === -1 || vacioAl.indexOf('Elegir «Todas las sucursales» para ver el resto.') === -1) fail('selector: el estado vacío de Alertas con filtro debe nombrar la sucursal: ' + vacioAl.slice(0, 300));
   await nav('vehiculos'); await sleep(300);
   await nav('alertas');
   setSel('#sec-select', ''); await sleep(500);

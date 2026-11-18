@@ -1,4 +1,4 @@
-// Dominio: alerta única «Neumático crítico» con estado (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
+// Dominio: alerta única «Desgaste límite» con estado (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
 // Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta).
 
 export const ESTADO_ALERTA_LABEL = { abierta: 'Abierta', reconocida: 'Reconocida', silenciada: 'Silenciada' };

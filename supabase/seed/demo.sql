@@ -15,8 +15,9 @@
 --   * 6 dispositivos con MAC ficticias 02:DE:00:00:00:0N: 4 activos, 1 sin actividad
 --     (~2 semanas) y 1 caído (>30 días).
 --   * ~10 semanas de mediciones semanales por neumático con odómetro creciente:
---     desgaste lineal con ruido y tasas distintas; mezcla ok / bajo / crítico,
---     alertas "cruzará crítico pronto", desgaste irregular, un neumático sin ninguna
+--     desgaste lineal con ruido y tasas distintas; mezcla nuevo / poco desgaste /
+  --     mayor desgaste / desgaste límite,
+--     alerta única de desgaste límite, desgaste irregular, un neumático sin ninguna
 --     medición y neumáticos sin medir hace más de 30 días.
 --   * 10 vehículos medidos en los últimos 5 días (visitas semanales con medición previa y última, que alimentan
 --     «Últimas mediciones» de Inicio) y 5 neumáticos recién montados con una sola medición (sin comparativa).
@@ -101,8 +102,8 @@ begin
   -- ---- Escenarios por neumático (veh, pos, mm actual, mm/semana, irregular, nunca medido) -----
   create temp table _demo_esc (veh int, pos int, cur numeric, rate numeric, irregular boolean, nomed boolean) on commit drop;
   insert into _demo_esc values
-    -- críticos
-    (1, 3, 4.2, 0.8, false, false), (4, 7, 3.8, 0.9, false, false), (6, 2, 4.6, 0.7, false, false), (10, 5, 4.0, 0.8, false, false),
+    -- desgaste límite
+    (1, 3, 4.2, 0.8, false, false), (4, 7, 3.8, 0.9, false, false), (6, 2, 2.5, 0.7, false, false), (10, 5, 2.5, 0.8, false, false),
     -- bajos
     (2, 1, 7.2, 0.5, false, false), (2, 4, 6.5, 0.6, false, false), (3, 2, 7.8, 0.4, false, false), (5, 4, 6.1, 0.5, false, false),
     (8, 3, 7.0, 0.5, false, false), (11, 1, 6.8, 0.5, false, false), (12, 6, 7.4, 0.4, false, false),

@@ -38,7 +38,7 @@ const $ = id => document.getElementById(id);
 const nulo = v => v === null || v === undefined;
 const MAX_FILAS = 20000;
 const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,sucursal_id,odometro_km,odometro_actualizado_at,clientes(nombre)';
-const NIVEL_CLS = { ok: 'green', bajo: 'orange', critico: 'red', retiro: 'red', sin_datos: 'gray' };
+const NIVEL_CLS = { ok: 'green', bajo: 'blue', critico: 'orange', retiro: 'red', sin_datos: 'gray' };
 
 let vehiculoId = null;
 let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, porPos, obs, calPorPos }
@@ -137,15 +137,17 @@ function resumen() {
       ${puedeOperar() ? html`<button type="button" class="btn primary" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Cargar neumáticos</button>` : ''}</div>`);
     return;
   }
-  const con = filas.filter(f => f.estado !== 'sin_datos').length;
-  const crit = filas.filter(f => f.estado === 'critico').length;
-  const bajo = filas.filter(f => f.estado === 'bajo').length;
+  const limite = filas.filter(f => f.estado === 'desgaste_limite').length;
+  const mayorDesgaste = filas.filter(f => f.estado === 'mayor_desgaste').length;
+  const poco = filas.filter(f => f.estado === 'poco_desgaste').length;
+  const desconocido = filas.filter(f => f.estado === 'desconocido').length;
   const mayor = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal).length;
   setHtml($('vd-resumen'), joinHtml([
     chip('gray', plural(filas.length, 'neumático', 'neumáticos'), '●'),
-    crit ? chip('red', plural(crit, 'crítico', 'críticos'), '✕') : '',
-    bajo ? chip('orange', plural(bajo, 'bajo', 'bajos'), '▲') : '',
-    filas.length - con ? chip('gray', `${filas.length - con} sin datos`, '–') : '',
+    limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), '✕') : '',
+    mayorDesgaste ? chip('orange', plural(mayorDesgaste, 'mayor desgaste', 'mayor desgaste'), '▲') : '',
+    poco ? chip('blue', plural(poco, 'poco desgaste', 'poco desgaste'), '▲') : '',
+    desconocido ? chip('gray', `${desconocido} desconocido`, '–') : '',
     mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
     puedeOperar() && posicionesVacias().length ? html`<button type="button" class="btn ghost vd-montar-mas" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Montar neumático</button>` : '',
   ]));
@@ -166,12 +168,12 @@ function leyenda() {
       <div class="vd-escala-marcas" aria-hidden="true">${marca(u.retiro, `≤ ${fmtNum(u.retiro, 0)}`)}${marca(u.critico, fmtNum(u.critico, 0))}${marca(u.bajo, `≥ ${fmtNum(u.bajo, 0)} mm`)}</div>
       <p class="vd-escala-nota">Desgaste del neumático en mm. Cada rueda muestra además un símbolo de su estado.</p>
     </div>
-    <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Sin datos</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span>${itemVacia}</div>`);
+    <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Desconocido</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span>${itemVacia}</div>`);
 }
 
 function etiquetaAria(r, info, mm, ind) {
   const base = nombrePos(r.posicion, datos.veh.tipo_ruedas);
-  const medida = nulo(mm) ? 'sin datos' : `${fmtNum(mm, 1)} milímetros, ${info.texto}`;
+  const medida = nulo(mm) ? 'desconocido' : `${fmtNum(mm, 1)} milímetros, ${info.texto}`;
   return `${base}: ${medida}.${ind && ind.mayorAlNormal ? ' Desgaste mayor al normal.' : ''}`;
 }
 
@@ -268,7 +270,7 @@ function seccionTasa(fila, u, razonMostrada) {
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
   const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) <= u.retiro;
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
-    <ul class="vd-alertas">${frase(`Nivel crítico (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Retiro (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
+    <ul class="vd-alertas">${frase(`Poco desgaste / mayor desgaste (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Desgaste límite (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
 // Datos propios del neumático montado: número de quema y km (previos + tramos montados, calculados en v_km_cubierta).
@@ -446,7 +448,7 @@ function fechaCorta(t, conAnio) {
 function construirGrafico(d) {
   const p0 = d.puntos[0], pn = d.puntos[d.puntos.length - 1];
   const svg = svgEl('svg', { class: 'vd-chart', viewBox: `0 0 ${d.ancho} ${d.alto}`, role: 'img',
-    'aria-label': `Gráfico de desgaste: ${plural(d.puntos.length, 'medición', 'mediciones')}, de ${fmtNum(p0.mm, 1)} mm el ${fmtFecha(p0.fecha)} a ${fmtNum(pn.mm, 1)} mm el ${fmtFecha(pn.fecha)}. Las líneas horizontales marcan los umbrales bajo, crítico y de retiro${d.proyeccion ? '; la línea punteada es la proyección' : ''}.` });
+    'aria-label': `Gráfico de desgaste: ${plural(d.puntos.length, 'medición', 'mediciones')}, de ${fmtNum(p0.mm, 1)} mm el ${fmtFecha(p0.fecha)} a ${fmtNum(pn.mm, 1)} mm el ${fmtFecha(pn.fecha)}. Las líneas horizontales marcan los umbrales internos bajo, crítico y de retiro${d.proyeccion ? '; la línea punteada es la proyección' : ''}.` });
   const m = d.margen;
   d.ejeY.forEach(t => {
     svg.appendChild(svgEl('line', { class: 'vd-g-grid', x1: m.l, y1: t.y, x2: d.ancho - m.r, y2: t.y }));

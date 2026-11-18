@@ -83,17 +83,17 @@ export function registrar(env) {
     assert.equal(foto(env, id), antes);
   });
 
-  test('Taller (global): tras rotar, el historial muestra la rotación y la rueda crítica sigue al neumático a su nueva posición', async () => {
-    // Las mediciones son del NEUMÁTICO: el crítico de DEMO010 estaba en P5 y la rotación 5<->1 lo llevó a P1.
+  test('Taller (global): tras rotar, el historial muestra la rotación y el desgaste límite sigue al neumático a su nueva posición', async () => {
+    // Las mediciones son del NEUMÁTICO: el desgaste límite de DEMO010 estaba en P5 y la rotación 5<->1 lo llevó a P1.
     const id = vehId(env, 'DEMO010');
-    const critico = json(env, `select posicion from public.v_estado_neumaticos where vehiculo_id = ${id} and estado = 'critico'`);
-    assert.deepEqual(critico, [{ posicion: 1 }]);
+    const limite = json(env, `select posicion from public.v_estado_neumaticos where vehiculo_id = ${id} and estado = 'desgaste_limite'`);
+    assert.deepEqual(limite, [{ posicion: 1 }]);
     await flujo(env, 'historial-tras-rotar', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO010');
       await seleccionarRueda(p, 1);
       assert.match(await texto(p, '#vd-panel'), /Rotación/);
-      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /Crítico/);
-      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /Crítico/);
+      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /Desgaste límite/);
+      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /Desgaste límite/);
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-rueda').length`), 10);
     });
   });
@@ -331,7 +331,7 @@ export function registrar(env) {
 
   test('Taller (global): tras los cambios, la interfaz sigue sin errores en Inicio y Alertas', async () => {
     await flujo(env, 'post-taller', 'global', async p => {
-      await p.esperar(`document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 4`);
+      await p.esperar(`document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 5`);
       await p.click('.nav-item[data-view="alertas"]');
       await p.esperar(`/\\d+ alertas?/.test(document.querySelector('#alert-count').textContent)`);
       assert.ok((await texto(p, '#alert-count')).length > 0);

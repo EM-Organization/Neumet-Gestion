@@ -52,9 +52,9 @@ export function datosGrafico(puntos, u, tasaMmSemana, { ancho = 320, alto = 190 
     ancho, alto, margen: m, puntos: pts,
     linea: pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' '),
     umbrales: [
-      { clave: 'bajo', mm: u.bajo, y: Y(u.bajo), etiqueta: 'Bajo' },
-      { clave: 'critico', mm: u.critico, y: Y(u.critico), etiqueta: 'Crítico' },
-      { clave: 'retiro', mm: u.retiro, y: Y(u.retiro), etiqueta: 'Retiro' },
+      { clave: 'bajo', mm: u.bajo, y: Y(u.bajo), etiqueta: 'Umbral bajo' },
+      { clave: 'critico', mm: u.critico, y: Y(u.critico), etiqueta: 'Umbral crítico' },
+      { clave: 'retiro', mm: u.retiro, y: Y(u.retiro), etiqueta: 'Umbral de retiro' },
     ],
     proyeccion: proy ? { x1: ult.x, y1: ult.y, x2: X(proy.t2), y2: Y(proy.mm2), semanas: proy.semanas, truncada: proy.truncada, t2: proy.t2 } : null,
     ejeY, ejeX,

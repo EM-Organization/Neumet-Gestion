@@ -71,22 +71,22 @@ select test.eq('otros clientes intactos (cliente 1: sin sucursales ni stock demo
 
 -- Las vistas devuelven filas ricas para el cliente Demo (como superusuario)
 select test.eq('v_estado_neumaticos devuelve filas', (select count(*) > 60 from public.v_estado_neumaticos where cliente_id = 50), true);
-select test.eq('hay neumáticos ok', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'ok'), true);
-select test.eq('hay neumáticos bajos', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'bajo'), true);
-select test.eq('hay neumáticos críticos', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'critico'), true);
-select test.eq('hay un neumático sin datos', (select count(*) from public.v_estado_neumaticos where cliente_id = 50 and estado = 'sin_datos'), 1::bigint);
+select test.eq('hay neumáticos nuevo', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'nuevo'), true);
+select test.eq('hay neumáticos poco desgaste', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'poco_desgaste'), true);
+select test.eq('hay neumáticos mayor desgaste', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and estado = 'mayor_desgaste'), true);
+select test.eq('hay un neumático desconocido', (select count(*) from public.v_estado_neumaticos where cliente_id = 50 and estado = 'desconocido'), 1::bigint);
 select test.eq('hay neumáticos sin medir hace >30 días', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and sin_medir and dias_desde_medicion > 30), true);
 select test.eq('hay desgaste irregular', (select count(*) >= 3 from public.v_estado_neumaticos where cliente_id = 50 and desgaste_irregular), true);
 select test.eq('hay tasas de desgaste calculadas', (select count(*) > 40 from public.v_estado_neumaticos where cliente_id = 50 and tasa_mm_semana > 0), true);
-select test.eq('alerta única: solo el tipo crítico',
-  (select string_agg(distinct tipo, ',') from public.v_alertas where cliente_id = 50), 'critico');
-select test.eq('una alerta abierta por cada neumático crítico del demo (consistencia con v_estado_neumaticos)',
+select test.eq('alerta única: solo el tipo desgaste límite (o sin alertas en el demo)',
+  (select coalesce(string_agg(distinct tipo, ','), 'sin alertas') from public.v_alertas where cliente_id = 50), 'limite');
+select test.eq('una alerta abierta por cada neumático en desgaste límite del demo (consistencia con v_estado_neumaticos)',
   (select count(*) from public.v_alertas a join public.v_estado_neumaticos e on e.neumatico_id = a.neumatico_id
-    where a.cliente_id = 50 and e.estado = 'critico'),
-  (select count(*) from public.v_estado_neumaticos where cliente_id = 50 and estado = 'critico'));
-select test.eq('ninguna alerta fuera de los críticos del demo (banda de histéresis aparte)',
+    where a.cliente_id = 50 and e.estado = 'desgaste_limite'),
+  (select count(*) from public.v_estado_neumaticos where cliente_id = 50 and estado = 'desgaste_limite'));
+select test.eq('ninguna alerta fuera de los de desgaste límite del demo (banda de histéresis aparte)',
   (select count(*) from public.v_alertas a join public.v_estado_neumaticos e on e.neumatico_id = a.neumatico_id
-    where a.cliente_id = 50 and e.estado <> 'critico'), 0::bigint);
+    where a.cliente_id = 50 and e.estado <> 'desgaste_limite'), 0::bigint);
 select test.eq('salud: hay activos', (select count(*) > 0 from public.v_salud_dispositivos where cliente_id = 50 and estado = 'activo'), true);
 select test.eq('salud: un dispositivo sin actividad', (select count(*) from public.v_salud_dispositivos where cliente_id = 50 and estado = 'sin_actividad'), 1::bigint);
 select test.eq('salud: un dispositivo caído', (select count(*) from public.v_salud_dispositivos where cliente_id = 50 and estado = 'caido'), 1::bigint);

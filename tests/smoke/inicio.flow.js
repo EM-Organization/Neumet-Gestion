@@ -12,13 +12,13 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if($('#breadcrumb-current').textContent !== 'Inicio') fail('inicio('+rol+'): breadcrumb '+$('#breadcrumb-current').textContent);
   var cont = $('#inicio-contenido');
   var txt = cont.textContent.replace(/\s+/g, ' ');
-  // Fixtures de flota: 7 neumáticos (3 ok, 2 bajo, 1 crítico, 1 sin datos) en 4 vehículos
-  if(!/3 de 7 neumáticos en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,120));
+  // Fixtures de flota: 7 neumáticos (3 nuevo, 2 poco desgaste, 1 desgaste límite, 1 desconocido) en 4 vehículos
+  if(!/5 de 7 neumáticos están en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,200));
   if(all('#inicio-contenido .inicio-seg').length < 3) fail('inicio('+rol+'): falta la barra segmentada');
   var filas = all('#inicio-contenido [data-action="verVehiculo"]');
   if(!filas.length) fail('inicio('+rol+'): sin lista de vehículos que requieren atención');
   if(!/Requieren atención/.test(txt) || !/Próximos cambios/.test(txt)) fail('inicio('+rol+'): faltan bloques');
-  if(!/1 neumático crítico/.test(txt)) fail('inicio('+rol+'): falta la causa del vehículo crítico');
+  if(!/1 neumático en desgaste límite/.test(txt)) fail('inicio('+rol+'): falta la causa del vehículo en desgaste límite');
   if(!/~6 semanas/.test(txt)) fail('inicio('+rol+'): faltan los próximos cambios con semanas');
   if(!/Dispositivos: \d+ de \d+ activos/.test(txt)) fail('inicio('+rol+'): falta la línea de dispositivos');
   if(!$('#inicio-contenido [data-action="irA"][data-args=\'["alertas"]\']')) fail('inicio('+rol+'): falta "Ver todas las alertas"');
@@ -53,7 +53,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     var cs = w.getComputedStyle(c);
     if(/rgb\(192, 57, 43\)/.test(cs.borderLeftColor+cs.backgroundColor)) fail('inicio('+rol+'): tarjeta con borde o fondo rojo');
   });
-  if(all('#inicio-contenido .inicio-fila .inicio-punto.critico').length !== 1) fail('inicio('+rol+'): debe haber un punto rojo (un vehículo crítico)');
+  if(all('#inicio-contenido .inicio-fila .inicio-punto.limite').length !== 1) fail('inicio('+rol+'): debe haber un punto rojo (un vehículo en desgaste límite)');
   var titulo = $('#inicio-title').textContent;
   if(titulo !== 'Inicio') fail('inicio('+rol+'): título '+titulo);
   if(/Todavía no hay datos|Todavía no hay vehículos/.test(txt)) fail('inicio('+rol+'): muestra "sin datos" teniendo datos');

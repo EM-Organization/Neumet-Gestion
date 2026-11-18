@@ -15,7 +15,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   log.push('veh-lista='+filas().length);
   if(filas().length !== 3) fail('detalle: se esperaban 3 vehiculos, hay '+filas().length);
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('detalle: nombre sin escapar');
-  if(!filas()[0].textContent.match(/Crítico/)) fail('detalle: la lista no pone primero al vehiculo mas urgente / sin chip: '+filas()[0].textContent);
+  if(!filas()[0].textContent.match(/Desgaste límite/)) fail('detalle: la lista no pone primero al vehiculo mas urgente / sin chip: '+filas()[0].textContent);
 
   // Buscar por patente (parcial, sin mayusculas ni espacios)
   escribir('ab 12'); await sleep(100);
@@ -65,7 +65,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#vd-panel').classList.contains('abierto')) fail('detalle: el panel no se abrio');
   if(r3.getAttribute('aria-pressed') !== 'true') fail('detalle: rueda seleccionada sin aria-pressed');
   if(d.activeElement !== $('#vd-panel-titulo')) fail('detalle: el foco no paso al panel');
-  ['Eje 2 izquierda exterior','P3','Crítico','Desgaste mayor al normal','Interno','4,2','Alertas','Neumático crítico','Rotación'].forEach(function(t){
+  ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste mayor al normal','Interno','4,2','Alertas','Desgaste límite','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');

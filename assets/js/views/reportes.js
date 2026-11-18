@@ -15,8 +15,12 @@ import { fmtMm } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 
 const $ = id => document.getElementById(id);
-const COLOR = { ok: '#1a7f37', bajo: '#b25000', critico: '#c0392b', null: '#8e8e93' };
-const LABEL = { ok: 'OK', bajo: 'BAJO', critico: 'CRÍTICO', null: 'Sin datos' };
+const COLOR = {
+  nuevo: '#1a7f37', pocoDesgaste: '#1a7f37', mayorDesgaste: '#b25000', limite: '#c0392b', desconocido: '#8e8e93', null: '#8e8e93'
+};
+const LABEL = {
+  nuevo: 'NUEVO', pocoDesgaste: 'POCO DESGASTE', mayorDesgaste: 'MAYOR DESGASTE', limite: 'DESGASTE LÍMITE', desconocido: 'DESCONOCIDO', null: 'Sin datos'
+};
 let busy = false;
 let cpkRows = [];            // última respuesta de cpk_por_grupo (para el CSV)
 let cpkGrupo = 'marca';
@@ -192,7 +196,7 @@ function buildDoc(rows, truncated) {
   const n = scopeNames();
   const titulo = n.vehiculo ? `Vehículo: ${n.vehiculo}` : `Flota${n.cliente ? ': ' + n.cliente : ''}`;
   const kpi = (cls, num, label) => html`<div class="kpi ${cls}"><div class="kpi-n">${num}</div><div class="kpi-l">${label}</div></div>`;
-  const porVeh = joinHtml(r.vehiculos.map(v => html`<tr><td>${etiquetaCoche(v.nombre)}</td><td>${v.patente || '—'}</td><td>${v.neumaticos}</td><td>${v.ok}</td><td>${v.bajo}</td><td>${v.critico}</td></tr>`));
+  const porVeh = joinHtml(r.vehiculos.map(v => html`<tr><td>${etiquetaCoche(v.nombre)}</td><td>${v.patente || '—'}</td><td>${v.neumaticos}</td><td>${v.nuevo}</td><td>${v.pocoDesgaste}</td><td>${v.mayorDesgaste}</td><td>${v.limite}</td><td>${v.desconocido}</td></tr>`));
   const detalle = joinHtml(r.neumaticos.map(t => html`<tr>
     <td>${etiquetaCoche(t.nombre)}</td><td>${t.patente || '—'}</td><td>Pos. ${t.posicion ?? '—'}</td><td>${t.idneumatico ?? '—'}</td>
     <td style="font-weight:700;color:${COLOR[t.estado]}">${LABEL[t.estado]}</td><td>${fmtMm(t.promedio)}</td><td>${fmtDate(t.created_at)}</td></tr>`));
@@ -209,7 +213,7 @@ function buildDoc(rows, truncated) {
   .kpis{display:flex;gap:16px;margin:20px 0}
   .kpi{flex:1;border:1px solid #e5e5ea;border-radius:10px;padding:12px;text-align:center}
   .kpi-n{font-size:26px;font-weight:800}.kpi-l{font-size:11px;color:#615A3F}
-  .kpi.ok .kpi-n{color:#1a7f37}.kpi.bajo .kpi-n{color:#b25000}.kpi.critico .kpi-n{color:#c0392b}
+  .kpi.nuevo .kpi-n,.kpi.poco .kpi-n{color:#1a7f37}.kpi.mayor .kpi-n{color:#b25000}.kpi.limite .kpi-n{color:#c0392b}
   h3{font-size:13px;text-transform:uppercase;color:#615A3F;margin:22px 0 10px}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{background:#EBEBEB;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:#615A3F}
@@ -219,8 +223,8 @@ function buildDoc(rows, truncated) {
 <div class="header"><div class="brand">NEU<span>MET</span></div>
 <div class="meta"><strong>${titulo}</strong><br>Última medición de cada neumático · Generado el ${fmtDate(new Date().toISOString())}</div></div>
 ${truncated ? html`<div class="warn">Datos incompletos: se alcanzó el tope de ${MAX_ROWS} mediciones.</div>` : ''}
-<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('ok', r.ok, 'OK (≥8mm)')}${kpi('bajo', r.bajo, 'Bajo (5–7.9mm)')}${kpi('critico', r.critico, 'Crítico (<5mm)')}</div>
-${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>OK</th><th>Bajo</th><th>Crítico</th></tr></thead><tbody>${porVeh}</tbody></table>`}
+<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, 'Nuevo (≥8mm)')}${kpi('poco', r.pocoDesgaste, 'Poco desgaste (5–7.9mm)')}${kpi('mayor', r.mayorDesgaste, 'Mayor desgaste (3–4.9mm)')}${kpi('limite', r.limite, 'Desgaste límite (<3mm)')}</div>
+${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>Nuevo</th><th>Poco desgaste</th><th>Mayor desgaste</th><th>Desgaste límite</th><th>Desconocido</th></tr></thead><tbody>${porVeh}</tbody></table>`}
 <h3>Estado por neumático</h3>
 <table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
 <div class="footer">NEUMET · Sistema de gestión de neumáticos</div>

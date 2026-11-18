@@ -3,7 +3,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
-import { WEAR, wearStatus } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { etiquetaCoche } from '../domain/coche.js';
 
@@ -93,12 +93,12 @@ export async function generarReportePDF(){
     const statusColor=mm=>{
       if(mm==null) return '#8e8e93';
       const st=wearStatus(mm);
-      return st==='critico'?'#c0392b':st==='bajo'?'#b25000':'#1a7f37';
+      return st==='desgaste_limite'?'#c0392b':st==='mayor_desgaste'?'#b25000':st==='poco_desgaste'?'#1a7f37':'#1a7f37';
     };
     const statusLabel=mm=>{
       if(mm==null) return 'Sin datos';
       const st=wearStatus(mm);
-      return st==='critico'?'CRÍTICO':st==='bajo'?'BAJO':'OK';
+      return st==='desgaste_limite'?'DESGASTE LÍMITE':st==='mayor_desgaste'?'MAYOR DESGASTE':st==='poco_desgaste'?'POCO DESGASTE':'NUEVO';
     };
 
     // Construir filas de la tabla de neumáticos
@@ -124,7 +124,7 @@ export async function generarReportePDF(){
         sparkSVG=html`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block">
           <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="${lastX}" cy="${lastY}" r="3" fill="${color}"/>
-          <line x1="0" y1="${H-PAD-(WEAR.LOW_MM-min)*scaleY}" x2="${W}" y2="${H-PAD-(WEAR.LOW_MM-min)*scaleY}" stroke="#c0392b" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
+          <line x1="0" y1="${H-PAD-(UMBRALES.RETIRO_MM-min)*scaleY}" x2="${W}" y2="${H-PAD-(UMBRALES.RETIRO_MM-min)*scaleY}" stroke="#c0392b" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.5"/>
         </svg>`;
       } else if(sparkVals.length===1){
         sparkSVG=html`<span style="font-size:11px;color:#8e8e93">1 medición</span>`;
@@ -164,9 +164,10 @@ export async function generarReportePDF(){
       const m=medPorPos[pos]?.[0];
       return m?.promedio!=null?parseFloat(m.promedio):null;
     }).filter(v=>v!=null);
-    const criticos=allLastMM.filter(v=>wearStatus(v)==='critico').length;
-    const bajos=allLastMM.filter(v=>wearStatus(v)==='bajo').length;
-    const ok=allLastMM.filter(v=>wearStatus(v)==='ok').length;
+    const limite=allLastMM.filter(v=>wearStatus(v)==='desgaste_limite').length;
+    const mayor=allLastMM.filter(v=>wearStatus(v)==='mayor_desgaste').length;
+    const poco=allLastMM.filter(v=>wearStatus(v)==='poco_desgaste').length;
+    const nuevo=allLastMM.filter(v=>wearStatus(v)==='nuevo').length;
 
     const doc=html`<!DOCTYPE html>
 <html lang="es">
@@ -188,9 +189,9 @@ export async function generarReportePDF(){
   .kpi{flex:1;border:1px solid #e5e5ea;border-radius:10px;padding:14px 18px;text-align:center}
   .kpi-n{font-size:28px;font-weight:800;letter-spacing:-1px}
   .kpi-l{font-size:11px;color:#615A3F;margin-top:2px;font-weight:500}
-  .kpi.ok .kpi-n{color:#1a7f37}
-  .kpi.warn .kpi-n{color:#b25000}
-  .kpi.crit .kpi-n{color:#c0392b}
+  .kpi.ok .kpi-n,.kpi.poco .kpi-n{color:#1a7f37}
+  .kpi.warn .kpi-n,.kpi.mayor .kpi-n{color:#b25000}
+  .kpi.crit .kpi-n,.kpi.limite .kpi-n{color:#c0392b}
   .kpi.total .kpi-n{color:#383424}
   h3{font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#615A3F;margin-bottom:12px}
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -220,9 +221,9 @@ export async function generarReportePDF(){
 
 <div class="kpis">
   <div class="kpi total"><div class="kpi-n">${posiciones.length}</div><div class="kpi-l">Posiciones totales</div></div>
-  <div class="kpi ok"><div class="kpi-n">${ok}</div><div class="kpi-l">En buen estado (≥8mm)</div></div>
-  <div class="kpi warn"><div class="kpi-n">${bajos}</div><div class="kpi-l">Nivel bajo (5–7.9mm)</div></div>
-  <div class="kpi crit"><div class="kpi-n">${criticos}</div><div class="kpi-l">Crítico (&lt;5mm)</div></div>
+  <div class="kpi ok"><div class="kpi-n">${nuevo + poco}</div><div class="kpi-l">En buen estado (≥5mm)</div></div>
+  <div class="kpi mayor"><div class="kpi-n">${mayor}</div><div class="kpi-l">Mayor desgaste (3–4.9mm)</div></div>
+  <div class="kpi limite"><div class="kpi-n">${limite}</div><div class="kpi-l">Desgaste límite (&lt;3mm)</div></div>
 </div>
 
 <h3>Detalle por posición</h3>

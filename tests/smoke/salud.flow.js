@@ -55,7 +55,7 @@ window.saludFlow = async function(w, d, sleep, fail, log, cliMode){
   if($('#breadcrumb-current').textContent === 'Inicio' || $('#breadcrumb-parent').hidden) fail('ficha: título sin migas (Clientes › nombre)');
   if(!$('#view-ficha').classList.contains('active')) fail('ficha: vista no activa');
   var kpis = $('#ficha-kpis').textContent;
-  if(!/Vehículos activos/.test(kpis) || !/Críticos/.test(kpis)) fail('ficha: faltan KPIs del resumen');
+  if(!/Vehículos activos/.test(kpis) || !/Desgaste límite/.test(kpis)) fail('ficha: faltan KPIs del resumen');
   if(!$('#fu-umbral_bajo_mm') || $('#fu-umbral_bajo_mm').value !== '8') fail('ficha: umbral bajo no cargado');
   // Umbrales de solo lectura para el equipo Neumet (docs/17 PR 9): los edita el administrador de la empresa en Empresa > Umbrales
   var campos = d.querySelectorAll('#ficha-umbrales-campos input');

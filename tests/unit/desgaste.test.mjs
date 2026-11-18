@@ -2,7 +2,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  WEAR, LIFE_LIMIT_MM, wearStatus, avgMm, tireStatus, wearClass, countByStatus,
+  UMBRALES, WEAR, LIFE_LIMIT_MM, wearStatus, avgMm, tireStatus, wearClass, countByStatus,
   wearRate, daysUntil, dateUntil, unevenWear, analyzeTire
 } from '../../assets/js/domain/desgaste.js';
 
@@ -12,27 +12,30 @@ const row = (mm1, mm2, mm3, days = 0) => ({ mm1, mm2, mm3, created_at: new Date(
 const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 
 describe('umbrales', () => {
-  test('constantes', () => { assert.equal(WEAR.OK_MM, 8); assert.equal(WEAR.LOW_MM, 5); assert.equal(LIFE_LIMIT_MM, 3); });
+  test('constantes', () => { assert.equal(UMBRALES.BAJO_MM, 8); assert.equal(UMBRALES.CRITICO_MM, 5); assert.equal(UMBRALES.RETIRO_MM, 3); assert.equal(WEAR.OK_MM, 8); assert.equal(WEAR.LOW_MM, 5); assert.equal(LIFE_LIMIT_MM, 3); });
   test('wearStatus: null/undefined -> null', () => { assert.equal(wearStatus(null), null); assert.equal(wearStatus(undefined), null); });
-  test('wearStatus: 5 exacto es bajo, 8 exacto es ok', () => {
-    assert.equal(wearStatus(5), 'bajo');
-    assert.equal(wearStatus(8), 'ok');
+  test('wearStatus: umbrales exactos', () => {
+    assert.equal(wearStatus(8), 'nuevo');
+    assert.equal(wearStatus(5), 'poco_desgaste');
+    assert.equal(wearStatus(3), 'mayor_desgaste');
   });
   test('wearStatus: justo debajo de cada umbral', () => {
-    assert.equal(wearStatus(4.999), 'critico');
-    assert.equal(wearStatus(7.999), 'bajo');
+    assert.equal(wearStatus(7.999), 'poco_desgaste');
+    assert.equal(wearStatus(4.999), 'mayor_desgaste');
+    assert.equal(wearStatus(2.999), 'desgaste_limite');
   });
   test('wearStatus: extremos', () => {
-    assert.equal(wearStatus(0), 'critico');
-    assert.equal(wearStatus(-1), 'critico');
-    assert.equal(wearStatus(20), 'ok');
+    assert.equal(wearStatus(0), 'desgaste_limite');
+    assert.equal(wearStatus(-1), 'desgaste_limite');
+    assert.equal(wearStatus(20), 'nuevo');
   });
   test('wearClass', () => {
     assert.equal(wearClass(null), 'neutral');
     assert.equal(wearClass(10), 'ok');
-    assert.equal(wearClass(6), 'warn');
-    assert.equal(wearClass(5), 'warn');
-    assert.equal(wearClass(4), 'crit');
+    assert.equal(wearClass(6), 'ok');
+    assert.equal(wearClass(5), 'ok');
+    assert.equal(wearClass(4), 'warn');
+    assert.equal(wearClass(2), 'crit');
   });
 });
 
@@ -46,17 +49,18 @@ describe('avgMm / tireStatus', () => {
   test('fila sin campos -> null', () => assert.equal(avgMm({}), null));
   test('el 0 cuenta como medición (no es null)', () => close(avgMm({ mm1: 0, mm2: 6, mm3: null }), 3));
   test('tireStatus combina promedio y umbral', () => {
-    assert.equal(tireStatus({ mm1: 8, mm2: 8, mm3: 8 }), 'ok');
-    assert.equal(tireStatus({ mm1: 5, mm2: 5, mm3: null }), 'bajo');
+    assert.equal(tireStatus({ mm1: 8, mm2: 8, mm3: 8 }), 'nuevo');
+    assert.equal(tireStatus({ mm1: 5, mm2: 5, mm3: null }), 'poco_desgaste');
+    assert.equal(tireStatus({ mm1: 3, mm2: 3, mm3: null }), 'mayor_desgaste');
     assert.equal(tireStatus({ mm1: null, mm2: null, mm3: null }), null);
   });
 });
 
 describe('countByStatus', () => {
-  test('cuenta y omite nulls', () => {
-    assert.deepEqual(countByStatus([10, 8, 7, 5, 4, null, undefined]), { ok: 2, bajo: 2, critico: 1 });
+  test('cuenta por nivel visual y omite nulls', () => {
+    assert.deepEqual(countByStatus([10, 8, 7, 5, 4, 2, null, undefined]), { ok: 4, warn: 1, crit: 1 });
   });
-  test('vacío', () => assert.deepEqual(countByStatus([]), { ok: 0, bajo: 0, critico: 0 }));
+  test('vacío', () => assert.deepEqual(countByStatus([]), { ok: 0, warn: 0, crit: 0 }));
 });
 
 describe('wearRate (mm/semana)', () => {

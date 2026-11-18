@@ -9,8 +9,8 @@ export function registrar(env) {
     test(`Alertas (${rol}): conteos, estados y vehículos coinciden con v_alertas`, async () => {
       const a = ALCANCE[rol];
       const filas = json(env, `select x.estado, x.silenciada_hasta, x.tipo, v.patente, x.posicion from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`);
-      assert.ok(filas.length > 0, 'el demo debe generar alertas críticas');
-      assert.ok(filas.every(f => f.tipo === 'critico'), 'una sola categoría de alerta: crítico');
+      assert.ok(filas.length > 0, 'el demo debe generar alertas de desgaste límite');
+      assert.ok(filas.every(f => f.tipo === 'limite'), 'una sola categoría de alerta: desgaste límite');
       const porEstado = e => filas.filter(f => f.estado === e && !f.silenciada_hasta).length;
       await flujo(env, 'alertas', rol, async p => {
         await irA(p, 'alertas');
@@ -28,7 +28,7 @@ export function registrar(env) {
         for (const pat of new Set(json(env, `select patente from public.vehiculos`).map(v => v.patente).filter(Boolean))) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
-        assert.ok(tabla.every(t => /Neumático crítico/.test(t)), 'solo críticas');
+        assert.ok(tabla.every(t => /Desgaste límite/.test(t)), 'solo desgaste límite');
         // Cada alerta lleva al vehículo (acción). Resolver, reconocer y silenciar son de la empresa: el equipo Neumet (admin)
         // no los ve (F10 PR 10; la RPC sigue permitida para admin hasta C2, por eso aquí solo se mira la interfaz).
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);

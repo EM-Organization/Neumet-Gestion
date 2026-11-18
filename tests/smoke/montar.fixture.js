@@ -13,7 +13,7 @@
   function filaEstado(pos, n){
     return Object.assign({}, plantilla, {vehiculo_id:VID, vehiculo_nombre:'301', patente:'VAC 301', posicion:pos, neumatico_id:n.id, idneumatico:n.idneumatico,
       marca:n.marca, modelo:n.modelo, vida:0, mm1:null, mm2:null, mm3:null, promedio:null, ultima_medicion_at:null, dias_desde_medicion:null,
-      estado:'sin_datos', sin_medir:true, diferencia_huellas_mm:null, desgaste_irregular:false, n_mediciones_90d:0, tasa_mm_semana:null,
+      estado:'desconocido', sin_medir:true, diferencia_huellas_mm:null, desgaste_irregular:false, n_mediciones_90d:0, tasa_mm_semana:null,
       semanas_hasta_critico:null, semanas_hasta_retiro:null});
   }
 

@@ -8,7 +8,7 @@ import { registerView } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { contextoListo, filtrarConsulta, filtrarFilas, listaSucursales, sucursalSeleccionada, refrescarSucursales, hayFiltroSeccional, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { agruparVehiculos } from '../domain/flota.js';
+import { agruparVehiculos, estadoRank } from '../domain/flota.js';
 import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda.js';
 import { plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -55,7 +55,9 @@ export async function loadVehiculos(){
 
 function resumenTexto(g){
   if(!g) return '';
-  const p=[]; if(g.n_critico) p.push(plural(g.n_critico,'crítico','críticos')); if(g.n_bajo) p.push(plural(g.n_bajo,'bajo','bajos'));
+  const p=[];
+  if(g.n_desgaste_limite) p.push(plural(g.n_desgaste_limite,'desgaste límite','desgaste límite'));
+  if(g.n_mayor_desgaste) p.push(plural(g.n_mayor_desgaste,'mayor desgaste','mayor desgaste'));
   return p.join(' · ');
 }
 
@@ -83,7 +85,7 @@ function renderLista(){
       <span class="veh-fila-estado">${txt}${g?chipEstado(g.semaforo):(resumenesListos?chip('gray','Sin neumáticos','–'):'')}</span></button></li>`;
   })));
 }
-const activosOrden=g=>({critico:0,bajo:1,sin_datos:2,ok:3}[g.semaforo]??2);
+const activosOrden=g=>estadoRank(g.semaforo);
 
 function renderVehiculos(){
   const cli=isClienteMode();

@@ -136,7 +136,7 @@ export function registrar(env) {
 
     test(`Buscador de Inicio (${rol}): varias coincidencias muestran lista; una abre el detalle`, async () => {
       await flujo(env, 'buscador-inicio', rol, async p => {
-        await p.esperar(`document.querySelector('#busq-inicio-input') && document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 4`);
+        await p.esperar(`document.querySelector('#busq-inicio-input') && document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 5`);
         await p.escribir('#busq-inicio-input', 'demo01');
         await p.enter();
         await p.esperar(`document.querySelectorAll('#busq-inicio-res .busq-op').length > 1`, { que: 'lista de resultados' });

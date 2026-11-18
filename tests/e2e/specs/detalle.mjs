@@ -8,11 +8,11 @@ import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
 
 const tipoDe = (env, patente) => Number(env.sql(`select tipo_ruedas from public.vehiculos where patente = '${patente}'`));
 
-const ETIQUETA = { ok: 'OK', bajo: 'Desgaste bajo', critico: 'Crítico', retiro: 'Retirar' };
+const ETIQUETA = { nuevo: 'Nuevo', poco_desgaste: 'Poco desgaste', mayor_desgaste: 'Mayor desgaste', desgaste_limite: 'Desgaste límite', desconocido: 'Desconocido' };
 
 // Rueda esperada según la base: posición -> {mm, nivel}
 function ruedasEsperadas(env, vehiculoId) {
-  const filas = json(env, `select e.posicion, round(e.promedio, 1)::text as mm, e.promedio, e.estado, e.umbral_retiro_mm
+  const filas = json(env, `select e.posicion, round(e.promedio, 1)::text as mm, e.promedio, e.estado
     from public.v_estado_neumaticos e where e.vehiculo_id = ${vehiculoId}`);
   const aux = json(env, `select 1 from public.neumaticos where vehiculo_id = ${vehiculoId} and posicion = 99 and estado = 'montado'`).length > 0;
   const porPos = new Map(filas.map(f => [f.posicion, f]));
@@ -20,9 +20,8 @@ function ruedasEsperadas(env, vehiculoId) {
   return pos.map(p => {
     const f = porPos.get(p);
     if (!f) return { pos: p, mm: null, nivel: 'vacia' }; // posición sin neumático montado: rueda punteada «vacía»
-    if (f.promedio === null) return { pos: p, mm: null, nivel: 'sin_datos' };
-    const nivel = f.estado === 'critico' && Number(f.promedio) <= Number(f.umbral_retiro_mm) ? 'retiro' : f.estado;
-    return { pos: p, mm: f.mm.replace('.', ','), nivel };
+    if (f.promedio === null) return { pos: p, mm: null, nivel: 'desconocido' };
+    return { pos: p, mm: f.mm.replace('.', ','), nivel: f.estado };
   });
 }
 
@@ -53,18 +52,18 @@ export function registrar(env) {
               continue;
             }
             assert.equal(d.vacia, false, `${quien} tiene neumático: no es una rueda vacía`);
-            if (e.nivel === 'sin_datos') {
+            if (e.nivel === 'desconocido') {
               sinDatos++;
-              assert.equal(d.fill, 'url(#vd-sin-datos)', `${quien} sin datos: patrón`);
+              assert.equal(d.fill, 'url(#vd-sin-datos)', `${quien} desconocido: patrón`);
               assert.equal(d.mm, '—', quien);
-              assert.match(d.aria, /sin datos/, quien);
+              assert.match(d.aria, /desconocido/, quien);
               continue;
             }
             assert.equal(d.mm, e.mm, `${quien} mm`);
             assert.ok(d.aria.includes(`${e.mm} milímetros, ${ETIQUETA[e.nivel]}.`), `${quien} etiqueta accesible: ${d.aria}`);
-            if (e.nivel === 'ok') { verde ??= d.fill; assert.equal(d.fill, verde, `${quien} mismo color que las demás ruedas OK`); }
-            else { assert.match(d.fill, /^#[0-9a-f]{6}$/, quien); assert.notEqual(d.fill, verde, `${quien} no es el color de OK`); }
-            if (e.nivel === 'critico' || e.nivel === 'retiro') criticas++;
+            if (e.nivel === 'nuevo') { verde ??= d.fill; assert.equal(d.fill, verde, `${quien} mismo color que las demás ruedas en buen estado`); }
+            else { assert.match(d.fill, /^#[0-9a-f]{6}$/, quien); assert.notEqual(d.fill, verde, `${quien} no es el color de buen estado`); }
+            if (e.nivel === 'desgaste_limite') criticas++;
           }
           if (esperadas.some(r => r.pos === 99)) {
             conAuxilio++;
@@ -82,14 +81,14 @@ export function registrar(env) {
     });
   }
 
-  test('Detalle (global): DEMO010 dibuja 10 ruedas, sin auxilio, y la rueda 5 es la crítica', async () => {
+  test('Detalle (global): DEMO010 dibuja 10 ruedas, sin auxilio, y la rueda 5 está en desgaste límite', async () => {
     await flujo(env, 'detalle-demo010', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO010');
       const r = await p.eval(`[...document.querySelectorAll('#vd-diagrama .vd-rueda')].map(g => g.dataset.pos + ':' + g.getAttribute('aria-label'))`);
       assert.equal(r.length, 10);
-      assert.ok(r.find(x => x.startsWith('5:')).includes('Crítico'));
-      assert.equal(r.filter(x => x.includes('Crítico')).length, 1);
-      // Panel de la rueda crítica con teclado: muestra posición, estado y acciones del taller.
+      assert.ok(r.find(x => x.startsWith('5:')).includes('Desgaste límite'));
+      assert.equal(r.filter(x => x.includes('Desgaste límite')).length, 1);
+      // Panel de la rueda en desgaste límite con teclado: muestra posición, estado y acciones del taller.
       await p.click('#vd-diagrama .vd-rueda[data-pos="5"]');
       await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto')`);
       const panel = await texto(p, '#vd-panel');
@@ -97,7 +96,7 @@ export function registrar(env) {
       assert.match(panel, new RegExp(nombrePos(5, tipoDe(env, 'DEMO010'))));
       assert.match(panel, /\bP5\b/);
       assert.doesNotMatch(panel, /Posición 5/);
-      assert.match(panel, /Crítico/);
+      assert.match(panel, /Desgaste límite/);
       assert.ok(await p.eval(`!!document.querySelector('#vd-panel [data-action="neumatico-cambiar"]') && !!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]')`));
     });
   });

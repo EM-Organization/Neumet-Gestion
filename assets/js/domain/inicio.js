@@ -22,18 +22,18 @@ export function estadoInicio({ vehiculosTotal = 0, estadoRows = [], alertas = []
 
 // Proporciones de la flota por estado de neumático. `pct` suma 100 (el resto del redondeo va al segmento mayor).
 export function resumenNeumaticos(rows) {
-  const r = { total: 0, ok: 0, bajo: 0, critico: 0, sin_datos: 0 };
+  const r = { total: 0, nuevo: 0, poco_desgaste: 0, mayor_desgaste: 0, desgaste_limite: 0, desconocido: 0 };
   for (const f of rows || []) {
     r.total++;
-    if (f.estado === 'ok' || f.estado === 'bajo' || f.estado === 'critico') r[f.estado]++;
-    else r.sin_datos++;
+    if (r[f.estado] !== undefined) r[f.estado]++;
+    else r.desconocido++;
   }
-  const claves = ['ok', 'bajo', 'critico', 'sin_datos'];
-  const pct = { ok: 0, bajo: 0, critico: 0, sin_datos: 0 };
+  const claves = ['nuevo', 'poco_desgaste', 'mayor_desgaste', 'desgaste_limite', 'desconocido'];
+  const pct = { nuevo: 0, poco_desgaste: 0, mayor_desgaste: 0, desgaste_limite: 0, desconocido: 0 };
   if (r.total) {
     claves.forEach(k => { pct[k] = Math.floor((r[k] / r.total) * 100); });
     const resto = 100 - claves.reduce((s, k) => s + pct[k], 0);
-    const mayor = claves.reduce((m, k) => (r[k] > r[m] ? k : m), 'ok');
+    const mayor = claves.reduce((m, k) => (r[k] > r[m] ? k : m), 'nuevo');
     pct[mayor] += resto;
   }
   return { ...r, pct };
@@ -52,20 +52,20 @@ const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 // Posiciones (números) de las filas, sin repetir: la vista las muestra como mini vehículo y con su nombre.
 const posiciones = filas => [...new Set(filas.map(f => Number(f.posicion)))].sort((a, b) => a - b);
 
-// Causa principal de un vehículo, en una frase. Orden de urgencia (rango): crítico, cruza el límite pronto, desgaste bajo,
-// desgaste mayor al normal, sin medir. Devuelve null si el vehículo no necesita atención.
+// Causa principal de un vehículo, en una frase. Orden de urgencia (rango): desgaste límite, cruza el límite pronto,
+// mayor desgaste, desgaste mayor al normal, sin medir. Devuelve null si el vehículo no necesita atención.
 function causaDe(filas, ref) {
-  const crit = filas.filter(f => f.estado === 'critico');
-  if (crit.length) return { nivel: 'critico', rango: 0, n: crit.length, posiciones: posiciones(crit), causa: plural(crit.length, 'neumático crítico', 'neumáticos críticos') };
+  const limite = filas.filter(f => f.estado === 'desgaste_limite');
+  if (limite.length) return { nivel: 'limite', rango: 0, n: limite.length, posiciones: posiciones(limite), causa: plural(limite.length, 'neumático en desgaste límite', 'neumáticos en desgaste límite') };
   const cruza = filas
-    .filter(f => (f.estado === 'ok' || f.estado === 'bajo') && num(f.semanas_hasta_critico) !== null && num(f.semanas_hasta_critico) <= SEMANAS_ATENCION)
-    .sort((a, b) => num(a.semanas_hasta_critico) - num(b.semanas_hasta_critico));
+    .filter(f => (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= SEMANAS_ATENCION)
+    .sort((a, b) => num(a.semanas_hasta_retiro) - num(b.semanas_hasta_retiro));
   if (cruza.length) {
-    const s = num(cruza[0].semanas_hasta_critico);
-    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(cruza[0].posicion)], causa: `Cruza el límite crítico en ${textoSemanas(s)}` };
+    const s = num(cruza[0].semanas_hasta_retiro);
+    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(cruza[0].posicion)], causa: `Cruza el desgaste límite en ${textoSemanas(s)}` };
   }
-  const bajo = filas.filter(f => f.estado === 'bajo');
-  if (bajo.length) return { nivel: 'bajo', rango: 2, n: bajo.length, posiciones: posiciones(bajo), causa: plural(bajo.length, 'neumático con desgaste bajo', 'neumáticos con desgaste bajo') };
+  const mayor = filas.filter(f => f.estado === 'mayor_desgaste');
+  if (mayor.length) return { nivel: 'mayor_desgaste', rango: 2, n: mayor.length, posiciones: posiciones(mayor), causa: plural(mayor.length, 'neumático con mayor desgaste', 'neumáticos con mayor desgaste') };
   const anormal = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal);
   if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, posiciones: posiciones(anormal), causa: 'Desgaste mayor al normal' };
   const sinMedir = filas.filter(f => f.sin_medir);
@@ -102,13 +102,13 @@ export function requierenAtencion(rows, { max = MAX_ATENCION } = {}) {
   return { items: lista.slice(0, max), total: lista.length };
 }
 
-// Neumáticos que cruzarán el nivel crítico dentro del horizonte (aún no críticos), el más cercano primero.
+// Neumáticos que cruzarán el desgaste límite dentro del horizonte (aún no en límite), el más cercano primero.
 export function proximosCambios(rows, { max = MAX_PROXIMOS, semanas = SEMANAS_PROXIMOS } = {}) {
   const lista = (rows || [])
-    .filter(f => (f.estado === 'ok' || f.estado === 'bajo') && num(f.semanas_hasta_critico) !== null && num(f.semanas_hasta_critico) <= semanas)
+    .filter(f => (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= semanas)
     .map(f => ({
       vehiculo_id: f.vehiculo_id, nombre: f.vehiculo_nombre || '', patente: f.patente || '', posicion: f.posicion,
-      semanas: num(f.semanas_hasta_critico), mm: num(f.promedio),
+      semanas: num(f.semanas_hasta_retiro), mm: num(f.promedio),
     }))
     .sort((a, b) => a.semanas - b.semanas || String(a.nombre).localeCompare(String(b.nombre), 'es') || a.posicion - b.posicion);
   return { items: lista.slice(0, max), total: lista.length };
@@ -128,7 +128,8 @@ export function ultimaMedicion(rows) {
   return max;
 }
 
-// Admin: clientes con urgencias (neumáticos críticos o alertas críticas), los de más urgencias primero.
+// Admin: clientes con urgencias (neumáticos en desgaste límite o alertas de severidad 3), los de más urgencias primero.
+// v_resumen_flota_cliente conserva nombres históricos: n_critico = desgaste_limite.
 export function clientesConUrgencias(resumen, max = MAX_ATENCION) {
   return (resumen || [])
     .map(r => ({ ...r, urgencias: (num(r.n_critico) || 0) + (num(r.n_alertas_sev3) || 0) }))
