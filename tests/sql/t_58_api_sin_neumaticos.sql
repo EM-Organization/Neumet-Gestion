@@ -90,8 +90,9 @@ select test.eq('obtener sin neumáticos: encontrado true',
   public.api_obtener_montaje(1, 'TT5800', null)->>'encontrado', 'true');
 select test.eq('obtener sin neumáticos: data vacío',
   public.api_obtener_montaje(1, 'TT5800', null)->'data', '[]'::jsonb);
-select test.eq('obtener sin neumáticos: sin campos nuevos',
+-- Único campo agregado al contrato: distribucion (20261122000000), vacío si el vehículo no la tiene.
+select test.eq('obtener sin neumáticos: solo el campo distribucion es nuevo',
   (select string_agg(k, ',' order by k) from jsonb_object_keys(public.api_obtener_montaje(1, 'TT5800', null)) k),
-  'data,encontrado,matricula,numero,vehiculo_id');
+  'data,distribucion,encontrado,matricula,numero,vehiculo_id');
 
 rollback;

@@ -1,5 +1,6 @@
 // Handler de la API de proveedor. Sin efectos de módulo ni acceso a red directo:
 // todo lo externo entra por `Deps` (ver types.ts) para poder probarlo con dobles.
+import { leerDistribucion } from './distribuciones.ts';
 import { aColumnasBd, aLecturaApi, CAMPOS_API, type LecturaApi } from './mapping.ts';
 import type { Deps, GuardarArgs, ItemRpc, LogEntrada } from './types.ts';
 
@@ -17,6 +18,7 @@ const MOTIVOS_POSICION = new Set([
   'sin_neumaticos',
   'sin_medicion',
   'incompleta',
+  'distribucion',
   'rango',
   'duplicado_distinto',
   'error',
@@ -293,7 +295,8 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       }));
     return {
       response: respuesta(
-        { code: 200, matricula: r.matricula ?? '', numero: r.numero ?? '', data },
+        // `distribucion` ('' si el vehículo no la tiene definida) es aditiva: quien no la conoce la ignora.
+        { code: 200, matricula: r.matricula ?? '', numero: r.numero ?? '', distribucion: r.distribucion ?? '', data },
         200,
         c.requestId,
       ),
@@ -324,6 +327,11 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     }
     const idem = req.headers.get('idempotency-key');
     if (idem !== null && !IDEM_KEY_RE.test(idem)) throw new HttpError(400, 'idempotency_key');
+    // Opcional: qué distribución de ejes tiene el vehículo (define qué neumático es cada posición). Un valor que no
+    // es del catálogo es un error del cliente (400), no algo que se ignore: la numeración de las posiciones dependería de él.
+    const dist = leerDistribucion(b.distribucion);
+    if (!dist.ok) throw new HttpError(400, 'distribucion');
+    const distribucion = dist.valor;
 
     const vistas = new Set<number>();
     const items: ItemRpc[] = [];
@@ -372,7 +380,13 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
 
     // Hash independiente del orden de los montajes.
     normalizados.sort((a, z) => (a as number[])[0] - (z as number[])[0]);
-    const hash = await sha256Hex(JSON.stringify([clienteId, patente, normalizados]));
+    // La distribución entra al hash solo si viene: sin ella el hash es el de siempre (una request en vuelo durante
+    // el despliegue no cambia de identidad) y con ella, reutilizar una clave con otra distribución es un conflicto (409).
+    const hash = await sha256Hex(
+      JSON.stringify(
+        distribucion === null ? [clienteId, patente, normalizados] : [clienteId, patente, normalizados, distribucion],
+      ),
+    );
     const args: GuardarArgs = {
       cliente_id: clienteId,
       cuenta,
@@ -381,8 +395,13 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       sesion_id: crypto.randomUUID(),
       clave: idem !== null ? 'k:' + idem : 'h:' + hash,
       hash,
+      distribucion,
     };
-    log.payload_resumen = { n_montajes: items.length, idempotency_key: idem !== null };
+    log.payload_resumen = {
+      n_montajes: items.length,
+      idempotency_key: idem !== null,
+      ...(distribucion !== null ? { distribucion } : {}),
+    };
 
     const r = await c.deps.db.guardar(args);
     if (r.estado === 'conflicto') {

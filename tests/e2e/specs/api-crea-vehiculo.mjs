@@ -77,4 +77,55 @@ export function registrar(env) {
       env.sql(`delete from public.clientes where id = ${B}`);
     }
   });
+  // Distribución de neumáticos (migración 20261122000000): la RPC la acepta como parámetro opcional y obtener_montaje la devuelve.
+  test('API proveedor: la distribución se guarda al crear, se devuelve en obtener_montaje y una distinta no guarda nada', async () => {
+    const A = Number(env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`));
+    const cuenta = randomUUID();
+    const servicio = signJwt({ sub: USERS.api.sub, role: 'service_role' }, JWT_SECRET);
+    const rpc = async (nombre, args) => {
+      const r = await fetch(`${env.rest.base}/rpc/${nombre}`, {
+        method: 'POST',
+        headers: { apikey: 'x', Authorization: `Bearer ${servicio}`, 'content-type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      return { status: r.status, cuerpo: await r.json().catch(() => null) };
+    };
+    const guardar = (pat, items, clave, distribucion) => rpc('api_guardar_montaje', {
+      p_cliente_id: A, p_cuenta: cuenta, p_patente: pat, p_montajes: items, p_sesion: randomUUID(), p_clave: clave, p_hash: 'h-' + clave,
+      ...(distribucion ? { p_distribucion: distribucion } : {})
+    });
+    const n = (sql) => Number(env.sql(sql));
+    const lectura = (posicion) => ({ posicion, mm1: 9, mm2: 8, mm3: 8 });
+    try {
+      // Alta con 6x2 (8 ruedas): tipo 10 derivado; la posición 9 no entra.
+      const r1 = await guardar('E2EDIST1', [lectura(1), lectura(8), lectura(9)], 'dist-1', '6x2');
+      assert.equal(r1.status, 200);
+      assert.deepEqual(r1.cuerpo.resultados.map(x => `${x.posicion}:${x.guardado}:${x.motivo ?? '-'}`), ['1:true:-', '8:true:-', '9:false:posicion']);
+      assert.equal(env.sql(`select distribucion || '|' || tipo_ruedas from public.vehiculos where patente_norm = 'E2EDIST1' and cliente_id = ${A}`), '6x2|10');
+
+      // obtener_montaje la informa (y '' si el vehículo no tiene distribución)
+      const o1 = await rpc('api_obtener_montaje', { p_cliente_id: A, p_matricula: 'E2EDIST1', p_numero: '' });
+      assert.equal(o1.cuerpo.distribucion, '6x2');
+      const sin = await guardar('E2EDIST2', [lectura(1)], 'dist-2');
+      assert.equal(sin.cuerpo.creado, true);
+      const o2 = await rpc('api_obtener_montaje', { p_cliente_id: A, p_matricula: 'E2EDIST2', p_numero: '' });
+      assert.equal(o2.cuerpo.distribucion, '');
+
+      // Otra distribución sobre un vehículo que ya tiene una: no se guarda nada
+      const med = n(`select count(*) from public.mediciones where vehiculo_id = (select id from public.vehiculos where patente_norm = 'E2EDIST1' and cliente_id = ${A})`);
+      const r2 = await guardar('E2EDIST1', [lectura(1)], 'dist-3', '6x4');
+      assert.deepEqual(r2.cuerpo.resultados.map(x => `${x.guardado}:${x.motivo}`), ['false:distribucion']);
+      assert.equal(n(`select count(*) from public.mediciones where vehiculo_id = (select id from public.vehiculos where patente_norm = 'E2EDIST1' and cliente_id = ${A})`), med);
+
+      // Un código fuera del catálogo se rechaza (la Edge Function ya lo corta con 400; esta es la defensa de la base)
+      const mala = await guardar('E2EDIST3', [lectura(1)], 'dist-4', '4x4');
+      assert.ok(mala.status >= 400, `código inválido: status ${mala.status}`);
+      assert.equal(n(`select count(*) from public.vehiculos where patente_norm = 'E2EDIST3'`), 0);
+    } finally {
+      env.sql(`delete from public.api_idempotencia where cuenta = '${cuenta}'`);
+      env.sql(`delete from public.mediciones where vehiculo_id in (select id from public.vehiculos where patente_norm like 'E2EDIST%')`);
+      env.sql(`delete from public.neumaticos where vehiculo_id in (select id from public.vehiculos where patente_norm like 'E2EDIST%')`);
+      env.sql(`delete from public.vehiculos where patente_norm like 'E2EDIST%'`);
+    }
+  });
 }

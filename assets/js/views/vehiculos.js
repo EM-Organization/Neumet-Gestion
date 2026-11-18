@@ -13,6 +13,7 @@ import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda
 import { plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.js';
+import { DISTRIBUCIONES, OTRA_DISTRIBUCION, textoOpcion, textoRuedas } from '../domain/distribucion.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
 let vehiculos=[], resumenes=new Map(), resumenesListos=false;
@@ -28,7 +29,7 @@ export async function loadVehiculos(){
   await contextoListo();
   const {rows,error}=await fetchAll((from,to)=>{
     let q=filtrarConsulta(db.from('vehiculos')
-      .select('id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,sucursal_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
+      .select('id,nombre,patente,numero,tipo_ruedas,distribucion,activo,cliente_id,sucursal_id,fecha_compra,ultimo_servicio,notas,clientes(nombre)')
       .order('nombre').order('id').range(from,to));
     if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
     return q;
@@ -107,7 +108,7 @@ function renderVehiculos(){
       <td><div class="name-cell"><div class="name-av ${av}">${v.nombre[0].toUpperCase()}</div>${etiquetaCoche(v.nombre)}</div></td>
       <td class="mono-cell">${v.patente?v.patente:'—'}</td>
       <td>${clientNom}</td>
-      <td><span class="badge blue">${v.tipo_ruedas} ruedas</span></td>
+      <td><span class="badge blue">${textoRuedas(v)}</span></td>
       <td>${estadoBadge}</td>
       <td><div class="actions">
         <button class="icon-btn" data-va="detalle" data-vid="${v.id}" title="Ver detalle del vehículo" aria-label="Ver detalle de ${etiquetaCoche(v.nombre)}">
@@ -130,12 +131,19 @@ function renderVehiculos(){
 
 const $=id=>document.getElementById(id);
 const errNuevo=msg=>{ $('veh-nuevo-error').textContent=msg||''; };
+// El tipo de ruedas solo se pide para «Otra»: con una distribución del catálogo la base lo deriva.
+const mostrarTipoRuedas=()=>{ $('veh-nuevo-tipo-campo').hidden=$('veh-nuevo-distribucion').value!==OTRA_DISTRIBUCION; };
 
 registerActions({
   vehiculoAgregarAbrir(){
     if(!esAdminEmpresa()) return;
     ['veh-nuevo-numero','veh-nuevo-patente'].forEach(id=>{ $(id).value=''; });
-    $('veh-nuevo-ruedas').value='10'; $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo
+    // Sin distribución preseleccionada: elegirla es obligatorio, y un valor por defecto llevaría a medir el neumático equivocado.
+    setHtml($('veh-nuevo-distribucion'), joinHtml([html`<option value="">Elegir distribución…</option>`,
+      DISTRIBUCIONES.map(d=>html`<option value="${d.id}">${textoOpcion(d)}</option>`),
+      html`<option value="${OTRA_DISTRIBUCION}">Otra distribución</option>`]));
+    $('veh-nuevo-distribucion').value=''; $('veh-nuevo-ruedas').value='10'; mostrarTipoRuedas();
+    $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo
     errNuevo('');
     // Sucursal por defecto: la que está elegida en la barra superior (si hay una).
     setHtml($('veh-nuevo-sucursal'), joinHtml([html`<option value="">Sin sucursal</option>`,
@@ -147,7 +155,7 @@ registerActions({
   async vehiculoAgregarGuardar(){
     if(!esAdminEmpresa()) return; // defensa en profundidad: el botón no se ofrece y la RPC rechaza igual
     const r=validarVehiculoNuevo({ numero:$('veh-nuevo-numero').value, patente:$('veh-nuevo-patente').value,
-      tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
+      distribucion:$('veh-nuevo-distribucion').value, tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
     if(!r.ok){ errNuevo(r.error); return; }
     const btn=$('veh-nuevo-guardar'), txt=btn.textContent;
     if(btn.disabled) return; // Enter repetido mientras se guarda: sin doble alta
@@ -188,6 +196,7 @@ export function init(){
     if(v){ e.preventDefault(); abrirDetalle(v.id); }
   });
   document.getElementById('filter-cliente-veh').addEventListener('change',renderVehiculos);
+  $('veh-nuevo-distribucion').addEventListener('change',()=>{ mostrarTipoRuedas(); errNuevo(''); });
   // Enter en cualquier campo de texto del alta guarda (sin buscar el botón).
   $('veh-nuevo-body').addEventListener('keydown',e=>{
     if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type==='text'){ e.preventDefault(); ACTIONS.vehiculoAgregarGuardar(); }

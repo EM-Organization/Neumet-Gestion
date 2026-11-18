@@ -13,6 +13,7 @@ interface Veh {
   cliente_id: number;
   patente_norm: string | null;
   numero: string | null;
+  distribucion?: string | null;
 }
 interface Neu {
   vehiculo_id: number;
@@ -50,6 +51,7 @@ export function crearEntorno() {
     { id: 11, cliente_id: 1, patente_norm: null, numero: '777' },
     { id: 20, cliente_id: 2, patente_norm: 'ZZZZ99', numero: '555' },
     { id: 12, cliente_id: 1, patente_norm: 'SINN01', numero: '888' }, // existe, sin neumáticos
+    { id: 13, cliente_id: 1, patente_norm: 'DIST01', numero: '999', distribucion: '6x2' }, // con distribución definida
   ];
   const neumaticos: Neu[] = [
     { vehiculo_id: 10, posicion: 1, idneumatico: 'N1', codigo: 'C1', auxilio: false },
@@ -59,6 +61,7 @@ export function crearEntorno() {
     { vehiculo_id: 11, posicion: 1, idneumatico: 'M1', codigo: 'D1', auxilio: false },
     { vehiculo_id: 20, posicion: 1, idneumatico: 'X1', codigo: 'E1', auxilio: false },
     { vehiculo_id: 20, posicion: 2, idneumatico: 'X2', codigo: 'E2', auxilio: false },
+    { vehiculo_id: 13, posicion: 1, idneumatico: 'D1', codigo: 'F1', auxilio: false },
   ];
   const mediciones: Med[] = [
     { vehiculo_id: 10, cliente_id: 1, posicion: 1, mm1: 9, mm2: 8, mm3: 7, sesion_id: 's0', device_id: 'x' },
@@ -66,6 +69,8 @@ export function crearEntorno() {
   const logs: LogEntrada[] = [];
   const idem = new Map<string, { hash: string; resp: GuardarRpc }>();
   const llamadas = { guardar: 0, obtener: 0, login: 0 };
+  /** Argumentos que recibió cada llamada a `guardar` (para comprobar lo que el handler le pasa a la RPC). */
+  const argsGuardar: GuardarArgs[] = [];
   const estado = { limite: 1_000_000, fallaLog: false, fallaGuardar: false, contadores: new Map<string, number>() };
 
   const deps: Deps = {
@@ -108,11 +113,13 @@ export function crearEntorno() {
           vehiculo_id: v.id,
           matricula: v.patente_norm ?? '',
           numero: v.numero ?? '',
+          distribucion: v.distribucion ?? '',
           data,
         });
       },
       guardar: (a: GuardarArgs): Promise<GuardarRpc> => {
         llamadas.guardar++;
+        argsGuardar.push(a);
         if (estado.fallaGuardar) return Promise.reject(new Error('boom'));
         const prev = idem.get(a.cuenta + '|' + a.clave);
         if (prev) {
@@ -130,9 +137,27 @@ export function crearEntorno() {
           m.mm1 !== null && m.mm2 !== null && m.mm3 !== null;
         let alta = false;
         if (!v && a.montajes.some(valida)) {
-          v = { id: 1000 + vehiculos.length, cliente_id: a.cliente_id, patente_norm: a.patente, numero: null };
+          v = {
+            id: 1000 + vehiculos.length,
+            cliente_id: a.cliente_id,
+            patente_norm: a.patente,
+            numero: null,
+            distribucion: a.distribucion,
+          };
           vehiculos.push(v);
           alta = true;
+        } else if (v && a.distribucion !== null) {
+          // Vehículo existente (20261122000000): si ya tiene otra distribución, nada se guarda (motivo 'distribucion');
+          // si no tiene, la adopta. (La compatibilidad con tipo_ruedas se prueba en SQL.)
+          if (v.distribucion && v.distribucion !== a.distribucion) {
+            return Promise.resolve({
+              estado: 'ok',
+              replay: false,
+              vehiculo_id: v.id,
+              resultados: a.montajes.map((m) => ({ posicion: m.posicion, guardado: false, motivo: 'distribucion' })),
+            });
+          }
+          v.distribucion ??= a.distribucion;
         }
         if (!v) {
           return Promise.resolve({
@@ -223,7 +248,7 @@ export function crearEntorno() {
     },
   };
   const handler = createHandler(deps);
-  return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, estado };
+  return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, argsGuardar, estado };
 }
 
 const BASE = 'https://x.supabase.co/functions/v1/api-proveedor';

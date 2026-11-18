@@ -2,6 +2,7 @@
 // Funciones PURAS (sin DOM ni supabase) para node:test. La autorización real vive en las RPC de la base.
 
 import { etiquetaCoche } from './coche.js';
+import { OTRA_DISTRIBUCION, buscarDistribucion } from './distribucion.js';
 
 const vacio = v => v === null || v === undefined || String(v).trim() === '';
 
@@ -13,18 +14,25 @@ export function validarNombreSucursal(nombre) {
 }
 
 // Valida el formulario de vehículo nuevo y devuelve los argumentos de la RPC vehiculo_crear.
-export function validarVehiculoNuevo({ numero, patente, tipoRuedas, sucursalId } = {}) {
+// La distribución de neumáticos es obligatoria: sin ella el operario podría medir un neumático por otro (la numeración va por
+// ejes). «Otra» es una elección explícita para lo que no está en el catálogo; entonces se pide el tipo de ruedas (10 o 16)
+// y el vehículo queda sin distribución. Con una distribución, la base deriva el tipo de ruedas y no se envía.
+export function validarVehiculoNuevo({ numero, patente, distribucion, tipoRuedas, sucursalId } = {}) {
   const num = String(numero ?? '').trim();
   const pat = String(patente ?? '').trim();
   if (!num) return { ok: false, error: 'Falta el número de coche' };
   if (num.length > 50) return { ok: false, error: 'El número de coche no puede superar 50 caracteres' };
   if (pat.length > 20) return { ok: false, error: 'La matrícula no puede superar 20 caracteres' };
-  const tipo = Number(tipoRuedas);
-  if (tipo !== 10 && tipo !== 16) return { ok: false, error: 'El tipo de ruedas debe ser 10 o 16' };
-  return {
-    ok: true,
-    args: { p_numero: num, p_patente: pat || null, p_tipo_ruedas: tipo, p_sucursal_id: vacio(sucursalId) ? null : Number(sucursalId) },
-  };
+  const dist = String(distribucion ?? '').trim();
+  if (!dist) return { ok: false, error: 'Falta elegir la distribución de neumáticos' };
+  const args = { p_numero: num, p_patente: pat || null, p_sucursal_id: vacio(sucursalId) ? null : Number(sucursalId) };
+  if (dist === OTRA_DISTRIBUCION) {
+    const tipo = Number(tipoRuedas);
+    if (tipo !== 10 && tipo !== 16) return { ok: false, error: 'El tipo de ruedas debe ser 10 o 16' };
+    return { ok: true, args: { ...args, p_tipo_ruedas: tipo } };
+  }
+  if (!buscarDistribucion(dist)) return { ok: false, error: 'La distribución elegida no es válida' };
+  return { ok: true, args: { ...args, p_distribucion: dist } };
 }
 
 // Argumentos de la RPC vehiculo_mover_sucursal ('' = sin sucursal).

@@ -5,6 +5,7 @@ import {
   validarNombreSucursal, validarVehiculoNuevo, argsMover, contarPorSucursal, filtrarVehiculos,
   textoSucursal, avisoMovido, confirmacionEliminar, mensajeErrorGestion,
 } from '../../assets/js/domain/sucursales.js';
+import { DISTRIBUCIONES, OTRA_DISTRIBUCION } from '../../assets/js/domain/distribucion.js';
 
 describe('validarNombreSucursal', () => {
   test('recorta espacios', () => assert.deepEqual(validarNombreSucursal('  Salto  '), { ok: true, valor: 'Salto' }));
@@ -18,25 +19,49 @@ describe('validarNombreSucursal', () => {
 });
 
 describe('validarVehiculoNuevo', () => {
-  test('arma los argumentos de la RPC', () => {
-    assert.deepEqual(validarVehiculoNuevo({ numero: ' 12 ', patente: ' ab 123 ', tipoRuedas: '16', sucursalId: '5' }),
-      { ok: true, args: { p_numero: '12', p_patente: 'ab 123', p_tipo_ruedas: 16, p_sucursal_id: 5 } });
+  test('con distribución del catálogo: la RPC la recibe y el tipo de ruedas se deriva en la base (no se envía)', () => {
+    assert.deepEqual(validarVehiculoNuevo({ numero: ' 12 ', patente: ' ab 123 ', distribucion: '6x4', sucursalId: '5' }),
+      { ok: true, args: { p_numero: '12', p_patente: 'ab 123', p_sucursal_id: 5, p_distribucion: '6x4' } });
+  });
+  test('cada distribución del catálogo es válida', () => {
+    for (const d of DISTRIBUCIONES) assert.equal(validarVehiculoNuevo({ numero: '1', distribucion: d.id }).ok, true, d.id);
+  });
+  test('la distribución es obligatoria: vacía, ausente o en blanco', () => {
+    for (const d of ['', '  ', null, undefined]) {
+      const r = validarVehiculoNuevo({ numero: '1', tipoRuedas: 10, distribucion: d });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /distribución de neumáticos/);
+    }
+  });
+  test('un código fuera del catálogo se rechaza', () => {
+    for (const d of ['4x4', '6X2', 'camion', '62']) {
+      assert.equal(validarVehiculoNuevo({ numero: '1', distribucion: d, tipoRuedas: 10 }).ok, false, d);
+    }
+  });
+  test('«Otra»: sin distribución, con el tipo de ruedas que se pide (10 o 16)', () => {
+    assert.deepEqual(validarVehiculoNuevo({ numero: '7', distribucion: OTRA_DISTRIBUCION, tipoRuedas: '16', sucursalId: '' }),
+      { ok: true, args: { p_numero: '7', p_patente: null, p_sucursal_id: null, p_tipo_ruedas: 16 } });
+    for (const t of [12, 'x', null, undefined, 0]) {
+      assert.equal(validarVehiculoNuevo({ numero: '1', distribucion: OTRA_DISTRIBUCION, tipoRuedas: t }).ok, false, String(t));
+    }
+  });
+  test('con una distribución del catálogo el tipo de ruedas del formulario se ignora', () => {
+    const r = validarVehiculoNuevo({ numero: '1', distribucion: '8x4', tipoRuedas: 'x' });
+    assert.equal(r.ok, true);
+    assert.equal('p_tipo_ruedas' in r.args, false);
   });
   test('matrícula y sucursal opcionales => null', () => {
-    const r = validarVehiculoNuevo({ numero: '7', patente: '  ', tipoRuedas: 10, sucursalId: '' });
+    const r = validarVehiculoNuevo({ numero: '7', patente: '  ', distribucion: '4x2', sucursalId: '' });
     assert.equal(r.args.p_patente, null);
     assert.equal(r.args.p_sucursal_id, null);
   });
   test('número obligatorio', () => {
-    assert.match(validarVehiculoNuevo({ numero: ' ', tipoRuedas: 10 }).error, /número de coche/);
+    assert.match(validarVehiculoNuevo({ numero: ' ', distribucion: '4x2' }).error, /número de coche/);
     assert.equal(validarVehiculoNuevo().ok, false);
   });
-  test('tipo de ruedas solo 10 o 16', () => {
-    for (const t of [12, 'x', null, undefined, 0]) assert.equal(validarVehiculoNuevo({ numero: '1', tipoRuedas: t }).ok, false);
-  });
   test('largos máximos', () => {
-    assert.equal(validarVehiculoNuevo({ numero: 'n'.repeat(51), tipoRuedas: 10 }).ok, false);
-    assert.equal(validarVehiculoNuevo({ numero: '1', patente: 'p'.repeat(21), tipoRuedas: 10 }).ok, false);
+    assert.equal(validarVehiculoNuevo({ numero: 'n'.repeat(51), distribucion: '4x2' }).ok, false);
+    assert.equal(validarVehiculoNuevo({ numero: '1', patente: 'p'.repeat(21), distribucion: '4x2' }).ok, false);
   });
 });
 

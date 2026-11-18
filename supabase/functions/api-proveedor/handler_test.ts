@@ -137,6 +137,7 @@ Deno.test('obtener por matrícula (normalizada): última medición, auxilio, sin
     code: 200,
     matricula: 'ABCD12',
     numero: '123',
+    distribucion: '', // campo aditivo (20261122000000): vacío si el vehículo no tiene distribución definida
     data: [
       { idneumatico: 'N1', codigo: 'C1', posicion: 1, auxilio: 'no', mm1: 5, mm2: 4, mm3: 4, mm4: 3 },
       { idneumatico: 'N2', codigo: 'C2', posicion: 2, auxilio: 'no', mm1: null, mm2: null, mm3: null, mm4: null },
@@ -543,7 +544,7 @@ Deno.test('obtener en coche sin neumáticos: contrato intacto (code 200, data []
   const e = crearEntorno();
   const r = await e.handler(post(R_OBT, { matricula: 'SINN01', numero: '' }, { token: T }));
   assertEquals(r.status, 200);
-  assertEquals(await j(r), { code: 200, matricula: 'SINN01', numero: '888', data: [] });
+  assertEquals(await j(r), { code: 200, matricula: 'SINN01', numero: '888', distribucion: '', data: [] });
   assertEquals(e.logs.at(-1)!.motivo, 'sin_neumaticos');
   // Coche con neumáticos: sin motivo
   await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T }));
@@ -723,4 +724,113 @@ Deno.test('alta: ninguna posición válida no crea nada y responde como un vehí
   const l = e.logs.at(-1)!;
   assertEquals([l.motivo, l.vehiculo_id], ['no_encontrado', null]);
   assertEquals(l.payload_resumen.vehiculo_creado, undefined);
+});
+
+// ------------------------------------------------------- distribución del vehículo (20261122000000)
+const lectura = (posicion: number) => ({ posicion, mm1: 9, mm2: 8, mm3: 8, mm4: 7 });
+const guardados = async (r: Response) => (await j(r)).data.guardados as { posicion: number; guardado: boolean }[];
+
+Deno.test('distribución: es opcional; sin ella (ausente, null o vacía) la RPC recibe null y el contrato no cambia', async () => {
+  for (const extra of [{}, { distribucion: null }, { distribucion: '' }, { distribucion: '   ' }]) {
+    const e = crearEntorno();
+    const r = await e.handler(post(R_GUA, { ...montaje([lectura(1)]), ...extra }, { token: T }));
+    assertEquals(r.status, 200);
+    assertEquals(await j(r), { code: 200, data: { guardados: [{ posicion: 1, guardado: true }] } });
+    assertEquals(e.argsGuardar.at(-1)!.distribucion, null);
+  }
+});
+
+Deno.test('distribución: un código del catálogo se pasa a la RPC normalizado (espacios y mayúsculas)', async () => {
+  for (const [entrada, esperado] of [['6x2', '6x2'], [' 6X2 ', '6x2'], ['8x4', '8x4'], ['4x2', '4x2']]) {
+    const e = crearEntorno();
+    const r = await e.handler(post(R_GUA, { ...montaje([lectura(1)]), distribucion: entrada }, { token: T }));
+    assertEquals(r.status, 200, entrada);
+    assertEquals(e.argsGuardar.at(-1)!.distribucion, esperado);
+    // La respuesta a la app conserva su forma: ni rastro de la distribución.
+    assertEquals(Object.keys(await j(r)), ['code', 'data']);
+  }
+});
+
+Deno.test('distribución: fuera del catálogo o de otro tipo -> 400 sin llamar a la RPC', async () => {
+  for (const mala of ['4x4', '6x2x', 'camion', '62', 62, true, ['6x2'], { id: '6x2' }]) {
+    const e = crearEntorno();
+    const r = await e.handler(post(R_GUA, { ...montaje([lectura(1)]), distribucion: mala }, { token: T }));
+    assertEquals(r.status, 400, JSON.stringify(mala));
+    assertEquals(e.llamadas.guardar, 0);
+    assertEquals(e.mediciones.length, 1); // solo la medición inicial de la fixture
+    assertEquals(e.logs.at(-1)!.motivo, 'distribucion');
+  }
+});
+
+Deno.test('distribución: vehículo nuevo con distribución -> se crea con ella y el log la registra', async () => {
+  const e = crearEntorno();
+  const r = await e.handler(
+    post(R_GUA, { ...montaje([lectura(1), lectura(2)], 'NUEVA98'), distribucion: '6x4' }, { token: T }),
+  );
+  assertEquals((await guardados(r)).map((g) => g.guardado), [true, true]);
+  assertEquals(e.vehiculos.find((v) => v.patente_norm === 'NUEVA98')!.distribucion, '6x4');
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.payload_resumen.distribucion], ['vehiculo_creado', '6x4']);
+});
+
+Deno.test('distribución: otra distinta de la del vehículo -> guardado:false en todas, motivo distribucion en el log', async () => {
+  const e = crearEntorno();
+  const nMed = e.mediciones.length;
+  const r = await e.handler(post(R_GUA, { ...montaje([lectura(1)], 'DIST01'), distribucion: '6x4' }, { token: T }));
+  assertEquals(r.status, 200);
+  assertEquals(await j(r), { code: 200, data: { guardados: [{ posicion: 1, guardado: false }] } });
+  assertEquals(e.mediciones.length, nMed);
+  assertEquals(e.vehiculos.find((v) => v.patente_norm === 'DIST01')!.distribucion, '6x2');
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.n_fallidos, l.payload_resumen.motivos], ['fallo_parcial', 1, { distribucion: 1 }]);
+});
+
+Deno.test('distribución: la misma que la del vehículo (o ninguna) guarda con normalidad', async () => {
+  const e = crearEntorno();
+  for (const extra of [{ distribucion: '6x2' }, {}]) {
+    const r = await e.handler(post(R_GUA, { ...montaje([lectura(1)], 'DIST01'), ...extra }, { token: T }));
+    assertEquals((await guardados(r)).map((g) => g.guardado), [true]);
+  }
+});
+
+Deno.test('distribución: el vehículo sin distribución la adopta', async () => {
+  const e = crearEntorno();
+  await e.handler(post(R_GUA, { ...montaje([lectura(1)], 'ABCD12'), distribucion: '8x2' }, { token: T }));
+  assertEquals(e.vehiculos.find((v) => v.patente_norm === 'ABCD12')!.distribucion, '8x2');
+});
+
+Deno.test('distribución: sin ella el hash es el de siempre; con ella, reutilizar la clave con otra distribución -> 409', async () => {
+  const e = crearEntorno();
+  const h = { 'idempotency-key': 'dist-1' };
+  const base = montaje([lectura(1)], 'DIST01');
+  await e.handler(post(R_GUA, base, { token: T }));
+  await e.handler(post(R_GUA, { ...base, distribucion: '6x2' }, { token: T }));
+  const [sin, con] = e.argsGuardar.slice(-2);
+  assert(sin.hash !== con.hash, 'la distribución entra al hash');
+  const a = await e.handler(post(R_GUA, { ...base, distribucion: '6x2' }, { token: T, headers: h }));
+  assertEquals(a.status, 200);
+  const b = await e.handler(post(R_GUA, { ...base, distribucion: '6x4' }, { token: T, headers: h }));
+  assertEquals(b.status, 409);
+  const c = await e.handler(post(R_GUA, { ...base, distribucion: '6x2' }, { token: T, headers: h }));
+  assertEquals(c.status, 200); // el mismo contenido sigue siendo un replay
+});
+
+Deno.test('obtener: informa la distribución del vehículo, o cadena vacía si no la tiene', async () => {
+  const e = crearEntorno();
+  const con = await j(await e.handler(post(R_OBT, { matricula: 'DIST01', numero: '' }, { token: T })));
+  assertEquals([con.code, con.distribucion], [200, '6x2']);
+  assertEquals(con.data.map((n: { idneumatico: string }) => n.idneumatico), ['D1']);
+  const sin = await j(await e.handler(post(R_OBT, { matricula: 'ABCD12', numero: '' }, { token: T })));
+  assertEquals(sin.distribucion, '');
+  // Por número de coche también.
+  const porNumero = await j(await e.handler(post(R_OBT, { matricula: '', numero: '999' }, { token: T })));
+  assertEquals(porNumero.distribucion, '6x2');
+});
+
+Deno.test('obtener: vehículo inexistente o ajeno conserva su respuesta de siempre (sin distribución)', async () => {
+  const e = crearEntorno();
+  for (const matricula of ['NOEXISTE1', 'ZZZZ99']) {
+    const r = await j(await e.handler(post(R_OBT, { matricula, numero: '' }, { token: T })));
+    assertEquals(r, { code: 404, matricula: '', numero: '', data: [] });
+  }
 });

@@ -1010,3 +1010,39 @@ Una patente mal escrita crea un vehículo huérfano (acotado por el límite de 1
 - `tests/sql/t_97_api_crea_vehiculo.sql` (alta, tipo 10 y 16, auxilio, mixtos, ninguna válida, cliente B no toca a A, idempotencia, privilegios) y `tests/sql/concurrencia_api_alta.sh` (dos sesiones reales, un solo vehículo). `t_58` se adaptó: una medición válida sobre una patente inexistente ya crea.
 - `tests/e2e/specs/api-crea-vehiculo.mjs`: RPC por PostgREST real con el JWT de cada rol.
 - `supabase/functions/api-proveedor/handler_test.ts`: forma de la respuesta, log y replay.
+
+---
+
+# Apéndice S · Distribución de neumáticos del vehículo (migración `20261122000000_distribucion_vehiculo.sql`)
+
+## S.1 Qué cambia
+
+- `vehiculos.distribucion text` (nulo): código del catálogo (`4x2`, `6x2`, `6x4`, `8x2`, `8x4`) con `check` `vehiculos_distribucion_ck`. Nulo = sin definir (los vehículos existentes y los que crea la API sin informarla). Define qué neumático físico es cada posición; ver docs/07, apéndice B («Distribución del vehículo»).
+- `public.distribucion_ruedas(text) → smallint` (inmutable, `search_path` vacío): ruedas de una distribución (6, 8, 10, 10, 12) o nulo si el código no es del catálogo. Es la única fuente del catálogo en la base y la usa el `check`; ampliar el catálogo es redefinirla.
+- `vehiculo_crear` recibe `p_distribucion` (al final, `default null`: las llamadas existentes no cambian). Con distribución, `tipo_ruedas` se **deriva** (hasta 10 ruedas = 10; más = 16) y `p_tipo_ruedas` se ignora; un código fuera del catálogo da `23514`. Sin ella, valida el tipo como antes.
+- `api_obtener_montaje` devuelve `distribucion` (`''` si no está definida).
+- `api_guardar_montaje` recibe `p_distribucion` (opcional): alta con la distribución, adopción en un vehículo sin ella (si su `tipo_ruedas` coincide) y, si el vehículo ya tiene otra o la adopción es incompatible, ninguna posición se guarda (motivo `distribucion`). Un código ajeno al catálogo en una llamada directa da `22023` (el handler ya lo rechaza con 400).
+- Las firmas anteriores de `vehiculo_crear` y `api_guardar_montaje` se eliminan (`drop function if exists`): con ambas, una llamada sin el parámetro nuevo sería ambigua. Los permisos se vuelven a declarar (`vehiculo_crear`: `authenticated`; `api_guardar_montaje` y `api_obtener_montaje`: solo `service_role`).
+
+## S.2 Decisiones
+
+1. **Catálogo cerrado con `check`**, no tabla: son cinco filas que cambian con una migración, no con datos; una tabla pediría RLS, políticas por rol y pruebas por rol sin ganar nada. La función es la fuente y el panel y la API guardan copias comprobadas por `tests/unit/distribucion.test.mjs`.
+2. **Un conflicto no se guarda**, no se ignora: las posiciones significan neumáticos distintos según la distribución y guardarlas sería asignar lecturas al neumático equivocado.
+3. **La distribución entra al hash de idempotencia solo si viene**: sin ella el hash es el de siempre.
+4. **`obtener_montaje` devuelve `''`, no `null`**, igual que el resto de los textos ausentes del contrato.
+5. **`tipo_ruedas` se conserva** (no nulo, 10 o 16): el panel lo usa para el diagrama y los nombres de posición. Con distribución se deriva de ella para que no se contradigan.
+
+## S.3 Compatibilidad y orden de despliegue
+
+Migración aplicada y verificada → recién entonces la función `api-proveedor` (envía `p_distribucion` solo cuando la app la informa, así que una función vieja o nueva funciona contra la base nueva) y el front. Requiere `20261121000000` (el cuerpo de `api_guardar_montaje` parte de esa versión). Sin riesgo sobre datos: columna nueva nula, sin backfill; `lock_timeout` de 5 s.
+
+## S.4 Límites
+
+El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen todavía de `tipo_ruedas`. El panel no edita la distribución de un vehículo ya creado. La app móvil no la usa todavía.
+
+## S.5 Pruebas
+
+- `tests/sql/t_98_distribucion_vehiculo.sql`: catálogo, `check`, `vehiculo_crear` (derivación del tipo, código inválido, rechazos), `api_obtener_montaje`, `api_guardar_montaje` (alta, rango por distribución, adopción, conflicto, idempotencia, privilegios). `t_58` pasa a esperar `distribucion` entre las claves de `obtener_montaje`.
+- `supabase/functions/api-proveedor/handler_test.ts`: opcional, normalización, 400, hash, 409, forma de la respuesta y `obtener`.
+- `tests/unit/distribucion.test.mjs` y `tests/unit/sucursales.test.mjs`: catálogo, validación del alta y coincidencia de las tres copias.
+- `tests/smoke/seccionales.flow.js` (modo `cliente`): el diálogo «Agregar vehículo» exige distribución y envía los argumentos correctos.
