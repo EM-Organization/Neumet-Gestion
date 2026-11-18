@@ -184,7 +184,7 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   var radio31 = $('#reca-cubierta-lista .reca-cubierta-fila input[value="31"]');
   var rect31 = radio31.getBoundingClientRect();
   var filaRect31 = radio31.closest('.reca-cubierta-fila').getBoundingClientRect();
-  if(rect31.width >= filaRect31.width - 4) fail('stock: el radio del buscador ocupa todo el ancho de la fila');
+  if(rect31.width > filaRect31.width / 4) fail('stock: el radio del buscador ocupa todo el ancho de la fila');
   // El buscador filtra por quema, marca o modelo.
   set('#reca-cubierta-buscar', 'Pirelli'); await sleep(100);
   if($('#reca-cubierta-lista').textContent.indexOf('S-002') === -1 || $('#reca-cubierta-lista').textContent.indexOf('S-001') !== -1) fail('stock: el buscador no filtró por marca: ' + $('#reca-cubierta-lista').textContent);
