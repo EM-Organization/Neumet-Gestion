@@ -197,4 +197,6 @@ done
 source "$SQL/concurrencia_admin_empresa.sh"
 # shellcheck source=tests/sql/concurrencia_api_alta.sh
 source "$SQL/concurrencia_api_alta.sh"
+# shellcheck source=tests/sql/concurrencia_api_distribucion.sh
+source "$SQL/concurrencia_api_distribucion.sh"
 echo "TODOS LOS TESTS SQL PASARON"

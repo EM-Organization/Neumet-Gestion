@@ -252,7 +252,8 @@ begin
 
   select v.id, v.tipo_ruedas, v.distribucion into v_veh_id, v_veh_tipo, v_veh_dist
     from public.vehiculos v
-   where v.cliente_id = p_cliente_id and v.patente_norm = public.normalizar_patente(p_patente);
+   where v.cliente_id = p_cliente_id and v.patente_norm = public.normalizar_patente(p_patente)
+   for update;   -- serializa la adopción: dos requests con claves distintas no se pisan la distribución
 
   if v_veh_id is not null and v_dist is not null then
     -- Vehículo existente: la distribución informada debe ser la suya; si no tiene, solo se adopta una compatible con su tipo.
