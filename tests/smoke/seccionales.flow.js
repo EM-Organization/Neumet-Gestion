@@ -232,21 +232,34 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (d.activeElement !== nv('numero')) fail('vehiculos: el foco no quedó en el número de coche');
   var ops = Array.prototype.map.call(nv('sucursal').options, function(o){ return o.textContent; });
   if (ops[0] !== 'Sin sucursal' || ops.length !== 3) fail('vehiculos: opciones de sucursal del alta: ' + ops.join('|'));
+  // Distribución de neumáticos: sin preselección, el catálogo completo y «Otra distribución» al final
+  var dops = Array.prototype.map.call(nv('distribucion').options, function(o){ return o.value + '=' + o.textContent; });
+  if (dops.join('|') !== '=Elegir distribución…|4x2=4x2 · 6 ruedas (simple, doble)|6x2=6x2 · 8 ruedas (simple, doble, simple)|6x4=6x4 · 10 ruedas (simple, doble, doble)|8x2=8x2 · 10 ruedas (simple, simple, doble, simple)|8x4=8x4 · 12 ruedas (simple, simple, doble, doble)|otra=Otra distribución') fail('vehiculos: opciones de distribución del alta: ' + dops.join('|'));
+  if (nv('distribucion').value !== '' || !nv('tipo-campo').hidden) fail('vehiculos: el alta debe abrir sin distribución elegida y sin pedir el tipo de ruedas');
   nv('numero').value = ' '; $('#veh-nuevo-guardar').click(); await sleep(100);
   if (nv('error').textContent.indexOf('número de coche') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: falta validación del número de coche');
-  nv('numero').value = '321'; nv('patente').value = 'QQ 0001'; nv('ruedas').value = '16'; nv('sucursal').value = '2';
+  // Sin distribución no se crea: elegirla es obligatorio
+  nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(100);
+  if (nv('error').textContent.indexOf('distribución de neumáticos') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: el alta no exigió la distribución: ' + nv('error').textContent);
+  // «Otra distribución» pide el tipo de ruedas; una del catálogo lo oculta (la base lo deriva)
+  nv('distribucion').value = 'otra'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true }));
+  if (nv('tipo-campo').hidden) fail('vehiculos: «Otra distribución» debe pedir el tipo de ruedas');
+  nv('distribucion').value = '8x4'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true }));
+  if (!nv('tipo-campo').hidden) fail('vehiculos: con una distribución del catálogo no se pide el tipo de ruedas');
+  if (nv('error').textContent !== '') fail('vehiculos: elegir distribución debe limpiar el error previo');
+  nv('numero').value = '321'; nv('patente').value = 'QQ 0001'; nv('sucursal').value = '2';
   // Enter en el campo de matrícula guarda (un clic menos)
   // Dos Enter seguidos: una sola llamada a vehiculo_crear (el segundo ve el botón deshabilitado)
   nv('patente').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   nv('patente').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(500);
   if (fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).length !== 1) fail('vehiculos: dos Enter seguidos llamaron más de una vez a vehiculo_crear');
   var cr = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).pop();
-  if (!cr || cr.args.p_numero !== '321' || cr.args.p_patente !== 'QQ 0001' || cr.args.p_tipo_ruedas !== 16 || cr.args.p_sucursal_id !== 2) fail('vehiculos: vehiculo_crear con argumentos incorrectos: ' + JSON.stringify(cr));
+  if (!cr || cr.args.p_numero !== '321' || cr.args.p_patente !== 'QQ 0001' || cr.args.p_distribucion !== '8x4' || 'p_tipo_ruedas' in cr.args || cr.args.p_sucursal_id !== 2) fail('vehiculos: vehiculo_crear con argumentos incorrectos: ' + JSON.stringify(cr));
   if ($('#modal-veh-nuevo').classList.contains('show') || toast().indexOf('Vehículo agregado') === -1) fail('vehiculos: tras agregar debe cerrarse el diálogo y avisar: ' + toast());
   // Duplicado: el diálogo queda abierto con el mensaje
   $('#btn-veh-agregar').click(); await sleep(200);
   if (nv('numero').value !== '') fail('vehiculos: el diálogo reabierto debe empezar vacío');
-  nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(400);
+  nv('distribucion').value = '6x2'; nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(400);
   if (toast().indexOf('número de coche') === -1 || nv('error').textContent.indexOf('número de coche') === -1 || !$('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: sin mensaje de número duplicado: ' + toast());
   $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   if ($('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: Cancelar no cerró el diálogo');
@@ -438,8 +451,12 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
   $('#btn-veh-agregar').click(); await sleep(200);
   if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || !nv('cargar').checked) fail('vehiculos: «Cargar neumáticos ahora» debe venir marcada por defecto');
+  // «Otra distribución» (lo que no está en el catálogo): sin distribución y con el tipo de ruedas elegido
+  nv('distribucion').value = 'otra'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true })); nv('ruedas').value = '10';
   nv('numero').value = '322'; nv('cargar').checked = true;
   $('#veh-nuevo-guardar').click(); await sleep(1200);
+  var cr2 = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).pop();
+  if (!cr2 || cr2.args.p_numero !== '322' || cr2.args.p_tipo_ruedas !== 10 || 'p_distribucion' in cr2.args) fail('vehiculos: alta con «Otra distribución» con argumentos incorrectos: ' + JSON.stringify(cr2));
   // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).
   if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#breadcrumb-parent').hidden) fail('vehiculos: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
   $('#breadcrumb-parent').click(); await sleep(700);

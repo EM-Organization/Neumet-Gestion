@@ -21,9 +21,17 @@ info:
     | `incompleta` | Algunos mm null y otros con valor. Enviar los cuatro. |
     | `rango` | mm fuera de 0..40. Repetir la medición. |
     | `duplicado_distinto` | mm3 distinto de mm2. Corregir la app. |
+    | `distribucion` | La distribución informada no es la del coche (o no cuadra con su tipo de ruedas). No se guarda ninguna posición de la request. Usar la que devuelve `obtener_montaje`. Estado global ok. |
     | `error` | Fallo inesperado en esa posición. Reintentar; si persiste, avisar con `X-Request-Id`. |
 
-    `obtener_montaje` de un coche existente sin neumáticos responde `code 200` y `data: []` (sin campos nuevos).
+    `obtener_montaje` de un coche existente sin neumáticos responde `code 200` y `data: []`.
+
+    ## Distribución de neumáticos (opcional)
+
+    Catálogo: `4x2` (6 ruedas: eje simple, doble), `6x2` (8: simple, doble, simple), `6x4` (10: simple, doble, doble),
+    `8x2` (10: simple, simple, doble, simple), `8x4` (12: simple, simple, doble, doble). Ejes de adelante hacia atrás;
+    el auxilio es la posición 99 y no cuenta. Numeración: eje simple = izquierda, derecha; eje doble = izquierda exterior,
+    izquierda interior, derecha interior, derecha exterior. Ver docs/07, apéndice B.
 servers:
   - url: https://kootszosdejmawanfxug.supabase.co/functions/v1/api-proveedor
     description: Producción. La función acepta las rutas con y sin este prefijo
@@ -134,6 +142,10 @@ components:
         code: { type: integer, description: 200 si el vehículo existe }
         matricula: { type: string, description: 'Siempre devuelta, aunque se busque por numero' }
         numero: { type: string }
+        distribucion:
+          type: string
+          enum: ['', '4x2', '6x2', '6x4', '8x2', '8x4']
+          description: Distribución de neumáticos del vehículo; cadena vacía si no está definida. Ausente si el vehículo no se encontró.
         data:
           type: array
           items: { $ref: '#/components/schemas/Neumatico' }
@@ -152,6 +164,10 @@ components:
       properties:
         patente: { type: string, description: La devuelta por obtener_montaje }
         numero: { type: string, enum: [''], description: Siempre cadena vacía }
+        distribucion:
+          type: string
+          enum: ['', '4x2', '6x2', '6x4', '8x2', '8x4']
+          description: Opcional. Distribución de neumáticos del vehículo; ausente, null o vacío = no informada. Otro valor responde 400. Con un vehículo existente de otra distribución no se guarda nada (motivo interno `distribucion`).
         montajes:
           type: array
           maxItems: 40

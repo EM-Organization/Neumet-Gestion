@@ -85,7 +85,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo | Vehículos |
 | Alertas | «Ver vehículo» | Detalle de vehículo (rueda de la alerta seleccionada) | Vehículos |
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
-| Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta; al guardar, la lista se recarga | Vehículos |
+| Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta (número, matrícula, **distribución de neumáticos obligatoria**, sucursal; «Otra distribución» pide además el tipo de ruedas); al guardar, la lista se recarga | Vehículos |
 | Reportes | «Ver vehículo» (con un vehículo elegido) | Detalle de vehículo | Vehículos |
 | Detalle | Miga «Origen › Coche NNN» | Pantalla desde la que se abrió (Inicio, Vehículos, Alertas, Estado de la flota, Reportes…) | La de esa pantalla |
 | Detalle | URL `?vehiculo=ID&pos=N` | Enlace directo o recarga; se limpia al salir del detalle | Vehículos |

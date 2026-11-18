@@ -173,6 +173,10 @@ echo "== migración API crea vehículo (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261121000000_api_crea_vehiculo.sql"
 echo "== migración API crea vehículo (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261121000000_api_crea_vehiculo.sql"
+echo "== migración distribución del vehículo (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261122000000_distribucion_vehiculo.sql"
+echo "== migración distribución del vehículo (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261122000000_distribucion_vehiculo.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
@@ -193,4 +197,6 @@ done
 source "$SQL/concurrencia_admin_empresa.sh"
 # shellcheck source=tests/sql/concurrencia_api_alta.sh
 source "$SQL/concurrencia_api_alta.sh"
+# shellcheck source=tests/sql/concurrencia_api_distribucion.sh
+source "$SQL/concurrencia_api_distribucion.sh"
 echo "TODOS LOS TESTS SQL PASARON"

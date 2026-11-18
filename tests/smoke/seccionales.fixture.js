@@ -99,7 +99,7 @@
         },
         vehiculo_crear: function(){
           if (store.vehiculos.some(function(v){ return v.cliente_id === 1 && v.numero === args.p_numero; })) return { code: '23505', message: 'duplicate key value violates unique constraint "vehiculos_cliente_numero_uk"' };
-          store.vehiculos.push({ id: ++seq, cliente_id: 1, nombre: 'Coche ' + args.p_numero, numero: args.p_numero, patente: args.p_patente, sucursal_id: args.p_sucursal_id, activo: true });
+          store.vehiculos.push({ id: ++seq, cliente_id: 1, nombre: 'Coche ' + args.p_numero, numero: args.p_numero, patente: args.p_patente, sucursal_id: args.p_sucursal_id, tipo_ruedas: args.p_tipo_ruedas || 10, distribucion: args.p_distribucion || null, activo: true });
         },
         vehiculo_mover_sucursal: function(){ store.vehiculos.forEach(function(v){ if (v.id === args.p_vehiculo_id) v.sucursal_id = args.p_sucursal_id; }); }
       }[name];

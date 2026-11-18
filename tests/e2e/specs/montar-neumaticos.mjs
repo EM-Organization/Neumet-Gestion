@@ -166,19 +166,21 @@ export function registrar(env) {
       assert.equal(await p.eval(`document.querySelector('#veh-nuevo-cargar').checked`), true, 'la opción empieza marcada');
       await p.escribir('#veh-nuevo-numero', '8801');
       await p.escribir('#veh-nuevo-patente', 'e2e 8801');
+      await elegir(p, '#veh-nuevo-distribucion', '6x2');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Coche 8801/.test(document.querySelector('#vd-cab').textContent) && !!document.querySelector('#vd-resumen .vd-vacio')`, { que: 'detalle del vehículo nuevo, vacío' });
       assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
       assert.match(await texto(p, '#vd-resumen'), /Cargar neumáticos/);
     }, { http: RECHAZO });
-    const v = json(env, `select id, nombre, tipo_ruedas, cliente_id from public.vehiculos where patente = 'e2e 8801'`)[0];
-    assert.deepEqual([v.nombre, v.tipo_ruedas], ['Coche 8801', 10]);
+    const v = json(env, `select id, nombre, tipo_ruedas, distribucion, cliente_id from public.vehiculos where patente = 'e2e 8801'`)[0];
+    assert.deepEqual([v.nombre, v.tipo_ruedas, v.distribucion], ['Coche 8801', 10, '6x2']);
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id = ${v.id}`)), 0);
     // Desmarcada la opción, el alta no navega
     await flujo(env, 'alta-sin-cargar', 'global', async p => {
       await irA(p, 'vehiculos');
       await p.click('#btn-veh-agregar');
       await p.escribir('#veh-nuevo-numero', '8802');
+      await elegir(p, '#veh-nuevo-distribucion', '4x2');
       await p.eval(`document.querySelector('#veh-nuevo-cargar').click()`);
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/Coche 8802/.test(document.querySelector('#veh-lista').textContent)`, { que: 'vehículo en la lista' });

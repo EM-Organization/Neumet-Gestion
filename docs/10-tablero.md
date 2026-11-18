@@ -26,6 +26,7 @@
 - Mini vehículos con posiciones legibles en Alertas y en el ciclo de vida del neumático.
 - Motivo `sin_neumaticos` en la API de proveedor (migración `20261112000000`).
 - La API crea el vehículo y sus neumáticos al guardar mediciones de una patente nueva (migración `20261121000000_api_crea_vehiculo.sql`, **sin aplicar**, apéndice R de `docs/08`, docs/07 apéndice B): orden de despliegue migración aplicada y verificada, luego la función `api-proveedor`. Sin cambios de interfaz del panel (0 clics afectados).
+- Distribución de neumáticos del vehículo (migración `20261122000000_distribucion_vehiculo.sql`, **sin aplicar**, apéndice S de `docs/08`, docs/07 apéndice B): el vehículo guarda su distribución de ejes (`4x2`, `6x2`, `6x4`, `8x2`, `8x4`), obligatoria al agregarlo en el panel; la API la acepta de forma opcional al guardar mediciones y la devuelve en `obtener_montaje`. La app móvil todavía no la usa. Orden de despliegue: migración aplicada y verificada, luego `api-proveedor` y el front. Interfaz: «Agregar vehículo» pide un selector más (1 clic y 1 elección más que antes; sin él el vehículo se medía con una numeración que podía no ser la real).
 - Pantalla «Sin acceso» para sesiones sin perfil o con perfil `api` (sin menú ni consultas de datos).
 - Montar y retirar neumáticos sin reemplazo, para un coche sin neumáticos (migración `20261114500000`; `docs/08` apéndice G).
 - Km por cubierta: `v_km_cubierta` y diagnóstico de odómetro (migración `20261115000000`; apéndice H, F2).

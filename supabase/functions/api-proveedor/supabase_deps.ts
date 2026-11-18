@@ -112,6 +112,8 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
           p_sesion: a.sesion_id,
           p_clave: a.clave,
           p_hash: a.hash,
+          // Solo si la app la informó: sin ella la llamada es idéntica a la de antes (no depende del orden de despliegue).
+          ...(a.distribucion !== null ? { p_distribucion: a.distribucion } : {}),
         }),
       async log(e: LogEntrada) {
         const r = await f(`${cfg.url}/rest/v1/ingesta_log`, {

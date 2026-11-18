@@ -68,6 +68,7 @@ Resuelto: el orden es el de la app (interno-centro-externo) y el panel lo etique
 - Cuerpo ≤ 64 KB, `montajes` ≤ 40 elementos, JSON estricto; campos desconocidos ignorados (no persistidos).
 - `patente` normalizada y validada (`^[A-Z0-9-]{3,12}$`); `numero` debe ser `""`.
 - `posicion` entero existente en el montaje del vehículo (o auxilio); sin duplicados dentro del mismo request.
+- `distribucion` (opcional): código del catálogo (apéndice B, «Distribución del vehículo»); ausente, `null` o vacío = no informada; otro valor = 400.
 - `mm*` números finitos, `0 ≤ mm ≤ 40` (parametrizable); `mm3 == mm2`; auxilio sin medir: los cuatro `null` → **no se persiste, no es error, no es cero**.
 - Fallos por neumático ⇒ HTTP 2xx con `guardado:false` en esa posición; el resto se guarda (semántica del contrato). Errores globales (token, JSON inválido) ⇒ 401/400/5xx.
 
@@ -167,6 +168,7 @@ Implementación: `supabase/functions/api-proveedor/` (Deno, sin dependencias ext
 | `incompleta` | Algunos `mm` `null` y otros con valor | Enviar los cuatro valores. |
 | `rango` | Algún `mm` fuera de 0..40 o no finito | Repetir la medición. |
 | `duplicado_distinto` | `mm3` distinto de `mm2` | Corregir la app: `mm3` debe ser igual a `mm2`. |
+| `distribucion` | La app informó una distribución distinta de la del coche, o una que no cuadra con su `tipo_ruedas` | No se guarda ninguna posición de esa request: la numeración significa neumáticos distintos según la distribución. Usar la que devuelve `obtener_montaje`. Estado global `ok`. Prevalece sobre todos los demás motivos. |
 | `error` | Fallo inesperado al guardar esa posición (el resto se guarda) | Reintentar; si persiste, avisar a Neumet con el `X-Request-Id`. |
 
 ### Alta de vehículo (migración `20261121000000`, docs/08 apéndice R)
@@ -183,13 +185,41 @@ Antes, una patente que no existía devolvía `guardado:false` con motivo `vehicu
 - **Respuesta a DAC:** sin cambios (`{posicion, guardado}`). El alta se ve en `ingesta_log`: `motivo = 'vehiculo_creado'` (status `ok`; si además falló alguna posición prevalece `fallo_parcial`) y en `payload_resumen` `vehiculo_creado` y `neumaticos_creados` (sin patente ni valores). Un replay no registra otra alta.
 - **Riesgo asumido:** una patente mal escrita crea un vehículo huérfano; el límite de requests acota el volumen. Hoy no hay forma de archivarlo desde el panel: ninguna RPC ni vista pone `vehiculos.activo = false` y `authenticated` no tiene UPDATE sobre `vehiculos`; el equipo Neumet puede darlo de baja solo con SQL manual. Mientras tanto, el vehículo huérfano sigue activo y suma a `vehiculos_activos` de `uso_cliente_mensual` y al KPI «Vehículos activos» (riesgo asumido; la vía de archivo está pendiente en `docs/10`).
 
+### Distribución del vehículo (migración `20261122000000`, docs/08 apéndice S)
+
+Cada vehículo puede tener una **distribución de neumáticos**: un código de un catálogo cerrado que dice cuántos ejes tiene y cuáles son simples o dobles, y por tanto **qué neumático físico es cada posición**. Sin ella, la misma cantidad de ruedas admite varias disposiciones y un operario que ve la equivocada mide un neumático por otro. Es **opcional** en la API y la app móvil todavía no la usa (hoy los vehículos salen de Emenube, que no la informa); queda lista para cuando funcione solo con Neumet.
+
+| Código | Ejes (de adelante hacia atrás) | Ruedas | `tipo_ruedas` |
+|---|---|---|---|
+| `4x2` | simple, doble | 6 | 10 |
+| `6x2` | simple, doble, simple | 8 | 10 |
+| `6x4` | simple, doble, doble | 10 | 10 |
+| `8x2` | simple, simple, doble, simple | 10 | 10 |
+| `8x4` | simple, simple, doble, doble | 12 | 16 |
+
+Código `AxB`: A = posiciones de rueda (un par doble cuenta como una), B = posiciones motrices. Un eje simple tiene 2 neumáticos y uno doble 4; las ruedas no incluyen el auxilio. **Numeración** (posición 1..N): eje por eje de adelante hacia atrás; eje simple = izquierda, derecha; eje doble = izquierda exterior, izquierda interior, derecha interior, derecha exterior. El auxilio sigue siendo la posición 99. El catálogo vive en `public.distribucion_ruedas` (fuente en la base), `supabase/functions/api-proveedor/distribuciones.ts` y `assets/js/domain/distribucion.js`; `tests/unit/distribucion.test.mjs` verifica que coinciden.
+
+**Entrada (`guardar_montaje_mm`).** Campo opcional `distribucion` (texto). Ausente, `null` o vacío = no informada; se toleran espacios y mayúsculas («6X2»). Un valor que no es del catálogo (o que no es texto) responde **400**: la numeración de las posiciones dependería de él, así que no se ignora.
+
+- *Vehículo nuevo:* se crea con esa distribución, su `tipo_ruedas` se deriva de ella (hasta 10 ruedas = 10; más = 16) y solo se crean las posiciones 1..ruedas más el auxilio 99 (la 9 en un `6x2` responde `posicion`). Sin distribución, todo como antes (se deduce de las posiciones, 1..16).
+- *Vehículo existente sin distribución:* la **adopta** si su `tipo_ruedas` coincide con el derivado; si no, se trata como conflicto.
+- *Vehículo existente con otra distribución, o adopción incompatible:* **no se guarda ninguna posición** (`guardado:false`, motivo `distribucion`). Guardarlas asignaría lecturas al neumático equivocado, que es justo el error que esta distribución evita. El estado global es `ok`.
+- *Misma distribución o ninguna:* sin cambios.
+- La respuesta a la app conserva su forma (`{posicion, guardado}`). La distribución entra al hash de idempotencia solo si viene (sin ella el hash es el de siempre); reutilizar una `Idempotency-Key` con otra distribución es un 409. `ingesta_log.payload_resumen.distribucion` la registra.
+
+**Salida (`obtener_montaje`).** La respuesta agrega `distribucion` (texto): el código del vehículo o `""` si no está definida (como el resto de los textos ausentes; así no hay `null` que una app con `org.json` convierta en la cadena «null»). Un vehículo no encontrado conserva su respuesta de siempre (`code 404`, sin el campo). Es un campo **aditivo**: quien no lo conoce lo ignora.
+
+**Cómo se define.** En el panel, al agregar un vehículo (obligatoria; «Otra distribución» deja el vehículo sin definir y pide el tipo de ruedas) y por la API al crear o adoptar. Los vehículos existentes quedan sin definir.
+
+**Límites conocidos.** (1) El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (`TODO-CONFIG-CATALOG` de la app móvil); ampliarlo es una migración que redefine `distribucion_ruedas` más las dos copias. (2) El diagrama del detalle y los nombres de posición del panel todavía salen de `tipo_ruedas` (10 o 16), no de la distribución: para `6x2` o `8x4` no coinciden con la numeración de arriba. (3) El panel no permite editar la distribución de un vehículo ya creado.
+
 ### Motivo agregado en `ingesta_log.motivo`
 
 `no_encontrado` (vehículo no creable), `vehiculo_creado` (alta sin otras fallas), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno` y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta (`{posicion, guardado}`) sin volver a crear nada; el motivo se repite salvo en un alta: el replay no repite `vehiculo_creado` (queda con motivo vacío y `payload_resumen.replay = true`).
 
 ### Contrato de `obtener_montaje`
 
-Sin cambios: coche existente sin neumáticos cargados responde `code 200`, `data: []` (la app de DAC lo interpreta como «sin ruedas»). No se agregó ningún campo; el motivo solo se registra en `ingesta_log`.
+Coche existente sin neumáticos cargados responde `code 200`, `data: []` (la app de DAC lo interpreta como «sin ruedas»); el motivo solo se registra en `ingesta_log`. El único campo agregado al contrato es `distribucion` (ver «Distribución del vehículo»).
 
 ### Panel admin: siguiente paso
 

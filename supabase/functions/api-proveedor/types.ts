@@ -27,6 +27,8 @@ export interface GuardarArgs {
   sesion_id: string;
   clave: string;
   hash: string;
+  /** Distribución informada por la app (código del catálogo) o null si no la informó. */
+  distribucion: string | null;
 }
 
 export interface GuardarRpc {
@@ -44,6 +46,8 @@ export interface ObtenerRpc {
   vehiculo_id?: number;
   matricula: string;
   numero: string;
+  /** Distribución del vehículo; '' si no está definida. Ausente si no se encontró el vehículo. */
+  distribucion?: string;
   data: (Partial<FilaBd> & {
     idneumatico: string | null;
     codigo: string | null;

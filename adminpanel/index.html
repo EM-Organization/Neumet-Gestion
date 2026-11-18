@@ -1234,11 +1234,13 @@
     <div class="modal-body" id="veh-nuevo-body">
       <div class="field"><label for="veh-nuevo-numero">Número de coche</label><input type="text" id="veh-nuevo-numero" maxlength="50" autocomplete="off"/></div>
       <div class="field"><label for="veh-nuevo-patente">Matrícula <span class="label-opt">(opcional)</span></label><input type="text" id="veh-nuevo-patente" maxlength="20" autocomplete="off" autocapitalize="characters"/></div>
-      <div class="field-row">
-        <div class="field"><label for="veh-nuevo-ruedas">Tipo de ruedas</label>
-          <select id="veh-nuevo-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select></div>
-        <div class="field"><label for="veh-nuevo-sucursal">Sucursal</label><select id="veh-nuevo-sucursal"></select></div>
-      </div>
+      <div class="field"><label for="veh-nuevo-distribucion">Distribución de neumáticos</label>
+        <select id="veh-nuevo-distribucion" aria-describedby="veh-nuevo-distribucion-ayuda"></select>
+        <div class="field-hint" id="veh-nuevo-distribucion-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4.</div></div>
+      <div class="field" id="veh-nuevo-tipo-campo" hidden><label for="veh-nuevo-ruedas">Tipo de ruedas</label>
+        <select id="veh-nuevo-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
+        <div class="field-hint">El vehículo queda sin distribución definida.</div></div>
+      <div class="field"><label for="veh-nuevo-sucursal">Sucursal</label><select id="veh-nuevo-sucursal"></select></div>
       <label class="sec-check"><input type="checkbox" id="veh-nuevo-cargar"/> Cargar neumáticos ahora</label>
       <div id="veh-nuevo-error" class="cambio-error" role="alert"></div>
     </div>
