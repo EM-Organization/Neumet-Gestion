@@ -273,7 +273,7 @@ export function registrar(env) {
   });
 
   test('Recauchutado (global): el buscador del modal muestra el texto completo de cada fila (quema · marca modelo · condición · sucursal)', async () => {
-    const c = unaCubierta(env, 'S-012');
+    const c = unaCubierta(env, 'S-001');
     assert.ok(c && c.estado === 'almacenado');
     await flujo(env, 'reca-texto-fila', 'global', async p => {
       await irA(p, 'stock');
@@ -281,7 +281,7 @@ export function registrar(env) {
       await p.esperar(`!document.querySelector('#reca-lista .loading-state')`, { que: 'vista Recauchutado cargada' });
       await p.click('#btn-reca-enviar');
       await p.esperar(`document.querySelector('#modal-reca').classList.contains('show')`, { que: 'modal de envío' });
-      await p.esperar(`document.querySelector('#reca-cubierta-lista').textContent.includes('S-012')`, { que: 'S-012 en la lista inicial' });
+      await p.esperar(`document.querySelector('#reca-cubierta-lista').textContent.includes('S-001')`, { que: 'S-001 en la lista inicial' });
       const esperado = `${c.numero_quema} · ${[c.marca, c.modelo].filter(Boolean).join(' ')} · ${ETQ[c.condicion]} · ${c.ubicacion}`;
       const actual = await p.eval(`document.querySelector('#reca-cubierta-lista .reca-cubierta-fila input[value="${c.id}"]')?.closest('label')?.textContent.trim()`);
       assert.equal(actual, esperado, 'texto completo de la fila del buscador');
