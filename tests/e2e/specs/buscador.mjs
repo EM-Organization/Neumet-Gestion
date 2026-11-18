@@ -127,9 +127,9 @@ export function registrar(env) {
           await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: `detalle tras buscar ${q}` });
           assert.match(await texto(p, '#vd-cab'), new RegExp(nombre));
           assert.equal(await p.eval(`document.querySelector('.nav-item.active').dataset.view`), 'vehiculos');
-          assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
+          assert.match(await texto(p, '#breadcrumb-parent'), /Alertas/);
           await p.click('#breadcrumb-parent');
-          await p.esperar(`document.querySelector('#view-vehiculos').classList.contains('active')`);
+          await p.esperar(`document.querySelector('#view-alertas').classList.contains('active')`);
         }
       });
     });
@@ -144,7 +144,7 @@ export function registrar(env) {
         await p.escribir('#busq-inicio-input', 'demo 010');
         await p.enter();
         await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: 'detalle de DEMO010' });
-        assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
+        assert.match(await texto(p, '#breadcrumb-parent'), /Inicio/);
       });
     });
   }

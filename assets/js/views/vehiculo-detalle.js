@@ -12,7 +12,7 @@ import { svgEl } from '../core/svg.js';
 import { showToast, userError } from '../core/ui.js';
 import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
 import {
-  registerView, switchView, setTitulo, onSalirVista,
+  registerView, switchView, setTitulo, onSalirVista, onEntrarVista, vistaActiva, etiquetaVista,
 } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { esAdmin } from '../core/auth.js';
@@ -49,6 +49,8 @@ let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace de
 let ultimoFoco = null;
 let tokenGrafico = 0;
 let tokenCarga = 0; // dos load() superpuestos (rotación + recarga manual): solo el último pinta
+let entradaPorUrl = false; // true si este load() arrancó leyendo ?vehiculo de la URL
+let origen = 'inicio'; // vista a la que regresa la miga (Inicio, Vehículos, Alertas, Flota…)
 const cacheMediciones = new Map();
 
 const URL_VEHICULO = 'vehiculo';
@@ -57,7 +59,7 @@ const URL_POS = 'pos';
 // En iframes con srcdoc (smoke) history.replaceState rechaza una URL distinta a about:srcdoc.
 const urlSoportada = () => location.protocol !== 'about:';
 
-function leerUrl() {
+export function leerUrl() {
   if (!urlSoportada()) return { vehiculo: null, pos: null };
   const params = new URLSearchParams(location.search);
   return {
@@ -83,10 +85,19 @@ function limpiarUrl() {
 // Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
 const puedeOperar = () => !esAdmin();
 
-export function abrirDetalle(id, pos = null) {
+export function abrirDetalle(id, pos = null, origenForzado = null, esUrl = false) {
+  const activa = vistaActiva();
+  if (origenForzado) {
+    origen = origenForzado;
+  } else if (activa && activa !== 'vehiculo-detalle') {
+    origen = activa;
+  } else if (!activa) {
+    origen = 'inicio';
+  }
   vehiculoId = id;
   seleccion = null;
   preseleccion = nulo(pos) ? null : Number(pos);
+  entradaPorUrl = esUrl;
   cacheMediciones.clear();
   escribirUrl();
   switchView('vehiculo-detalle'); // el menú resalta Vehículos (registerView con menu)
@@ -112,7 +123,7 @@ function cabecera() {
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
-  setTitulo(etiquetaCoche(veh.nombre), 'vehiculos'); // migas: Vehículos › Coche NNN (origen dinámico no soportado por el router)
+  setTitulo(etiquetaCoche(veh.nombre), origen); // migas: Origen › Coche NNN
 }
 
 // Posiciones del tipo de vehículo sin neumático montado (el auxilio vacío no cuenta: es opcional).
@@ -497,12 +508,15 @@ export async function load() {
     if (vehiculo) {
       vehiculoId = Number(vehiculo);
       preseleccion = nulo(pos) ? null : Number(pos);
-    } else { switchView('vehiculos'); return; }
+      entradaPorUrl = true;
+    } else { switchView('inicio'); return; }
   }
   const miCarga = ++tokenCarga;
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren(); $('vd-calidad').replaceChildren();
   await contextoListo();
+  // Miga al origen mientras cargan los datos; cabecera() la actualizará con el nombre real.
+  setTitulo('Vehículo', origen);
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
   const [v, est, al, ev, nm, kc, cc, cal] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
@@ -521,7 +535,11 @@ export async function load() {
   ]);
   if (miCarga !== tokenCarga) return;
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
-  if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver a Vehículos', action: 'irA', args: ['vehiculos'], primaria: true })); return; }
+  if (!v.data) {
+    if (entradaPorUrl) { limpiarUrl(); switchView('inicio'); return; }
+    setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: `Volver a ${etiquetaVista(origen)}`, action: 'irA', args: [origen], primaria: true }));
+    return;
+  }
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
@@ -568,6 +586,9 @@ registerActions({
 export function init() {
   // Al salir del detalle se limpia el query de posición para no arrastrarlo a otras vistas.
   onSalirVista((anterior) => { if (anterior === 'vehiculo-detalle') limpiarUrl(); });
+  // Si el usuario llegó con ?vehiculo=ID pero navegó a otra vista sin pasar por el detalle,
+  // el query queda huérfano: se limpia al entrar a cualquier otra vista.
+  onEntrarVista((v) => { if (v !== 'vehiculo-detalle') limpiarUrl(); });
   // Tras rotar o cambiar, el detalle se recarga y el foco caería en <body>: se devuelve a la rueda de origen.
   document.addEventListener('neumet:neumatico-cambiado', e => {
     const d = e.detail || {};

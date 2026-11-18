@@ -2,7 +2,7 @@
 // (posición, mm, estado, color) y el auxilio aparece solo en los camiones que lo tienen montado.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, abrirDetallePorMatricula, texto } from '../lib/flujo.mjs';
+import { flujo, abrirDetallePorMatricula, texto, irA } from '../lib/flujo.mjs';
 import { json, vehiculosVisibles } from '../lib/verdad.mjs';
 import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
 
@@ -99,6 +99,42 @@ export function registrar(env) {
       assert.doesNotMatch(panel, /Posición 5/);
       assert.match(panel, /Crítico/);
       assert.ok(await p.eval(`!!document.querySelector('#vd-panel [data-action="neumatico-cambiar"]') && !!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]')`));
+    });
+  });
+
+  test('Detalle (global): ?vehiculo=ID&pos=N abre el detalle con la rueda preseleccionada', async () => {
+    const vehiculos = await vehiculosVisibles(env, 'global');
+    const v = vehiculos[0];
+    const posiciones = json(env, `select e.posicion from public.v_estado_neumaticos e where e.vehiculo_id = ${v.id} order by e.posicion`);
+    assert.ok(posiciones.length > 0, 'el vehículo de prueba tiene al menos una posición');
+    const pos = posiciones[0].posicion;
+    await flujo(env, 'detalle-url', 'global', async p => {
+      await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelectorAll('#vd-diagrama .vd-rueda').length > 0`, { que: 'detalle activo' });
+      assert.match(await texto(p, '#vd-cab'), new RegExp(v.patente));
+      const sel = await p.eval(`const g = document.querySelector('#vd-diagrama .vd-rueda.sel'); g ? Number(g.dataset.pos) : null`);
+      assert.equal(sel, pos, 'la rueda de la URL queda seleccionada');
+      await p.click('.nav-item[data-view="inicio"]');
+      await p.esperar(`document.querySelector('#view-inicio').classList.contains('active')`, { que: 'vuelta a Inicio' });
+      assert.equal(await p.eval('location.search'), '', 'se limpia el query al salir del detalle');
+    }, { ruta: `/adminpanel/index.html?vehiculo=${v.id}&pos=${pos}` });
+  });
+
+  test('Detalle (global): URL con vehículo inexistente cae a Inicio limpiando el query', async () => {
+    await flujo(env, 'detalle-url-inexistente', 'global', async p => {
+      await p.esperar(`document.querySelector('#view-inicio').classList.contains('active')`, { que: 'Inicio activo tras URL inválida' });
+      assert.equal(await p.eval('location.search'), '', 'se limpia el query huérfano');
+    }, { ruta: '/adminpanel/index.html?vehiculo=999999&pos=1' });
+  });
+
+  test('Detalle (global): la miga desde Alertas dice Alertas y regresa en 1 clic', async () => {
+    await flujo(env, 'detalle-miga-alertas', 'global', async p => {
+      await irA(p, 'alertas');
+      await p.esperar(`document.querySelectorAll('#alert-tbody tr[data-severidad]').length > 0`, { que: 'lista de alertas' });
+      await p.click('#alert-tbody tr[data-severidad="3"] [data-action="verVehiculo"]');
+      await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active')`, { que: 'detalle desde Alertas' });
+      assert.match(await texto(p, '#breadcrumb-parent'), /Alertas/, 'la miga nombra Alertas');
+      await p.click('#breadcrumb-parent');
+      await p.esperar(`document.querySelector('#view-alertas').classList.contains('active')`, { que: 'vuelta a Alertas por la miga' });
     });
   });
 }

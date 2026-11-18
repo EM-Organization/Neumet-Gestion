@@ -28,9 +28,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   // Enlace al vehículo: abre el detalle
   var link = $('#flota-grid .flota-card [data-action="verVehiculo"]');
   if(!link){ fail('flota: sin enlace Ver vehiculo'); return; }
-  link.click(); await sleep(400);
+  link.click(); await sleep(900);
   if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('flota: el enlace no abre el detalle');
-  if($('#breadcrumb-parent').hidden || !/Vehículos/.test($('#breadcrumb-parent').textContent)) fail('flota: la miga debe mostrar Vehículos');
+  if($('#breadcrumb-parent').hidden || !/Estado de la flota/.test($('#breadcrumb-parent').textContent)) fail('flota: la miga debe mostrar Estado de la flota ('+$('#breadcrumb-parent').textContent+')');
 
   // --- Alertas ---
   if(!nav('alertas')) return;

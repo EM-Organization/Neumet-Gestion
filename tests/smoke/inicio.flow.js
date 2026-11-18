@@ -113,9 +113,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     await escribirB(bi, 'ab123cd'); await enviar(bi);
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: Enter con una coincidencia no abre el detalle');
     if($('.nav-item.active').dataset.view !== 'vehiculos') fail('detalle: el menú debe resaltar Vehículos');
-    if($('#breadcrumb-parent').hidden || !/Vehículos/.test($('#breadcrumb-parent').textContent)) fail('detalle: la miga debe mostrar Vehículos: '+$('#breadcrumb-parent').textContent);
+    if($('#breadcrumb-parent').hidden || !/Inicio/.test($('#breadcrumb-parent').textContent)) fail('detalle: la miga debe mostrar Inicio: '+$('#breadcrumb-parent').textContent);
     $('#breadcrumb-parent').click(); await sleep(500);
-    if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: la miga no regresa a Vehículos');
+    if(!$('#view-inicio').classList.contains('active')) fail('detalle: la miga no regresa a Inicio');
     $('.nav-item[data-view="inicio"]').click(); await sleep(400);
     await escribirB(bi, '205'); await enviar(bi); // por número de coche
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: el número de coche no abre el detalle');
@@ -211,7 +211,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(all('#busq-global-res .busq-op').length !== 1) fail('buscador global('+rol+'): no encuentra AB123CD escrito como "ab 123-cd"');
   bg.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(800);
   if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('buscador global('+rol+'): Enter no abre el detalle');
-  if($('#breadcrumb-parent').hidden || !/Vehículos/.test($('#breadcrumb-parent').textContent)) fail('buscador global: la miga debe mostrar Vehículos');
+  if($('#breadcrumb-parent').hidden || !/Alertas/.test($('#breadcrumb-parent').textContent)) fail('buscador global: la miga debe mostrar Alertas');
   if(bg.value !== '') fail('buscador global: no se limpia tras abrir');
   var tinp = d.createElement('input'); d.body.appendChild(tinp); tinp.focus(); tinp.dispatchEvent(new w.KeyboardEvent('keydown',{key:'/',bubbles:true,cancelable:true}));
   if(d.activeElement !== tinp) fail('buscador global: "/" no debe robar el foco de otro campo');
