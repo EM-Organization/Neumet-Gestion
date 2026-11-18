@@ -441,8 +441,8 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   nv('numero').value = '322'; nv('cargar').checked = true;
   $('#veh-nuevo-guardar').click(); await sleep(1200);
   // El stub no conoce el vehículo recién creado: basta comprobar que se navegó a su detalle (la base real lo prueba en e2e).
-  if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-volver').textContent.indexOf('Volver a Vehículos') === -1) fail('vehiculos: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
-  $('[data-action="detalleVolver"]').click(); await sleep(700);
+  if (!$('#view-vehiculo-detalle').classList.contains('active') || $('#breadcrumb-parent').hidden) fail('vehiculos: «Cargar neumáticos ahora» no abrió el detalle del vehículo nuevo');
+  $('#breadcrumb-parent').click(); await sleep(700);
   if (!$('#view-vehiculos').classList.contains('active')) fail('vehiculos: Volver no regresó a Vehículos');
   log.push('sucursales-cliente: rpcs=' + fx.rpcs.length);
 };

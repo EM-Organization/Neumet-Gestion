@@ -54,7 +54,7 @@ export function registrar(env) {
           await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelector('#vd-cab')`, { que: `detalle tras buscar ${q}` });
           await p.esperar(`/DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: 'cabecera del Camión 201' });
           assert.match(await texto(p, '#vd-cab'), /Coche 201/);
-          await p.click('[data-action="detalleVolver"]');
+          await p.click('#breadcrumb-parent');
           await p.esperar(`document.querySelector('#view-vehiculos').classList.contains('active')`);
         }
         // Tecla Enter con una búsqueda parcial que da varios resultados: no abre nada.
@@ -127,9 +127,9 @@ export function registrar(env) {
           await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: `detalle tras buscar ${q}` });
           assert.match(await texto(p, '#vd-cab'), new RegExp(nombre));
           assert.equal(await p.eval(`document.querySelector('.nav-item.active').dataset.view`), 'vehiculos');
-          assert.match(await texto(p, '#vd-volver'), /Volver a Alertas/);
-          await p.click('#vd-volver');
-          await p.esperar(`document.querySelector('#view-alertas').classList.contains('active')`);
+          assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
+          await p.click('#breadcrumb-parent');
+          await p.esperar(`document.querySelector('#view-vehiculos').classList.contains('active')`);
         }
       });
     });
@@ -144,7 +144,7 @@ export function registrar(env) {
         await p.escribir('#busq-inicio-input', 'demo 010');
         await p.enter();
         await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /DEMO010/.test(document.querySelector('#vd-cab').innerText)`, { que: 'detalle de DEMO010' });
-        assert.match(await texto(p, '#vd-volver'), /Volver a Inicio/);
+        assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
       });
     });
   }

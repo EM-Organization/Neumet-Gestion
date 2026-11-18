@@ -213,14 +213,14 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   $('#vd-panel [data-action="detalleCerrarPanel"]').click(); await sleep(100);
 
   // Volver y buscar por numero de coche exacto ("112") -> vehiculo 12 con 10 ruedas
-  $('[data-action="detalleVolver"]').click(); await sleep(700);
-  if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: Volver no regreso a Vehiculos');
+  $('#breadcrumb-parent').click(); await sleep(700);
+  if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: la miga no regreso a Vehiculos');
   inp = escribir('112'); await sleep(100);
   enter(inp); await sleep(900);
   if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf('Unidad') === -1) fail('detalle: Enter por numero de coche no abrio el vehiculo 12');
 
   // Vehiculo con auxilio (tipo 16): 16 ruedas en el chasis + auxilio fuera
-  $('[data-action="detalleVolver"]').click(); await sleep(600);
+  $('#breadcrumb-parent').click(); await sleep(600);
   inp = escribir('zz999'); await sleep(100); enter(inp); await sleep(900);
   var n16 = all('#vd-diagrama .vd-rueda').length;
   log.push('ruedas-tipo16='+n16);
@@ -230,7 +230,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   // Buscador global: matrícula, número de coche y número de quema abren el vehículo (la quema, el de su neumático montado)
   var bg = $('#busq-global-input');
   var buscarGlobal = async function(txt, esperado, que){
-    $('[data-action="detalleVolver"]').click(); await sleep(500);
+    $('#breadcrumb-parent').click(); await sleep(500);
     bg.value = txt; bg.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(400);
     bg.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(900);
     if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf(esperado) === -1) fail('detalle: el buscador global no abrió '+esperado+' por '+que+' ('+txt+')');
@@ -245,7 +245,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
   // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.
   if(q.indexOf('v_mediciones_neumatico') === -1 || /(^|,)mediciones(,|$)/.test(q)) fail('detalle: las mediciones deben leerse de v_mediciones_neumatico, no de mediciones por posicion');
-  $('[data-action="detalleVolver"]').click(); await sleep(400);
+  $('#breadcrumb-parent').click(); await sleep(400);
   escribir('');
   // Capturas: ?end=detalle termina en el detalle del camión 01 con el panel de la rueda 3 abierto.
   if(/[?&]end=detalle/.test(w.parent.location.search)){

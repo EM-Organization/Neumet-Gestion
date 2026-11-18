@@ -30,7 +30,7 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   if(!link){ fail('flota: sin enlace Ver vehiculo'); return; }
   link.click(); await sleep(400);
   if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('flota: el enlace no abre el detalle');
-  if(!/Volver a /.test($('#vd-volver').textContent)) fail('flota: falta el botón Volver');
+  if($('#breadcrumb-parent').hidden || !/Vehículos/.test($('#breadcrumb-parent').textContent)) fail('flota: la miga debe mostrar Vehículos');
 
   // --- Alertas ---
   if(!nav('alertas')) return;

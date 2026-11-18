@@ -70,7 +70,7 @@ export function registrar(env) {
             conAuxilio++;
             assert.match(await texto(p, '#vd-diagrama'), /AUX/, `${v.patente}: falta el auxilio`);
           } else assert.doesNotMatch(await texto(p, '#vd-diagrama'), /AUX/, `${v.patente}: no debería dibujar auxilio`);
-          await p.click('[data-action="detalleVolver"]');
+          await p.click('#breadcrumb-parent');
           await p.esperar(`document.querySelector('#view-vehiculos').classList.contains('active')`);
         }
       });

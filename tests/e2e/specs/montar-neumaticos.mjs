@@ -168,7 +168,7 @@ export function registrar(env) {
       await p.escribir('#veh-nuevo-patente', 'e2e 8801');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Coche 8801/.test(document.querySelector('#vd-cab').textContent) && !!document.querySelector('#vd-resumen .vd-vacio')`, { que: 'detalle del vehículo nuevo, vacío' });
-      assert.match(await texto(p, '#vd-volver'), /Volver a Vehículos/);
+      assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
       assert.match(await texto(p, '#vd-resumen'), /Cargar neumáticos/);
     }, { http: RECHAZO });
     const v = json(env, `select id, nombre, tipo_ruedas, cliente_id from public.vehiculos where patente = 'e2e 8801'`)[0];

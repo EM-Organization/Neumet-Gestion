@@ -541,7 +541,6 @@
 .veh-fila-estado { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 12px; color: var(--text-secondary); text-align: right; }
 
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
-.vd-volver { margin: 0 0 8px -6px; }
 .vd-cab { margin-bottom: 18px; }
 .vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
@@ -549,7 +548,8 @@
 .vd-datos dt { font-size: 12px; color: var(--text-secondary); }
 .vd-datos dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .vd-layout { display: grid; grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); gap: 20px; align-items: start; }
-.vd-diagrama-card, .vd-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+.vd-diagrama-card { position: sticky; top: 12px; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+.vd-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
 .vd-resumen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .vd-diagrama { display: flex; justify-content: center; }
 .vd-svg { width: 100%; max-width: 380px; height: auto; display: block; }
@@ -580,9 +580,15 @@
 .vd-muestra { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); }
 .vd-muestra-sd { background: repeating-linear-gradient(45deg, #f1efe7 0 3px, #d3cfbd 3px 4px); }
 .vd-insignia { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #f6ecc8; border: 1px solid #a9822c; color: #7a5a12; font-size: 10px; font-weight: 700; }
-.vd-panel { position: sticky; top: 12px; max-height: calc(100vh - 240px); min-height: 420px; overflow: hidden; display: flex; flex-direction: column; }
-#vd-panel-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.vd-p-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.vd-cerrar { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary); font-size: 28px; line-height: 1; display: grid; place-items: center; cursor: pointer; transition: all .12s; flex-shrink: 0; }
+.vd-cerrar:hover { background: var(--surface-secondary); color: var(--text-primary); }
+.vd-etiqueta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); background: var(--surface-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+.vd-etiqueta-pos { font-family: var(--font-mono); }
+#vd-panel-body { display: block; }
+.vd-p-scroll { display: block; }
+.vd-p-sub { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.vd-panel { min-height: 420px; }
+.vd-pie { background: var(--surface); margin: 12px -20px -20px; padding: 12px 20px 16px; border-top: 1px solid var(--border); }
 #vd-chart-wrap { min-height: 190px; }
 .vd-panel-vacio { color: var(--text-secondary); font-size: 14px; padding: 8px 0; }
 .vd-p-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -612,8 +618,12 @@
 .vd-panel-backdrop { display: none; }
 @media (max-width: 860px) {
   .vd-layout { grid-template-columns: 1fr; }
-  .vd-panel { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 78vh; z-index: 60; border-radius: 16px 16px 0 0; padding: 16px 16px 24px; box-shadow: 0 -8px 32px rgba(56,52,36,0.2); }
+  .vd-diagrama-card { position: static; align-self: auto; }
+  .vd-panel { display: none; position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 78vh; z-index: 60; border-radius: 16px 16px 0 0; padding: 16px 16px 24px; box-shadow: 0 -8px 32px rgba(56,52,36,0.2); overflow: hidden; flex-direction: column; }
   .vd-panel.abierto { display: flex; }
+  #vd-panel-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .vd-p-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  .vd-pie { margin: 12px -16px -24px; padding: 12px 16px 16px; flex: none; }
   .vd-panel-backdrop.abierto { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(56,52,36,0.35); }
   .vd-svg { max-width: 340px; }
 }
@@ -640,10 +650,9 @@
 }
 /* Pantallas bajas (p. ej. 1280x720): acciones del panel en una sola fila para dejar sitio al gráfico */
 @media (min-width: 861px) and (max-height: 800px) {
-  .vd-pie { display: flex; align-items: flex-end; gap: 10px; padding: 10px 20px 12px; }
+  .vd-pie { display: flex; align-items: flex-end; gap: 10px; padding: 10px 20px 12px; position: relative; }
   .vd-pie .vd-rotar { margin-top: 0; flex: 1 1 auto; flex-wrap: nowrap; }
   .vd-pie .vd-rotar label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .vd-panel { max-height: calc(100vh - 232px); }
 }
 
 /* ── Inicio: panel de decisión (tonos neutros; el rojo solo como punto de los neumáticos críticos) ── */

@@ -149,5 +149,5 @@ window.calidadDetalleFlow = async function(w, d, sleep, fail, log){
   $('#vd-panel [data-action="detalleCerrarPanel"]').click(); await sleep(200);
   var q = fx.queries.join(',');
   if(q.indexOf('mediciones#calidad') === -1) fail('calidad-detalle: no consultó las mediciones con observaciones');
-  $('[data-action="detalleVolver"]').click(); await sleep(500);
+  $('#breadcrumb-parent').click(); await sleep(500);
 };
