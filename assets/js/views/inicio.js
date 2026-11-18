@@ -5,7 +5,7 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
-import { isClienteMode, currentClienteNombre, currentSucursalId, esUsuarioSucursal, onLogin } from '../core/auth.js';
+import { isClienteMode, currentClienteNombre, currentSucursalId, esUsuarioSucursal } from '../core/auth.js';
 import { registerView, switchView } from '../core/nav.js';
 import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
@@ -236,5 +236,4 @@ registerActions({
 });
 
 registerView('inicio', 'Inicio', load);
-onLogin(() => switchView('inicio'));
 export function init() {}

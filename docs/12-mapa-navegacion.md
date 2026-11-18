@@ -18,7 +18,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 | Inicio no mostraba qué se midió últimamente | Bloque «Últimas mediciones»: los 8 vehículos medidos más recientemente con la comparativa de desgaste de cada neumático respecto de su medición anterior |
 | Inicio mostraba las posiciones como «P1, P2…», sin significado a la vista | Mini vehículo (SVG liviano, vista desde arriba) con las ruedas coloreadas por desgaste y la rueda en cuestión resaltada, más el nombre de la posición en texto («Delantera izquierda», «Eje 2 derecha exterior»; convención en `assets/js/domain/posicion.js`). Se usa en Requieren atención, Próximos cambios, Últimas mediciones, Alertas y la tabla de km del ciclo de vida |
 | El buscador de Inicio no se distinguía de las tarjetas y el resumen de proporciones iba antes de las decisiones | El buscador es un bloque propio, centrado y alto, sobre las tarjetas. El resumen «N de M neumáticos en buen estado» va después de Próximos cambios |
-| Migas y menú activo incoherentes | `registerView(..., { menu })` define qué ítem queda resaltado; las migas muestran «Padre › Actual». Las dos pestañas de Neumáticos llevan la misma miga («Neumáticos › Stock» / «Neumáticos › Recauchutado») y sin título repetido bajo las pestañas; el detalle de vehículo no repite «Vehículos ›» junto a «Volver» (`sinMigas`) |
+| Migas y menú activo incoherentes | `registerView(..., { menu })` define qué ítem queda resaltado; las migas muestran «Padre › Actual». Las dos pestañas de Neumáticos llevan la misma miga («Neumáticos › Stock» / «Neumáticos › Recauchutado») y sin título repetido bajo las pestañas; el detalle de vehículo lleva miga dinámica a su origen («Vehículos › Coche NNN», «Alertas › Coche NNN», «Inicio › Coche NNN», «Estado de la flota › Coche NNN») |
 | El selector «Sucursal» de la barra superior aparecía en todas las vistas aunque no filtrara | Solo se muestra donde filtra (`selectorEnVista` en `domain/seccional.js`: Inicio, Vehículos, Alertas, Reportes, calidad, flota, mediciones y dispositivos); Stock lo toma como valor inicial de su filtro de sucursal (también «Todas»: quita el filtro que traía). **La sucursal elegida filtra solo donde el selector se ve** (`seleccionAplica` en `domain/seccional.js`): en el detalle de un vehículo, en Stock y en la búsqueda de la barra desde ellos la selección se ignora, de modo que buscar un camión de otra sucursal lo encuentra y la referencia de tasas del detalle usa toda la flota. Se eligió ignorarla y no mostrar un indicador para no sumar elementos a la pantalla. En 390 px baja a su propia fila a todo el ancho |
 
 ## 2. Rol cliente (gomero / gestor de flota)
@@ -53,7 +53,7 @@ flowchart TD
   V -->|fila de vehículo| VD
   A -->|Ver vehículo| VD
   R -->|Ver vehículo| VD
-  VD -->|Volver| ORIGEN[Pantalla de origen]
+  VD -->|Miga al origen| ORIGEN[Pantalla de origen]
   VD -->|click en una rueda| PR[Panel de la rueda]
   PR --> CN[Cambiar neumático]
   PR --> RO[Rotar con otra posición, sin confirmar]
@@ -87,8 +87,8 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
 | Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta; al guardar, la lista se recarga | Vehículos |
 | Reportes | «Ver vehículo» (con un vehículo elegido) | Detalle de vehículo | Vehículos |
-| Detalle | «Volver a …» | Pantalla desde la que se abrió | La de esa pantalla |
-| Detalle | Miga «Vehículos» | Vehículos | Vehículos |
+| Detalle | Miga «Origen › Coche NNN» | Pantalla desde la que se abrió (Inicio, Vehículos, Alertas, Estado de la flota, Reportes…) | La de esa pantalla |
+| Detalle | URL `?vehiculo=ID&pos=N` | Enlace directo o recarga; se limpia al salir del detalle | Vehículos |
 | Detalle | Rueda | Panel de la rueda (cambiar, rotar) | Vehículos |
 | Sucursales | Alta, nombre, «Eliminar», selector de sucursal de cada vehículo. «Agregar vehículo» vive ahora en Vehículos | La misma pantalla (aviso y recarga) | Sucursales |
 
@@ -191,7 +191,7 @@ La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada
 ## 6. Reglas de navegación
 
 1. Todo vehículo que aparece en una pantalla enlaza a su detalle.
-2. El detalle recuerda la pantalla de origen: «Volver a Inicio», «Volver a Alertas», etc.
+2. El detalle muestra miga dinámica al origen («Origen › Coche NNN»); la miga regresa a esa pantalla en un clic. La posición elegida se refleja en la URL (`?vehiculo=ID&pos=N`) y se restaura al iniciar la app o recargar el detalle; si el vehículo no existe o no es visible, la app cae a Inicio. El query se limpia al salir del detalle o al navegar a otra vista.
 3. Una vista que cuelga de otra (detalle, ficha) resalta el ítem de su padre y muestra «Padre › Actual» en la barra superior.
 4. El rojo se reserva a neumáticos críticos y siempre acompaña a un texto.
 5. Un elemento de administración nunca se muestra al cliente (`data-admin-only`; la base lo impide igual por RLS). Las vistas de administración se registran con `soloAdmin` y el router las rechaza aunque se fuerce el cambio de vista.

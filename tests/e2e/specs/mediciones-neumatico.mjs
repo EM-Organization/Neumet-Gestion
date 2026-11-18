@@ -114,7 +114,7 @@ export function registrar(env) {
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
       assert.match(panel, /Montaje/, 'el historial del nuevo muestra su montaje');
       assert.doesNotMatch(panel, /Baja|Dado de baja/, 'el historial no muestra la baja del viejo');
-      assert.ok(panel.includes(medido.idneumatico), 'el panel muestra el idneumatico del nuevo');
+      assert.match(panel, /MarcaMed|Modelo M/, 'el panel muestra la marca/modelo del nuevo neumático');
     });
   });
 
@@ -147,10 +147,9 @@ export function registrar(env) {
       assert.equal(rb2.fill, ra.fill, `P${b} toma el color que tenía el neumático de P${a}`);
       assert.equal(ra2.fill, rb.fill, `P${a} toma el color que tenía el neumático de P${b}`);
       assert.match(rb2.aria, /Desgaste bajo/);
-      // Panel de la posición nueva del neumático: su idneumatico y su gráfico completo
+      // Panel de la posición nueva del neumático: su historial y su gráfico completo
       await seleccionarRueda(p, b);
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
-      assert.ok(panel.includes(antesA.idneumatico), 'el panel muestra el neumático que se movió');
       await p.esperar(`/${nMedA} mediciones/.test((document.querySelector('#vd-chart-wrap .vd-chart') || {getAttribute: () => ''}).getAttribute('aria-label') || '')`, { que: `gráfico con las ${nMedA} mediciones del neumático` });
       assert.match(panel, /Rotación/, 'el historial del neumático muestra la rotación');
     });

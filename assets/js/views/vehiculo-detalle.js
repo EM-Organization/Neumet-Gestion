@@ -11,7 +11,9 @@ import { html, setHtml, joinHtml } from '../core/html.js';
 import { svgEl } from '../core/svg.js';
 import { showToast, userError } from '../core/ui.js';
 import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
-import { registerView, switchView, vistaActiva, etiquetaVista, setTitulo } from '../core/nav.js';
+import {
+  registerView, switchView, setTitulo, onSalirVista, onEntrarVista, vistaActiva, etiquetaVista,
+} from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { esAdmin } from '../core/auth.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
@@ -47,23 +49,57 @@ let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace de
 let ultimoFoco = null;
 let tokenGrafico = 0;
 let tokenCarga = 0; // dos load() superpuestos (rotación + recarga manual): solo el último pinta
+let entradaPorUrl = false; // true si este load() arrancó leyendo ?vehiculo de la URL
+let origen = 'inicio'; // vista a la que regresa la miga (Inicio, Vehículos, Alertas, Flota…)
 const cacheMediciones = new Map();
+
+const URL_VEHICULO = 'vehiculo';
+const URL_POS = 'pos';
+
+// En iframes con srcdoc (smoke) history.replaceState rechaza una URL distinta a about:srcdoc.
+const urlSoportada = () => location.protocol !== 'about:';
+
+export function leerUrl() {
+  if (!urlSoportada()) return { vehiculo: null, pos: null };
+  const params = new URLSearchParams(location.search);
+  return {
+    vehiculo: params.get(URL_VEHICULO),
+    pos: params.get(URL_POS),
+  };
+}
+
+function escribirUrl() {
+  if (!urlSoportada()) return;
+  const params = new URLSearchParams();
+  if (vehiculoId) params.set(URL_VEHICULO, vehiculoId);
+  if (!nulo(seleccion)) params.set(URL_POS, seleccion);
+  const query = params.toString();
+  const url = query ? `${location.pathname}?${query}` : location.pathname;
+  history.replaceState(null, '', url);
+}
+
+function limpiarUrl() {
+  if (urlSoportada() && location.search) history.replaceState(null, '', location.pathname);
+}
 
 // Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
 const puedeOperar = () => !esAdmin();
 
-// Vista desde la que se abrió el detalle: "Volver" regresa a ella (Inicio, Alertas, Flota, Vehículos...).
-let origen = 'vehiculos';
-
-export function abrirDetalle(id, pos = null) {
-  const o = vistaActiva();
-  if (o && o !== 'vehiculo-detalle') origen = o;
+export function abrirDetalle(id, pos = null, origenForzado = null, esUrl = false) {
+  const activa = vistaActiva();
+  if (origenForzado) {
+    origen = origenForzado;
+  } else if (activa && activa !== 'vehiculo-detalle') {
+    origen = activa;
+  } else if (!activa) {
+    origen = 'inicio';
+  }
   vehiculoId = id;
   seleccion = null;
   preseleccion = nulo(pos) ? null : Number(pos);
+  entradaPorUrl = esUrl;
   cacheMediciones.clear();
-  const volver = $('vd-volver');
-  if (volver) volver.textContent = `← Volver a ${etiquetaVista(origen)}`;
+  escribirUrl();
   switchView('vehiculo-detalle'); // el menú resalta Vehículos (registerView con menu)
 }
 
@@ -87,7 +123,7 @@ function cabecera() {
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
-  setTitulo(etiquetaCoche(veh.nombre)); // sin «Vehículos ›»: «Volver a …» ya lleva a la vista de origen (puede ser Alertas o Inicio)
+  setTitulo(etiquetaCoche(veh.nombre), origen); // migas: Origen › Coche NNN
 }
 
 // Posiciones del tipo de vehículo sin neumático montado (el auxilio vacío no cuenta: es opcional).
@@ -264,9 +300,13 @@ function seccionCosto(n) {
   ${puedeRegistrarCosto() ? html`<button type="button" class="btn ghost vd-costo-btn" data-action="detalleRegistrarCosto" data-args="[${n.id}]">Registrar costo</button>` : ''}`;
 }
 
-function quemaDe(fila) {
-  const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
-  return n ? n.numero_quema : null;
+function etiquetasPanel(fila, r) {
+  const tags = [];
+  if (r && !r.auxilio) tags.push(html`<span class="vd-etiqueta vd-etiqueta-pos">P${r.posicion}</span>`);
+  const detalle = [fila && fila.marca, fila && fila.modelo].filter(Boolean).join(' ');
+  if (detalle) tags.push(html`<span class="vd-etiqueta vd-etiqueta-neum">${detalle}</span>`);
+  if (fila && !nulo(fila.vida)) tags.push(html`<span class="vd-etiqueta vd-etiqueta-vida">${etiquetaVida(fila.vida)}</span>`);
+  return joinHtml(tags);
 }
 
 function seccionAlertas(pos) {
@@ -336,13 +376,12 @@ function renderPanel() {
   const { nivel } = datosDeFila(fila, u);
   const info = NIVEL_INFO[nivel];
   const ind = fila ? evaluarDesgaste(fila, ref) : null;
-  const detalle = [fila && fila.marca, fila && fila.modelo].filter(Boolean).join(' ');
   if (!fila) {
     setHtml(body, html`
       <div class="vd-p-head">
         <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
-          <div class="vd-p-sub">${r && !r.auxilio ? `P${pos}` : ''}</div></div>
-        <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle de la posición">&times;</button>
+          <div class="vd-p-sub">${etiquetasPanel(null, r)}</div></div>
+        <button type="button" class="vd-cerrar" data-action="detalleCerrarPanel" aria-label="Cerrar detalle de la posición"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="vd-p-scroll"><div class="vd-p-estado">${chip('gray', 'Vacía', '–')}</div>
         <p class="vd-p-texto">Sin neumático montado en esta posición.</p></div>
@@ -352,8 +391,8 @@ function renderPanel() {
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
-        <div class="vd-p-sub">${r && !r.auxilio ? `P${pos}` : ''}${detalle ? html` · ${detalle}` : ''}${fila && fila.vida ? ` · ${etiquetaVida(fila.vida)}` : ''}${fila && fila.idneumatico ? html` · ${fila.idneumatico}` : ''}${quemaDe(fila) ? html` · quema ${quemaDe(fila)}` : ''}</div></div>
-      <button type="button" class="icon-btn" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático">&times;</button>
+        <div class="vd-p-sub">${etiquetasPanel(fila, r)}</div></div>
+      <button type="button" class="vd-cerrar" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático"><span aria-hidden="true">&times;</span></button>
     </div>
     <div class="vd-p-scroll">
     <div class="vd-p-estado">${chip(NIVEL_CLS[nivel], info.texto, info.simbolo)}</div>
@@ -444,6 +483,7 @@ function seleccionarRueda(pos) {
     if (on && !ultimoFoco) ultimoFoco = g;
   });
   renderPanel();
+  escribirUrl();
   $('vd-panel').classList.add('abierto'); $('vd-backdrop').classList.add('abierto');
   const tit = $('vd-panel-titulo');
   if (tit) tit.focus();
@@ -455,6 +495,7 @@ function cerrarPanel() {
   $('vd-panel').classList.remove('abierto'); $('vd-backdrop').classList.remove('abierto');
   document.querySelectorAll('#vd-diagrama .vd-rueda').forEach(g => { g.classList.remove('sel'); g.setAttribute('aria-pressed', 'false'); });
   renderPanel();
+  escribirUrl();
   // Si el diagrama se redibujó (p. ej. tras un cambio de neumático), se busca la rueda por posición.
   const destino = ultimoFoco && ultimoFoco.isConnected ? ultimoFoco : document.querySelector(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
   if (destino) destino.focus();
@@ -462,11 +503,20 @@ function cerrarPanel() {
 }
 
 export async function load() {
-  if (nulo(vehiculoId)) { switchView('vehiculos'); return; }
+  if (nulo(vehiculoId)) {
+    const { vehiculo, pos } = leerUrl();
+    if (vehiculo) {
+      vehiculoId = Number(vehiculo);
+      preseleccion = nulo(pos) ? null : Number(pos);
+      entradaPorUrl = true;
+    } else { switchView('inicio'); return; }
+  }
   const miCarga = ++tokenCarga;
   setHtml($('vd-cab'), estadoCarga('Cargando el vehículo…'));
   $('vd-resumen').replaceChildren(); $('vd-diagrama').replaceChildren(); $('vd-leyenda').replaceChildren(); $('vd-calidad').replaceChildren();
   await contextoListo();
+  // Miga al origen mientras cargan los datos; cabecera() la actualizará con el nombre real.
+  setTitulo('Vehículo', origen);
   cacheMediciones.clear();   // tras cambiar o rotar, cada posición tiene otro neumático
   const [v, est, al, ev, nm, kc, cc, cal] = await Promise.all([
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
@@ -485,7 +535,11 @@ export async function load() {
   ]);
   if (miCarga !== tokenCarga) return;
   if (v.error || est.error || al.error) { showToast(userError(v.error || est.error || al.error), true); setHtml($('vd-cab'), estadoError('', 'recargarVehiculoDetalle')); return; }
-  if (!v.data) { setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: 'Volver', action: 'detalleVolver', primaria: true })); return; }
+  if (!v.data) {
+    if (entradaPorUrl) { limpiarUrl(); switchView('inicio'); return; }
+    setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: `Volver a ${etiquetaVista(origen)}`, action: 'irA', args: [origen], primaria: true }));
+    return;
+  }
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
@@ -516,7 +570,6 @@ export async function load() {
 
 registerActions({
   verVehiculoDetalle: id => abrirDetalle(Number(id)),
-  detalleVolver: () => switchView(origen),
   // Segundo argumento opcional: posición de la rueda que queda seleccionada al abrir (enlaces de Inicio).
   verVehiculo: (id, pos) => abrirDetalle(Number(id), pos),
   detalleRueda: pos => seleccionarRueda(pos),
@@ -531,6 +584,11 @@ registerActions({
 });
 
 export function init() {
+  // Al salir del detalle se limpia el query de posición para no arrastrarlo a otras vistas.
+  onSalirVista((anterior) => { if (anterior === 'vehiculo-detalle') limpiarUrl(); });
+  // Si el usuario llegó con ?vehiculo=ID pero navegó a otra vista sin pasar por el detalle,
+  // el query queda huérfano: se limpia al entrar a cualquier otra vista.
+  onEntrarVista((v) => { if (v !== 'vehiculo-detalle') limpiarUrl(); });
   // Tras rotar o cambiar, el detalle se recarga y el foco caería en <body>: se devuelve a la rueda de origen.
   document.addEventListener('neumet:neumatico-cambiado', e => {
     const d = e.detail || {};
@@ -566,4 +624,4 @@ export function init() {
   });
 }
 
-registerView('vehiculo-detalle', 'Vehículo', load, { menu: 'vehiculos', sinMigas: true });
+registerView('vehiculo-detalle', 'Vehículo', load, { menu: 'vehiculos' });

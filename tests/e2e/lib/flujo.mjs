@@ -14,10 +14,10 @@ export const dormir = ms => new Promise(r => setTimeout(r, ms));
  * @param opciones.sinAcceso true si la sesión debe quedar en la pantalla «Sin acceso» en vez de abrir el panel
  * @param opciones.consola  [RegExp] mensajes de console.error esperados (p. ej. el panel registra el error de una RPC denegada)
  */
-export async function flujo(env, nombre, rol, fn, { http = [], consola = [], sinAcceso = false } = {}) {
+export async function flujo(env, nombre, rol, fn, { http = [], consola = [], sinAcceso = false, ruta = undefined } = {}) {
   env.web.setTag(`${rol}/${nombre}`);
   const desde = env.peticiones.length;
-  const p = await env.abrirPanel(rol, { sinAcceso });
+  const p = await env.abrirPanel(rol, { sinAcceso, ...(ruta ? { ruta } : {}) });
   try {
     await fn(p);
     await dormir(250); // deja terminar peticiones y renders en vuelo antes de revisar

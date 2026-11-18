@@ -3,7 +3,9 @@
 import { initActions } from './core/actions.js';
 import { initNav } from './core/nav.js';
 import { initConexion } from './core/conexion.js';
-import { initAuth, checkAuth } from './core/auth.js';
+import { initAuth, checkAuth, onLogin } from './core/auth.js';
+import { switchView } from './core/nav.js';
+import { leerUrl, abrirDetalle } from './views/vehiculo-detalle.js';
 import './core/seccional.js'; // sus hooks de login deben registrarse antes que los de las vistas
 import { initModales } from './core/modal-a11y.js';
 import { initBuscador } from './core/buscador.js';
@@ -43,4 +45,9 @@ initConexion();
 initBuscador();
 initMenuMas();
 [inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos,islaHumo,uso].forEach(v=>v.init());
+onLogin(() => {
+  const { vehiculo, pos } = leerUrl();
+  if (vehiculo) abrirDetalle(Number(vehiculo), pos, 'inicio', true);
+  else switchView('inicio');
+});
 checkAuth();
