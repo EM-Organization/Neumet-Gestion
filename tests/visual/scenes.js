@@ -75,6 +75,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'stock': async function(){ nav('stock'); await sleep(800); },
     'recauchutado': async function(){ nav('recauchutado'); await sleep(800); },
     'recauchutado-aceptar': async function(){ nav('recauchutado'); await sleep(800); click('[data-proceso="3"] [data-args*="aceptar"]'); await sleep(500); },
+    'reca-enviar': async function(){ nav('recauchutado'); await sleep(800); click('#btn-reca-enviar'); await sleep(500); },
     'busqueda': async function(){ var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 'cam'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
     'selector-seccional': async function(){ nav('flota'); await sleep(800); }
   };

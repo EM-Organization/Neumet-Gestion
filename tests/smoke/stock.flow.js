@@ -178,6 +178,20 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   // «Enviar a recauchutar» abre el modal con la cubierta elegida, sugiere proveedores ya usados y, con doble Enter, envía una sola vez.
   fila31.querySelector('[data-action="recaEnviar"]').click(); await sleep(600);
   if(!$('#modal-reca').classList.contains('show') || $('#reca-cubierta').value !== '31') fail('stock: «Enviar a recauchutar» no abrió el modal con la cubierta elegida: ' + $('#reca-cubierta').value);
+  if(!visible($('#reca-cubierta-buscar'))) fail('stock: falta el buscador de cubiertas en el modal');
+  if(!/S-001 · Michelin X <Multi> Z/.test($('#reca-cubierta-lista').textContent)) fail('stock: el buscador no muestra la cubierta elegida: ' + $('#reca-cubierta-lista').textContent);
+  // El radio debe quedar a la izquierda con su tamaño natural, no ocupando todo el ancho de la fila.
+  var radio31 = $('#reca-cubierta-lista .reca-cubierta-fila input[value="31"]');
+  var rect31 = radio31.getBoundingClientRect();
+  var filaRect31 = radio31.closest('.reca-cubierta-fila').getBoundingClientRect();
+  if(rect31.width > filaRect31.width / 4) fail('stock: el radio del buscador ocupa todo el ancho de la fila');
+  // El buscador filtra por quema, marca o modelo.
+  set('#reca-cubierta-buscar', 'Pirelli'); await sleep(100);
+  if($('#reca-cubierta-lista').textContent.indexOf('S-002') === -1 || $('#reca-cubierta-lista').textContent.indexOf('S-001') !== -1) fail('stock: el buscador no filtró por marca: ' + $('#reca-cubierta-lista').textContent);
+  set('#reca-cubierta-buscar', ''); await sleep(100);
+  // Tras filtrar y volver a mostrar todas, se vuelve a elegir S-001 para no depender de que la selección anterior sobreviva.
+  $('#reca-cubierta-lista .reca-cubierta-fila input[value="31"]').click(); await sleep(100);
+  if($('#reca-cubierta').value !== '31') fail('stock: S-001 no quedó seleccionada tras el reset del buscador');
   var prov = all('#reca-proveedores option').map(function(o){ return o.value; }).sort().join('|');
   if(prov !== 'Recauchutadora Norte|Recauchutadora Sur' || $('#reca-proveedor').getAttribute('list') !== 'reca-proveedores') fail('stock: sugerencias de proveedor: ' + prov);
   $('#reca-proveedor').value = 'Recauchutadora Sur';
