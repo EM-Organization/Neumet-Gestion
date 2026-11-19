@@ -10,7 +10,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { svgEl } from '../core/svg.js';
 import { showToast, userError } from '../core/ui.js';
-import { chip, chipEstado, estadoVacio, estadoCarga, estadoError } from '../core/componentes.js';
+import { chip, chipEstado, estadoVacio, estadoCarga, estadoError, SIMBOLO_ESTADO_NEUMATICO } from '../core/componentes.js';
 import {
   registerView, switchView, setTitulo, onSalirVista, onEntrarVista, vistaActiva, etiquetaVista,
 } from '../core/nav.js';
@@ -144,9 +144,9 @@ function resumen() {
   const mayor = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal).length;
   setHtml($('vd-resumen'), joinHtml([
     chip('gray', plural(filas.length, 'neumático', 'neumáticos'), '●'),
-    limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), '✕') : '',
-    mayorDesgaste ? chip('orange', plural(mayorDesgaste, 'mayor desgaste', 'mayor desgaste'), '▲') : '',
-    poco ? chip('blue', plural(poco, 'poco desgaste', 'poco desgaste'), '▲') : '',
+    limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), SIMBOLO_ESTADO_NEUMATICO.desgaste_limite) : '',
+    mayorDesgaste ? chip('orange', plural(mayorDesgaste, 'mayor desgaste', 'mayor desgaste'), SIMBOLO_ESTADO_NEUMATICO.mayor_desgaste) : '',
+    poco ? chip('blue', plural(poco, 'poco desgaste', 'poco desgaste'), SIMBOLO_ESTADO_NEUMATICO.poco_desgaste) : '',
     desconocido ? chip('gray', `${desconocido} desconocido`, '–') : '',
     mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
     puedeOperar() && posicionesVacias().length ? html`<button type="button" class="btn ghost vd-montar-mas" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Montar neumático</button>` : '',
@@ -448,7 +448,7 @@ function fechaCorta(t, conAnio) {
 function construirGrafico(d) {
   const p0 = d.puntos[0], pn = d.puntos[d.puntos.length - 1];
   const svg = svgEl('svg', { class: 'vd-chart', viewBox: `0 0 ${d.ancho} ${d.alto}`, role: 'img',
-    'aria-label': `Gráfico de desgaste: ${plural(d.puntos.length, 'medición', 'mediciones')}, de ${fmtNum(p0.mm, 1)} mm el ${fmtFecha(p0.fecha)} a ${fmtNum(pn.mm, 1)} mm el ${fmtFecha(pn.fecha)}. Las líneas horizontales marcan los umbrales internos bajo, crítico y de retiro${d.proyeccion ? '; la línea punteada es la proyección' : ''}.` });
+    'aria-label': `Gráfico de desgaste: ${plural(d.puntos.length, 'medición', 'mediciones')}, de ${fmtNum(p0.mm, 1)} mm el ${fmtFecha(p0.fecha)} a ${fmtNum(pn.mm, 1)} mm el ${fmtFecha(pn.fecha)}. Las líneas horizontales marcan los umbrales Nuevo, Poco desgaste y Mayor desgaste${d.proyeccion ? '; la línea punteada es la proyección' : ''}.` });
   const m = d.margen;
   d.ejeY.forEach(t => {
     svg.appendChild(svgEl('line', { class: 'vd-g-grid', x1: m.l, y1: t.y, x2: d.ancho - m.r, y2: t.y }));

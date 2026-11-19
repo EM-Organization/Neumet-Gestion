@@ -5,8 +5,10 @@ import { normalizarPatente, claveBusqueda, buscarVehiculos, coincidenciaExacta }
 import {
   layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda, NIVEL_INFO,
 } from '../../assets/js/domain/vehiculo-diagrama.js';
-import { SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
+import { chip, SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
 import { severidadLabel } from '../../assets/js/domain/flota.js';
+import { plural } from '../../assets/js/domain/formato.js';
+import { joinHtml } from '../../assets/js/core/html.js';
 import { mediana, referenciaTasas, evaluarDesgaste, MIN_MUESTRAS } from '../../assets/js/domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
 
@@ -198,6 +200,33 @@ describe('escala de color', () => {
     assert.equal(NIVEL_INFO.critico.simbolo, SIMBOLO_ESTADO_NEUMATICO.mayor_desgaste, 'mayor desgaste usa el mismo símbolo en diagrama y chips');
     assert.equal(NIVEL_INFO.retiro.simbolo, SIMBOLO_ESTADO_NEUMATICO.desgaste_limite, 'desgaste límite usa el mismo símbolo en diagrama y chips');
     assert.equal(NIVEL_INFO.sin_datos.simbolo, SIMBOLO_ESTADO_NEUMATICO.desconocido);
+  });
+  test('resumen superior de la ficha usa los símbolos unificados, no el par viejo hardcodeado', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../../assets/js/views/vehiculo-detalle.js', import.meta.url), 'utf8');
+    const body = src.slice(src.indexOf('function resumen()'), src.indexOf('function leyenda()', src.indexOf('function resumen()')));
+    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.desgaste_limite/, 'símbolo de desgaste límite en resumen');
+    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.mayor_desgaste/, 'símbolo de mayor desgaste en resumen');
+    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.poco_desgaste/, 'símbolo de poco desgaste en resumen');
+    // Con el hardcode viejo aparecería ✕ para límite y ▲ para mayor; con la corrección es al revés.
+    assert.doesNotMatch(body, /chip\('red'[\s\S]*?'✕'/);
+    assert.doesNotMatch(body, /chip\('orange'[\s\S]*?'▲'/);
+  });
+  test('resumen de un vehículo con 4,0 mm (mayor) y 2,0 mm (límite) muestra ✕ mayor desgaste y ■ desgaste límite', () => {
+    // Simula la misma lógica que resumen() para contar estados y renderizar chips.
+    const limite = 1, mayorDesgaste = 1, poco = 0, desconocido = 0, mayor = 0;
+    const bloque = joinHtml([
+      chip('gray', plural(2, 'neumático', 'neumáticos'), '●'),
+      limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), SIMBOLO_ESTADO_NEUMATICO.desgaste_limite) : '',
+      mayorDesgaste ? chip('orange', plural(mayorDesgaste, 'mayor desgaste', 'mayor desgaste'), SIMBOLO_ESTADO_NEUMATICO.mayor_desgaste) : '',
+      poco ? chip('blue', plural(poco, 'poco desgaste', 'poco desgaste'), SIMBOLO_ESTADO_NEUMATICO.poco_desgaste) : '',
+      desconocido ? chip('gray', `${desconocido} desconocido`, SIMBOLO_ESTADO_NEUMATICO.desconocido) : '',
+      mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
+    ]).toString();
+    assert.match(bloque, /✕[\s\S]*?mayor desgaste/);
+    assert.match(bloque, /■[\s\S]*?desgaste límite/);
+    assert.doesNotMatch(bloque, /▲[\s\S]*?mayor desgaste/);
+    assert.doesNotMatch(bloque, /✕[\s\S]*?desgaste límite/);
   });
 });
 
