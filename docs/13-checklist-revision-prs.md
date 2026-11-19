@@ -28,6 +28,7 @@ Autor y revisor comprueban, con una prueba que falla sin el arreglo, cada caso a
 ## 2. Pruebas completas
 - Toda lógica nueva tiene pruebas unitarias con casos límite, no solo el camino feliz.
 - Toda política RLS o función SQL nueva tiene pruebas SQL para cada rol permitido y cada rol denegado.
+- El CI corre todos los modos de smoke (job `smoke`, `scripts/smoke-modos.sh`): un cambio de fixture o de vista que deja un flujo viejo rojo ya no pasa inadvertido. Un modo nuevo se agrega a esa lista.
 - Los smoke con datos simulados no bastan por sí solos: los datos simulados pueden no coincidir con la base real (un buscador pasó los smoke y falló en producción). Los flujos de usuario se prueban también contra la base real local con los datos de demo (ver `tests/e2e/`, cuando exista).
 - Cualquier `console.error` o "Acción desconocida" durante un flujo hace fallar la prueba.
 - Las aserciones comprueban resultados concretos (filas, textos, permisos), no que "algo apareció".

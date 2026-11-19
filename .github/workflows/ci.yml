@@ -89,6 +89,19 @@ jobs:
       # servidor de navegar.sh: 404 a lo sensible (mayúsculas, symlinks), 400 a %00; python3 y curl vienen en el runner
       - run: tests/visual/probar-navegar.sh
 
+  smoke:
+    # Panel en Chrome headless con Supabase simulado: todos los modos de scripts/smoke-modos.sh (~25 s en un equipo local;
+    # cada modo levanta su propio servidor). Sin base real: lo que toca la base se prueba en el job e2e.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Smoke de todos los modos (Chrome del runner)
+        run: scripts/smoke-modos.sh
+
   deno:
     runs-on: ubuntu-latest
     permissions:

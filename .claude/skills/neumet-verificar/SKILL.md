@@ -14,7 +14,7 @@ git status --short
 ```
 
 ## 2. Niveles
-Primer escalón: `npm run verificar:rapido` (lint, check, unitarias y, según el diff, `test:front`, `test:lint` y el smoke de los once modos con `scripts/smoke-modos.sh`; al final lista lo lento que queda a mano). Antes, `npm run preparar` en un worktree nuevo.
+Primer escalón: `npm run verificar:rapido` (lint, check, unitarias y, según el diff, `test:front`, `test:lint` y el smoke de todos los modos con `scripts/smoke-modos.sh`; al final lista lo lento que queda a mano). Antes, `npm run preparar` en un worktree nuevo.
 El smoke ya no requiere python3 (usa `scripts/servir-estatico.mjs` en un puerto libre; `PORT` y `BUDGET` siguen valiendo).
 
 | Si el diff toca... | Correr |
@@ -22,7 +22,7 @@ El smoke ya no requiere python3 (usa `scripts/servir-estatico.mjs` en un puerto 
 | Siempre | `npm run lint && npm run check && npm test` |
 | `supabase/migrations/**`, `tests/sql/**`, `supabase/seed/**` | `tests/sql/run.sh` |
 | `supabase/functions/**` | `deno task --config supabase/functions/deno.json check`, `deno lint --config supabase/functions/deno.json supabase/functions`, `deno task --config supabase/functions/deno.json test` |
-| `assets/**`, `adminpanel/**` | `tests/smoke/run.sh` para cada modo relevante, o `scripts/smoke-modos.sh [modo ...]`: `admin cliente secuser detalle flota sinperfil api montar empresa empresa-sucursal empresa-admin` (si hay duda, los once) |
+| `assets/**`, `adminpanel/**` | `tests/smoke/run.sh` para cada modo relevante, o `scripts/smoke-modos.sh [modo ...]`: `admin cliente secuser detalle detalle-admin flota alertas-cliente sinperfil api montar montar-sucursal empresa empresa-sucursal empresa-admin reportes arranque*` (si hay duda, todos: el CI corre los 23) |
 | Migración, vista, RPC, o cualquier flujo que lea/escriba la base | `npm run e2e` (el smoke simulado no alcanza) |
 | Interfaz visible | `tests/visual/run.sh <escenas>` y mirar los PNG de `tests/visual/out/` en escritorio y móvil |
 | `vercel.json`, `.gitleaks.toml` | `python3 -m json.tool vercel.json >/dev/null` y `npm test` (incluye `despliegue.test.mjs`) |

@@ -5,12 +5,28 @@ cd "$(dirname "$0")/../.."
 # BUDGET es tiempo virtual de Chrome: la corrida termina apenas acaba el recorrido, así que un default alto no la alarga
 # (desde el PR 96, cliente necesita más de 90000).
 MODE="${1:-admin}"
-CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+# Un modo desconocido no puede caer en silencio a `admin`: pasaría en verde sin haber probado lo pedido.
+case "$MODE" in *[!a-z-]*) MODE_MAL=1;; esac
+if [ -n "${MODE_MAL:-}" ] || { [ "$MODE" != admin ] && ! grep -q "^\[ \"\$MODE\" = $MODE \] &&" "$0"; }; then
+  echo "Modo desconocido: $MODE (los válidos están en las líneas '[ \"\$MODE\" = ... ]' de este script)"; exit 2
+fi
+CHROME="${CHROME:-}"
+if [ -z "$CHROME" ]; then
+  for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" google-chrome google-chrome-stable chromium chromium-browser; do
+    if [ -x "$c" ] || command -v "$c" >/dev/null 2>&1; then CHROME="$c"; break; fi
+  done
+fi
+[ -n "$CHROME" ] || { echo "No se encontró Chrome (definir CHROME=...)"; exit 2; }
+# En Linux (CI) no existe la ruta de macOS: se usa el Chrome del PATH.
+if [ ! -x "$CHROME" ]; then
+  for c in google-chrome google-chrome-stable chromium chromium-browser; do command -v "$c" >/dev/null 2>&1 && CHROME=$(command -v "$c") && break; done
+fi
 # shellcheck source=../lib-servidor.sh
 . tests/lib-servidor.sh
 iniciar_servidor || exit 2
 trap 'kill $SRV 2>/dev/null' EXIT
-Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
+Q=""
+[ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = reportes ] && Q="?reportes=1"
 [ "$MODE" = flota ] && Q="?flota=1"
 [ "$MODE" = alertas-cliente ] && Q="?cliente=1&alertas=1"

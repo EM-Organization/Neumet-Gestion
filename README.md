@@ -134,7 +134,7 @@ Otras pruebas, con sus propios lanzadores:
 
 | Prueba | Comando | Cubre |
 |---|---|---|
-| Smoke | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota\|empresa\|empresa-sucursal\|empresa-admin` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
+| Smoke | `scripts/smoke-modos.sh` (23 modos; el CI los corre todos) o `tests/smoke/run.sh <modo>` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
 | Visual | `tests/visual/run.sh` | Capturas de escritorio y móvil para revisión a ojo ([`README`](tests/visual/README.md)) |
 | SQL | `tests/sql/run.sh` | Todas las migraciones (aplicadas dos veces) y pruebas por rol en un Postgres desechable |
 | Rendimiento (fuera del CI) | `tests/perf/gen.sql` y `tests/perf/bench.sh` | Datos sintéticos y tiempos de `v_estado_neumaticos`; exige `PERF_PG_URL` apuntando a un Postgres local desechable, nunca a producción |

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const raiz = fileURLToPath(new URL('../../', import.meta.url));
@@ -28,6 +28,21 @@ test('run.sh de smoke y visual usan el servidor Node y no python http.server', (
     assert.doesNotMatch(s, /http\.server/, `${r} volvió al servidor de un hilo`);
     assert.match(s, /lib-servidor\.sh/);
   }
+});
+
+test('smoke: todo modo de tests/smoke/run.sh está en la lista de scripts/smoke-modos.sh (lo que corre el CI)', () => {
+  const run = leer('tests/smoke/run.sh');
+  const modos = [...run.matchAll(/^\[ "\$MODE" = ([a-z-]+) \] && Q=/gm)].map(m => m[1]);
+  const lista = leer('scripts/smoke-modos.sh').match(/MODOS=\(([^)]*)\)/g).pop().slice(7, -1).split(/\s+/);
+  assert.ok(modos.length >= 22 && modos.includes('cliente') && modos.includes('reportes'));
+  for (const m of modos) assert.ok(lista.includes(m), `el modo ${m} no está en MODOS de scripts/smoke-modos.sh: el CI no lo corre`);
+  assert.ok(lista.includes('admin'));
+});
+
+test('smoke: run.sh con un modo desconocido sale con error y no cae a admin', () => {
+  const r = spawnSync('bash', [raiz + 'tests/smoke/run.sh', 'noexiste'], { encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout + r.stderr, /Modo desconocido: noexiste/);
 });
 
 test('servidor estático: puerto libre automático, 100 pedidos en paralelo sin pérdida, sin salir de la raíz', async () => {

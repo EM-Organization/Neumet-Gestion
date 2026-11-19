@@ -20,7 +20,7 @@ description: Estrategia de pruebas de NEUMET: niveles según el diff (unitarias,
 | `src/**` | `npm run test:front` y `npm run test:lint` |
 | `supabase/migrations/**`, `tests/sql/**`, `supabase/seed/**` | `tests/sql/run.sh` (aplica migraciones x2: idempotencia) |
 | `supabase/functions/**` | `deno task --config supabase/functions/deno.json check` · `deno lint` · `deno task ... test` |
-| `assets/**`, `adminpanel/**` | `tests/smoke/run.sh` para cada modo relevante (si hay duda, los once) |
+| `assets/**`, `adminpanel/**` | `tests/smoke/run.sh` para cada modo relevante (si hay duda, los 23) |
 | Migración, vista, RPC o flujo que lea/escriba la base | `npm run e2e` (obligatorio, con datos de demo) |
 | Interfaz visible | `tests/visual/run.sh <escenas>` y mirar los PNG (escritorio y móvil) |
 | `vercel.json`, `.gitleaks.toml` | `python3 -m json.tool vercel.json` y `npm test` |

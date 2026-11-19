@@ -12,8 +12,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if($('#breadcrumb-current').textContent !== 'Inicio') fail('inicio('+rol+'): breadcrumb '+$('#breadcrumb-current').textContent);
   var cont = $('#inicio-contenido');
   var txt = cont.textContent.replace(/\s+/g, ' ');
-  // Fixtures de flota: 7 neumáticos (3 nuevo, 2 poco desgaste, 1 desgaste límite, 1 desconocido) en 4 vehículos
-  if(!/5 de 7 neumáticos están en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,200));
+  // Fixtures de flota: 7 neumáticos (3 nuevo, 3 desgaste límite en 2 vehículos, 1 desconocido) en 4 vehículos
+  if(!/3 de 7 neumáticos están en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,200));
   if(all('#inicio-contenido .inicio-seg').length < 3) fail('inicio('+rol+'): falta la barra segmentada');
   var filas = all('#inicio-contenido [data-action="verVehiculo"]');
   if(!filas.length) fail('inicio('+rol+'): sin lista de vehículos que requieren atención');
@@ -37,7 +37,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(sin.length !== 1 || !/15,5 mm/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): el neumático sin medición previa debe mostrar solo los mm y "Sin previa"');
     if(/→/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): comparativa sin medición previa');
     var t2 = um[2].textContent.replace(/\s+/g, ' ');
-    if(!/7,3 → 5,9 mm/.test(t2) || !/\u22121,4/.test(t2) || !um[2].querySelector('.um-dif.alto')) fail('inicio('+rol+'): desgaste alto no destacado: '+t2);
+    if(!/7,3 → 2,7 mm/.test(t2) || !/\u22124,6/.test(t2) || !um[2].querySelector('.um-dif.alto')) fail('inicio('+rol+'): desgaste alto no destacado: '+t2);
     if(!/9,0 → 9,2 mm/.test(t2) || !/\+0,2/.test(t2)) fail('inicio('+rol+'): diferencia positiva: '+t2);
     if(um[1].textContent.indexOf('<Crítica>') === -1 || um[1].innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre en últimas mediciones sin escapar');
     if(um[2].querySelectorAll('.um-dif.sube').length !== 0) fail('inicio: +0,2 no debería marcarse como lectura mayor');
@@ -53,7 +53,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     var cs = w.getComputedStyle(c);
     if(/rgb\(192, 57, 43\)/.test(cs.borderLeftColor+cs.backgroundColor)) fail('inicio('+rol+'): tarjeta con borde o fondo rojo');
   });
-  if(all('#inicio-contenido .inicio-fila .inicio-punto.limite').length !== 1) fail('inicio('+rol+'): debe haber un punto rojo (un vehículo en desgaste límite)');
+  if(all('#inicio-contenido .inicio-fila .inicio-punto.limite').length !== 2) fail('inicio('+rol+'): debe haber un punto rojo por cada vehículo en desgaste límite (2)');
   var titulo = $('#inicio-title').textContent;
   if(titulo !== 'Inicio') fail('inicio('+rol+'): título '+titulo);
   if(/Todavía no hay datos|Todavía no hay vehículos/.test(txt)) fail('inicio('+rol+'): muestra "sin datos" teniendo datos');

@@ -29,7 +29,7 @@ npm run preparar        # en el worktree: npm ci propio, lint y check corren
 Trabajar ahí. Al terminar, quitar el worktree y la rama local `revisar-<n>`.
 
 ## 3. Ejecutar, no solo leer
-1. Skill `neumet-verificar` en el worktree (`npm run verificar:rapido` da lo barato; `scripts/smoke-modos.sh` corre los once modos; smoke y visual toman un puerto libre, así que varios revisores no chocan). Un test que "pasa" porque nunca corrió el camino nuevo no cuenta: confirmar que los tests nuevos fallan sin el cambio
+1. Skill `neumet-verificar` en el worktree (`npm run verificar:rapido` da lo barato; `scripts/smoke-modos.sh` corre los 23 modos; smoke y visual toman un puerto libre, así que varios revisores no chocan). Un test que "pasa" porque nunca corrió el camino nuevo no cuenta: confirmar que los tests nuevos fallan sin el cambio
    (`git stash`/checkout del archivo de producción y re-correr el test).
 2. Foco c: por cada guarda, cola o reintento nuevo, probar los casos de `docs/13` §1.b y **mutar**: quitar el arreglo y comprobar que el test falla. Preguntar si había un arreglo más simple.
 3. Probar los casos de `docs/13` §1: datos vacíos, `null`, un registro, muchos; cada rol (admin, global, sucursal, sin perfil, `api`); consulta que falla; campo inexistente; sin permiso.

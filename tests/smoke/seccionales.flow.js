@@ -58,14 +58,14 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   if (kp() !== '1,0,0,0,0') fail('selector: KPIs de Montevideo inesperados: ' + kp());
   setSel('#sec-select', '2'); await sleep(500);
   if (cards().length !== 1 || cards()[0].dataset.vehiculo !== '12') fail('selector: Flota/Salto debía mostrar solo el vehículo 12');
-  if (kp() !== '1,1,0,1,2') fail('selector: KPIs de Salto inesperados: ' + kp());
+  if (kp() !== '1,2,0,0,2') fail('selector: KPIs de Salto inesperados: ' + kp());
 
   await nav('alertas');   // la selección (Salto) persiste entre vistas
   var rows = function(){ return all('#alert-tbody tr[data-severidad]'); };
   if (rows().length !== 2) fail('selector: Alertas/Salto debía tener 2 filas, hay ' + rows().length);
   // El servidor manda el mensaje con punto decimal; la interfaz lo muestra con coma (docs/14)
   var tablaAl = $('#alert-tbody').textContent;
-  if (tablaAl.indexOf('3,5 mm') === -1 || /\d\.\d mm/.test(tablaAl)) fail('selector: Alertas debe mostrar los mm con coma decimal: ' + tablaAl.replace(/\s+/g, ' ').slice(0, 200));
+  if (tablaAl.indexOf('2,8 mm') === -1 || /\d\.\d mm/.test(tablaAl)) fail('selector: Alertas debe mostrar los mm con coma decimal: ' + tablaAl.replace(/\s+/g, ' ').slice(0, 200));
   setSel('#sec-select', '1'); await sleep(500);
   if (rows().length !== 0) fail('selector: Alertas/Montevideo debía estar vacía, hay ' + rows().length);
   // El estado vacío con filtro dice de QUÉ sucursal es y cómo ver el resto (no «Sin alertas» a secas)

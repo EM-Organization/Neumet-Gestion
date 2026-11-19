@@ -7,7 +7,7 @@ y recorre las vistas y los modales principales. El resultado queda en `document.
 
 ## Cómo correrlo
 
-Requiere Google Chrome y `node`. Cada corrida levanta su propio servidor en el primer puerto libre (`PORT=n` para fijarlo), así que varias a la vez no chocan; `scripts/smoke-modos.sh [modo ...]` corre varios modos y resume (sin argumentos, los once):
+Requiere Google Chrome y `node`. Cada corrida levanta su propio servidor en el primer puerto libre (`PORT=n` para fijarlo), así que varias a la vez no chocan; `scripts/smoke-modos.sh [modo ...]` corre varios modos y resume (sin argumentos, los 23 modos; el CI los corre todos en el job `smoke`):
 
 ```
 tests/smoke/run.sh admin      # sesión de administrador (clientes, balance, vehículos, dispositivos, mediciones, ABM de sucursales)
