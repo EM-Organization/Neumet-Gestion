@@ -34,7 +34,6 @@ import * as neumaticos from './views/neumaticos.js';
 import * as calidad from './views/calidad.js';
 import * as empresaUsuarios from './views/empresa-usuarios.js';
 import * as empresaUmbrales from './views/empresa-umbrales.js';
-import * as empresaDispositivos from './views/empresa-dispositivos.js';
 import * as islaHumo from './views/isla-humo.js';
 import * as uso from './views/uso.js';
 
@@ -45,7 +44,7 @@ initModales();
 initConexion();
 initBuscador();
 initMenuMas();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,eliminarVehiculo,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,empresaDispositivos,islaHumo,uso].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,eliminarVehiculo,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,islaHumo,uso].forEach(v=>v.init());
 onLogin(() => {
   const { vehiculo, pos } = leerUrl();
   if (vehiculo) abrirDetalle(Number(vehiculo), pos, 'inicio', true);

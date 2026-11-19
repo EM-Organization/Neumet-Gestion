@@ -27,8 +27,8 @@ export function opcionesDestino({ total, sinQuema }) {
 }
 
 export function etiquetaDestino(destino, total) {
-  if (destino === 'stock') return `Enviar ${total === 1 ? 'el neumático' : `los ${total} neumáticos`} al stock, conservan su historial`;
-  return `Dar de baja ${total === 1 ? 'el neumático' : `los ${total} neumáticos`}, dejan de verse en Neumáticos y en los reportes`;
+  if (destino === 'stock') return `Enviar ${total === 1 ? 'el neumático' : `los ${total} neumáticos`} al stock, ${total === 1 ? 'conserva' : 'conservan'} su historial`;
+  return `Dar de baja ${total === 1 ? 'el neumático' : `los ${total} neumáticos`}, ${total === 1 ? 'deja' : 'dejan'} de verse en Neumáticos`;
 }
 
 export function textoResumen({ total, destino }) {

@@ -1,7 +1,6 @@
 // Pantalla Empresa del panel (F10 PR 4, docs/17 §4.3) en Chrome contra Postgres + RLS + PostgREST reales.
 //   * Administrador de empresa (perfil global): Usuarios (lista real de usuarios_empresa_listar, sin «Quitar» para sí mismo),
-//     Umbrales (alerta_configurar con Enter; cambia la base y no hay UPDATE directo sobre clientes) y Dispositivos de la empresa
-//     (solo lectura, solo los de su empresa).
+//     Umbrales (alerta_configurar con Enter; cambia la base y no hay UPDATE directo sobre clientes). Sin Dispositivos de la empresa: se retiró, y forzar la ruta deja en Inicio.
 //   * Equipo Neumet (admin) y usuario de sucursal: sin sección Empresa y, si fuerzan la vista, el router los devuelve a Inicio
 //     sin pedir nada a la base.
 // Las Edge Functions (quitar, reponer, crear usuario) no corren en este entorno: sus respuestas se cubren en tests/smoke/empresa.flow.js
@@ -11,10 +10,10 @@ import assert from 'node:assert/strict';
 import { flujo, irA, texto } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
 
-const SECCION = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
+const SECCION = ['empresa-usuarios', 'empresa-umbrales'];
 
 export function registrar(env) {
-  test('Empresa (panel): el administrador de empresa ve usuarios, edita umbrales y ve dispositivos de solo lectura', async () => {
+  test('Empresa (panel): el administrador de empresa ve usuarios, edita umbrales y no tiene Dispositivos', async () => {
     const previo = json(env, `select umbral_bajo_mm, umbral_critico_mm, umbral_retiro_mm, dias_sin_medir_alerta, irregularidad_mm, alerta_histeresis_mm from public.clientes where id = ${DEMO}`)[0];
     const desde = env.peticiones.length;
     try {
@@ -58,12 +57,11 @@ export function registrar(env) {
         await p.esperar(`/margen para resolver la alerta/i.test(document.querySelector('#emp-umb-error').textContent)`, { que: 'error del margen de la alerta' });
         assert.equal(Number(env.sql(`select alerta_histeresis_mm from public.clientes where id = ${DEMO}`)), nuevaHist, 'la histéresis inválida no llegó a la base');
 
-        // Dispositivos: solo los de la empresa, sin acciones de escritura
-        await irA(p, 'empresa-dispositivos');
-        const propios = json(env, `select count(*)::int as n from public.dispositivos where cliente_id = ${DEMO}`)[0].n;
-        await p.esperar(`document.querySelectorAll('#tbody-empresa-dispositivos tr[data-estado], #tbody-empresa-dispositivos .empty-state').length > 0`, { que: 'dispositivos' });
-        assert.equal(await p.eval(`document.querySelectorAll('#tbody-empresa-dispositivos tr[data-estado]').length`), propios);
-        assert.equal(await p.eval(`document.querySelectorAll('#view-empresa-dispositivos button:not([data-action="loadEmpresaDispositivos"]), #view-empresa-dispositivos input').length`), 0, 'sin alta ni edición');
+        // Dispositivos de la empresa se retiró: sin ítem ni vista, y forzar la ruta deja en Inicio
+        assert.equal(await p.eval(`document.querySelectorAll('.nav-item[data-view="empresa-dispositivos"], #view-empresa-dispositivos').length`), 0, 'sin vista de dispositivos de la empresa');
+        await p.eval(`(() => { const b = document.createElement('button'); b.dataset.action = 'irA'; b.dataset.args = '["empresa-dispositivos"]'; document.body.appendChild(b); b.click(); b.remove(); })()`);
+        await new Promise(r => setTimeout(r, 300));
+        assert.equal(await p.eval(`document.querySelector('#view-inicio').classList.contains('active') && document.querySelectorAll('.view.active').length === 1`), true, 'forzar la ruta cae a Inicio');
       });
       const mias = env.peticiones.slice(desde).filter(r => r.tag === 'global/empresa');
       assert.ok(mias.some(r => /rpc\/usuarios_empresa_listar/.test(r.path)), 'la lista sale de usuarios_empresa_listar');
