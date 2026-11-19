@@ -146,13 +146,17 @@ export function registrar(env) {
 
   // ---- Pruebas del panel viejo contra un /panel/islas.js distinto (el servidor sirve `js` en su lugar; lib/web.mjs) ----
   // Se usa la vista ya existente «flota» (con contenido propio, como `.page-header`) para comprobar cómo convive la isla con una vista vieja.
-  async function conIslaFalsa(js, nombre, rol, fn) {
+  // Una lectura que la vista de Flota alcanza a lanzar justo al cerrar sesión sale ya sin sesión, con la clave pública de prueba, que no es un JWT
+  // (tests/e2e/lib/web.mjs: `clave-publica-de-prueba`): PostgREST responde 401 PGRST301. En producción es un 401/vacío normal de un anónimo.
+  // Solo lo tolera el test de cerrar sesión con un montaje en vuelo, y solo para ese código y esa ruta; cualquier otro 4xx/5xx sigue fallando.
+  const PETICION_TRAS_LOGOUT = [{ ruta: /^\/neumaticos/, status: 401 }];
+  async function conIslaFalsa(js, nombre, rol, fn, opciones) {
     env.web.reemplazar('/panel/islas.js', js);
     try {
       await flujo(env, nombre, rol, async (p) => {
         await p.eval(`import('/assets/js/core/islas.js').then(m => { window.__viejo = 0; m.registrarIsla('flota', 'Flota', { viejo: async () => { window.__viejo++; } }); return true; })`);
         await fn(p);
-      });
+      }, opciones);
     } finally { env.web.restaurar(); }
   }
   const montaIsla = `export const API_ISLAS = 1; export function desmontar() {}
@@ -237,7 +241,7 @@ export function registrar(env) {
       await pausa(p, 900);
       assert.equal(await p.eval(`document.querySelectorAll('[data-isla]').length`), 0, 'no queda montada una isla tras cerrar sesión');
       assert.equal(await p.eval(`document.querySelectorAll('[data-isla-host]').length`), 0);
-    });
+    }, { http: PETICION_TRAS_LOGOUT });
   });
 
   test('islas: un oyente de cambio de sucursal que lanza no impide recargar la vista ni avisar a los demás', async () => {

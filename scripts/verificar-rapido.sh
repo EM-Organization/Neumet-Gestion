@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # npm run verificar:rapido — lo barato del CI, según lo que cambió respecto de origin/main:
 #   siempre: lint (sin warnings) + check + unitarias; test:front y test:lint si cambió src/ (o la config de Vite);
-#   smoke de los once modos si cambió assets/, adminpanel/ o tests/smoke/ (cada modo en su propio puerto libre).
+#   smoke de todos los modos (scripts/smoke-modos.sh) si cambió assets/, adminpanel/ o tests/smoke/ (cada modo en su propio puerto libre).
 # Lo lento (SQL, e2e, Deno, capturas) NO corre aquí: al final se lista qué corresponde según el diff. Ver neumet-verificar.
 # Variables: BASE (origin/main), SIN_SMOKE=1 para omitir el smoke.
 set -uo pipefail
@@ -22,7 +22,7 @@ paso "unitarias" npm test --silent
 if hay '^(src/|vite\.config|package(-lock)?\.json|tests/front)'; then paso "test:front" npm run -s test:front; fi
 if hay '^(src/|tests/lint/|eslint)'; then paso "test:lint" npm run -s test:lint; fi
 if [ -z "${SIN_SMOKE:-}" ] && hay '^(assets/|adminpanel/|tests/smoke/|tests/lib-servidor\.sh|scripts/servir-estatico\.mjs)'; then
-  paso "smoke (11 modos)" scripts/smoke-modos.sh
+  paso "smoke (todos los modos)" scripts/smoke-modos.sh
 fi
 
 echo "== Pendiente de correr a mano según el diff"

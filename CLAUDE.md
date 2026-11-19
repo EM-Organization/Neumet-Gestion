@@ -18,7 +18,7 @@ El estado cambiante del trabajo vive en `docs/10-tablero.md`, no aquí.
 | Lint / sintaxis / unitarias | `npm run lint` · `npm run check` · `npm test` |
 | Front nuevo (Vitest) / reglas de lint de `src/` | `npm run test:front` · `npm run test:lint` |
 | SQL (migraciones x2 + pruebas por rol, Postgres desechable) | `tests/sql/run.sh` |
-| Smoke con Supabase simulado | `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|flota\|sinperfil\|api\|montar\|empresa\|empresa-sucursal\|empresa-admin` |
+| Smoke con Supabase simulado (22 modos; el CI los corre todos) | `scripts/smoke-modos.sh [modo ...]` o `tests/smoke/run.sh admin\|cliente\|secuser\|detalle\|detalle-admin\|flota\|alertas-cliente\|sinperfil\|api\|montar\|montar-sucursal\|empresa\|empresa-sucursal\|empresa-admin\|arranque[-sinsesion\|-roto\|-sinperfil\|-colgada-sesion\|-colgada-perfiles\|-colgada-lanza\|-colgada-tardia]` |
 | E2E contra Postgres + PostgREST reales | `npm run e2e` (un test: `node --test --test-name-pattern="X" tests/e2e/e2e.test.mjs`) |
 | Capturas para revisión visual | `tests/visual/run.sh [escena ...]` → `tests/visual/out/` |
 | Edge Functions | `deno task --config supabase/functions/deno.json check\|test` |

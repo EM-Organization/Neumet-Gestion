@@ -6,6 +6,10 @@ cd "$(dirname "$0")/../.."
 # (desde el PR 96, cliente necesita más de 90000).
 MODE="${1:-admin}"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+# En Linux (CI) no existe la ruta de macOS: se usa el Chrome del PATH.
+if [ ! -x "$CHROME" ]; then
+  for c in google-chrome google-chrome-stable chromium chromium-browser; do command -v "$c" >/dev/null 2>&1 && CHROME=$(command -v "$c") && break; done
+fi
 # shellcheck source=../lib-servidor.sh
 . tests/lib-servidor.sh
 iniciar_servidor || exit 2
