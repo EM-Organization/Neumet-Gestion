@@ -147,6 +147,48 @@ select test.denied('G: no se retira un neumático de un vehículo eliminado',
 select test.denied('G: no se mueve de sucursal', $$select public.vehiculo_mover_sucursal(9901, 991)$$, '42501');
 reset role;
 
+-- Lecturas por función SECURITY DEFINER (no pasan por la RLS): el neumático dado de baja con el vehículo eliminado
+-- no se lista ni se calcula, ni para el administrador de empresa ni para el equipo Neumet.
+reset role;
+update public.neumaticos set precio_unidad = 1000 where idneumatico in ('N-9902-1', 'N-9901-1');
+create temp table _n (k text, id bigint);
+grant all on _n to public;
+insert into _n select 'baja', id from public.neumaticos where idneumatico = 'N-9902-1';
+insert into _n select 'stock', id from public.neumaticos where idneumatico = 'N-9901-1';
+select test.become('authenticated', test.u_cli_a());
+select test.eq('G: neumaticos_precios(vehículo eliminado) vacío para el global',
+  (select count(*) from public.neumaticos_precios(9902)), 0::bigint);
+select test.eq('G: neumaticos_precios sin filtro no trae el neumático de baja (global)',
+  (select count(*) from public.neumaticos_precios() p where p.id = (select id from _n where k = 'baja')), 0::bigint);
+select test.eq('G: neumaticos_precios sí trae el que volvió al stock (global)',
+  (select count(*) from public.neumaticos_precios() p where p.id = (select id from _n where k = 'stock')), 1::bigint);
+select test.eq('G: costo_cubierta_items del neumático de baja vacío (global)',
+  (select count(*) from public.costo_cubierta_items((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: costo_vida_items del neumático de baja vacío (global)',
+  (select count(*) from public.costo_vida_items((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: km_tramos_cubierta del neumático de baja vacío (global)',
+  (select count(*) from public.km_tramos_cubierta((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: costo_cubierta_items del que volvió al stock sí responde (global)',
+  (select count(*) from public.costo_cubierta_items((select id from _n where k = 'stock'))), 1::bigint);
+select test.become('authenticated', test.u_admin());
+select test.eq('G: neumaticos_precios(vehículo eliminado) vacío para el equipo Neumet',
+  (select count(*) from public.neumaticos_precios(9902)), 0::bigint);
+select test.eq('G: neumaticos_precios sin filtro no trae el neumático de baja (equipo Neumet)',
+  (select count(*) from public.neumaticos_precios() p where p.id = (select id from _n where k = 'baja')), 0::bigint);
+select test.eq('G: costo_cubierta_items del neumático de baja vacío (equipo Neumet)',
+  (select count(*) from public.costo_cubierta_items((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: costo_vida_items del neumático de baja vacío (equipo Neumet)',
+  (select count(*) from public.costo_vida_items((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: km_tramos_cubierta del neumático de baja vacío (equipo Neumet)',
+  (select count(*) from public.km_tramos_cubierta((select id from _n where k = 'baja'))), 0::bigint);
+select test.eq('G: costo_cubierta_items del que volvió al stock sí responde (equipo Neumet)',
+  (select count(*) from public.costo_cubierta_items((select id from _n where k = 'stock'))), 1::bigint);
+reset role;
+select test.eq('G: anon no ejecuta vehiculo_eliminar',
+  has_function_privilege('anon', 'public.vehiculo_eliminar(bigint, text)', 'execute'), false);
+select test.eq('G: authenticated sí ejecuta vehiculo_eliminar',
+  has_function_privilege('authenticated', 'public.vehiculo_eliminar(bigint, text)', 'execute'), true);
+
 -- ---- H. Patente y número se pueden reutilizar -----------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
 insert into _r select 'nuevo', public.vehiculo_crear('9901', 'EL9901');

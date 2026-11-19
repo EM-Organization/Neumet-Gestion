@@ -4,8 +4,18 @@
 -- Por qué baja lógica y no DELETE físico: eventos_neumatico.vehiculo_id es RESTRICT (el historial de los neumáticos es
 -- auditoría) y mediciones/alertas se perderían con CASCADE/SET NULL. El vehículo queda con `deleted_at`, sin
 -- patente ni número (se guardan en patente_baja/numero_baja) para poder reutilizarlos, y sin sucursal para no trabar
--- la baja de la sucursal. La RLS lo oculta a todos los perfiles, así que las vistas, los embebidos y las subconsultas
--- de otras políticas dejan de verlo sin tocarlas una por una.
+-- la baja de la sucursal. La RLS de `vehiculos` lo oculta a todos los perfiles, así que las vistas, los embebidos y las
+-- subconsultas de otras políticas dejan de verlo sin tocarlas una por una.
+--
+-- Qué queda visible tras eliminar (decisión: historial de auditoría; no se filtra cada tabla):
+--   * Vehículo: nadie lo ve (RLS de `vehiculos`), tampoco el equipo Neumet.
+--   * Neumáticos dados de baja con el vehículo (conservan vehiculo_id): el perfil global de la empresa no los ve (su
+--     política los une a `vehiculos`); el equipo Neumet SÍ ve la fila, sus mediciones y eventos (política is_admin sin join).
+--     Sus precios, costos y km no se sirven a nadie: neumaticos_precios, costo_cubierta_items, costo_vida_items y
+--     km_tramos_cubierta los descartan (más abajo).
+--   * Los que volvieron al stock se ven en el stock, con su historial.
+--   * Mediciones, eventos y alertas del vehículo eliminado siguen legibles para el perfil global de la empresa y para el
+--     equipo Neumet (historial de auditoría); el perfil de sucursal no los ve (su política los une a `vehiculos`).
 --
 -- Autoriza SOLO al administrador de empresa (admin_empresa_cliente_id): el equipo Neumet es de solo lectura (C2),
 -- y los perfiles de sucursal, sin perfil o `api` reciben 42501 uniforme.
@@ -109,6 +119,380 @@ begin
 end
 $function$;
 
+-- Las tres funciones de costos/km (SECURITY DEFINER) leían la cubierta sin pasar por la RLS: se recrean idénticas salvo
+-- el descarte inicial de los neumáticos de un vehículo eliminado.
+create or replace function public.km_tramos_cubierta(p_neumatico bigint)
+returns table (
+  cerrados            bigint,
+  cerrados_con_dato   bigint,
+  km_cerrados         bigint,
+  montajes_sin_cierre bigint,
+  ultimo_montaje      boolean,
+  ult_odo             integer,
+  ult_veh             bigint,
+  decreciente         boolean
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+rows 1
+as $$
+declare
+  v_rol text;
+  v_cli bigint;
+  v_suc bigint;
+begin
+  -- Solo para una cubierta que quien llama puede ver (mismo criterio que las políticas de neumaticos): admin;
+  -- perfil cliente con la cubierta en un vehículo de su cliente (y de su sucursal si es perfil de sucursal); perfil
+  -- global con la cubierta en su stock. api, sin perfil, otro cliente: ninguna fila. Un rol que ya omite la RLS
+  -- (service_role, dueño o superusuario: el rol activo no es authenticated ni anon) ve todo, como en la tabla.
+  -- El perfil se lee una vez (y no con is_admin/current_*): esta función corre una vez por fila de la vista.
+  if coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
+    -- Un neumático dado de baja con un vehículo eliminado no se lee por esta vía (ni para el equipo Neumet).
+    perform 1 from public.neumaticos n
+      join public.vehiculos v on v.id = n.vehiculo_id
+     where n.id = p_neumatico and v.deleted_at is not null;
+    if found then
+      return;
+    end if;
+    select p.rol, p.cliente_id, p.sucursal_id into v_rol, v_cli, v_suc
+      from public.perfiles p where p.user_id = auth.uid();
+    if v_rol is distinct from 'admin' then
+      if v_rol is distinct from 'cliente' or v_cli is null then
+        return;
+      end if;
+      perform 1 from public.neumaticos n
+        left join public.vehiculos v on v.id = n.vehiculo_id
+       where n.id = p_neumatico
+         and ((v.id is not null and v.cliente_id = v_cli and (v_suc is null or v.sucursal_id = v_suc))
+              or (n.vehiculo_id is null and n.cliente_id = v_cli and v_suc is null));
+      if not found then
+        return;
+      end if;
+    end if;
+  end if;
+
+  return query
+
+  select
+    count(*) filter (where t.cierre),
+    count(*) filter (where t.cierre and t.conocido),
+    coalesce(sum(t.odometro_km - t.prev_odo) filter (where t.cierre and t.conocido), 0)::bigint,
+    count(*) filter (where t.tipo = 'montaje' and t.prev_tipo = 'montaje'),
+    coalesce(bool_or(t.ultimo and t.tipo = 'montaje'), false),
+    max(case when t.ultimo and t.tipo = 'montaje' then t.odometro_km end),
+    max(case when t.ultimo and t.tipo = 'montaje' then t.vehiculo_id end),
+    coalesce(bool_or(t.decr), false)
+  from (
+    select
+      w.vehiculo_id, w.tipo, w.odometro_km, w.prev_tipo, w.prev_odo, w.ultimo, w.decr,
+      (w.tipo in ('desmontaje', 'baja'))                                   as cierre,
+      (w.tipo in ('desmontaje', 'baja') and w.prev_tipo = 'montaje' and w.prev_veh = w.vehiculo_id
+        and w.odometro_km is not null and w.prev_odo is not null
+        and w.odometro_km >= w.prev_odo)                                   as conocido
+    from (
+      select
+        e.vehiculo_id, e.tipo, e.odometro_km,
+        lag(e.tipo)        over wt as prev_tipo,
+        lag(e.vehiculo_id) over wt as prev_veh,
+        lag(e.odometro_km) over wt as prev_odo,
+        (e.tipo <> 'rotacion' and lead(e.id) over wt is null) as ultimo,
+        (e.odometro_km is not null and lag(e.odometro_km) over wv is not null
+          and e.odometro_km < lag(e.odometro_km) over wv)    as decr
+      from public.eventos_neumatico e
+      where e.neumatico_id = km_tramos_cubierta.p_neumatico and e.vehiculo_id is not null
+        and e.tipo in ('montaje', 'desmontaje', 'baja', 'rotacion')
+      window wt as (partition by (e.tipo = 'rotacion') order by e.created_at, e.id),
+             wv as (partition by e.vehiculo_id order by e.created_at, e.id)
+    ) w
+  ) t;
+end
+$$;
+revoke all on function public.km_tramos_cubierta(bigint) from public, anon;
+grant execute on function public.km_tramos_cubierta(bigint) to authenticated;
+
+create or replace function public.costo_cubierta_items(p_neumatico bigint)
+returns table (
+  n_items       integer,
+  n_monedas     integer,
+  moneda        text,
+  monedas       text[],
+  total         numeric,
+  por_concepto  jsonb,
+  marca         text,
+  modelo        text,
+  vida          smallint,
+  condicion     text,
+  fecha_alta    date,
+  sucursal_id   bigint
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+rows 1
+as $$
+declare
+  v_precio numeric;
+  v_marca  text;
+  v_modelo text;
+  v_vida   smallint;
+  v_cond   text;
+  v_alta   date;
+  v_suc    bigint;
+  v_rol    text;
+  v_cli    bigint;
+begin
+  if coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
+    -- Un neumático dado de baja con un vehículo eliminado no se lee por esta vía (ni para el equipo Neumet).
+    perform 1 from public.neumaticos n
+      join public.vehiculos v on v.id = n.vehiculo_id
+     where n.id = p_neumatico and v.deleted_at is not null;
+    if found then
+      return;
+    end if;
+    if not public.precios_visibles() then
+      return;
+    end if;
+    select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();
+    if v_rol is distinct from 'admin' then
+      -- Perfil global: la cubierta debe estar en un vehículo de su cliente o en su stock.
+      perform 1 from public.neumaticos n
+        left join public.vehiculos v on v.id = n.vehiculo_id
+       where n.id = p_neumatico
+         and ((v.id is not null and v.cliente_id = v_cli) or (n.vehiculo_id is null and n.cliente_id = v_cli));
+      if not found then
+        return;
+      end if;
+    end if;
+  end if;
+
+  -- Datos de la cubierta (la vista no vuelve a unirse a neumaticos: evita repetir la RLS por fila).
+  select n.precio_unidad, n.marca, n.modelo, n.vida, n.condicion, coalesce(n.fecha_compra, n.created_at::date),
+         coalesce(v.sucursal_id, n.sucursal_id)
+    into v_precio, v_marca, v_modelo, v_vida, v_cond, v_alta, v_suc
+    from public.neumaticos n
+    left join public.vehiculos v on v.id = n.vehiculo_id
+   where n.id = p_neumatico;
+  if not found then
+    return;
+  end if;
+
+  return query
+  select a.n_items, a.n_monedas, a.moneda, a.monedas, a.total, a.por_concepto,
+         v_marca, v_modelo, v_vida, v_cond, v_alta, v_suc
+  from (
+  select
+    count(*)::int as n_items,
+    count(distinct g.moneda)::int as n_monedas,
+    min(g.moneda) as moneda,
+    array_agg(distinct g.moneda) as monedas,
+    sum(g.monto) as total,
+    jsonb_object_agg(g.concepto, g.monto) as por_concepto
+  from (
+    select i.concepto, i.moneda, sum(i.monto) as monto
+    from (
+      -- Entradas manuales
+      select m.concepto, m.moneda, m.monto
+        from public.costos_neumatico m
+       where m.neumatico_id = p_neumatico
+      union all
+      -- Eventos con costo que no son el montaje (el montaje repite el precio de compra)
+      select case e.tipo when 'reparacion' then 'reparacion' when 'reencauche' then 'recauchutado' else 'otro' end,
+             'UYU', e.costo
+        from public.eventos_neumatico e
+       where e.neumatico_id = p_neumatico and e.costo is not null and e.tipo <> 'montaje'
+      union all
+      -- Compra: precio_unidad, salvo que una entrada manual 'compra' la corrija
+      select 'compra', 'UYU', v_precio
+       where v_precio is not null
+         and not exists (select 1 from public.costos_neumatico m
+                          where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+      union all
+      -- Compra sin precio_unidad: el costo del evento de montaje (una sola vez)
+      select 'compra', 'UYU', max(e.costo)
+        from public.eventos_neumatico e
+       where v_precio is null and e.neumatico_id = p_neumatico
+         and e.tipo = 'montaje' and e.costo is not null
+         and not exists (select 1 from public.costos_neumatico m
+                          where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+      having max(e.costo) is not null
+    ) i
+    group by i.concepto, i.moneda
+  ) g
+  ) a;
+end
+$$;
+revoke all on function public.costo_cubierta_items(bigint) from public, anon;
+grant execute on function public.costo_cubierta_items(bigint) to authenticated;
+
+create or replace function public.costo_vida_items(p_neumatico bigint)
+returns table (
+  vida                   smallint,
+  vida_actual            smallint,
+  banda_marca            text,
+  banda_modelo           text,
+  profundidad_inicial_mm numeric,
+  fecha_inicio           date,
+  n_items                integer,
+  n_monedas              integer,
+  moneda                 text,
+  total                  numeric,
+  km_recorridos          bigint,
+  tramos_con_dato        integer,
+  tramos_sin_dato        integer
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+rows 2
+as $$
+declare
+  v_precio numeric;
+  v_vida   smallint;
+  v_estado text;
+  v_veh    bigint;
+  v_odo    integer;
+  v_nre    integer;
+  v_base   integer;
+  v_rol    text;
+  v_cli    bigint;
+begin
+  if coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
+    -- Un neumático dado de baja con un vehículo eliminado no se lee por esta vía (ni para el equipo Neumet).
+    perform 1 from public.neumaticos n
+      join public.vehiculos v on v.id = n.vehiculo_id
+     where n.id = p_neumatico and v.deleted_at is not null;
+    if found then
+      return;
+    end if;
+    if not public.precios_visibles() then
+      return;
+    end if;
+    select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();
+    if v_rol is distinct from 'admin' then
+      perform 1 from public.neumaticos n
+        left join public.vehiculos v on v.id = n.vehiculo_id
+       where n.id = p_neumatico
+         and ((v.id is not null and v.cliente_id = v_cli) or (n.vehiculo_id is null and n.cliente_id = v_cli));
+      if not found then
+        return;
+      end if;
+    end if;
+  end if;
+
+  select n.precio_unidad, n.vida, n.estado, n.vehiculo_id, v.odometro_km
+    into v_precio, v_vida, v_estado, v_veh, v_odo
+    from public.neumaticos n
+    left join public.vehiculos v on v.id = n.vehiculo_id
+   where n.id = p_neumatico;
+  if not found then
+    return;
+  end if;
+  select count(*)::int into v_nre from public.eventos_neumatico e where e.neumatico_id = p_neumatico and e.tipo = 'reencauche';
+  v_base := greatest(v_vida - v_nre, 0);
+
+  return query
+  with ev as (
+    select e.id, e.created_at, e.tipo, e.vehiculo_id, e.odometro_km, e.costo,
+           least(v_base + (count(*) filter (where e.tipo = 'reencauche') over (order by e.created_at, e.id))::int, 3)::smallint as vida_ev
+      from public.eventos_neumatico e
+     where e.neumatico_id = p_neumatico
+  ),
+  seq as (
+    select s.vida_ev, s.tipo, s.vehiculo_id, s.odometro_km,
+           lead(s.tipo)        over w as sig_tipo,
+           lead(s.vehiculo_id) over w as sig_veh,
+           lead(s.odometro_km) over w as sig_odo
+      from ev s
+     where s.vehiculo_id is not null and s.tipo in ('montaje', 'desmontaje', 'baja')
+    window w as (order by s.created_at, s.id)
+  ),
+  tr as (
+    select s.vida_ev as vida,
+           case
+             when s.sig_tipo in ('desmontaje', 'baja')
+               then (s.sig_veh = s.vehiculo_id and s.odometro_km is not null and s.sig_odo is not null
+                     and s.sig_odo >= s.odometro_km)
+             when s.sig_tipo is null
+               then (v_estado = 'montado' and v_veh = s.vehiculo_id and s.odometro_km is not null and v_odo is not null)
+             else false end as conocido,
+           case
+             when s.sig_tipo in ('desmontaje', 'baja') then s.sig_odo - s.odometro_km
+             when s.sig_tipo is null then greatest(v_odo - s.odometro_km, 0)
+           end as km
+      from seq s
+     where s.tipo = 'montaje'
+  ),
+  kv as (
+    select t.vida,
+           coalesce(sum(t.km) filter (where t.conocido), 0)::bigint as km,
+           (count(*) filter (where t.conocido))::int as con,
+           (count(*) filter (where not t.conocido))::int as sin
+      from tr t
+     group by t.vida
+  ),
+  it as (
+    select i.vida, i.concepto, i.moneda, sum(i.monto) as monto
+      from (
+        select m.vida, m.concepto, m.moneda, m.monto
+          from public.costos_neumatico m
+         where m.neumatico_id = p_neumatico
+        union all
+        select x.vida_ev, case x.tipo when 'reparacion' then 'reparacion' when 'reencauche' then 'recauchutado'
+                                      else 'otro' end, 'UYU', x.costo
+          from ev x
+         where x.costo is not null and x.tipo <> 'montaje'
+        union all
+        select v_base::smallint, 'compra', 'UYU', v_precio
+         where v_precio is not null
+           and not exists (select 1 from public.costos_neumatico m
+                            where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+        union all
+        select v_base::smallint, 'compra', 'UYU', max(x.costo)
+          from ev x
+         where v_precio is null and x.tipo = 'montaje' and x.costo is not null
+           and not exists (select 1 from public.costos_neumatico m
+                            where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+        having max(x.costo) is not null
+      ) i
+     group by i.vida, i.concepto, i.moneda
+  ),
+  cv as (
+    select g.vida,
+           count(*)::int as n_items,
+           count(distinct g.moneda)::int as n_monedas,
+           min(g.moneda) as moneda,
+           sum(g.monto) as total
+      from it g
+     group by g.vida
+  )
+  select gs.vida::smallint,
+         v_vida,
+         nv.banda_marca,
+         nv.banda_modelo,
+         nv.profundidad_inicial_mm,
+         nv.fecha,
+         coalesce(cv.n_items, 0),
+         coalesce(cv.n_monedas, 0),
+         cv.moneda,
+         cv.total,
+         case when coalesce(kv.con, 0) = 0 and coalesce(kv.sin, 0) > 0 then null else coalesce(kv.km, 0) end,
+         coalesce(kv.con, 0),
+         coalesce(kv.sin, 0)
+    from generate_series(v_base, v_vida) gs(vida)
+    left join cv on cv.vida = gs.vida
+    left join kv on kv.vida = gs.vida
+    left join public.neumatico_vidas nv on nv.neumatico_id = p_neumatico and nv.vida = gs.vida
+   order by gs.vida;
+end
+$$;
+revoke all on function public.costo_vida_items(bigint) from public, anon;
+grant execute on function public.costo_vida_items(bigint) to authenticated;
+
+
 -- Los precios de los neumáticos que quedaron dados de baja con un vehículo eliminado dejan de ser visibles,
 -- igual que las filas (la RLS de neumaticos ya los oculta).
 create or replace function public.neumaticos_precios(p_vehiculo bigint default null::bigint, p_solo_stock boolean default false)
@@ -123,12 +507,14 @@ as $function$
     and (select public.precios_visibles())
     and (p_vehiculo is null or n.vehiculo_id = p_vehiculo)
     and (not coalesce(p_solo_stock, false) or n.vehiculo_id is null)
+    -- El neumático de un vehículo eliminado no se lista para nadie (tampoco para el equipo Neumet).
+    and (n.vehiculo_id is null
+         or exists (select 1 from public.vehiculos vd where vd.id = n.vehiculo_id and vd.deleted_at is null))
     and ((select public.is_admin())
          or ((select public.current_cliente_id()) is not null
              and ((n.vehiculo_id is null and n.cliente_id = (select public.current_cliente_id()))
                   or exists (select 1 from public.vehiculos v
                              where v.id = n.vehiculo_id
-                               and v.deleted_at is null
                                and v.cliente_id = (select public.current_cliente_id())))))
   order by n.id
 $function$;
@@ -178,6 +564,12 @@ begin
   if v_veh.deleted_at is not null then
     raise exception 'el vehículo ya fue eliminado' using errcode = 'P0002';
   end if;
+
+  -- Bloquea los neumáticos ANTES de contarlos: un recauchutado_enviar concurrente no puede cambiar el conjunto entre
+  -- el conteo y la actualización.
+  perform 1 from public.neumaticos n
+   where n.vehiculo_id = v_veh.id and n.estado <> 'baja'
+   order by n.id for update;
 
   select count(*) into v_total from public.neumaticos n
    where n.vehiculo_id = v_veh.id and n.estado <> 'baja';

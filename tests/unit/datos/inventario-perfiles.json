@@ -521,12 +521,27 @@
  },
  {
   "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
-  "linea": 46,
+  "linea": 56,
   "texto": "v_perf public.perfiles%rowtype;"
  },
  {
   "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
-  "linea": 55,
+  "linea": 65,
   "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
+ },
+ {
+  "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
+  "linea": 160,
+  "texto": "from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
+  "linea": 258,
+  "texto": "select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
+  "linea": 374,
+  "texto": "select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();"
  }
 ]
