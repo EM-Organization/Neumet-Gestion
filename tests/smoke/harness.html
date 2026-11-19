@@ -52,7 +52,7 @@
     var nav=function(v){ return click($('.nav-item[data-view="'+v+'"]'),'nav '+v); };
     await sleep(600);
     var sinAcceso=/[?&](sinperfil|api)=1/.test(location.search);
-    if($('#app').classList.contains('hidden') && !sinAcceso && !/[?&](nosession|roto)=1/.test(location.search)) fail('la app no salio del login');
+    if($('#app').classList.contains('hidden') && !sinAcceso && !/[?&](nosession=1|roto=1|colgada=\w+)/.test(location.search)) fail('la app no salio del login');
 
     if(/[?&]arranque=1/.test(location.search)){
       // Qué se ve mientras se resuelve la sesión (tests/smoke/arranque.flow.js)

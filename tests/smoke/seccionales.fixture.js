@@ -113,6 +113,14 @@
       return ms ? new Promise(function(ok){ setTimeout(function(){ ok(out); }, ms); }) : Promise.resolve(out);
     };
     c.from = function(t){
+      // ?colgada=perfiles: la consulta del perfil nunca responde; ?colgada=lanza: lanza una excepción (red caída).
+      if (t === 'perfiles' && /[?&]colgada=(perfiles|lanza)/.test(window.parent.location.search)) {
+        var colgada = /colgada=perfiles/.test(window.parent.location.search), h = {};
+        ['select', 'eq'].forEach(function(m){ h[m] = function(){ return h; }; });
+        h.maybeSingle = function(){ return h; };
+        h.then = function(ok, ko){ return colgada ? new Promise(function(){}) : Promise.reject(new Error('red caida')).then(ok, ko); };
+        return h;
+      }
       if (t === 'sucursales' || t === 'perfiles') return MQ(t);
       var q = from(t);
       if (t !== 'vehiculos' && t !== 'dispositivos') return q;

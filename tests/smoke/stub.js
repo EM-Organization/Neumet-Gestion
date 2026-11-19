@@ -124,6 +124,7 @@
           var q=window.parent.location.search;
           // ?arranque=1: la sesión tarda en resolverse (red real) para poder observar qué se ve mientras tanto; ?roto=1: la lectura falla.
           var tarda=/[?&]arranque=1/.test(q)?function(f){ return new Promise(function(r,j){ setTimeout(function(){ try{ r(f()); }catch(e){ j(e); } },400); }); }:function(f){ try{ return Promise.resolve(f()); }catch(e){ return Promise.reject(e); } };
+          if(/[?&]colgada=sesion/.test(q)) return new Promise(function(){}); // getSession que nunca responde
           return tarda(function(){ if(/[?&]roto=1/.test(q)) throw new Error('sesion corrupta'); return {data:{session:/[?&]nosession=1/.test(q)?null:session}}; });
         },
         signInWithPassword:function(){ return Promise.resolve({data:{user:session.user},error:null}); },
