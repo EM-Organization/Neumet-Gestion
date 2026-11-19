@@ -59,8 +59,10 @@ async function resolverRol(userId){
 }
 
 // AUTH — detecta rol
+// Mientras se resuelve, la pantalla «Cargando» (HTML inicial) es lo único visible: el login solo aparece si se sabe que no hay sesión.
 export async function checkAuth(){
-  const {data:{session}}=await db.auth.getSession();
+  let session=null;
+  try{ ({data:{session}}=await db.auth.getSession()); }catch(e){ session=null; } // sesión ilegible = sin sesión (nunca queda en «Cargando»)
   if(!session){ showLogin(); return; }
   await entrar(session.user);
 }
@@ -71,18 +73,22 @@ async function entrar(user){
   if(panelHabilitado()) showApp(user); else showSinAcceso();
 }
 
+function ocultarCargando(){ document.getElementById('cargando-screen').classList.add('hidden'); }
 function showLogin(){
+  ocultarCargando();
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.add('hidden');
 }
 function showSinAcceso(){
+  ocultarCargando();
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.remove('hidden');
   document.getElementById('sin-acceso-cerrar').focus();
 }
 function showApp(user){
+  ocultarCargando();
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('user-email').textContent=user.email;
