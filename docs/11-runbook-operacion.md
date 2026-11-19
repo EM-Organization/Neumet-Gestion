@@ -118,7 +118,7 @@ npm run verificar:rapido       # lint + check + unitarias, test:front y el smoke
 - **Por qué `npm ci` propio** y no un enlace al `node_modules` del repo principal: ese puede estar desactualizado y un `npm install` en un
   worktree cambiaría las dependencias de todos los demás.
 - **Smoke y capturas**: `tests/smoke/run.sh <modo>` y `tests/visual/run.sh` levantan `scripts/servir-estatico.mjs` (Node, concurrente, cola larga) en el primer
-  puerto libre; se pueden correr varios a la vez en distintos worktrees. `scripts/smoke-modos.sh` corre los 22 modos (el CI también: job `smoke`).
+  puerto libre; se pueden correr varios a la vez en distintos worktrees. `scripts/smoke-modos.sh` corre los 23 modos (el CI también: job `smoke`).
   `PORT` y `BUDGET` siguen funcionando. Necesitan Google Chrome y `node` (>= 22.12).
 - **`npm run e2e`** (verificado desde un worktree): necesita `npm ci` hecho (el e2e corre `npm run build`), Postgres con
   `initdb`/`pg_ctl` (`brew install postgresql@17`, o `E2E_PG_URL` con un superusuario), `libpq` en macOS y Chrome. El binario de PostgREST se
