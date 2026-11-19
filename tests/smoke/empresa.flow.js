@@ -185,7 +185,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   var ordenCampos = Array.prototype.slice.call(all('#emp-umb-campos [data-umbral]')).map(function (i) { return i.dataset.umbral; }).slice(0, 3).join(',');
   if (ordenCampos !== 'umbral_bajo_mm,umbral_critico_mm,umbral_retiro_mm') fail('empresa: los umbrales deben ir de mayor a menor: ' + ordenCampos);
   var textoUmb = $('#view-empresa-umbrales').textContent;
-  if (/histéresis|\((naranja|rojo)\)|[<"]/i.test(textoUmb.replace(/\s+/g, ' ')) ) fail('empresa: textos de umbrales fuera de la guía: ' + textoUmb.replace(/\s+/g, ' '));
+  if (/\((naranja|rojo)\)|[<"]/i.test(textoUmb.replace(/\s+/g, ' ')) ) fail('empresa: textos de umbrales fuera de la guía: ' + textoUmb.replace(/\s+/g, ' '));
   var upd0 = (w.__saludFx && w.__saludFx.updates.length) || 0;
   var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
   var llenar = function () { Object.keys(valores).forEach(function (k) { $('#eu-' + k).value = valores[k]; }); };

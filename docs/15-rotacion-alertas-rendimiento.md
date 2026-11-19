@@ -1,8 +1,8 @@
-# 15 · Rotación, alerta única de estado crítico y rendimiento del indicador de desgaste
+# 15 · Rotación, alerta única de desgaste límite y rendimiento del indicador de desgaste
 
 Documento de investigación y diseño. Los esbozos de SQL y de JavaScript de las secciones A y B son propuestas. De la sección C ya están implementadas la tasa robusta, la vista rápida y la referencia con `MIN_MUESTRAS` = 5 (ver C.6 y C.7); las tablas de C.1 a C.5 describen el estado **anterior** a esos cambios y se conservan como registro de la medición. Estilo de textos según `docs/14-guia-de-textos.md`.
 
-Contenido: A) recomendación de rotación; B) alerta única de estado crítico, personalizable por cliente; C) auditoría de rendimiento del texto «Desgaste mayor al normal…».
+Contenido: A) recomendación de rotación; B) alerta única de desgaste límite, personalizable por cliente; C) auditoría de rendimiento del texto «Desgaste mayor al normal…».
 
 ---
 
@@ -113,9 +113,9 @@ E2E (`tests/e2e/specs`): ficha de un vehículo del demo con ruedas desparejas mu
 
 ---
 
-## B. Alerta única de estado crítico, personalizable
+## B. Alerta única de desgaste límite, personalizable
 
-> Estado: la etapa 1 está implementada en la migración `20261118500000` (ver `docs/08`, apéndice M). Quedó fuera de esa etapa la anulación por eje y posición, que sigue descrita abajo como diseño. Las tablas B.1 y B.6 describen el estado y el esbozo anteriores.
+> Estado: la etapa 1 está implementada en la migración `20261123000000_categorias_desgaste.sql` (ver `docs/08`, apéndice T). La alerta pasó de «crítico» a «desgaste límite» (`promedio < umbral_retiro_mm`) y las categorías visibles del panel son cinco. Quedó fuera de esta etapa la anulación por eje y posición, que sigue descrita abajo como diseño. Las tablas B.1 y B.6 describen el esbozo histórico.
 
 ### B.1 Situación actual
 
@@ -126,13 +126,13 @@ E2E (`tests/e2e/specs`): ficha de un vehículo del demo con ruedas desparejas mu
 
 ### B.2 Definición de producto
 
-Un solo tipo de alerta: **«Neumático en estado crítico»**. Un neumático montado está en estado crítico cuando su promedio de mm es menor que el umbral crítico aplicable. «Bajo», «cruza el crítico pronto», «desgaste irregular» y «sin medir» dejan de ser alertas: pasan a ser indicadores visibles en la ficha, el color del diagrama y «Requieren atención» de Inicio, sin notificación ni estado.
+Un solo tipo de alerta: **«Desgaste límite»**. Un neumático montado genera alerta cuando su promedio de mm es menor que el umbral de retiro aplicable (`umbral_retiro_mm`, 3 mm por defecto). La alerta se resuelve con histéresis: cuando el promedio supera `umbral_retiro_mm + alerta_histeresis_mm` (0,5 mm por defecto). «Poco desgaste», «mayor desgaste», «desgaste irregular» y «sin medir» dejan de ser alertas: pasan a ser indicadores visibles en la ficha, el color del diagrama y «Requieren atención» de Inicio, sin notificación ni estado.
 
 ### B.3 Personalización
 
 | Dimensión | Diseño |
 |---|---|
-| Umbral crítico | Por cliente (hoy `clientes.umbral_critico_mm`, queda como valor base). Anulaciones opcionales por **eje** (p. ej. direccional 6 mm), por **posición** y por **marca y modelo**. Precedencia: posición, luego marca/modelo, luego eje, luego cliente. Debe mantenerse `umbral_retiro_mm < umbral_critico_mm`. |
+| Umbral de alerta | Por cliente (`clientes.umbral_retiro_mm`, 3 mm por defecto). Anulaciones opcionales por **eje**, por **posición** y por **marca y modelo** quedan para etapas futuras. Debe mantenerse `umbral_retiro_mm < umbral_critico_mm < umbral_bajo_mm`. |
 | Histéresis | `histeresis_mm` por cliente, 0,5 mm por defecto. Se abre cuando `promedio < U`; se resuelve cuando `promedio >= U + histeresis`. Evita abrir y cerrar con el ruido del sensor (la dispersión entre huellas de un mismo neumático puede ser de décimas de mm; ajustar con datos reales). |
 | Destinatarios y canal | Tabla de destinatarios por cliente (y opcionalmente por sucursal): correo en la etapa 2; webhook y mensajería quedan como TODO. Cada alerta nueva produce un envío; los recordatorios son configurables. |
 | Silenciar | Por neumático o por vehículo, hasta una fecha (`silenciada_hasta`), con motivo y autor. Una alerta silenciada sigue abierta pero no notifica. |
@@ -145,7 +145,7 @@ Un solo tipo de alerta: **«Neumático en estado crítico»**. Un neumático mon
 
 ### B.4 Cómo se evalúa: dos alternativas
 
-**Alternativa 1 · Solo vista (`v_alertas` reducida + tabla de configuración).** La vista calcula el estado crítico en cada consulta con el umbral efectivo (join con `alerta_umbrales`).
+**Alternativa 1 · Solo vista (`v_alertas` reducida + tabla de configuración).** La vista calcula el desgaste límite en cada consulta con el umbral efectivo (join con `alerta_umbrales`).
 
 - Pros: sin estado que mantener ni sincronizar; cambia un umbral y la vista lo refleja de inmediato; migración pequeña.
 - Contras: sin reconocimiento, historial, silencios ni histéresis (la histéresis necesita memoria: no se sabe si la alerta «ya estaba abierta»); no hay punto de transición para notificar, así que habría que consultar la vista periódicamente y comparar; no hay auditoría de quién atendió qué; hereda el coste de `v_estado_neumaticos` (sección C: unos 0,45 s por consulta con 3 000 neumáticos).
@@ -163,11 +163,11 @@ Un solo tipo de alerta: **«Neumático en estado crítico»**. Un neumático mon
 
 - Tabla `alertas` (esbozo abajo) con índice único parcial, RLS de lectura y auditoría.
 - Tabla `alerta_umbrales` con anulaciones por eje y por posición (marca/modelo queda para la etapa 3) y columna `clientes.alerta_histeresis_mm`.
-- Función `alerta_umbral_efectivo(vehiculo_id, posicion, marca, modelo)` y uso en `v_estado_neumaticos` (el estado `critico` y la alerta usan el mismo umbral).
+- Función `alerta_umbral_efectivo(vehiculo_id, posicion, marca, modelo)` y uso en `v_estado_neumaticos` (el estado `desgaste_limite` y la alerta usan el mismo umbral de retiro).
 - Trigger `AFTER INSERT` en `mediciones` (solo filas con `idneumatico`) y `AFTER UPDATE OF estado, posicion` en `neumaticos`; función `alerta_evaluar_neumatico(neumatico_id)`.
 - Funciones `alerta_reconocer(id, nota)`, `alerta_silenciar(id, hasta, motivo)` y `alerta_resolver(id, nota)` con autorización.
-- Reevaluación de un cliente al cambiar sus umbrales: `alerta_reevaluar_cliente(cliente_id)`; relleno inicial con los neumáticos críticos actuales.
-- `v_alertas` conserva sus columnas y solo devuelve `critico` desde la tabla; el panel deja de mostrar los demás tipos como alertas (siguen como indicadores).
+- Reevaluación de un cliente al cambiar sus umbrales: `alerta_reevaluar_cliente(cliente_id)`; relleno inicial con los neumáticos en desgaste límite actuales.
+- `v_alertas` conserva sus columnas y solo devuelve `limite` desde la tabla; el panel deja de mostrar los demás tipos como alertas (siguen como indicadores).
 - Tests SQL y e2e (B.6).
 
 **Etapa 2 · notificación.** Tabla `alerta_destinatarios`, tabla de salida `alerta_envios` (idempotente por alerta y destinatario), Edge Function que envía correo por transición (y un resumen diario), pantalla de configuración de destinatarios. TODO.
@@ -247,10 +247,10 @@ $$;
 6. Aislamiento: un usuario de otro cliente o de otra sucursal no ve ni reconoce la alerta (`42501` en la función, cero filas por RLS). El rol `api` no accede.
 7. `authenticated` no puede hacer `INSERT/UPDATE/DELETE` directos sobre `alertas`.
 8. `audit_log` registra apertura, reconocimiento y resolución con el usuario.
-9. Consistencia: para toda la base de prueba, el conjunto de neumáticos con alerta no resuelta coincide con los de `v_estado_neumaticos` en estado `critico` (salvo la banda de histéresis, que se verifica aparte).
+9. Consistencia: para toda la base de prueba, el conjunto de neumáticos con alerta no resuelta coincide con los de `v_estado_neumaticos` en estado `desgaste_limite` (salvo la banda de histéresis, que se verifica aparte).
 10. El panel muestra una sola categoría de alerta; los demás indicadores siguen visibles en la ficha.
 
-Tests: `tests/sql/t_80_alertas.sql` (puntos 1 a 9 con `test.eq` y `test.denied`), `tests/unit` (agrupación y textos del centro de alertas con un solo tipo), `tests/e2e/specs/alertas-dispositivos.mjs` (conteos contra la tabla) y la prueba de contrato existente para las columnas nuevas.
+Tests: `tests/sql/t_80_alertas.sql` y `tests/sql/t_92_alerta_limite.sql` (puntos 1 a 9 con `test.eq` y `test.denied`), `tests/unit` (agrupación y textos del centro de alertas con un solo tipo), `tests/e2e/specs/alertas-dispositivos.mjs` (conteos contra la tabla) y la prueba de contrato existente para las columnas nuevas.
 
 ---
 
@@ -400,7 +400,7 @@ Efecto en flotas chicas: si una posición tiene menos de 5 neumáticos con tasa,
 | Tema | Decisión | Estado |
 |---|---|---|
 | Rotación | Función pura `recomendarRotacion` con umbral por cliente (3,0 mm por defecto, equivalente a 4/32 pulgada) y restricciones por grupo, marca, modelo y vida; usa `neumatico_rotar` | Aplicable ya (medida y tipo de eje: TODO) |
-| Alertas | Un solo tipo «Neumático en estado crítico» con tabla `alertas` de estados, histéresis y umbral por cliente, eje y posición | Etapa 1 en un PR; destinatarios y reglas finas: TODO |
+| Alertas | Un solo tipo «Desgaste límite» con tabla `alertas` de estados, histéresis y umbral por cliente, eje y posición | Etapa 1 en un PR; destinatarios y reglas finas: TODO |
 | Rendimiento | Reescribir `v_estado_neumaticos` por neumático con ventana de 90 días en el origen; luego referencia en el servidor y tabla de estado | Medida 1 hecha (`20261111000000`); medidas 2 a 4 por tamaño |
 | Robustez de la tasa | Exigir 3 mediciones y 14 días, reiniciar en eventos, no extrapolar de dos puntos | Hecho (`20261111000000`, `desgaste-flota.js`); falta el tamaño del grupo en la frase |
 

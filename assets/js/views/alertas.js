@@ -89,8 +89,8 @@ export function render() {
     ? joinHtml(lista.map(a => fila(a, mostrarCliente)))
     : filaEstado(6, alertas.length
       ? estadoVacio('Ninguna alerta coincide con el filtro')
-      : hayFiltroSeccional() ? estadoVacio(enSucursal('Sin alertas críticas abiertas', nombreSucursal(sucursalSeleccionada())), AYUDA_TODAS_SUCURSALES)
-      : estadoVacio('Sin alertas críticas abiertas')));
+      : hayFiltroSeccional() ? estadoVacio(enSucursal('Sin alertas de desgaste límite abiertas', nombreSucursal(sucursalSeleccionada())), AYUDA_TODAS_SUCURSALES)
+      : estadoVacio('Sin alertas de desgaste límite abiertas')));
 }
 
 function fillFiltros() {
@@ -103,7 +103,7 @@ function fillFiltros() {
   }
 }
 
-// Aviso para el administrador de empresa: el nivel crítico se edita solo en Empresa > Umbrales.
+// Aviso para el administrador de empresa: el umbral de desgaste límite se edita solo en Empresa > Umbrales.
 const pintarAviso = () => { $('alert-umbral-aviso').hidden = !esAdminEmpresa(); };
 
 export async function load() {

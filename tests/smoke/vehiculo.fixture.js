@@ -13,7 +13,7 @@
   ];
 
   function fila(vid, nom, pat, pos, prom, extra){
-    var estado = prom===null ? 'sin_datos' : prom < 5 ? 'critico' : prom < 8 ? 'bajo' : 'ok';
+    var estado = prom===null ? 'desconocido' : prom < 3 ? 'desgaste_limite' : prom < 5 ? 'mayor_desgaste' : prom < 8 ? 'poco_desgaste' : 'nuevo';
     return Object.assign({cliente_id:1,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,neumatico_id:vid*100+pos,idneumatico:'N'+vid+'-'+pos,
       marca:'Michelin',modelo:'X MultiWay',vida:0,estado_montaje:'montado',
       mm1:prom,mm2:prom,mm3:prom,promedio:prom,odometro_km:null,ultima_medicion_at:prom===null?null:D(2),dias_desde_medicion:prom===null?null:2,
@@ -32,8 +32,7 @@
     fila(14,'Tractor 16','ZZ999YY',1,12), fila(14,'Tractor 16','ZZ999YY',3,10,{tasa_mm_semana:0.5}), fila(14,'Tractor 16','ZZ999YY',99,11)
   ];
   var alertas = [
-    {cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:3,tipo:'critico',severidad:3,valor:4.2,mensaje:'Neumático crítico: 4.2 mm (límite 5 mm)',ultima_medicion_at:D(2)},
-    {cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:6,tipo:'desgaste_irregular',severidad:2,valor:3.1,mensaje:'Desgaste irregular: 3.1 mm entre huellas (máx. 2 mm)',ultima_medicion_at:D(2)}
+    {cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:4,tipo:'limite',severidad:3,valor:2.5,mensaje:'Desgaste límite: 2,5 mm (umbral 3 mm)',ultima_medicion_at:D(2)}
   ];
   var eventos = [
     {id:1,cliente_id:1,vehiculo_id:10,neumatico_id:1003,idneumatico:'N10-3',tipo:'rotacion',posicion_origen:4,posicion_destino:3,odometro_km:120000,notas:'Rotación <programada>',created_at:D(30)},

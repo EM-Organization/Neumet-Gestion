@@ -131,9 +131,9 @@ export function registrar(env) {
         await p.eval(`(() => { const s = document.querySelector('#sec-select'); s.value = '${id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
         await irA(p, 'inicio');
         const e = cifrasInicio(env, rol);
-        await p.esperar(`${INICIO_LISTO} && (() => { const c = document.querySelectorAll('#inicio-contenido .inicio-cifra strong'); const a = document.querySelector('#inicio-contenido [data-args=\\'["alertas"]\\']'); return Number(c[2].textContent) === ${e.criticos} && a && Number(a.textContent.replace(/\\D/g, '')) === ${e.alertas}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertas} alertas` });
+        await p.esperar(`${INICIO_LISTO} && (() => { const c = document.querySelectorAll('#inicio-contenido .inicio-cifra strong'); const a = document.querySelector('#inicio-contenido [data-args=\\'["alertas"]\\']'); return Number(c[3].textContent) === ${e.limite} && a && Number(a.textContent.replace(/\\D/g, '')) === ${e.alertas}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertas} alertas` });
         const l = await p.eval(LEER_INICIO);
-        assert.deepEqual(l.cifras, [e.ok, e.bajo, e.criticos, e.sinDatos], `proporciones de Inicio (${valor || 'todas'})`);
+        assert.deepEqual(l.cifras, [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido], `proporciones de Inicio (${valor || 'todas'})`);
         await irA(p, 'vehiculos');
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === ${n}`, { que: `${n} vehículos (${valor || 'todas'})` });
       }

@@ -221,15 +221,15 @@ select test.eq('mismas filas (vehículo, posición) en la vista nueva y la anter
      (select vehiculo_id, posicion from public.v_estado_neumaticos except select vehiculo_id, posicion from pg_temp.v_estado_old)
      union all
      (select vehiculo_id, posicion from pg_temp.v_estado_old except select vehiculo_id, posicion from public.v_estado_neumaticos)) d), 0::bigint);
-select test.eq('todas las columnas salvo la tasa y sus derivadas son idénticas a las de la vista anterior',
+select test.eq('todas las columnas salvo estado y la tasa y sus derivadas son idénticas a las de la vista anterior',
   (select count(*) from public.v_estado_neumaticos n join pg_temp.v_estado_old o using (vehiculo_id, posicion)
     where (n.cliente_id, n.vehiculo_nombre, n.patente, n.neumatico_id, n.idneumatico, n.marca, n.modelo, n.vida, n.estado_montaje,
-           n.mm1, n.mm2, n.mm3, n.promedio, n.odometro_km, n.ultima_medicion_at, n.dias_desde_medicion, n.estado, n.sin_medir,
+           n.mm1, n.mm2, n.mm3, n.promedio, n.odometro_km, n.ultima_medicion_at, n.dias_desde_medicion, n.sin_medir,
            n.diferencia_huellas_mm, n.desgaste_irregular, n.n_mediciones_90d,
            n.umbral_bajo_mm, n.umbral_critico_mm, n.umbral_retiro_mm, n.dias_sin_medir_alerta)
       is distinct from
           (o.cliente_id, o.vehiculo_nombre, o.patente, o.neumatico_id, o.idneumatico, o.marca, o.modelo, o.vida, o.estado_montaje,
-           o.mm1, o.mm2, o.mm3, o.promedio, o.odometro_km, o.ultima_medicion_at, o.dias_desde_medicion, o.estado, o.sin_medir,
+           o.mm1, o.mm2, o.mm3, o.promedio, o.odometro_km, o.ultima_medicion_at, o.dias_desde_medicion, o.sin_medir,
            o.diferencia_huellas_mm, o.desgaste_irregular, o.n_mediciones_90d,
            o.umbral_bajo_mm, o.umbral_critico_mm, o.umbral_retiro_mm, o.dias_sin_medir_alerta)), 0::bigint);
 

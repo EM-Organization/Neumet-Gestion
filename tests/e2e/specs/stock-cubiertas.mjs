@@ -422,7 +422,7 @@ export function registrar(env) {
     assert.equal(med(), medAntes, 'las mediciones se conservan');
     assert.equal(Number(env.sql(`select count(*) from public.v_mediciones_neumatico where idneumatico = '${viejo.idneumatico}' and estado_montaje = 'almacenado'`)), medAntes, 'siguen en el historial por neumático');
     assert.equal(Number(env.sql(`select count(*) from public.v_estado_neumaticos where idneumatico = '${viejo.idneumatico}'`)), 0, 'ya no cuenta para el estado de la flota');
-    assert.equal(env.sql(`select estado from public.v_estado_neumaticos where idneumatico = '${cub.idneumatico}'`), 'sin_datos', 'la cubierta nueva no hereda mediciones del viejo');
+    assert.equal(env.sql(`select estado from public.v_estado_neumaticos where idneumatico = '${cub.idneumatico}'`), 'desconocido', 'la cubierta nueva no hereda mediciones del viejo');
     assert.equal(Number(env.sql(`select count(*) from public.neumaticos where vehiculo_id = ${veh} and estado = 'montado'`)), montadosAntes, 'el vehículo conserva sus neumáticos montados');
     const ev = json(env, `select tipo, vehiculo_id, sucursal_origen_id, sucursal_destino_id from public.eventos_neumatico where neumatico_id in (${cub.id}, ${viejo.id}) and created_at > now() - interval '5 minutes' order by id`);
     assert.deepEqual(ev.map(e => e.tipo), ['desmontaje', 'montaje']);

@@ -8,7 +8,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 | Problema detectado | Resolución |
 |---|---|
-| Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos críticos |
+| Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos en desgaste límite |
 | El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Inicio y en Vehículos lo reemplaza el buscador propio de la pantalla |
 | Stock era una pestaña escondida en Vehículos | Pestaña **Stock** del ítem **Neumáticos** del menú. El administrador de empresa agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
 | «Estado de la flota» duplicaba a Inicio para el cliente | El cliente no la ve: su equivalente es **Vehículos**, ordenado por urgencia con el estado de cada uno. El administrador la conserva en Administración como vista entre clientes |
@@ -193,5 +193,5 @@ La prueba `tests/smoke/inicio.flow.js` recorre todos los ítems visibles de cada
 1. Todo vehículo que aparece en una pantalla enlaza a su detalle.
 2. El detalle muestra miga dinámica al origen («Origen › Coche NNN»); la miga regresa a esa pantalla en un clic. La posición elegida se refleja en la URL (`?vehiculo=ID&pos=N`) y se restaura al iniciar la app o recargar el detalle; si el vehículo no existe o no es visible, la app cae a Inicio. El query se limpia al salir del detalle o al navegar a otra vista.
 3. Una vista que cuelga de otra (detalle, ficha) resalta el ítem de su padre y muestra «Padre › Actual» en la barra superior.
-4. El rojo se reserva a neumáticos críticos y siempre acompaña a un texto.
+4. El rojo se reserva a neumáticos en desgaste límite y siempre acompaña a un texto.
 5. Un elemento de administración nunca se muestra al cliente (`data-admin-only`; la base lo impide igual por RLS). Las vistas de administración se registran con `soloAdmin` y el router las rechaza aunque se fuerce el cambio de vista.

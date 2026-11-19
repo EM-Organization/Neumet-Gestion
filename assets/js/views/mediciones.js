@@ -8,13 +8,22 @@ import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/a
 import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
-import { WEAR, wearStatus, avgMm, analyzeTire } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus, avgMm, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { fmtNum } from '../domain/formato.js';
 import { mLast, mTireColor, medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
 import { medSwitchMode, initDispositivoMode } from './mediciones-dispositivo.js';
 import './report.js';
 import { etiquetaCoche } from '../domain/coche.js';
+
+const COLOR_STATUS = {
+  nuevo: '#1a7f37', poco_desgaste: '#1a7f37', mayor_desgaste: '#b25000', desgaste_limite: '#c0392b'
+};
+const FONDO_STATUS = {
+  nuevo: '#34c759', poco_desgaste: '#34c759', mayor_desgaste: '#ff9500', desgaste_limite: '#ff3b30'
+};
+const colorDeStatus = st => COLOR_STATUS[st] || 'var(--text-tertiary)';
+const fondoDeStatus = st => FONDO_STATUS[st] || 'rgba(0,0,0,0.15)';
 
 function mRenderAnalysis(pos){
   const block = document.getElementById('med-analysis-block');
@@ -169,7 +178,7 @@ export function medSelectTire(pos){
   document.getElementById('med-tire-sub').textContent=a!=null?`Promedio actual: ${fmtNum(a,1)} mm`:'Sin mediciones recientes';
 
   const statusEl=document.getElementById('med-tire-status');
-  const statusMap={ok:{cls:'ok',txt:'Operativo'},warn:{cls:'warn',txt:'Bajo'},crit:{cls:'crit',txt:'Crítico'},neutral:{cls:'',txt:'Sin datos'}};
+  const statusMap={ok:{cls:'ok',txt:'Nuevo / poco desgaste'},warn:{cls:'warn',txt:'Mayor desgaste'},crit:{cls:'crit',txt:'Desgaste límite'},neutral:{cls:'',txt:'Sin mediciones'}};
   const s=statusMap[col.status]||statusMap.neutral;
   statusEl.className=`tire-status ${s.cls}`;
   statusEl.textContent=s.txt+(a!=null?` · ${fmtNum(a,1)} mm`:'');
@@ -179,8 +188,9 @@ export function medSelectTire(pos){
   mm.forEach((m,i)=>{
     const val=lr&&lr[m]!=null?parseFloat(lr[m]):null;
     const pct=val!=null?Math.min(100,(val/12)*100):0;
-    const c=val==null?'var(--text-tertiary)':{ok:'#1a7f37',bajo:'#b25000',critico:'#c0392b'}[wearStatus(val)];
-    const bc=val==null?'rgba(0,0,0,0.15)':{ok:'#34c759',bajo:'#ff9500',critico:'#ff3b30'}[wearStatus(val)];
+    const st=wearStatus(val);
+    const c=colorDeStatus(st);
+    const bc=fondoDeStatus(st);
     document.getElementById(`med-${m}`).textContent=val!=null?fmtNum(val,1)+' mm':'—';
     document.getElementById(`med-${m}`).style.color=c;
     document.getElementById(`med-bar${i+1}`).style.width=pct+'%';
@@ -194,7 +204,7 @@ export function medSelectTire(pos){
   } else {
     setHtml(tbody, joinHtml(hist.slice().reverse().map((r,i)=>{
       const pa=r.promedio!=null?parseFloat(r.promedio):avgMm(r);
-      const rc=pa==null?'var(--text-tertiary)':{ok:'#1a7f37',bajo:'#b25000',critico:'#c0392b'}[wearStatus(pa)];
+      const rc=pa==null?'var(--text-tertiary)':colorDeStatus(wearStatus(pa));
       const fecha=r.created_at?new Date(r.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
       const badge=i===0?html`<span style="background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px">Actual</span>`:'';
       return html`<tr>
@@ -225,10 +235,10 @@ function medDrawChart(hist){
   // Background
   svgEl.appendChild(svgEl('rect',{x:pL,y:pT,width:cW,height:cH,fill:'#fafafa',rx:4,stroke:'rgba(0,0,0,0.06)','stroke-width':'0.5'}));
 
-  // Zone fills
-  [[8,12,'rgba(52,199,89,0.04)'],[5,8,'rgba(255,149,0,0.04)'],[0,5,'rgba(255,59,48,0.04)']].forEach(([lo,hi,fill])=>{
-    const y1=yS(Math.min(hi,maxV)), y2=yS(Math.max(lo,minV));
-    if(y2>y1) svgEl.appendChild(svgEl('rect',{x:pL,y:y1,width:cW,height:y2-y1,fill}));
+  // Zone fills (nuevo/poco desgaste, mayor desgaste, desgaste límite)
+  MEDICIONES_ZONAS.forEach(({ lo, hi, fill }) => {
+    const y1 = yS(Math.min(hi, maxV)), y2 = yS(Math.max(lo, minV));
+    if (y2 > y1) svgEl.appendChild(svgEl('rect', { x: pL, y: y1, width: cW, height: y2 - y1, fill }));
   });
 
   // Grid lines + labels
@@ -240,13 +250,13 @@ function medDrawChart(hist){
   });
 
   // Threshold lines
-  [[WEAR.OK_MM,'#34c759'],[WEAR.LOW_MM,'#ff9500']].forEach(([v,c])=>{
+  [[UMBRALES.BAJO_MM,'#34c759'],[UMBRALES.CRITICO_MM,'#ff9500'],[UMBRALES.RETIRO_MM,'#ff3b30']].forEach(([v,c])=>{
     if(v<minV||v>maxV) return;
     svgEl.appendChild(svgEl('line',{x1:pL,y1:yS(v),x2:pL+cW,y2:yS(v),stroke:c,'stroke-width':'0.8','stroke-dasharray':'4 3',opacity:'0.5'}));
   });
 
   // Area fill
-  const lastCol={ok:'#34c759',bajo:'#ff9500',critico:'#ff3b30'}[wearStatus(avgs[avgs.length-1])];
+  const lastCol=colorDeStatus(wearStatus(avgs[avgs.length-1]));
   const aPath=`M${xS(0)},${yS(avgs[0])}`+avgs.slice(1).map((v,i)=>`L${xS(i+1)},${yS(v)}`).join('')+`L${xS(avgs.length-1)},${pT+cH}L${pL},${pT+cH}Z`;
   svgEl.appendChild(svgEl('path',{d:aPath,fill:lastCol+'14',stroke:'none'}));
 
@@ -257,7 +267,7 @@ function medDrawChart(hist){
   // Dots
   avgs.forEach((v,i)=>{
     const x2=xS(i), y2=yS(v), isLast=i===avgs.length-1;
-    const dc={ok:'#34c759',bajo:'#ff9500',critico:'#ff3b30'}[wearStatus(v)];
+    const dc=colorDeStatus(wearStatus(v));
     svgEl.appendChild(svgEl('circle',{cx:x2,cy:y2,r:isLast?4:2.5,fill:isLast?dc:'#fff',stroke:dc,'stroke-width':isLast?0:1.5}));
     if(isLast){ const vl=svgEl('text',{x:x2+6,y:y2-4,'font-size':'10','font-family':"'Inter',sans-serif",'font-weight':'500',fill:dc}); vl.textContent=v.toFixed(1)+'mm'; svgEl.appendChild(vl); }
     // X axis date labels (every 2nd)

@@ -77,11 +77,11 @@ export function registrar(env) {
 
   test('Mediciones / Flota / Clientes / Ficha (admin): muestran los datos de la base', async () => {
     const nVeh = Number(env.sql(`select count(*) from public.vehiculos where activo`));
-    const nCri = Number(env.sql(`select count(*) from public.v_estado_neumaticos where estado = 'critico'`));
+    const nLim = Number(env.sql(`select count(*) from public.v_estado_neumaticos where estado = 'desgaste_limite'`));
     await flujo(env, 'vistas-admin', 'admin', async p => {
       await irA(p, 'flota');
       await p.esperar(`/${nVeh}\\s*Vehículos activos/.test(document.querySelector('#view-flota').innerText.replace(/\\n+/g, ' '))`, { que: `Flota con ${nVeh} vehículos` });
-      assert.match((await texto(p, '#view-flota')), new RegExp(`${nCri} Neumáticos críticos`));
+      assert.match((await texto(p, '#view-flota')), new RegExp(`${nLim} Desgaste límite`));
       await irA(p, 'clientes');
       await p.esperar(`document.querySelectorAll('#view-clientes tbody tr').length === 2`, { que: '2 clientes' });
       const t = await texto(p, '#view-clientes');

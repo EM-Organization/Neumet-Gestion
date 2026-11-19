@@ -21,7 +21,7 @@ insert into public.vehiculos (id, cliente_id, nombre, patente, activo, sucursal_
   (14, 1, 'T80 fuera',    'TT1400', true, null),
   (15, 2, 'T80 ajeno',    'TT1500', true, null);
 
--- V11: P1 crítico (4.2) con historial, P2 ok, P3 solo medición histórica sin idneumatico, P4 sin mediciones
+-- V11: P1 mayor desgaste (4.2) con historial, P2 nuevo, P3 poco desgaste, P4 sin mediciones
 insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, estado, marca) values
   (11, 1, 1, 'N-11-1', 'montado', 'Vieja'), (11, 1, 2, 'N-11-2', 'montado', 'Vieja'),
   (11, 1, 3, 'N-11-3', 'montado', 'Vieja'), (11, 1, 4, 'N-11-4', 'montado', 'Vieja');
@@ -90,10 +90,10 @@ create or replace function test.prom(p_veh bigint, p_pos smallint) returns numer
 create or replace function test.idn(p_veh bigint, p_pos smallint) returns text language sql stable as $$
   select idneumatico from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos $$;
 create or replace function test.n_alertas(p_veh bigint, p_pos smallint, p_tipo text) returns bigint language sql stable as $$
-  -- Desde 20261118500000 v_alertas solo trae la crítica; «bajo» y «sin_medir» son indicadores de v_estado_neumaticos.
+  -- Desde 20261123000000 v_alertas solo trae la de desgaste límite; «poco_desgaste» y «sin_medir» son indicadores de v_estado_neumaticos.
   select case p_tipo
-           when 'critico' then (select count(*) from public.v_alertas where vehiculo_id = p_veh and posicion = p_pos and tipo = 'critico')
-           when 'bajo' then (select count(*) from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos and estado = 'bajo')
+           when 'limite' then (select count(*) from public.v_alertas where vehiculo_id = p_veh and posicion = p_pos and tipo = 'limite')
+           when 'poco_desgaste' then (select count(*) from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos and estado = 'poco_desgaste')
            when 'sin_medir' then (select count(*) from public.v_estado_neumaticos where vehiculo_id = p_veh and posicion = p_pos and sin_medir)
          end $$;
 grant execute on function test.est(bigint, smallint), test.prom(bigint, smallint), test.idn(bigint, smallint),
@@ -104,14 +104,14 @@ savepoint s0;
 -- 1. Estado inicial (la regla por neumático no cambia lo que ya funcionaba)
 -- -----------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
-select test.eq('V11 P1 crítico 4.2', test.prom(11, 1::smallint), 4.20);
-select test.eq('V11 P1 estado crítico', test.est(11, 1::smallint), 'critico');
-select test.eq('V11 P2 ok', test.est(11, 2::smallint), 'ok');
-select test.eq('V11 P3: histórica sin idneumatico cuenta (neumático sin etiquetadas, sin eventos) => bajo 7.0',
+select test.eq('V11 P1 mayor desgaste 4.2', test.prom(11, 1::smallint), 4.20);
+select test.eq('V11 P1 estado mayor_desgaste', test.est(11, 1::smallint), 'mayor_desgaste');
+select test.eq('V11 P2 nuevo', test.est(11, 2::smallint), 'nuevo');
+select test.eq('V11 P3: histórica sin idneumatico cuenta (neumático sin etiquetadas, sin eventos) => poco_desgaste 7.0',
   test.prom(11, 3::smallint), 7.00);
-select test.eq('V11 P4 sin mediciones => sin_datos', test.est(11, 4::smallint), 'sin_datos');
-select test.eq('V11 hay alerta crítica en P1', test.n_alertas(11, 1::smallint, 'critico'), 1::bigint);
-select test.eq('V11 P4 alerta sin_medir (montado sin mediciones)', test.n_alertas(11, 4::smallint, 'sin_medir'), 1::bigint);
+select test.eq('V11 P4 sin mediciones => desconocido', test.est(11, 4::smallint), 'desconocido');
+select test.eq('V11 no hay alerta de desgaste límite en P1 (<3 mm)', test.n_alertas(11, 1::smallint, 'limite'), 0::bigint);
+select test.eq('V11 P4 indicador sin_medir (montado sin mediciones)', test.n_alertas(11, 4::smallint, 'sin_medir'), 1::bigint);
 select test.eq('V11 P1 tasa por neumático: 1 mm/sem', (select tasa_mm_semana from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), 1.000);
 select test.eq('V11 P1 idneumatico del neumático medido', test.idn(11, 1::smallint), 'N-11-1');
 select test.eq('v_ultima_medicion devuelve la posición actual y la medición más reciente',
@@ -119,22 +119,22 @@ select test.eq('v_ultima_medicion devuelve la posición actual y la medición m�
 reset role;
 
 -- -----------------------------------------------------------------------------
--- 2. Cambio de un neumático crítico: la rueda nueva NO hereda la medición del viejo
+-- 2. Cambio de un neumático mayor_desgaste: la rueda nueva NO hereda la medición del viejo
 -- -----------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
 select (public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Desgaste', 5000, null,
    '{"marca":"Nuevo","modelo":"Z","precio":900}'::jsonb)->>'idneumatico_nuevo') as nuevo_idn \gset
 reset role;
 select test.become('authenticated', test.u_cli_a());
-select test.eq('tras el cambio P1 es sin_datos', test.est(11, 1::smallint), 'sin_datos');
+select test.eq('tras el cambio P1 es desconocido', test.est(11, 1::smallint), 'desconocido');
 select test.eq('tras el cambio P1 sin promedio (no hereda 4.2)', test.prom(11, 1::smallint) is null, true);
 select test.eq('tras el cambio P1 figura el idneumatico del nuevo', test.idn(11, 1::smallint), :'nuevo_idn');
 select test.eq('tras el cambio P1 sin_medir', (select sin_medir from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), true);
-select test.eq('tras el cambio desaparece la alerta crítica de P1', test.n_alertas(11, 1::smallint, 'critico'), 0::bigint);
-select test.eq('tras el cambio P1 sin alerta bajo ni cruza_critico_pronto',
+select test.eq('tras el cambio no hay alerta de desgaste límite en P1', test.n_alertas(11, 1::smallint, 'limite'), 0::bigint);
+select test.eq('tras el cambio P1 sin indicador poco_desgaste ni cruza crítico pronto',
   (select count(*) from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1
-    and (estado = 'bajo' or (estado in ('ok','bajo') and semanas_hasta_critico <= 4))), 0::bigint);
-select test.eq('tras el cambio P1 queda la alerta de neumático montado sin ninguna medición',
+    and (estado = 'poco_desgaste' or (estado in ('nuevo','poco_desgaste') and semanas_hasta_critico <= 4))), 0::bigint);
+select test.eq('tras el cambio P1 queda el indicador de neumático montado sin ninguna medición',
   test.n_alertas(11, 1::smallint, 'sin_medir'), 1::bigint);
 select test.eq('tras el cambio P1 sin tasa ni historial del viejo',
   (select n_mediciones_90d || '|' || coalesce(tasa_mm_semana::text, 'null') from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), '0|null');
@@ -148,10 +148,10 @@ select test.eq('el historial del viejo se conserva (3 mediciones) en v_medicione
   (select count(*) from public.v_mediciones_neumatico where idneumatico = 'N-11-1' and estado_montaje = 'baja'), 3::bigint);
 select test.eq('el nuevo no tiene mediciones atribuidas',
   (select count(*) from public.v_mediciones_neumatico where idneumatico = :'nuevo_idn'), 0::bigint);
-select test.eq('resumen de flota: P1 ya no cuenta como crítico del cliente 1 (V11)',
-  (select count(*) from public.v_estado_neumaticos where vehiculo_id=11 and estado='critico'), 0::bigint);
-select test.eq('el resto de V11 no cambia (P2 ok, P3 7.0, P4 sin_datos)',
-  test.est(11, 2::smallint) || '|' || test.prom(11, 3::smallint) || '|' || test.est(11, 4::smallint), 'ok|7.00|sin_datos');
+select test.eq('resumen de flota: P1 ya no cuenta como mayor_desgaste del cliente 1 (V11)',
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id=11 and estado='mayor_desgaste'), 0::bigint);
+select test.eq('el resto de V11 no cambia (P2 nuevo, P3 7.0, P4 desconocido)',
+  test.est(11, 2::smallint) || '|' || test.prom(11, 3::smallint) || '|' || test.est(11, 4::smallint), 'nuevo|7.00|desconocido');
 reset role;
 
 -- El nuevo se mide: la posición toma SU valor. Se mide también con una medición de posición (sin
@@ -162,11 +162,11 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, m
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at)
   values (11, 1, 1, 'N-11-1', 2, 2, 2, now() + interval '2 hours');
 select test.become('authenticated', test.u_cli_a());
-select test.eq('el nuevo medido: P1 ok con su valor 11', test.est(11, 1::smallint) || '|' || test.prom(11, 1::smallint), 'ok|11.00');
+select test.eq('el nuevo medido: P1 nuevo con su valor 11', test.est(11, 1::smallint) || '|' || test.prom(11, 1::smallint), 'nuevo|11.00');
 select test.eq('una medición tardía del viejo no pisa al nuevo', test.prom(11, 1::smallint), 11.00);
 select test.eq('la tasa del nuevo no mezcla puntos del viejo (1 punto)',
   (select n_mediciones_90d || '|' || coalesce(tasa_mm_semana::text, 'null') from public.v_estado_neumaticos where vehiculo_id=11 and posicion=1), '1|null');
-select test.eq('ya no hay alertas de P1 de crítico ni de sin_medir',
+select test.eq('ya no hay alertas de P1 de desgaste límite ni indicador sin_medir',
   (select count(*) from public.v_alertas where vehiculo_id=11 and posicion=1) + test.n_alertas(11, 1::smallint, 'sin_medir'), 0::bigint);
 reset role;
 -- Medición de posición (sin idneumatico) posterior al montaje, con otro nuevo neumático sin etiquetadas
@@ -176,7 +176,7 @@ rollback to s0;
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(11::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N2"}'::jsonb);
 reset role;
-select test.eq('P2 (cambio, viejo almacenado) sin_datos', (select test.est(11, 2::smallint)), 'sin_datos');
+select test.eq('P2 (cambio, viejo almacenado) desconocido', (select test.est(11, 2::smallint)), 'desconocido');
 select test.eq('el neumático almacenado conserva sus mediciones fuera del estado',
   (select count(*) from public.v_mediciones_neumatico where idneumatico='N-11-2' and estado_montaje='almacenado'), 1::bigint);
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3, created_at)
@@ -187,7 +187,7 @@ rollback to s0;
 -- 2c. P3 tenía solo una medición histórica: tras el cambio el nuevo NO la hereda
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(11::bigint, 3::smallint, 'reparacion', null, null, null, '{"marca":"N3"}'::jsonb);
-select test.eq('P3 tras cambio: la medición histórica del viejo no se hereda (evento posterior)', test.est(11, 3::smallint), 'sin_datos');
+select test.eq('P3 tras cambio: la medición histórica del viejo no se hereda (evento posterior)', test.est(11, 3::smallint), 'desconocido');
 reset role;
 rollback to s0;
 
@@ -195,21 +195,21 @@ rollback to s0;
 -- 3. Rotación 1 <-> 2 (V12): las mediciones acompañan al neumático
 -- -----------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
-select test.eq('V12 antes: P1 ok 9.0 (A), P2 bajo 6.5 (B)',
-  test.est(12, 1::smallint) || test.prom(12, 1::smallint) || '|' || test.est(12, 2::smallint) || test.prom(12, 2::smallint), 'ok9.00|bajo6.50');
+select test.eq('V12 antes: P1 nuevo 9.0 (A), P2 poco_desgaste 6.5 (B)',
+  test.est(12, 1::smallint) || test.prom(12, 1::smallint) || '|' || test.est(12, 2::smallint) || test.prom(12, 2::smallint), 'nuevo9.00|poco_desgaste6.50');
 select test.eq('V12 antes: tasas A 1.000 y B 0.500',
   (select string_agg(tasa_mm_semana::text, ',' order by posicion) from public.v_estado_neumaticos where vehiculo_id=12 and posicion in (1,2)), '1.000,0.500');
 select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, 100);
-select test.eq('V12 tras rotar: P1 ahora es B (bajo 6.5)',
-  test.idn(12, 1::smallint) || '|' || test.est(12, 1::smallint) || '|' || test.prom(12, 1::smallint), 'N-12-B|bajo|6.50');
-select test.eq('V12 tras rotar: P2 ahora es A (ok 9.0)',
-  test.idn(12, 2::smallint) || '|' || test.est(12, 2::smallint) || '|' || test.prom(12, 2::smallint), 'N-12-A|ok|9.00');
+select test.eq('V12 tras rotar: P1 ahora es B (poco_desgaste 6.5)',
+  test.idn(12, 1::smallint) || '|' || test.est(12, 1::smallint) || '|' || test.prom(12, 1::smallint), 'N-12-B|poco_desgaste|6.50');
+select test.eq('V12 tras rotar: P2 ahora es A (nuevo 9.0)',
+  test.idn(12, 2::smallint) || '|' || test.est(12, 2::smallint) || '|' || test.prom(12, 2::smallint), 'N-12-A|nuevo|9.00');
 select test.eq('V12 tras rotar: las tasas acompañan al neumático (P1=B 0.5, P2=A 1.0)',
   (select string_agg(tasa_mm_semana::text, ',' order by posicion) from public.v_estado_neumaticos where vehiculo_id=12 and posicion in (1,2)), '0.500,1.000');
 select test.eq('V12 tras rotar: semanas hasta crítico acompañan al neumático (B: (6.5-5)/0.5=3; A: (9-5)/1=4)',
   (select string_agg(semanas_hasta_critico::text, ',' order by posicion) from public.v_estado_neumaticos where vehiculo_id=12 and posicion in (1,2)), '3.00,4.00');
-select test.eq('V12 tras rotar: la alerta bajo está en P1 (donde está B), no en P2',
-  test.n_alertas(12, 1::smallint, 'bajo') || '|' || test.n_alertas(12, 2::smallint, 'bajo'), '1|0');
+select test.eq('V12 tras rotar: el indicador poco_desgaste está en P1 (donde está B), no en P2',
+  test.n_alertas(12, 1::smallint, 'poco_desgaste') || '|' || test.n_alertas(12, 2::smallint, 'poco_desgaste'), '1|0');
 select test.eq('V12 historial de B: posición de medición 2, posición actual 1',
   (select string_agg(distinct posicion_medicion || '>' || posicion_actual, ',') from public.v_mediciones_neumatico where idneumatico='N-12-B'), '2>1');
 select test.eq('V12 historial: 3 mediciones por neumático',
@@ -233,8 +233,8 @@ select test.become('authenticated', test.u_cli_a());
 select test.eq('V13 antes: P1 6.0 (histórica), P3 6.5 (neumático sin idneumatico)',
   test.prom(13, 1::smallint) || '|' || test.prom(13, 3::smallint), '6.00|6.50');
 select public.neumatico_rotar(13::bigint, 1::smallint, 3::smallint, null);
-select test.eq('V13 tras rotar: el histórico sin idneumatico queda huérfano (posición cambió después de medir): sin_datos en ambas',
-  test.est(13, 1::smallint) || '|' || test.est(13, 3::smallint), 'sin_datos|sin_datos');
+select test.eq('V13 tras rotar: el histórico sin idneumatico queda huérfano (posición cambió después de medir): desconocido en ambas',
+  test.est(13, 1::smallint) || '|' || test.est(13, 3::smallint), 'desconocido|desconocido');
 reset role;
 rollback to s0;
 
@@ -242,14 +242,14 @@ rollback to s0;
 -- 4. Mediciones históricas con idneumatico NULL (V13)
 -- -----------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
-select test.eq('P1: solo histórica, sin eventos => cuenta (6.0, bajo)', test.est(13, 1::smallint) || test.prom(13, 1::smallint), 'bajo6.00');
+select test.eq('P1: solo histórica, sin eventos => cuenta (6.0, poco_desgaste)', test.est(13, 1::smallint) || test.prom(13, 1::smallint), 'poco_desgaste6.00');
 select test.eq('P2: con etiquetada manda la etiquetada (9.0), no la histórica 5.0', test.prom(13, 2::smallint), 9.00);
 select test.eq('P2: la histórica no entra ni en el historial del neumático',
   (select count(*) from public.v_mediciones_neumatico where idneumatico='N-13-2'), 1::bigint);
 select test.eq('P3: neumático sin idneumatico cae a la posición (6.5)', test.prom(13, 3::smallint), 6.50);
-select test.eq('P4: medición anterior al montaje de la posición no se hereda', test.est(13, 4::smallint), 'sin_datos');
+select test.eq('P4: medición anterior al montaje de la posición no se hereda', test.est(13, 4::smallint), 'desconocido');
 select test.eq('P5: medición posterior al montaje sí cuenta (7.5)', test.prom(13, 5::smallint), 7.50);
-select test.eq('un evento de otra posición no invalida las históricas de P1', test.est(13, 1::smallint), 'bajo');
+select test.eq('un evento de otra posición no invalida las históricas de P1', test.est(13, 1::smallint), 'poco_desgaste');
 select test.eq('atribución registrada: P1 por posición, P2 por idneumatico',
   (select string_agg(distinct atribucion, ',') from public.v_mediciones_neumatico where idneumatico = 'N-13-1') || '|' ||
   (select string_agg(distinct atribucion, ',') from public.v_mediciones_neumatico where idneumatico = 'N-13-2'), 'posicion|idneumatico');
@@ -273,9 +273,9 @@ select test.become('authenticated', test.u_cli_a());
 select test.eq('V14: solo el montado figura en el estado', (select count(*) from public.v_estado_neumaticos where vehiculo_id=14), 1::bigint);
 select test.eq('V14: almacenado/baja/reparación no figuran en v_ultima_medicion',
   (select count(*) from public.v_ultima_medicion where vehiculo_id=14), 1::bigint);
-select test.eq('V14: no generan alertas (solo el montado, ok)', (select count(*) from public.v_alertas where vehiculo_id=14) + (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado in ('critico','bajo')), 0::bigint);
-select test.eq('V14: sus 3 mm no cuentan como críticos del cliente',
-  (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado='critico'), 0::bigint);
+select test.eq('V14: no generan alertas (solo el montado, nuevo)', (select count(*) from public.v_alertas where vehiculo_id=14) + (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado in ('desgaste_limite','poco_desgaste')), 0::bigint);
+select test.eq('V14: sus 3 mm no cuentan como desgaste_limite',
+  (select count(*) from public.v_estado_neumaticos where vehiculo_id=14 and estado='desgaste_limite'), 0::bigint);
 select test.eq('V14: baja sin idneumatico con medición de posición: no se atribuye',
   (select count(*) from public.v_mediciones_neumatico where vehiculo_id=14 and neumatico_id = (select id from public.neumaticos where vehiculo_id=14 and posicion=5)), 0::bigint);
 reset role;
@@ -294,7 +294,7 @@ select test.eq('sucursal: v_ultima_medicion solo su vehículo', (select count(*)
 select test.eq('sucursal no ve V12 (otra sucursal)', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 12), 0::bigint);
 -- El sucursal cambia SU neumático: ve el resultado, y no se filtra nada de otros
 select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Corte', null, null, '{"marca":"S"}'::jsonb);
-select test.eq('sucursal tras cambiar: P1 sin_datos', test.est(11, 1::smallint), 'sin_datos');
+select test.eq('sucursal tras cambiar: P1 desconocido', test.est(11, 1::smallint), 'desconocido');
 reset role;
 rollback to s0;
 
@@ -344,7 +344,7 @@ select test.eq('API guardar: P1 guardado',
 select test.eq('API guardar: la medición lleva el idneumatico del nuevo',
   (select idneumatico like 'CN-11-1-%' from public.mediciones where vehiculo_id=11 and posicion=1 order by id desc limit 1), true);
 select test.eq('API tras guardar: P1 muestra 10 mm', (select (e->>'mm1') from jsonb_array_elements(public.api_obtener_montaje(1, 'TT1100', null)->'data') e where e->>'posicion' = '1'), '10.00');
-select test.eq('API guardar: el estado de la vista refleja la medición del nuevo', (select test.est(11, 1::smallint)), 'ok');
+select test.eq('API guardar: el estado de la vista refleja la medición del nuevo', (select test.est(11, 1::smallint)), 'nuevo');
 select test.eq('API guardar: el aparcado (posición de estacionamiento) se rechaza',
   public.api_guardar_montaje(1, gen_random_uuid(), 'TT1100',
     format('[{"posicion":%s,"mm1":9,"mm2":9,"mm3":9}]', (select posicion from public.neumaticos where idneumatico='N-11-1'))::jsonb,
@@ -383,7 +383,7 @@ select test.eq('v_alertas: columnas',
 select test.eq('v_resumen_flota_cliente: columnas',
   (select string_agg(column_name || ':' || data_type, ',' order by ordinal_position) from information_schema.columns
     where table_schema='public' and table_name='v_resumen_flota_cliente'),
-  'cliente_id:bigint,nombre:text,n_vehiculos_activos:bigint,n_neumaticos_con_datos:bigint,n_ok:bigint,n_bajo:bigint,n_critico:bigint,n_sin_datos:bigint,n_alertas_sev1:bigint,n_alertas_sev2:bigint,n_alertas_sev3:bigint,ultima_medicion_at:timestamp with time zone');
+  'cliente_id:bigint,nombre:text,n_vehiculos_activos:bigint,n_neumaticos_con_datos:bigint,n_ok:bigint,n_bajo:bigint,n_mayor_desgaste:bigint,n_critico:bigint,n_sin_datos:bigint,n_alertas_sev1:bigint,n_alertas_sev2:bigint,n_alertas_sev3:bigint,ultima_medicion_at:timestamp with time zone');
 select test.eq('vistas del producto con security_invoker',
   (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
     where n.nspname='public' and c.relname in ('v_mediciones_neumatico','v_ultima_medicion','v_estado_neumaticos','v_alertas','v_resumen_flota_cliente')
@@ -402,13 +402,13 @@ select test.eq('api_obtener_montaje / api_guardar_montaje: solo service_role eje
   'api_guardar_montaje:falsefalsetrue,api_obtener_montaje:falsefalsetrue');
 reset role;
 
--- El resumen de flota hereda: tras cambiar un crítico el contador de críticos baja
+-- El resumen de flota hereda: tras cambiar un mayor_desgaste el contador baja
 select test.become('authenticated', test.u_cli_a());
-select n_critico as crit_antes, n_sin_datos as sd_antes from public.v_resumen_flota_cliente where cliente_id = 1 \gset
+select n_mayor_desgaste as md_antes, n_sin_datos as sd_antes from public.v_resumen_flota_cliente where cliente_id = 1 \gset
 select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb) is not null as _y \gset
-select test.eq('resumen: un crítico menos tras el cambio',
-  (select n_critico from public.v_resumen_flota_cliente where cliente_id = 1), :crit_antes - 1);
-select test.eq('resumen: un sin_datos más tras el cambio',
+select test.eq('resumen: un mayor_desgaste menos tras el cambio',
+  (select n_mayor_desgaste from public.v_resumen_flota_cliente where cliente_id = 1), :md_antes - 1);
+select test.eq('resumen: un desconocido más tras el cambio',
   (select n_sin_datos from public.v_resumen_flota_cliente where cliente_id = 1), :sd_antes + 1);
 reset role;
 

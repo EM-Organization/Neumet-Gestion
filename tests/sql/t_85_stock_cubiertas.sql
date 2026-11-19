@@ -280,7 +280,7 @@ select test.eq('evento de montaje: costo = precio de compra, origen = sucursal d
   (select test.cu(id) || '|' || sucursal_origen_id || '|' || vehiculo_id || '|' || posicion_destino from public.eventos_neumatico where tipo = 'montaje' and idneumatico = 'CB-t-a'), '500.00|401|1|1');
 select test.eq('viejo dado de baja', (select estado from public.neumaticos where idneumatico = 'T-1-1'), 'baja');
 select test.eq('la cubierta montada aparece en v_estado_neumaticos sin datos (no hereda mediciones del viejo)',
-  (select estado from public.v_estado_neumaticos where idneumatico = 'CB-t-a'), 'sin_datos');
+  (select estado from public.v_estado_neumaticos where idneumatico = 'CB-t-a'), 'desconocido');
 -- Mediciones siguen a la misma cubierta
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3, idneumatico, created_at)
   values (1, 1, 1, 12, 12, 12, 'CB-t-a', now() - interval '1 day');
@@ -417,6 +417,6 @@ select test.eq('ninguna cubierta sin montar en las vistas de estado, alertas y Ã
   + (select count(*) from public.v_ultima_medicion where idneumatico like 'CB-t-%'), 0::bigint);
 select test.eq('v_resumen_flota_cliente no cuenta cubiertas sin montar',
   (select n_neumaticos_con_datos from public.v_resumen_flota_cliente where cliente_id = 1),
-  (select count(*) from public.v_estado_neumaticos where cliente_id = 1 and estado <> 'sin_datos'));
+  (select count(*) from public.v_estado_neumaticos where cliente_id = 1 and estado <> 'desconocido'));
 
 rollback;

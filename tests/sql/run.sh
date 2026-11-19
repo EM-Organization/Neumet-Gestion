@@ -177,6 +177,10 @@ echo "== migración distribución del vehículo (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261122000000_distribucion_vehiculo.sql"
 echo "== migración distribución del vehículo (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261122000000_distribucion_vehiculo.sql"
+echo "== migración categorías de desgaste (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261123000000_categorias_desgaste.sql"
+echo "== migración categorías de desgaste (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261123000000_categorias_desgaste.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

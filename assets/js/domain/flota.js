@@ -2,38 +2,55 @@
 // Entradas = filas de las vistas SQL v_estado_neumaticos, v_alertas y v_resumen_flota_cliente (docs/08, apéndice A).
 
 // Orden de prioridad del semáforo (menor = más urgente).
-export const ESTADO_RANK = { critico: 0, bajo: 1, sin_datos: 2, ok: 3 };
-export const ESTADO_LABEL = { critico: 'Crítico', bajo: 'Bajo', sin_datos: 'Sin datos', ok: 'OK' };
-export const ESTADO_BADGE = { critico: 'red', bajo: 'orange', sin_datos: 'gray', ok: 'green' };
+export const ESTADO_RANK = {
+  desgaste_limite: 0,
+  mayor_desgaste: 1,
+  poco_desgaste: 2,
+  desconocido: 3,
+  nuevo: 4,
+};
+export const ESTADO_LABEL = {
+  desgaste_limite: 'Desgaste límite',
+  desconocido: 'Desconocido',
+  mayor_desgaste: 'Mayor desgaste',
+  poco_desgaste: 'Poco desgaste',
+  nuevo: 'Nuevo',
+};
+export const ESTADO_BADGE = {
+  desgaste_limite: 'red',
+  desconocido: 'gray',
+  mayor_desgaste: 'orange',
+  poco_desgaste: 'blue',
+  nuevo: 'green',
+};
 
-export const SEVERIDAD_LABEL = { 3: 'Crítica', 2: 'Media', 1: 'Informativa' };
+export const SEVERIDAD_LABEL = { 3: 'Alta', 2: 'Media', 1: 'Informativa' };
 export const SEVERIDAD_BADGE = { 3: 'red', 2: 'orange', 1: 'gray' };
 export const TIPO_LABEL = {
-  critico: 'Neumático crítico',
-  bajo: 'Desgaste bajo',
-  cruza_critico_pronto: 'Cruzará nivel crítico',
+  limite: 'Desgaste límite',
+  cruza_limite_pronto: 'Cruzará desgaste límite',
   desgaste_irregular: 'Desgaste irregular',
   sin_medir: 'Sin medir',
 };
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
-export const estadoRank = e => (e in ESTADO_RANK ? ESTADO_RANK[e] : ESTADO_RANK.sin_datos);
-export const estadoLabel = e => ESTADO_LABEL[e] || 'Sin datos';
+export const estadoRank = e => (e in ESTADO_RANK ? ESTADO_RANK[e] : ESTADO_RANK.desconocido);
+export const estadoLabel = e => ESTADO_LABEL[e] || 'Desconocido';
 export const severidadLabel = s => SEVERIDAD_LABEL[num(s)] || 'Informativa';
 export const tipoLabel = t => TIPO_LABEL[t] || String(t ?? '');
 
-// Semáforo del vehículo = peor estado entre sus neumáticos con datos; si ninguno tiene datos, 'sin_datos'.
+// Semáforo del vehículo = peor estado entre sus neumáticos con datos; si ninguno tiene datos, 'desconocido'.
 export function semaforoVehiculo(estados) {
   let peor = null;
   for (const e of estados) {
-    if (e === 'sin_datos' || !(e in ESTADO_RANK)) continue;
+    if (e === 'desconocido' || !(e in ESTADO_RANK)) continue;
     if (peor === null || ESTADO_RANK[e] < ESTADO_RANK[peor]) peor = e;
   }
-  return peor || 'sin_datos';
+  return peor || 'desconocido';
 }
 
 // Agrupa filas de v_estado_neumaticos por vehículo y ordena por severidad:
-// semáforo, nº de críticos, nº de bajos, nº sin medir, menor profundidad (mm) y nombre.
+// semáforo, nº de desgaste límite, nº de mayor desgaste, nº sin medir, menor profundidad (mm) y nombre.
 export function agruparVehiculos(rows) {
   const map = new Map();
   for (const r of rows || []) {
@@ -42,17 +59,19 @@ export function agruparVehiculos(rows) {
     if (!v) {
       v = {
         vehiculo_id: key, cliente_id: r.cliente_id, nombre: r.vehiculo_nombre || '', patente: r.patente || '',
-        n_neumaticos: 0, n_ok: 0, n_bajo: 0, n_critico: 0, n_sin_datos: 0, n_sin_medir: 0, n_irregular: 0,
+        n_neumaticos: 0, n_nuevo: 0, n_poco_desgaste: 0, n_mayor_desgaste: 0, n_desgaste_limite: 0, n_desconocido: 0,
+        n_sin_medir: 0, n_irregular: 0,
         min_mm: null, peor_posicion: null, ultima_medicion_at: null, estados: [],
       };
       map.set(key, v);
     }
     v.n_neumaticos++;
     v.estados.push(r.estado);
-    if (r.estado === 'critico') v.n_critico++;
-    else if (r.estado === 'bajo') v.n_bajo++;
-    else if (r.estado === 'ok') v.n_ok++;
-    else v.n_sin_datos++;
+    if (r.estado === 'nuevo') v.n_nuevo++;
+    else if (r.estado === 'poco_desgaste') v.n_poco_desgaste++;
+    else if (r.estado === 'mayor_desgaste') v.n_mayor_desgaste++;
+    else if (r.estado === 'desgaste_limite') v.n_desgaste_limite++;
+    else v.n_desconocido++;
     if (r.sin_medir) v.n_sin_medir++;
     if (r.desgaste_irregular) v.n_irregular++;
     const mm = num(r.promedio);
@@ -68,8 +87,8 @@ export function agruparVehiculos(rows) {
 
 export function compararVehiculos(a, b) {
   return estadoRank(a.semaforo) - estadoRank(b.semaforo)
-    || b.n_critico - a.n_critico
-    || b.n_bajo - a.n_bajo
+    || b.n_desgaste_limite - a.n_desgaste_limite
+    || b.n_mayor_desgaste - a.n_mayor_desgaste
     || b.n_sin_medir - a.n_sin_medir
     || (a.min_mm === null) - (b.min_mm === null)
     || (a.min_mm ?? 0) - (b.min_mm ?? 0)
@@ -86,33 +105,45 @@ export function filtrarVehiculos(vehiculos, { clienteId = '', estado = '', q = '
 }
 
 // Suma de filas de v_resumen_flota_cliente (opcionalmente de un solo cliente).
+// v_resumen_flota_cliente conserva nombres históricos: n_ok=nuevo, n_bajo=poco_desgaste,
+// n_mayor_desgaste=mayor_desgaste, n_critico=desgaste_limite, n_sin_datos=desconocido.
 export function sumarResumen(resumen, clienteId = '') {
-  const t = { n_vehiculos: 0, n_neumaticos: 0, n_ok: 0, n_bajo: 0, n_critico: 0, n_sin_datos: 0, n_alertas: 0 };
+  const t = {
+    n_vehiculos: 0, n_neumaticos: 0, n_nuevo: 0, n_poco_desgaste: 0, n_mayor_desgaste: 0,
+    n_desgaste_limite: 0, n_desconocido: 0, n_alertas: 0,
+  };
   for (const r of resumen || []) {
     if (clienteId && String(r.cliente_id) !== String(clienteId)) continue;
     t.n_vehiculos += num(r.n_vehiculos_activos) || 0;
     t.n_neumaticos += num(r.n_neumaticos_con_datos) || 0;
-    t.n_ok += num(r.n_ok) || 0;
-    t.n_bajo += num(r.n_bajo) || 0;
-    t.n_critico += num(r.n_critico) || 0;
-    t.n_sin_datos += num(r.n_sin_datos) || 0;
+    t.n_nuevo += num(r.n_ok) || 0;
+    t.n_poco_desgaste += num(r.n_bajo) || 0;
+    t.n_mayor_desgaste += num(r.n_mayor_desgaste) || 0;
+    t.n_desgaste_limite += num(r.n_critico) || 0;
+    t.n_desconocido += num(r.n_sin_datos) || 0;
     t.n_alertas += (num(r.n_alertas_sev1) || 0) + (num(r.n_alertas_sev2) || 0) + (num(r.n_alertas_sev3) || 0);
   }
   return t;
 }
 
-// KPIs de la pantalla de flota. Críticos y alertas salen del resumen SQL si existe; "sin medir" siempre de las filas.
+// KPIs de la pantalla de flota. Desgaste límite y alertas salen del resumen SQL si existe; "sin medir" siempre de las filas.
 export function kpisFlota(estadoRows, resumen = null, clienteId = '') {
   const rows = (estadoRows || []).filter(r => !clienteId || String(r.cliente_id) === String(clienteId));
   const sinMedir = rows.filter(r => r.sin_medir).length;
   if (resumen && resumen.length) {
     const t = sumarResumen(resumen, clienteId);
-    return { vehiculos: t.n_vehiculos, criticos: t.n_critico, bajos: t.n_bajo, sin_medir: sinMedir, alertas: t.n_alertas };
+    return {
+      vehiculos: t.n_vehiculos,
+      limite: t.n_desgaste_limite,
+      mayor_desgaste: t.n_mayor_desgaste,
+      sin_medir: sinMedir,
+      alertas: t.n_alertas,
+    };
   }
   return {
     vehiculos: new Set(rows.map(r => r.vehiculo_id)).size,
-    criticos: rows.filter(r => r.estado === 'critico').length,
-    bajos: rows.filter(r => r.estado === 'bajo').length,
+    limite: rows.filter(r => r.estado === 'desgaste_limite').length,
+    mayor_desgaste: rows.filter(r => r.estado === 'mayor_desgaste').length,
     sin_medir: sinMedir,
     alertas: null,
   };

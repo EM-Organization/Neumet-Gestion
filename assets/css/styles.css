@@ -666,15 +666,21 @@
 .inicio-seg { display: block; height: 100%; min-width: 4px; }
 .inicio-seg.ok { background: var(--n-oliva); }
 .inicio-seg.bajo { background: var(--n-dorado); }
+.inicio-seg.mayor { background: var(--warning); }
 .inicio-seg.critico { background: var(--danger); }
+.inicio-seg.limite { background: var(--danger); }
 .inicio-seg.sin { background: repeating-linear-gradient(45deg, #d3cfbd 0 3px, #f1efe7 3px 6px); }
+.inicio-seg.neutral { background: repeating-linear-gradient(45deg, #d3cfbd 0 3px, #f1efe7 3px 6px); }
 .inicio-cifras { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--text-secondary); }
 .inicio-cifra strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .inicio-punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex: none; background: var(--n-dorado); }
 .inicio-punto.ok { background: var(--n-oliva); }
 .inicio-punto.bajo { background: var(--n-dorado); }
+.inicio-punto.mayor { background: var(--warning); }
 .inicio-punto.critico { background: var(--danger); }
+.inicio-punto.limite { background: var(--danger); }
 .inicio-punto.sin, .inicio-punto.cero { background: #d3cfbd; }
+.inicio-punto.neutral { background: #d3cfbd; }
 .inicio-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .inicio-cols { margin-bottom: 16px; }
 .inicio-cols .inicio-card { margin-bottom: 0; }

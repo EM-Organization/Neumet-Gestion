@@ -46,7 +46,7 @@ describe('buildCsv / medicionesCsv', () => {
   test('null -> sin filas', () => assert.deepEqual(medicionesToCsvRows(null), []));
   test('fila: fecha ISO, números con punto, estado', () => {
     const [row] = medicionesToCsvRows([m(1, 2, 7.25, 3, { mm1: 8, mm2: '7.5', mm3: null, idneumatico: 'N-1' })]);
-    assert.deepEqual(row, ['2026-01-03T10:00:00.000Z', 'V1', 'P1', 2, 'N-1', 8, 7.5, null, 7.25, 'bajo']);
+    assert.deepEqual(row, ['2026-01-03T10:00:00.000Z', 'V1', 'P1', 2, 'N-1', 8, 7.5, null, 7.25, 'poco_desgaste']);
   });
   test('sin promedio se calcula de mm1..mm3; sin datos -> estado vacío', () => {
     assert.equal(medicionesToCsvRows([{ mm1: 9, mm2: 9, mm3: 6, created_at: '2026-01-01T00:00:00Z' }])[0][8], 8);
@@ -65,25 +65,25 @@ describe('safeFilename', () => {
 });
 
 describe('resumenFlota', () => {
-  test('5 exacto = bajo, 8 exacto = ok, 4.99 = crítico', () => {
-    const r = resumenFlota([m(1, 1, 8), m(1, 2, 5), m(1, 3, 4.99), m(1, 4, 7.99), m(1, 5, 20)]);
+  test('umbrales exactos: 8 = nuevo, 5 = poco desgaste, 3 = mayor desgaste, 2.99 = desgaste límite', () => {
+    const r = resumenFlota([m(1, 1, 8), m(1, 2, 5), m(1, 3, 3), m(1, 4, 2.99), m(1, 5, 20)]);
     assert.equal(r.neumaticos.length, 5);
-    assert.deepEqual([r.ok, r.bajo, r.critico, r.sinDatos], [2, 2, 1, 0]);
+    assert.deepEqual([r.nuevo, r.pocoDesgaste, r.mayorDesgaste, r.limite, r.desconocido], [2, 1, 1, 1, 0]);
   });
   test('usa solo la última medición por neumático, sin importar el orden', () => {
     const r = resumenFlota([m(1, 1, 3, 1), m(1, 1, 9, 5), m(1, 1, 4, 2)]);
-    assert.equal(r.neumaticos.length, 1); assert.equal(r.ok, 1); assert.equal(r.critico, 0);
+    assert.equal(r.neumaticos.length, 1); assert.equal(r.nuevo, 1); assert.equal(r.limite, 0);
   });
-  test('por vehículo y sin datos', () => {
+  test('por vehículo y desconocido', () => {
     const r = resumenFlota([m(1, 1, 9), m(2, 1, 2), { vehiculo_id: 2, posicion: 2, created_at: '2026-01-01T00:00:00Z' }]);
     assert.equal(r.vehiculos.length, 2);
-    assert.deepEqual(r.vehiculos.find(v => v.vehiculo_id === 2), { vehiculo_id: 2, nombre: '', patente: '', neumaticos: 2, ok: 0, bajo: 0, critico: 1, sinDatos: 1 });
-    assert.equal(r.sinDatos, 1);
+    assert.deepEqual(r.vehiculos.find(v => v.vehiculo_id === 2), { vehiculo_id: 2, nombre: '', patente: '', neumaticos: 2, nuevo: 0, pocoDesgaste: 0, mayorDesgaste: 0, limite: 1, desconocido: 1 });
+    assert.equal(r.desconocido, 1);
   });
   test('vacío / null', () => {
     for (const x of [[], null, undefined]) {
       const r = resumenFlota(x);
-      assert.deepEqual([r.neumaticos.length, r.vehiculos.length, r.ok, r.bajo, r.critico, r.sinDatos], [0, 0, 0, 0, 0, 0]);
+      assert.deepEqual([r.neumaticos.length, r.vehiculos.length, r.nuevo, r.pocoDesgaste, r.mayorDesgaste, r.limite, r.desconocido], [0, 0, 0, 0, 0, 0, 0]);
     }
   });
 });

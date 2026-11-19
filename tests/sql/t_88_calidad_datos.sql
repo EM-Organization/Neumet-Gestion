@@ -4,7 +4,7 @@
 --      sin idneumatico, jamás rechaza la inserción, camino de la API) y audit_log;
 --   C. una medición invalidada no cuenta en v_mediciones_neumatico / v_ultima_medicion / v_estado_neumaticos /
 --      v_alertas / ultimas_mediciones / api_obtener_montaje (tres atribuciones), se conserva intacta y revalidar la
---      devuelve; las sospechosas siguen contando; sin mediciones válidas el estado es «sin datos», nunca crítico;
+--      devuelve; las sospechosas siguen contando; sin mediciones válidas el estado es «desconocido», nunca desgaste límite;
 --   D. matriz de roles de medicion_invalidar / medicion_revalidar (admin, global, sucursal propia y ajena, otro
 --      cliente, api, sin perfil, anon), motivo obligatorio, idempotencia y registro en audit_log;
 --   E. valor original y unidad.
@@ -255,24 +255,24 @@ select test.eq('B9: la medición de la API quedó sospechosa por rango',
 -- ---------------------------------------------------------------------------------------------
 -- C. Las invalidadas no cuentan; las sospechosas sí
 -- ---------------------------------------------------------------------------------------------
--- C1. Atribución por idneumatico (884 pos 1): 12, 11, 10, 9 semanales y una lectura errónea de 3,0 el último día
+-- C1. Atribución por idneumatico (884 pos 1): 12, 11, 10, 9 semanales y una lectura errónea de 2,9 el último día
 select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 28, 12, 12, 12) as c1a \gset
 select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 21, 11, 11, 11) as c1b \gset
 select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 14, 10, 10, 10) as c1c \gset
 select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 7,  9, 9, 9) as c1d \gset
-select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 1,  3, 3, 3) as c1e \gset
-select test.eq('C1: antes de invalidar, la lectura errónea manda: crítico',
-  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'critico');
-select test.eq('C1: ...y hay alerta crítica',
-  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'critico'), 1::bigint);
+select pg_temp.med(884, 1, 1, 'T-884-1', 24 * 1,  2.9, 2.9, 2.9) as c1e \gset
+select test.eq('C1: antes de invalidar, la lectura errónea manda: desgaste límite',
+  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'desgaste_limite');
+select test.eq('C1: ...y hay alerta de desgaste límite',
+  (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'limite'), 1::bigint);
 select test.eq('C1: una sospechosa sigue contando (la lectura de 35 mm de la API está en la vista)',
   (select count(*) from public.v_mediciones_neumatico where medicion_id = (select id from public.mediciones where mm1 = 35 and vehiculo_id = 881)), 1::bigint);
 
 select pg_temp.med(887, 1, 1, 'T-887-1', 24 * 14, 10, 10, 10) as c1f \gset
 select pg_temp.med(887, 1, 1, 'T-887-1', 24 * 7, 9, 9, 9) as c1g \gset
-select pg_temp.med(887, 1, 1, 'T-887-1', 24 * 1, 3, 3, 3) as c1h \gset
-select test.eq('C1: ultimas_mediciones antes de invalidar muestra la errónea (3 mm) y la previa (9 mm)',
-  (select mm_ahora || '|' || mm_antes from public.ultimas_mediciones(50, null) where vehiculo_id = 887 and posicion = 1), '3.00|9.00');
+select pg_temp.med(887, 1, 1, 'T-887-1', 24 * 1, 2.9, 2.9, 2.9) as c1h \gset
+select test.eq('C1: ultimas_mediciones antes de invalidar muestra la errónea (2,9 mm) y la previa (9 mm)',
+  (select mm_ahora || '|' || mm_antes from public.ultimas_mediciones(50, null) where vehiculo_id = 887 and posicion = 1), '2.90|9.00');
 select test.become('authenticated', test.u_cli_a());
 select public.medicion_invalidar(:c1e, 'Lectura errónea del medidor') as inv1 \gset
 select public.medicion_invalidar(:c1h, 'Lectura errónea del medidor') as inv2 \gset
@@ -282,18 +282,18 @@ select test.eq('C1: ya no figura en v_mediciones_neumatico',
   (select count(*) from public.v_mediciones_neumatico where medicion_id = :c1e), 0::bigint);
 select test.eq('C1: v_ultima_medicion toma la anterior (9 mm)',
   (select promedio from public.v_ultima_medicion where vehiculo_id = 884 and posicion = 1), 9.00::numeric);
-select test.eq('C1: estado ok (9 mm) y última medición de hace 7 días',
-  (select estado || '|' || promedio || '|' || dias_desde_medicion from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'ok|9.00|7');
+select test.eq('C1: estado nuevo (9 mm) y última medición de hace 7 días',
+  (select estado || '|' || promedio || '|' || dias_desde_medicion from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'nuevo|9.00|7');
 select test.eq('C1: la tasa se calcula sin la lectura invalidada (1,000 mm/semana)',
   (select tasa_mm_semana from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 1.000::numeric);
 select test.eq('C1: 4 mediciones en la ventana (no 5)',
   (select n_mediciones_90d from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 4::bigint);
-select test.eq('C1: sin alerta crítica (la invalidación la resolvió como recuperada); queda el indicador de cruce próximo (4 semanas al crítico)',
+select test.eq('C1: sin alerta de desgaste límite (la invalidación la resolvió como recuperada); queda el indicador de cruce próximo (4 semanas al crítico)',
   (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 1)
   || '|' || (select resuelta_motivo from public.alertas where vehiculo_id = 884 and posicion = 1)
   || '|' || (select semanas_hasta_critico from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), '0|recuperada|4.00');
 select test.eq('C1: la fila se conserva con sus mm y la marca',
-  (select mm1 || '|' || calidad || '|' || calidad_motivo from public.mediciones where id = :c1e), '3.00|invalidada|Lectura errónea del medidor');
+  (select mm1 || '|' || calidad || '|' || calidad_motivo from public.mediciones where id = :c1e), '2.90|invalidada|Lectura errónea del medidor');
 select test.eq('C1: calidad_por es el usuario',
   (select calidad_por from public.mediciones where id = :c1e), test.u_cli_a()::text);
 select test.eq('C1: ultimas_mediciones usa la última válida (9 mm) y la previa a esa visita (10 mm)',
@@ -306,31 +306,31 @@ select test.become('authenticated', test.u_cli_a());
 select public.medicion_revalidar(:c1e) as rev1 \gset
 reset role;
 select test.eq('C1: revalidar responde cambiado', (:'rev1'::jsonb ->> 'cambiado'), 'true');
-select test.eq('C1: tras revalidar vuelve a contar (crítico)',
-  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'critico');
-select test.eq('C1: tras revalidar vuelve la alerta crítica (misma fila reabierta)',
-  (select count(*) || '|' || max(veces_reabierta) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'critico'), '1|1');
+select test.eq('C1: tras revalidar vuelve a contar (desgaste límite)',
+  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'desgaste_limite');
+select test.eq('C1: tras revalidar vuelve la alerta de desgaste límite (misma fila reabierta)',
+  (select count(*) || '|' || max(veces_reabierta) from public.v_alertas where vehiculo_id = 884 and posicion = 1 and tipo = 'limite'), '1|1');
 select test.eq('C1: revalidada: válida, sin motivo, con autor',
   (select calidad || '|' || coalesce(calidad_motivo, 'NULL') || '|' || (calidad_por = test.u_cli_a()::text)::text from public.mediciones where id = :c1e), 'valida|NULL|true');
 
 -- una sospechosa NO se excluye: sigue contando hasta que alguien decida
 update public.mediciones set calidad = 'sospechosa', calidad_motivo = 'prueba' where id = :c1e;
-select test.eq('C1: sospechosa sigue contando (crítico)',
-  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'critico');
+select test.eq('C1: sospechosa sigue contando (desgaste límite)',
+  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 1), 'desgaste_limite');
 update public.mediciones set calidad = 'invalidada' where id = :c1e;
 
--- C2. Todas las mediciones del neumático invalidadas: «sin datos», no crítico y sin heredar las de la posición
+-- C2. Todas las mediciones del neumático invalidadas: «desconocido», no desgaste límite y sin heredar las de la posición
 select pg_temp.med(884, 1, 2, 'T-884-2', 24 * 3, 9, 9, 9) as c2a \gset
 select pg_temp.med(884, 1, 2, null, 24 * 4, 2, 2, 2) as c2b \gset
 -- (T-884-2 tiene además lecturas de B3/B4 de hace ~90 días: se invalidan todas)
 update public.mediciones set calidad = 'invalidada', calidad_motivo = 'prueba' where idneumatico = 'T-884-2';
-select test.eq('C2: sin mediciones válidas: estado sin_datos (no crítico)',
-  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 2), 'sin_datos');
+select test.eq('C2: sin mediciones válidas: estado desconocido (no desgaste límite)',
+  (select estado from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 2), 'desconocido');
 select test.eq('C2: promedio NULL (no 0) y sin tasa',
   (select coalesce(promedio::text, 'NULL') || '|' || coalesce(tasa_mm_semana::text, 'NULL') from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 2), 'NULL|NULL');
 select test.eq('C2: no hereda la medición sin idneumatico de la posición',
   (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 884 and posicion_actual = 2), 0::bigint);
-select test.eq('C2: sin alerta crítica por falta de dato',
+select test.eq('C2: sin alerta de desgaste límite por falta de dato',
   (select count(*) from public.v_alertas where vehiculo_id = 884 and posicion = 2), 0::bigint);
 select test.eq('C2: la falta de dato se informa como «sin medir»',
   (select count(*) from public.v_estado_neumaticos where vehiculo_id = 884 and posicion = 2 and sin_medir), 1::bigint);
@@ -338,11 +338,11 @@ select test.eq('C2: la falta de dato se informa como «sin medir»',
 -- C3. Atribución por posición (neumático sin lecturas etiquetadas, regla 2): 885 pos 1
 select pg_temp.med(885, 1, 1, null, 24 * 20, 10, 10, 10) as c3a \gset
 select pg_temp.med(885, 1, 1, null, 24 * 10, 9, 9, 9) as c3b \gset
-select pg_temp.med(885, 1, 1, null, 24 * 1, 2, 2, 2) as c3c \gset
-select test.eq('C3: regla 2, antes: crítico', (select estado from public.v_estado_neumaticos where vehiculo_id = 885 and posicion = 1), 'critico');
+select pg_temp.med(885, 1, 1, null, 24 * 1, 1.9, 1.9, 1.9) as c3c \gset
+select test.eq('C3: regla 2, antes: desgaste límite', (select estado from public.v_estado_neumaticos where vehiculo_id = 885 and posicion = 1), 'desgaste_limite');
 update public.mediciones set calidad = 'invalidada', calidad_motivo = 'prueba' where id = :c3c;
-select test.eq('C3: regla 2, invalidada: 9 mm, ok',
-  (select estado || '|' || promedio from public.v_estado_neumaticos where vehiculo_id = 885 and posicion = 1), 'ok|9.00');
+select test.eq('C3: regla 2, invalidada: 9 mm, nuevo',
+  (select estado || '|' || promedio from public.v_estado_neumaticos where vehiculo_id = 885 and posicion = 1), 'nuevo|9.00');
 select test.eq('C3: regla 2, la vista de mediciones no la lista',
   (select count(*) from public.v_mediciones_neumatico where medicion_id = :c3c), 0::bigint);
 select test.eq('C3: regla 2, v_ultima_medicion',
@@ -350,15 +350,15 @@ select test.eq('C3: regla 2, v_ultima_medicion',
 
 -- C4. Posición medida sin fila en neumaticos (regla 3): 886 pos 3
 select pg_temp.med(886, 1, 3, null, 24 * 10, 10, 10, 10) as c4a \gset
-select pg_temp.med(886, 1, 3, null, 24 * 1, 2, 2, 2) as c4b \gset
-select test.eq('C4: regla 3, antes: crítico', (select estado from public.v_estado_neumaticos where vehiculo_id = 886 and posicion = 3), 'critico');
+select pg_temp.med(886, 1, 3, null, 24 * 1, 1.9, 1.9, 1.9) as c4b \gset
+select test.eq('C4: regla 3, antes: desgaste límite', (select estado from public.v_estado_neumaticos where vehiculo_id = 886 and posicion = 3), 'desgaste_limite');
 update public.mediciones set calidad = 'invalidada', calidad_motivo = 'prueba' where id = :c4b;
-select test.eq('C4: regla 3, invalidada: 10 mm, ok',
-  (select estado || '|' || promedio from public.v_estado_neumaticos where vehiculo_id = 886 and posicion = 3), 'ok|10.00');
+select test.eq('C4: regla 3, invalidada: 10 mm, nuevo',
+  (select estado || '|' || promedio from public.v_estado_neumaticos where vehiculo_id = 886 and posicion = 3), 'nuevo|10.00');
 select test.eq('C4: regla 3, la vista de mediciones no la lista',
   (select count(*) from public.v_mediciones_neumatico where medicion_id = :c4b), 0::bigint);
 update public.mediciones set calidad = 'invalidada', calidad_motivo = 'prueba' where id = :c4a;
-select test.eq('C4: regla 3, todas invalidadas: la posición desaparece (no hay dato, tampoco crítico)',
+select test.eq('C4: regla 3, todas invalidadas: la posición desaparece (no hay dato, tampoco desgaste límite)',
   (select count(*) from public.v_estado_neumaticos where vehiculo_id = 886 and posicion = 3), 0::bigint);
 
 -- C5. Las vistas conservan columnas y tipos (los tests existentes lo cubren; aquí, la lista)

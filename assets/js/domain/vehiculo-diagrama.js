@@ -126,11 +126,12 @@ export const COLORES = {
 const mezcla = (a, b, t) => a.map((c, i) => Math.round(c + (b[i] - c) * t));
 const aHex = rgb => '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');
 
-// Nivel de la rueda según los mm medios: 'ok' (>= bajo) · 'bajo' · 'critico' (< crítico) · 'retiro' (<= retiro) · 'sin_datos'.
+// Nivel de la rueda según los mm medios: 'ok' (>= bajo) · 'bajo' · 'critico' (< crítico) · 'retiro' (< retiro) · 'sin_datos'.
+// La base usa < umbral_retiro_mm para «desgaste límite»: 3,0 mm es «mayor desgaste», 2,99 es límite.
 export function nivelDesgaste(mm, u) {
   if (mm === null || mm === undefined || mm === '' || !Number.isFinite(Number(mm))) return 'sin_datos';
   const v = Number(mm);
-  if (v <= u.retiro) return 'retiro';
+  if (v < u.retiro) return 'retiro';
   if (v < u.critico) return 'critico';
   if (v < u.bajo) return 'bajo';
   return 'ok';
@@ -156,13 +157,14 @@ export function colorDesgaste(mm, u) {
   return { hex: aHex(rgb), nivel, rgb };
 }
 
-// Símbolo y texto de estado (nunca solo color).
+// Símbolo y texto de estado (nunca solo color). Las claves son niveles internos del diagrama; las etiquetas reflejan
+// las cinco categorías de producto definidas en docs/15 (apéndice T de docs/08).
 export const NIVEL_INFO = {
-  ok: { simbolo: '✓', texto: 'OK' },
-  bajo: { simbolo: '▲', texto: 'Desgaste bajo' },
-  critico: { simbolo: '✕', texto: 'Crítico' },
-  retiro: { simbolo: '■', texto: 'Retirar' },
-  sin_datos: { simbolo: '–', texto: 'Sin datos' },
+  ok: { simbolo: '✓', texto: 'Nuevo' },
+  bajo: { simbolo: '▲', texto: 'Poco desgaste' },
+  critico: { simbolo: '✕', texto: 'Mayor desgaste' },
+  retiro: { simbolo: '■', texto: 'Desgaste límite' },
+  sin_datos: { simbolo: '–', texto: 'Desconocido' },
 };
 
 const lum = rgb => {
@@ -181,12 +183,12 @@ export function colorTexto(rgb) {
   return contraste(rgb, TEXTO_CLARO) >= contraste(rgb, TEXTO_OSCURO) ? '#ffffff' : '#000000';
 }
 
-// Muestras para la leyenda: mm representativos de cada tramo.
+// Muestras para la leyenda: mm representativos de cada tramo. Los rangos reflejan las categorías de producto.
 export function muestrasLeyenda(u) {
   return [
     { clave: 'ok', mm: u.bajo, rango: `≥ ${u.bajo} mm` },
     { clave: 'bajo', mm: (u.bajo + u.critico) / 2, rango: `${u.critico} – ${u.bajo} mm` },
     { clave: 'critico', mm: (u.critico + u.retiro) / 2, rango: `${u.retiro} – ${u.critico} mm` },
-    { clave: 'retiro', mm: u.retiro, rango: `≤ ${u.retiro} mm` },
+    { clave: 'retiro', mm: u.retiro, rango: `< ${u.retiro} mm` },
   ].map(m => ({ ...m, ...colorDesgaste(m.mm, u), ...NIVEL_INFO[m.clave] }));
 }

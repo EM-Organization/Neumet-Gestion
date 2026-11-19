@@ -273,7 +273,7 @@ export function medDrawTruck(){
 export function medUpdateCounters(){
   const cfg=MED_CFG[String(med.tipoRuedas)]; if(!cfg) return;
   const c=countByStatus(cfg.flatMap(a=>a.positions.map(p=>mLast(p))));
-  const ok=c.ok,warn=c.bajo,crit=c.critico;
+  const ok=c.ok,warn=c.warn,crit=c.crit;
   document.getElementById('med-ok').textContent=ok;
   document.getElementById('med-warn').textContent=warn;
   document.getElementById('med-crit').textContent=crit;

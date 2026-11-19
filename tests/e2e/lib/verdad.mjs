@@ -23,12 +23,13 @@ export function cifrasInicio(env, rol) {
   const porEstado = e => n(`select count(*) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where ${e} and ${a.veh}`);
   return {
     total: porEstado('true'),
-    ok: porEstado(`e.estado = 'ok'`),
-    bajo: porEstado(`e.estado = 'bajo'`),
-    criticos: porEstado(`e.estado = 'critico'`),
-    sinDatos: porEstado(`e.estado not in ('ok','bajo','critico')`),
-    vehCriticos: n(`select count(distinct e.vehiculo_id) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where e.estado = 'critico' and ${a.veh}`),
-    proximos: porEstado(`e.estado in ('ok','bajo') and e.semanas_hasta_critico is not null and e.semanas_hasta_critico <= 12`),
+    nuevo: porEstado(`e.estado = 'nuevo'`),
+    pocoDesgaste: porEstado(`e.estado = 'poco_desgaste'`),
+    mayorDesgaste: porEstado(`e.estado = 'mayor_desgaste'`),
+    limite: porEstado(`e.estado = 'desgaste_limite'`),
+    desconocido: porEstado(`e.estado = 'desconocido'`),
+    vehLimite: n(`select count(distinct e.vehiculo_id) from public.v_estado_neumaticos e join public.vehiculos v on v.id = e.vehiculo_id where e.estado = 'desgaste_limite' and ${a.veh}`),
+    proximos: porEstado(`e.estado in ('nuevo','poco_desgaste','mayor_desgaste') and e.semanas_hasta_retiro is not null and e.semanas_hasta_retiro <= 12`),
     alertas: n(`select count(*) from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`),
     dispTotal: n(`select count(*) from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where ${a.dis}`),
     dispActivos: n(`select count(*) from public.v_salud_dispositivos s join public.dispositivos d on d.id = s.dispositivo_id where s.estado = 'activo' and ${a.dis}`)
