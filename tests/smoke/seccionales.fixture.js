@@ -113,6 +113,21 @@
       return ms ? new Promise(function(ok){ setTimeout(function(){ ok(out); }, ms); }) : Promise.resolve(out);
     };
     c.from = function(t){
+      // ?colgada=perfiles: la consulta del perfil nunca responde; ?colgada=lanza: lanza una excepción (red caída).
+      // ?colgada=tardia: responde bien pero a los 9,5 s, pasado el tope de 8 s (no debe mostrar el panel).
+      if (t === 'perfiles' && /[?&]colgada=tardia/.test(window.parent.location.search)) {
+        var real = MQ(t), ht = {};
+        ['select', 'eq', 'maybeSingle'].forEach(function(m){ ht[m] = function(){ real = real[m].apply(real, arguments); return ht; }; });
+        ht.then = function(ok, ko){ return new Promise(function(r){ setTimeout(r, 9500); }).then(function(){ return real; }).then(ok, ko); };
+        return ht;
+      }
+      if (t === 'perfiles' && /[?&]colgada=(perfiles|lanza)/.test(window.parent.location.search)) {
+        var colgada = /colgada=perfiles/.test(window.parent.location.search), h = {};
+        ['select', 'eq'].forEach(function(m){ h[m] = function(){ return h; }; });
+        h.maybeSingle = function(){ return h; };
+        h.then = function(ok, ko){ return colgada ? new Promise(function(){}) : Promise.reject(new Error('red caida')).then(ok, ko); };
+        return h;
+      }
       if (t === 'sucursales' || t === 'perfiles') return MQ(t);
       var q = from(t);
       if (t !== 'vehiculos' && t !== 'dispositivos') return q;

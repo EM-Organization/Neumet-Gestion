@@ -6,8 +6,17 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var enter = function(i){ i.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); };
   var filas = function(){ return all('#veh-lista .veh-fila'); };
 
+  // Sin parpadeo de orden: se registra cada pintado de la lista con 2+ filas; la lista no debe aparecer ordenada por nombre
+  // para reordenarse por urgencia al llegar el estado de los neumáticos (un solo orden, el final).
+  var pintados = [];
+  new w.MutationObserver(function(){
+    var o = Array.prototype.map.call(filas(), function(f){ return f.querySelector('.veh-fila-nombre').textContent; }).join('|');
+    if(filas().length > 1 && pintados[pintados.length-1] !== o) pintados.push(o);
+  }).observe($('#veh-lista'), {childList:true, subtree:true});
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(600);
   if(!$('#view-vehiculos').classList.contains('active')) fail('detalle: vista Vehiculos no activa');
+  log.push('veh-pintados='+pintados.length);
+  if(pintados.length !== 1) fail('detalle: la lista se pinto '+pintados.length+' veces con ordenes distintos (parpadeo): '+pintados.join(' // '));
   // Cliente: sin ABM visible ni texto de relleno
   if($('#view-vehiculos .table-wrap').offsetParent !== null) fail('detalle: el cliente ve la tabla de administracion');
   if($('[data-action="openVehiculoModal"]') || $('#modal-vehiculo')) fail('detalle: queda el alta de vehiculos del panel viejo (la hace Sucursales, no Vehiculos)');

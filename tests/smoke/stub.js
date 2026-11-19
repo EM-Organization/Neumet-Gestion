@@ -120,7 +120,13 @@
       from:Q,
       rpc:function(name){ if(name==='cpk_por_grupo') return Promise.resolve({data:cpkg,error:null}); return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,total_meds:3,last_seen:D(1)}]:null,error:null}); },
       auth:{
-        getSession:function(){ return Promise.resolve({data:{session:/[?&]nosession=1/.test(window.parent.location.search)?null:session}}); },
+        getSession:function(){
+          var q=window.parent.location.search;
+          // ?arranque=1: la sesión tarda en resolverse (red real) para poder observar qué se ve mientras tanto; ?roto=1: la lectura falla.
+          var tarda=/[?&]arranque=1/.test(q)?function(f){ return new Promise(function(r,j){ setTimeout(function(){ try{ r(f()); }catch(e){ j(e); } },400); }); }:function(f){ try{ return Promise.resolve(f()); }catch(e){ return Promise.reject(e); } };
+          if(/[?&]colgada=sesion/.test(q)) return new Promise(function(){}); // getSession que nunca responde
+          return tarda(function(){ if(/[?&]roto=1/.test(q)) throw new Error('sesion corrupta'); return {data:{session:/[?&]nosession=1/.test(q)?null:session}}; });
+        },
         signInWithPassword:function(){ return Promise.resolve({data:{user:session.user},error:null}); },
         signOut:function(){ return Promise.resolve({error:null}); },
         onAuthStateChange:function(){ return {data:{subscription:{unsubscribe:function(){}}}}; }
