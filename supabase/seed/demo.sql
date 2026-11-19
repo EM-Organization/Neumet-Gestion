@@ -104,10 +104,12 @@ begin
   insert into _demo_esc values
     -- desgaste límite
     (1, 3, 2.5, 0.8, false, false), (4, 7, 2.4, 0.9, false, false), (6, 2, 2.5, 0.7, false, false), (10, 5, 2.5, 0.8, false, false),
-    -- bajos
+    -- poco desgaste
     (2, 1, 7.2, 0.5, false, false), (2, 4, 6.5, 0.6, false, false), (3, 2, 7.8, 0.4, false, false), (5, 4, 6.1, 0.5, false, false),
     (8, 3, 7.0, 0.5, false, false), (11, 1, 6.8, 0.5, false, false), (12, 6, 7.4, 0.4, false, false),
-    -- ok pero cruzarán el nivel crítico pronto (alerta preventiva)
+    -- mayor desgaste
+    (14, 2, 4.2, 0.6, false, false),
+    -- nuevo pero cruzarán el umbral de poco desgaste pronto (indicador preventivo)
     (9, 2, 8.6, 0.9, false, false), (10, 8, 8.9, 1.0, false, false), (6, 9, 9.0, 1.1, false, false),
     -- desgaste irregular (diferencia entre huellas > 2 mm)
     (1, 6, 11.0, 0.4, true, false), (7, 4, 9.5, 0.5, true, false), (12, 2, 10.5, 0.4, true, false),
