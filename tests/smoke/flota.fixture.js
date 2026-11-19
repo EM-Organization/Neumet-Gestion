@@ -8,21 +8,21 @@
   }
   var estado = [
     e(1,10,'Camión 01','AB123CD',1,'nuevo',13), e(1,10,'Camión 01','AB123CD',2,'nuevo',12),
-    e(1,12,'Unidad <Crítica>','CR0001',1,'desgaste_limite',3,{sin_medir:true}), e(1,12,'Unidad <Crítica>','CR0001',2,'poco_desgaste',6),
-    e(2,11,'Camión 02','XY987ZZ',1,'poco_desgaste',6), e(2,11,'Camión 02','XY987ZZ',2,'nuevo',9,{semanas_hasta_retiro:6.4}),
+    e(1,12,'Unidad <Crítica>','CR0001',1,'desgaste_limite',2.9), e(1,12,'Unidad <Crítica>','CR0001',2,'desgaste_limite',2.8),
+    e(2,11,'Camión 02','XY987ZZ',1,'desgaste_limite',2.7), e(2,11,'Camión 02','XY987ZZ',2,'nuevo',9,{semanas_hasta_retiro:6.4}),
     e(2,13,'Camión 03','NN0003',1,'desconocido',null,{sin_medir:true})
   ];
   // v_alertas desde la migración 20261118500000: solo la alerta crítica con estado (abierta, reconocida; silencio).
   var futuro = new Date(Date.now() + 3 * 86400000).toISOString();
   var alertas = [
-    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:1,tipo:'limite',severidad:3,valor:3,mensaje:'Desgaste límite: 3 mm (umbral 3 mm)',ultima_medicion_at:D(5),alerta_id:101,estado:'abierta',silenciada_hasta:null},
-    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:2,tipo:'limite',severidad:3,valor:3.5,mensaje:'Desgaste límite: 3,5 mm (umbral 3 mm)',ultima_medicion_at:D(2),alerta_id:102,estado:'abierta',silenciada_hasta:null},
-    {cliente_id:2,vehiculo_id:11,vehiculo_nombre:'Camión 02',patente:'XY987ZZ',posicion:1,tipo:'limite',severidad:3,valor:5,mensaje:'Desgaste límite: 5 mm (umbral 3 mm)',ultima_medicion_at:D(3),alerta_id:103,estado:'reconocida',silenciada_hasta:null},
+    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:1,tipo:'limite',severidad:3,valor:2.9,mensaje:'Desgaste límite: 2,9 mm (umbral 3 mm)',ultima_medicion_at:D(5),alerta_id:101,estado:'abierta',silenciada_hasta:null},
+    {cliente_id:1,vehiculo_id:12,vehiculo_nombre:'Unidad <Crítica>',patente:'CR0001',posicion:2,tipo:'limite',severidad:3,valor:2.8,mensaje:'Desgaste límite: 2,8 mm (umbral 3 mm)',ultima_medicion_at:D(2),alerta_id:102,estado:'abierta',silenciada_hasta:null},
+    {cliente_id:2,vehiculo_id:11,vehiculo_nombre:'Camión 02',patente:'XY987ZZ',posicion:1,tipo:'limite',severidad:3,valor:2.7,mensaje:'Desgaste límite: 2,7 mm (umbral 3 mm)',ultima_medicion_at:D(3),alerta_id:103,estado:'reconocida',silenciada_hasta:null},
     {cliente_id:2,vehiculo_id:13,vehiculo_nombre:'Camión 03',patente:'NN0003',posicion:1,tipo:'limite',severidad:3,valor:2,mensaje:'Desgaste límite: 2 mm (umbral 3 mm)',ultima_medicion_at:D(1),alerta_id:104,estado:'abierta',silenciada_hasta:futuro}
   ];
   var resumen = [
-    {cliente_id:1,nombre:'Transportes Alfa',n_vehiculos_activos:2,n_neumaticos_con_datos:4,n_ok:2,n_bajo:1,n_mayor_desgaste:0,n_critico:1,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:1,n_alertas_sev3:1,ultima_medicion_at:D(2)},
-    {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:2,n_neumaticos_con_datos:2,n_ok:1,n_bajo:1,n_mayor_desgaste:0,n_critico:0,n_sin_datos:1,n_alertas_sev1:1,n_alertas_sev2:1,n_alertas_sev3:0,ultima_medicion_at:D(3)}
+    {cliente_id:1,nombre:'Transportes Alfa',n_vehiculos_activos:2,n_neumaticos_con_datos:4,n_ok:2,n_bajo:0,n_mayor_desgaste:0,n_critico:2,n_sin_datos:0,n_alertas_sev1:0,n_alertas_sev2:0,n_alertas_sev3:2,ultima_medicion_at:D(2)},
+    {cliente_id:2,nombre:'Minera <Beta> & Cía',n_vehiculos_activos:2,n_neumaticos_con_datos:2,n_ok:1,n_bajo:0,n_mayor_desgaste:0,n_critico:1,n_sin_datos:1,n_alertas_sev1:0,n_alertas_sev2:0,n_alertas_sev3:2,ultima_medicion_at:D(3)}
   ];
   var T = {v_estado_neumaticos:estado, v_alertas:alertas, v_resumen_flota_cliente:resumen};
   var fx = window.__flotaFx = { queries: [], vacio: false };
@@ -50,8 +50,8 @@
   }
   var ultimas = [
     u(10,'101','AB123CD','101',1,1,12.6,13.0), u(10,'101','AB123CD','101',1,2,11.8,12.1), u(10,'101','AB123CD','101',1,3,15.5,null),
-    u(12,'Unidad <Crítica>','CR0001','112',2,1,3.0,3.4), u(12,'Unidad <Crítica>','CR0001','112',2,2,5.1,5.2),
-    u(11,'102','XY987ZZ','102',4,1,5.9,7.3), u(11,'102','XY987ZZ','102',4,2,9.2,9.0)
+    u(12,'Unidad <Crítica>','CR0001','112',2,1,2.9,3.4), u(12,'Unidad <Crítica>','CR0001','112',2,2,2.8,5.2),
+    u(11,'102','XY987ZZ','102',4,1,2.7,7.3), u(11,'102','XY987ZZ','102',4,2,9.2,9.0)
   ];
   fx.rpcs = [];
   var base = window.supabase.createClient;

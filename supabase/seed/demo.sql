@@ -103,7 +103,7 @@ begin
   create temp table _demo_esc (veh int, pos int, cur numeric, rate numeric, irregular boolean, nomed boolean) on commit drop;
   insert into _demo_esc values
     -- desgaste límite
-    (1, 3, 4.2, 0.8, false, false), (4, 7, 3.8, 0.9, false, false), (6, 2, 2.5, 0.7, false, false), (10, 5, 2.5, 0.8, false, false),
+    (1, 3, 2.5, 0.8, false, false), (4, 7, 2.4, 0.9, false, false), (6, 2, 2.5, 0.7, false, false), (10, 5, 2.5, 0.8, false, false),
     -- bajos
     (2, 1, 7.2, 0.5, false, false), (2, 4, 6.5, 0.6, false, false), (3, 2, 7.8, 0.4, false, false), (5, 4, 6.1, 0.5, false, false),
     (8, 3, 7.0, 0.5, false, false), (11, 1, 6.8, 0.5, false, false), (12, 6, 7.4, 0.4, false, false),
