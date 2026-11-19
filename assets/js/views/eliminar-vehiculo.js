@@ -53,7 +53,7 @@ function pintar() {
     ? 'El vehículo dejará de verse en la lista. Esta acción no se puede deshacer.'
     : `El vehículo tiene ${total === 1 ? '1 neumático' : `${total} neumáticos`}. Elegir qué hacer con ${total === 1 ? 'él' : 'ellos'}. Esta acción no se puede deshacer.`;
   $('veh-elim-grupo').hidden = total === 0;
-  setHtml($('veh-elim-destinos'), total === 0 ? '' : joinHtml([
+  setHtml($('veh-elim-destinos'), total === 0 ? joinHtml([]) : joinHtml([
     radio('stock', etiquetaDestino('stock', total), opciones.porDefecto === 'stock', !opciones.stockPosible),
     radio('baja', etiquetaDestino('baja', total), false, false)
   ]));
@@ -77,8 +77,13 @@ async function abrir(vehiculoId) {
   ctx = { vehiculoId, nombre: rv.data.nombre, total, sinQuema, opciones: opcionesDestino({ total, sinQuema }) };
   pintar();
   $('modal-veh-eliminar').classList.add('show');
-  const primero = document.querySelector('input[name="veh-elim-destino"]:checked, input[name="veh-elim-destino"]:not(:disabled)');
-  (primero || $('veh-elim-cancelar')).focus();
+  // modal-a11y guarda el elemento que abrió el diálogo (para devolverle el foco al cerrar) y enfoca de forma asíncrona:
+  // enfocar aquí, de forma síncrona, le haría guardar el radio y el foco caería en <body> al cerrar. Va después.
+  // Sin neumáticos no hay opciones: el foco queda en «Eliminar vehículo» para que Enter confirme.
+  setTimeout(() => {
+    const primero = document.querySelector('input[name="veh-elim-destino"]:checked, input[name="veh-elim-destino"]:not(:disabled)');
+    if (ctx) (primero || $(total === 0 ? 'veh-elim-confirmar' : 'veh-elim-cancelar')).focus();
+  }, 60);
 }
 
 // El equipo Neumet y los usuarios de sucursal no ven el botón; aquí además se rechaza (un data-action ajeno no abre el diálogo).
@@ -105,7 +110,8 @@ ACTIONS['vehiculo-eliminar-confirmar'] = async function () {
     if (res.error) throw res.error;
     if (ctx === mio) ACTIONS['vehiculo-eliminar-cerrar']();
     showToast(`${coche || 'Vehículo'} eliminado. ${r.resumen}`);
-    if (mio.total > 0 && r.params.p_destino_neumaticos === 'stock') document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
+    // Siempre: aun con destino «baja» los neumáticos dejan el catálogo de la búsqueda global (los montados del vehículo).
+    document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     switchView('vehiculos');
   } catch (e) {
     console.error(e);
