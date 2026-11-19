@@ -58,31 +58,57 @@ async function resolverRol(userId){
   if(r.rol==='cliente'){ currentClienteId=r.clienteId; currentClienteNombre=r.clienteNombre; }
 }
 
+// supabase-js no trae tiempo de espera: sin esto, una red que no responde deja «Cargando» para siempre.
+const ESPERA_MS=8000;
+function conEspera(p){
+  let t;
+  const tope=new Promise((_,rej)=>{ t=setTimeout(()=>rej(new Error('tiempo de espera agotado')),ESPERA_MS); });
+  return Promise.race([p,tope]).finally(()=>clearTimeout(t));
+}
+
 // AUTH — detecta rol
+// Mientras se resuelve, la pantalla «Cargando» (HTML inicial) es lo único visible: el login solo aparece si se sabe que no hay sesión.
+// Sesión ilegible o sin respuesta en ESPERA_MS = sin sesión (login). Si falla la resolución del rol, queda el aviso «No se pudo cargar»;
+// si ni siquiera cargan los módulos, lo muestra la CSS de index.html tras ~10 s.
 export async function checkAuth(){
-  const {data:{session}}=await db.auth.getSession();
+  let session=null;
+  try{ ({data:{session}}=await conEspera(db.auth.getSession())); }catch(e){ session=null; }
   if(!session){ showLogin(); return; }
   await entrar(session.user);
 }
 
 // Tras resolver el rol: panel para admin/cliente; «Sin acceso» para el resto (sin cargar vistas ni datos).
+// Si la consulta del rol falla o no responde no se sabe qué rol es: nunca se muestra el panel, solo el aviso con salida (recargar).
 async function entrar(user){
-  await resolverRol(user.id);
+  try{ await conEspera(resolverRol(user.id)); }
+  catch(e){ currentRol=ROL_SIN_ACCESO; showFalloCarga(); return; }
   if(panelHabilitado()) showApp(user); else showSinAcceso();
 }
 
+function showFalloCarga(){
+  const c=document.getElementById('cargando-screen');
+  c.classList.remove('hidden'); c.classList.add('falla');
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('sin-acceso-screen').classList.add('hidden');
+}
+
+function ocultarCargando(){ document.getElementById('cargando-screen').classList.add('hidden'); }
 function showLogin(){
+  ocultarCargando();
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.add('hidden');
 }
 function showSinAcceso(){
+  ocultarCargando();
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.remove('hidden');
   document.getElementById('sin-acceso-cerrar').focus();
 }
 function showApp(user){
+  ocultarCargando();
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('user-email').textContent=user.email;
