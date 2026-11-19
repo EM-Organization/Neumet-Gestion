@@ -9,8 +9,8 @@ window.arranqueFlow = async function(w, d, sleep, fail, log){
   var modo = /[?&]roto=1/.test(q) ? 'sesion-rota' : sinSesion ? 'sin-sesion' : sinPerfil ? 'sin-perfil' : 'con-sesion';
   var colgada = (q.match(/[?&]colgada=(\w+)/)||[])[1] || '';
   if(colgada) modo = 'colgada-'+colgada;
-  // Con colgada el tope de espera de auth.js es 8 s: se espera más que eso.
-  await sleep(colgada ? 11000 : 1200);
+  // Con colgada el tope de espera de auth.js es 8 s: se mira a los 9 s, antes de que la CSS muestre el aviso por su cuenta (10 s).
+  await sleep(colgada ? 9000 : 1200);
   var v = w.__vistos;
   // El aviso «No se pudo cargar» existe en el HTML inicial, con enlace de recarga y su aparición diferida solo con CSS.
   var av = d.getElementById('cargando-aviso');
@@ -23,10 +23,18 @@ window.arranqueFlow = async function(w, d, sleep, fail, log){
       if(visible(cg)) fail('arranque('+modo+'): «Cargando» colgado con getSession sin respuesta');
       if(!visible(d.getElementById('login-screen'))) fail('arranque('+modo+'): no se ve el login');
     } else {
+      // A los 9 s el aviso solo puede estar por la marca «falla» de showFalloCarga() (tope de entrar), no por la animación CSS.
+      if(!cg.classList.contains('falla')) fail('arranque('+modo+'): el tope de espera de la consulta de perfil no marcó el fallo de carga (falla)');
       if(!visible(cg) || !visible(av)) fail('arranque('+modo+'): sin aviso visible con la consulta de perfil '+(colgada==='lanza'?'fallida':'sin respuesta'));
       if(visible(d.getElementById('login-screen')) || visible(d.getElementById('sin-acceso-screen'))) fail('arranque('+modo+'): se mostró login o «Sin acceso» en vez del aviso');
     }
-    log.push('arranque('+modo+') vistos='+JSON.stringify(v));
+    if(colgada === 'tardia'){
+      // La consulta de perfil responde a los 9,5 s, ya vencido el tope: el panel nunca debe aparecer (no se llama a showApp).
+      await sleep(2500);
+      if(visible(d.getElementById('app')) || w.__vistos.app) fail('arranque('+modo+'): la respuesta tardía del perfil mostró el panel');
+      if(!cg.classList.contains('falla')) fail('arranque('+modo+'): la respuesta tardía quitó el aviso de fallo de carga');
+    }
+    log.push('arranque('+modo+') vistos='+JSON.stringify(w.__vistos));
     return;
   }
 

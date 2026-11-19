@@ -31,6 +31,7 @@ Q=""; [ "$MODE" = cliente ] && Q="?cliente=1"
 [ "$MODE" = arranque-colgada-sesion ] && Q="?arranque=1&colgada=sesion"
 [ "$MODE" = arranque-colgada-perfiles ] && Q="?arranque=1&colgada=perfiles"
 [ "$MODE" = arranque-colgada-lanza ] && Q="?arranque=1&colgada=lanza"
+[ "$MODE" = arranque-colgada-tardia ] && Q="?arranque=1&colgada=tardia"
 OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-250000} --dump-dom "http://127.0.0.1:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
 echo "$OUT" | grep -o '<title>[^<]*</title>' | head -1
 echo "$OUT" | awk '/<pre id="smoke-log">/{f=1} f{print} /<\/pre>/{f=0}' | sed 's/<[^>]*>//g'

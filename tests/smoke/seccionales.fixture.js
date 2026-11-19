@@ -114,6 +114,13 @@
     };
     c.from = function(t){
       // ?colgada=perfiles: la consulta del perfil nunca responde; ?colgada=lanza: lanza una excepción (red caída).
+      // ?colgada=tardia: responde bien pero a los 9,5 s, pasado el tope de 8 s (no debe mostrar el panel).
+      if (t === 'perfiles' && /[?&]colgada=tardia/.test(window.parent.location.search)) {
+        var real = MQ(t), ht = {};
+        ['select', 'eq', 'maybeSingle'].forEach(function(m){ ht[m] = function(){ real = real[m].apply(real, arguments); return ht; }; });
+        ht.then = function(ok, ko){ return new Promise(function(r){ setTimeout(r, 9500); }).then(function(){ return real; }).then(ok, ko); };
+        return ht;
+      }
       if (t === 'perfiles' && /[?&]colgada=(perfiles|lanza)/.test(window.parent.location.search)) {
         var colgada = /colgada=perfiles/.test(window.parent.location.search), h = {};
         ['select', 'eq'].forEach(function(m){ h[m] = function(){ return h; }; });
