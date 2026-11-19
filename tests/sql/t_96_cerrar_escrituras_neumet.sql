@@ -79,7 +79,7 @@ insert into _grp96 values
   ('identidad', 'is_admin'), ('identidad', 'current_cliente_id'), ('identidad', 'current_sucursal_id'),
   -- RPC del plan de roles ya fusionadas, sin escritura del equipo Neumet: nacen con su propio control de rol
   ('plan', 'admin_empresa_cliente_id'), ('plan', 'vehiculo_corregir_odometro'), ('plan', 'usuarios_empresa_listar'),
-  ('plan', 'usuario_empresa_quitar_acceso'), ('plan', 'usuario_empresa_reponer_acceso'),
+  ('plan', 'usuario_empresa_quitar_acceso'), ('plan', 'usuario_empresa_reponer_acceso'), ('plan', 'vehiculo_eliminar'),
   -- RPC de plataforma de solo equipo Neumet (precio mensual y uso, C1 y uso mensual)
   ('plataforma', 'cliente_precios_mensuales'), ('plataforma', 'cliente_precio_mensual_fijar'), ('plataforma', 'uso_clientes_listar');
 

@@ -518,5 +518,15 @@
   "archivo": "supabase/migrations/20261120500000_cerrar_escrituras_neumet.sql",
   "linea": 775,
   "texto": "public.clientes, public.neumaticos, public.eventos_neumatico, public.perfiles,"
+ },
+ {
+  "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
+  "linea": 46,
+  "texto": "v_perf public.perfiles%rowtype;"
+ },
+ {
+  "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
+  "linea": 55,
+  "texto": "select * into v_perf from public.perfiles p where p.user_id = v_uid and p.rol = 'cliente';"
  }
 ]

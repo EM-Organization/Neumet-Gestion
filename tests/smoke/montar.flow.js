@@ -190,6 +190,49 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(rpcs('neumatico_montar').length !== antes + 1) fail('montar: un Enter inmediato tras montar montó la cubierta que quedaba en el stock');
   $('#mont-cerrar').click(); await sleep(300);
 
+  // Eliminar el vehículo (administrador de empresa): el botón está en la cabecera y el diálogo ofrece stock o baja.
+  var T = w.__vehFx.T;
+  var vivos = function(){ return T.neumaticos.filter(function(x){ return x.vehiculo_id === 13 && x.estado !== 'baja'; }); };
+  var nVivos = vivos().length;
+  var be = $('#vd-cab [data-action="vehiculo-eliminar"]');
+  if(!be || be.textContent.trim() !== 'Eliminar vehículo' || nVivos < 2) { fail('eliminar: falta «Eliminar vehículo» en la cabecera o el coche no tiene neumáticos (' + nVivos + ')'); return; }
+  var conQuema = vivos()[0].numero_quema;
+  vivos()[0].numero_quema = null; // un neumático sin quema no puede volver al stock
+  be.click();
+  if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar')) return;
+  var radioStock = $('input[name="veh-elim-destino"][value="stock"]');
+  if(!radioStock.disabled || d.querySelector('input[name="veh-elim-destino"]:checked')) fail('eliminar: con un neumático sin quema el stock se deshabilita y no se elige nada');
+  if(!/1 neumático no tiene número de quema/.test(txt('#veh-elim-aviso'))) fail('eliminar: falta el aviso de la quema: ' + txt('#veh-elim-aviso'));
+  $('#veh-elim-form').requestSubmit(); await sleep(200);
+  if(rpcs('vehiculo_eliminar').length || !/Elegir qué hacer con los neumáticos/.test(txt('#veh-elim-error'))) fail('eliminar: sin elegir destino no debe llegar a la RPC: ' + txt('#veh-elim-error'));
+  $('#veh-elim-cancelar').click(); await sleep(100);
+  if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: «Cancelar» no cerró el diálogo');
+  vivos()[0].numero_quema = conQuema;
+  // Con quema en todos: «Enviar al stock» viene elegido; «Dar de baja» no.
+  $('#vd-cab [data-action="vehiculo-eliminar"]').click();
+  if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'reabrir el diálogo de eliminar')) return;
+  if(!$('input[name="veh-elim-destino"][value="stock"]').checked || $('input[name="veh-elim-destino"][value="baja"]').checked) fail('eliminar: el stock debe venir elegido y la baja no');
+  if(txt('#veh-elim-destinos').indexOf('Enviar los ' + nVivos + ' neumáticos al stock') === -1 || txt('#veh-elim-destinos').indexOf('Dar de baja los ' + nVivos + ' neumáticos') === -1) fail('eliminar: opciones: ' + txt('#veh-elim-destinos'));
+  if(!/vuelven al stock/.test(txt('#veh-elim-resumen'))) fail('eliminar: resumen: ' + txt('#veh-elim-resumen'));
+  // Error de la RPC: mensaje claro dentro del diálogo, que sigue abierto y se puede reintentar.
+  var ce2 = w.console.error; w.console.error = function(){};
+  fx.rpcError = {code: '42501', message: 'permiso denegado'};
+  $('#veh-elim-form').requestSubmit(); await sleep(300);
+  w.console.error = ce2; fx.rpcError = null;
+  if(rpcs('vehiculo_eliminar').length !== 1 || !/Sin permiso para eliminar este vehículo/.test(txt('#veh-elim-error')) || !$('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: error de la RPC no mostrado: ' + txt('#veh-elim-error'));
+  if($('#veh-elim-confirmar').disabled) fail('eliminar: el botón quedó bloqueado tras el error');
+  // Doble envío (dos Enter seguidos): una sola eliminación
+  $('#veh-elim-form').requestSubmit(); $('#veh-elim-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_eliminar').length === 2; }, 'la RPC de eliminar');
+  await sleep(400);
+  if(rpcs('vehiculo_eliminar').length !== 2) fail('eliminar: el doble envío llegó a la RPC ' + (rpcs('vehiculo_eliminar').length - 1) + ' veces');
+  if(JSON.stringify(rpcs('vehiculo_eliminar')[1].args) !== '{"p_vehiculo_id":13,"p_destino_neumaticos":"stock"}') fail('eliminar: argumentos de la RPC: ' + JSON.stringify(rpcs('vehiculo_eliminar')[1].args));
+  if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: el diálogo no se cerró al terminar');
+  if(!$('#view-vehiculos').classList.contains('active')) fail('eliminar: debe volver a la lista de vehículos');
+  if(vivos().length !== 0 || T.neumaticos.filter(function(x){ return x.vehiculo_id === null && x.estado === 'almacenado'; }).length < nVivos) fail('eliminar: los neumáticos debían quedar en el stock');
+  var inp2 = $('#search-vehiculos'); inp2.value = '301'; inp2.dispatchEvent(new w.Event('input', {bubbles: true})); await sleep(200);
+  if(/Coche 301/.test(txt('#veh-lista'))) fail('eliminar: el vehículo eliminado sigue en la lista: ' + txt('#veh-lista'));
+
   // Toast de error: sin la marca de éxito (no mezclar ✓ con un mensaje de falla). Se prueba con el módulo real de la interfaz.
   var ui = await new w.Function('return import("/assets/js/core/ui.js")')();
   ui.showToast('Algo falló', true); await sleep(50);
@@ -212,6 +255,7 @@ window.montarSucursalFlow = async function(w, d, sleep, fail, log){
   inp.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true})); await sleep(900);
   var abrir = $('#vd-resumen [data-action="neumatico-montar"]');
   if(!abrir){ fail('montar-sucursal: el perfil de sucursal debe poder montar (falta «Cargar neumáticos»)'); return; }
+  if($('#vd-cab [data-action="vehiculo-eliminar"]')) fail('montar-sucursal: el usuario de sucursal no debe ver «Eliminar vehículo»');
   abrir.click();
   if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'el modal de montar')) return;
   $('#mont-tab-nuevo').click(); await sleep(100);
