@@ -4,9 +4,9 @@
 // Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
 // Los textos hablan de las cinco categorías de producto; los nombres técnicos de las columnas no se muestran (docs/14).
 export const CAMPOS_UMBRAL = [
-  { key: 'umbral_bajo_mm', lbl: 'Umbral bajo (mm)', ayuda: 'Por encima: estado «nuevo»', mm: true },
-  { key: 'umbral_critico_mm', lbl: 'Umbral crítico (mm)', ayuda: 'Entre este umbral y el de bajo: «poco desgaste»', mm: true },
-  { key: 'umbral_retiro_mm', lbl: 'Umbral de retiro (mm)', ayuda: 'Por debajo: estado «desgaste límite»', mm: true },
+  { key: 'umbral_bajo_mm', lbl: 'Nuevo desde (mm)', ayuda: 'Por encima: estado «nuevo»', mm: true },
+  { key: 'umbral_critico_mm', lbl: 'Poco desgaste desde (mm)', ayuda: 'Desde este valor hasta el anterior: «poco desgaste»', mm: true },
+  { key: 'umbral_retiro_mm', lbl: 'Mayor desgaste desde (mm)', ayuda: 'Desde este valor hasta el anterior: «mayor desgaste». Por debajo: «desgaste límite»', mm: true },
   // Margen de la alerta (columna alerta_histeresis_mm): puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los
   // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
   { key: 'alerta_histeresis_mm', lbl: 'Histéresis de alerta (mm)', ayuda: 'Margen sobre el umbral de retiro para resolver la alerta (0 a 3 mm)', mm: false, hist: true },
@@ -50,7 +50,7 @@ export function validarUmbrales(raw = {}) {
     return { ok: false, campo: 'dias_sin_medir_alerta', error: `${lblDe('dias_sin_medir_alerta')}: entero entre 1 y 3650` };
   }
   if (!(v.umbral_retiro_mm < v.umbral_critico_mm && v.umbral_critico_mm < v.umbral_bajo_mm)) {
-    return { ok: false, campo: 'umbral_critico_mm', error: 'El umbral de retiro debe ser menor que el crítico, y el crítico menor que el bajo' };
+    return { ok: false, campo: 'umbral_critico_mm', error: 'Los umbrales deben descender: mayor desgaste, poco desgaste, nuevo' };
   }
   return { ok: true, valores: v };
 }
@@ -59,7 +59,7 @@ export function validarUmbrales(raw = {}) {
 export function mensajeErrorUmbrales(err) {
   const msg = String(err?.message ?? err ?? '').trim();
   if (err?.code === '23514' || /check constraint|violates check/i.test(msg)) {
-    return `Los umbrales no son válidos: el retiro debe ser menor que el crítico, y el crítico menor que el bajo. ${msg}`;
+    return `Los umbrales no son válidos: deben descender de mayor a menor (mayor desgaste, poco desgaste, nuevo). ${msg}`;
   }
   if (err?.code === '42501' || /permission denied|row-level security/i.test(msg)) return 'Sin permiso para editar los umbrales';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';

@@ -17,11 +17,11 @@ describe('validarUmbrales', () => {
     assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
   });
   test('acepta coma decimal', () => assert.equal(validarUmbrales({ ...OK, umbral_bajo_mm: '8,5' }).valores.umbral_bajo_mm, 8.5));
-  test('exige retiro < crítico < bajo (estricto)', () => {
+  test('exige descenso estricto: mayor desgaste < poco desgaste < nuevo', () => {
     for (const o of [{ umbral_critico_mm: '8' }, { umbral_retiro_mm: '5' }, { umbral_bajo_mm: '4' }, { umbral_retiro_mm: '6' }]) {
       const v = validarUmbrales({ ...OK, ...o });
       assert.equal(v.ok, false, JSON.stringify(o));
-      assert.match(v.error, /retiro debe ser menor que el crítico/);
+      assert.match(v.error, /mayor desgaste, poco desgaste, nuevo/);
     }
   });
   test('campo vacío o no numérico', () => {
@@ -79,6 +79,15 @@ describe('textos y orden de los campos (docs/14)', () => {
     assert.doesNotMatch(c.lbl, /alerta/i);
     assert.doesNotMatch(c.ayuda, /alerta/i);
     assert.match(c.ayuda, /Indicador/);
+  });
+  test('rótulos de umbrales orientados a categorías, sin nombres técnicos viejos', () => {
+    const labels = CAMPOS_UMBRAL.filter(c => c.mm).map(c => c.lbl);
+    for (const t of labels) {
+      assert.doesNotMatch(t, /\b(bajo|crítico|critico|retiro)\b/i, t);
+    }
+    assert.ok(labels.some(t => /Nuevo desde/.test(t)));
+    assert.ok(labels.some(t => /Poco desgaste/.test(t)));
+    assert.ok(labels.some(t => /Mayor desgaste/.test(t)));
   });
 });
 
