@@ -152,11 +152,12 @@ describe('escala de color', () => {
     assert.equal(nivelDesgaste(null, u), 'sin_datos');
     assert.equal(nivelDesgaste('', u), 'sin_datos');
   });
-  test('>= bajo: verde pleno, siempre el mismo; <= retiro: rojo intenso', () => {
+  test('>= bajo: verde pleno, siempre el mismo; < retiro: rojo intenso', () => {
     assert.equal(colorDesgaste(8, u).hex, colorDesgaste(20, u).hex);
-    assert.equal(colorDesgaste(3, u).hex, colorDesgaste(0.5, u).hex);
+    assert.equal(colorDesgaste(2.99, u).hex, colorDesgaste(0.5, u).hex);
     assert.equal(colorDesgaste(8, u).hex, '#9cbea0');
-    assert.equal(colorDesgaste(3, u).hex, '#8c3e46');
+    assert.equal(colorDesgaste(2.99, u).hex, '#8c3e46');
+    assert.equal(colorDesgaste(3, u).hex, '#d4766a', '3,0 mm es mayor desgaste: color intermedio, no rojo intenso');
   });
   test('tramos: amarillo bajo el umbral bajo, naranja en crítico, rojo cerca del retiro', () => {
     assert.equal(colorDesgaste(7.999, u).hex, '#eed082');
