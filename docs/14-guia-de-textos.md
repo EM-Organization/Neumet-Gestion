@@ -10,7 +10,7 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 4. **Forma de dirigirse al usuario**: el panel no usa segunda persona (ni «vos» ni «tú» ni «usted»). Las instrucciones van en infinitivo («Elegir posición», «Completar los datos») y los estados en forma nominal o impersonal («Sin mediciones registradas», «Sin permiso para editar umbrales»). Así el tono es el mismo en todas las pantallas y no depende del país del usuario.
 5. Los errores dicen qué falta o qué pasó y, si existe, qué hacer, en una frase: «Falta el nombre o el cliente», «No se pudo guardar. Reintentar».
 6. Los estados vacíos dicen qué pasa y, si hay una acción posible, la ofrecen: «Sin vehículos registrados», «Ningún vehículo coincide. Revisar la matrícula o el número de coche.»
-7. El estado nunca se comunica solo con color: siempre hay texto y símbolo. El rojo se reserva a neumáticos críticos.
+7. El estado nunca se comunica solo con color: siempre hay texto y símbolo. El rojo se reserva a neumáticos en desgaste límite.
 8. Puntos suspensivos con el carácter «…» (no tres puntos) en estados de carga.
 9. Los comentarios del código explican el porqué, no narran lo obvio; sin tono informal.
 
@@ -55,9 +55,9 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |
-| crítico, desgaste bajo, OK, sin datos | rojo, amarillo, verde |
+| desgaste límite, mayor desgaste, poco desgaste, nuevo, desconocido | rojo, amarillo, verde |
 | Requieren atención | Urgentes, en problemas |
-| alerta crítica (única alerta); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Nivel crítico» (mm) | alarma, incidente, ticket, «cerrar» |
+| alerta de desgaste límite (única alerta); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar» |
 | Próximos cambios | Pronósticos, predicciones |
 | Montar neumático (poner uno en una posición vacía), Cargar neumáticos (montar varios en un vehículo sin ellos), Retirar neumático (sin reemplazo) | Colocar, instalar, sacar |
 | posición vacía (rueda punteada: sin neumático montado) | rueda libre, hueco; no confundir con «sin datos» (neumático montado sin mediciones) |
