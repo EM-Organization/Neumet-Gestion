@@ -1238,6 +1238,28 @@
   </div>
 </div>
 
+<!-- Modal Eliminar vehículo (administrador de empresa; RPC vehiculo_eliminar) -->
+<div class="modal-backdrop" id="modal-veh-eliminar" data-backdrop-close="vehiculo-eliminar-cerrar">
+  <form class="modal" id="veh-elim-form" novalidate>
+    <div class="modal-header">
+      <div class="modal-title" id="veh-elim-title">Eliminar vehículo</div>
+      <div class="modal-sub" id="veh-elim-sub"></div>
+    </div>
+    <div class="modal-body">
+      <p id="veh-elim-intro" class="field-hint" style="margin:0 0 12px"></p>
+      <fieldset class="cambio-grupo" id="veh-elim-grupo"><legend>Neumáticos del vehículo</legend>
+        <div id="veh-elim-destinos" class="cambio-opciones"></div>
+        <div class="field-hint" id="veh-elim-aviso"></div></fieldset>
+      <div id="veh-elim-resumen" class="cambio-resumen" aria-live="polite"></div>
+      <div id="veh-elim-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn ghost" id="veh-elim-cancelar" data-action="vehiculo-eliminar-cerrar">Cancelar</button>
+      <button type="submit" class="btn danger" id="veh-elim-confirmar">Eliminar vehículo</button>
+    </div>
+  </form>
+</div>
+
 <!-- Modal Recauchutado (enviar, dictamen, aceptar, rechazar) -->
 <div class="modal-backdrop" id="modal-reca" data-backdrop-close="recaCerrar">
   <form class="modal modal-wide" id="reca-form" novalidate>

@@ -22,10 +22,18 @@
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), rpc = c.rpc;
     c.rpc = function(name, args){
-      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar') return rpc.apply(c, arguments);
+      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar' && name !== 'vehiculo_eliminar') return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
       if(fx.rpcThrow) return Promise.reject(new TypeError('Failed to fetch')); // sin red: la promesa se rechaza
       if(fx.rpcError) return Promise.resolve({data: null, error: fx.rpcError});
+      if(name === 'vehiculo_eliminar'){
+        // Baja lógica como la RPC: los neumáticos vigentes van al stock o a baja y el vehículo deja de verse.
+        var vivos = T.neumaticos.filter(function(x){ return x.vehiculo_id === VID && x.estado !== 'baja'; });
+        vivos.forEach(function(x){ if(args.p_destino_neumaticos === 'stock') Object.assign(x, {vehiculo_id:null, posicion:null, estado:'almacenado'}); else x.estado = 'baja'; });
+        T.v_estado_neumaticos = T.v_estado_neumaticos.filter(function(f){ return f.vehiculo_id !== VID; });
+        T.vehiculos = T.vehiculos.filter(function(v){ return v.id !== VID; });
+        return Promise.resolve({data: {vehiculo_id:VID, neumaticos:vivos.length, destino: vivos.length ? args.p_destino_neumaticos : null}, error: null});
+      }
       var pos = args.p_posicion;
       if(name === 'neumatico_montar'){
         var n;

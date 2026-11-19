@@ -273,6 +273,7 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   b.click(); await sleep(900);
   if(all('#vd-diagrama .vd-rueda').length !== 10){ fail('detalle(admin): el detalle no mostró las 10 ruedas'); return; }
   var prohibidas = '[data-action="neumatico-cambiar"],[data-action="neumatico-rotar-pos"],[data-action="neumatico-retirar"],[data-action="neumatico-montar"],[data-action="detalleRegistrarCosto"]';
+  if(all('[data-action="vehiculo-eliminar"]').length) fail('detalle(admin): el equipo Neumet no debe ver «Eliminar vehículo»');
   if(all(prohibidas).length) fail('detalle(admin): acciones de escritura en la vista: ' + Array.prototype.map.call(all(prohibidas), function(x){ return x.dataset.action; }).join(','));
   $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(600);
   var panel = $('#vd-panel').textContent;
@@ -286,12 +287,12 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   var falsos = [['neumatico-cambiar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['neumatico-montar', { 'data-vehiculo-id': '10' }],
     ['neumatico-retirar', { 'data-vehiculo-id': '10', 'data-posicion': '3' }], ['cicloRegistrarCosto', { 'data-args': '[1]' }],
     // F10 PR 10: la rotación no pide confirmación cuando el destino está libre; sin guarda propia llegaría a neumatico_rotar.
-    ['neumatico-rotar-pos', { 'data-args': '[10,3,99]' }], ['neumatico-cambiar-confirmar', {}], ['neumatico-retirar-confirmar', {}]];
+    ['neumatico-rotar-pos', { 'data-args': '[10,3,99]' }], ['vehiculo-eliminar', { 'data-vehiculo-id': '10' }], ['neumatico-cambiar-confirmar', {}], ['neumatico-retirar-confirmar', {}]];
   for(var i = 0; i < falsos.length; i++){
     var f = d.createElement('button'); f.type = 'button'; f.setAttribute('data-action', falsos[i][0]);
     Object.keys(falsos[i][1]).forEach(function(k){ f.setAttribute(k, falsos[i][1][k]); });
     d.body.appendChild(f); f.click(); await sleep(600); f.remove();
-    ['#modal-cambio', '#modal-montar', '#modal-retirar', '#modal-costo'].forEach(function(sel){
+    ['#modal-cambio', '#modal-montar', '#modal-retirar', '#modal-costo', '#modal-veh-eliminar'].forEach(function(sel){
       if($(sel) && $(sel).classList.contains('show')) fail('detalle(admin): ' + falsos[i][0] + ' abrió ' + sel + ' para el equipo Neumet');
     });
   }

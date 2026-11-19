@@ -1120,3 +1120,63 @@ El dominio del panel (`assets/js/domain/umbrales.js`, `assets/js/domain/flota.js
 ## T.6 Compatibilidad y orden de despliegue
 
 Migración aplicada y verificada → recién entonces el front. No hay cambios de Edge Functions. Los nombres internos (`umbral_bajo_mm`, `umbral_critico_mm`, `umbral_retiro_mm`, `alerta_histeresis_mm`) se conservan; solo cambian los textos y el significado de la alerta.
+
+# Apéndice U · Eliminar vehículo (`20261124000000_vehiculo_eliminar.sql`)
+
+Migración idempotente, sin `begin/commit`. **No está aplicada en producción**: la aplica el director tras la compuerta de calidad. Orden de despliegue: migración aplicada y verificada → recién entonces se fusiona el front (el botón «Eliminar vehículo» llama a una RPC que antes no existe).
+
+## U.1 Decisión: baja lógica, no `DELETE`
+
+Un `DELETE` físico se descartó: `eventos_neumatico.vehiculo_id` es `RESTRICT` (bloquearía el borrado de cualquier vehículo con historial) y arrastraría mediciones, alertas y costos que el cliente puede necesitar para el costo por km de sus cubiertas. En su lugar el vehículo se marca como eliminado y deja de verse; su historial (mediciones, eventos, alertas) se conserva como auditoría, con la visibilidad que detalla U.2.
+
+Columnas nuevas en `vehiculos` (`add column if not exists`):
+
+| Columna | Qué guarda |
+|---|---|
+| `deleted_at` | Momento de la eliminación; no nulo = eliminado |
+| `deleted_by` | Usuario que eliminó (`auth.uid()`) |
+| `patente_baja`, `numero_baja` | Patente y número originales |
+
+Al eliminar, `patente` y `numero` pasan a `NULL` (los índices únicos parciales quedan libres: la patente se puede volver a registrar, incluida por la API de proveedor), `activo = false` y `sucursal_id = NULL` (borrar la sucursal después no queda bloqueado).
+
+## U.2 Visibilidad
+
+Las políticas `vehiculos_cliente_select` y `vehiculos_admin_select` agregan `deleted_at is null`; como las vistas son `security_invoker`, el vehículo eliminado deja de verse para todos los roles, incluido el equipo Neumet. Los helpers `neumatico_autorizar_vehiculo` y `vehiculo_corregir_odometro` lo tratan como inexistente. No se filtra cada tabla del historial: queda como auditoría. Qué se ve y para quién:
+
+| Dato del vehículo eliminado | Perfil global de la empresa | Perfil de sucursal | Equipo Neumet |
+|---|---|---|---|
+| El vehículo | no | no | no |
+| Neumáticos dados de baja con él (conservan `vehiculo_id`) | no (su política los une a `vehiculos`) | no | sí: la fila, sus mediciones y sus eventos (política `is_admin` sin unión) |
+| Precio, costos y km de esos neumáticos | no | no | no: `neumaticos_precios`, `costo_cubierta_items`, `costo_vida_items` y `km_tramos_cubierta` los descartan |
+| Neumáticos que volvieron al stock | sí, en el stock, con su historial | según su política de stock | sí |
+| Mediciones, eventos y alertas del vehículo | sí (historial de auditoría) | no (su política los une a `vehiculos`) | sí |
+
+Los neumáticos aparcados en «reparación» en el vehículo (retirados a reparación sin salir de él) cuentan como neumáticos del vehículo: con destino `stock` pasan a `almacenado` y con destino `baja`, a `baja`. Los que ya estaban en `baja` no se tocan.
+
+## U.3 RPC `vehiculo_eliminar(p_vehiculo_id bigint, p_destino_neumaticos text default null) returns jsonb`
+
+`SECURITY DEFINER`, `search_path` vacío, `execute` solo para `authenticated`. Autoriza únicamente al **administrador de empresa** (`admin_empresa_cliente_id()`): equipo Neumet, usuario de sucursal, otra empresa, sin perfil, `api` y anónimo reciben `42501` (uniforme, también para un vehículo ajeno o inexistente).
+
+| Situación | Resultado |
+|---|---|
+| Id nulo | `22004` |
+| Destino distinto de `stock` o `baja` | `22023` |
+| Vehículo ya eliminado (reintento, otra pestaña) | `P0002`, sin duplicar eventos |
+| Con neumáticos y sin destino | `22023` |
+| Destino `stock` con algún neumático sin número de quema | `22023` (la quema identifica la cubierta física; hay que darlo de baja o completar la quema) |
+| Neumático con recauchutado activo | `55000` (la guarda existente), sin cambios parciales |
+
+Bloquea la fila del vehículo (`for update`) y los neumáticos (`order by id for update`) ANTES de contarlos, así dos eliminaciones simultáneas se serializan (la segunda responde `P0002`) y un `recauchutado_enviar` concurrente no cambia el conjunto entre el conteo y la actualización. Neumáticos con `estado = 'baja'` no se tocan ni se cuentan.
+
+- **`stock`**: `vehiculo_id = NULL`, `posicion = NULL`, `auxilio = false`, `estado = 'almacenado'`, `sucursal_id` = la del vehículo; evento `desmontaje` con `sucursal_destino_id` y nota «Vehículo eliminado · vuelve al stock».
+- **`baja`**: `estado = 'baja'`, `fecha_baja = current_date`, `motivo_baja = 'Baja del vehículo'`; evento `baja`.
+- Devuelve `{vehiculo_id, neumaticos, destino}` (`destino` nulo si no había neumáticos).
+
+## U.4 Panel
+
+Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administrador de empresa (la base lo hace cumplir; el botón es comodidad). El diálogo cuenta los neumáticos y pide elegir «Enviar los N neumáticos al stock, conservan su historial» o «Dar de baja los N neumáticos, dejan de verse en Neumáticos» (singular con un solo neumático: «deja», «conserva»); «Baja» nunca viene preelegida, y el stock se deshabilita con aviso si hay neumáticos sin quema. Sin neumáticos es una confirmación simple con el foco en «Eliminar vehículo» (Enter confirma); con neumáticos el foco inicial cae en la opción elegida (o en «Cancelar» si no hay ninguna) y Enter confirma solo si ya hay destino. Al cerrar, el foco vuelve al botón que abrió el diálogo. Tras eliminar siempre se invalida el catálogo de la búsqueda global. Estado de carga, bloqueo de doble envío, errores traducidos y espera máxima de 20 s sin reintento (la eliminación pudo aplicarse: se vuelve a la lista). Clics desde el detalle (tarea nueva, no existía): 2 sin neumáticos o con neumáticos al stock (abrir el diálogo y confirmar; Enter confirma), 3 para dar de baja (más elegir «Dar de baja»).
+
+## U.5 Pruebas
+
+- SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
+- Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.

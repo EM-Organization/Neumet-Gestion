@@ -181,6 +181,10 @@ echo "== migración categorías de desgaste (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261123000000_categorias_desgaste.sql"
 echo "== migración categorías de desgaste (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261123000000_categorias_desgaste.sql"
+echo "== migración eliminar vehículo (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261124000000_vehiculo_eliminar.sql"
+echo "== migración eliminar vehículo (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261124000000_vehiculo_eliminar.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
@@ -203,4 +207,6 @@ source "$SQL/concurrencia_admin_empresa.sh"
 source "$SQL/concurrencia_api_alta.sh"
 # shellcheck source=tests/sql/concurrencia_api_distribucion.sh
 source "$SQL/concurrencia_api_distribucion.sh"
+# shellcheck source=tests/sql/concurrencia_vehiculo_eliminar.sh
+source "$SQL/concurrencia_vehiculo_eliminar.sh"
 echo "TODOS LOS TESTS SQL PASARON"
