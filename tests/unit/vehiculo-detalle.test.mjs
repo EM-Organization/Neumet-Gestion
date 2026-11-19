@@ -3,8 +3,9 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizarPatente, claveBusqueda, buscarVehiculos, coincidenciaExacta } from '../../assets/js/domain/vehiculo-busqueda.js';
 import {
-  layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda,
+  layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda, NIVEL_INFO,
 } from '../../assets/js/domain/vehiculo-diagrama.js';
+import { SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
 import { mediana, referenciaTasas, evaluarDesgaste, MIN_MUESTRAS } from '../../assets/js/domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
 
@@ -188,6 +189,13 @@ describe('escala de color', () => {
     const l = muestrasLeyenda(u);
     assert.deepEqual(l.map(x => x.clave), ['ok', 'bajo', 'critico', 'retiro']);
     assert.ok(l.every(x => x.simbolo && x.texto && x.hex));
+  });
+  test('símbolo de cada categoría es el mismo en el diagrama y en los chips de resumen', () => {
+    assert.equal(NIVEL_INFO.ok.simbolo, SIMBOLO_ESTADO_NEUMATICO.nuevo);
+    assert.equal(NIVEL_INFO.bajo.simbolo, SIMBOLO_ESTADO_NEUMATICO.poco_desgaste);
+    assert.equal(NIVEL_INFO.critico.simbolo, SIMBOLO_ESTADO_NEUMATICO.mayor_desgaste, 'mayor desgaste usa el mismo símbolo en diagrama y chips');
+    assert.equal(NIVEL_INFO.retiro.simbolo, SIMBOLO_ESTADO_NEUMATICO.desgaste_limite, 'desgaste límite usa el mismo símbolo en diagrama y chips');
+    assert.equal(NIVEL_INFO.sin_datos.simbolo, SIMBOLO_ESTADO_NEUMATICO.desconocido);
   });
 });
 

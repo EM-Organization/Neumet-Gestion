@@ -11,10 +11,11 @@ export function chip(cls, texto, simbolo = '●') {
 const ESTADO_NEUMATICO = {
   nuevo: { cls: 'green', lbl: 'Nuevo', sim: '✓' },
   poco_desgaste: { cls: 'blue', lbl: 'Poco desgaste', sim: '▲' },
-  mayor_desgaste: { cls: 'orange', lbl: 'Mayor desgaste', sim: '▲' },
-  desgaste_limite: { cls: 'red', lbl: 'Desgaste límite', sim: '✕' },
+  mayor_desgaste: { cls: 'orange', lbl: 'Mayor desgaste', sim: '✕' },
+  desgaste_limite: { cls: 'red', lbl: 'Desgaste límite', sim: '■' },
   desconocido: { cls: 'gray', lbl: 'Desconocido', sim: '–' },
 };
+export const SIMBOLO_ESTADO_NEUMATICO = Object.fromEntries(Object.entries(ESTADO_NEUMATICO).map(([k, v]) => [k, v.sim]));
 // Estado de un neumático o vehículo: nuevo / poco_desgaste / mayor_desgaste / desgaste_limite / desconocido
 // (cualquier otro valor se muestra como desconocido). El símbolo y el texto acompañan al color (docs/14 §5).
 export function chipEstado(estado) {
