@@ -6,6 +6,7 @@ import {
   layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda, NIVEL_INFO,
 } from '../../assets/js/domain/vehiculo-diagrama.js';
 import { SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
+import { severidadLabel } from '../../assets/js/domain/flota.js';
 import { mediana, referenciaTasas, evaluarDesgaste, MIN_MUESTRAS } from '../../assets/js/domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
 
@@ -197,6 +198,14 @@ describe('escala de color', () => {
     assert.equal(NIVEL_INFO.retiro.simbolo, SIMBOLO_ESTADO_NEUMATICO.desgaste_limite, 'desgaste límite usa el mismo símbolo en diagrama y chips');
     assert.equal(NIVEL_INFO.sin_datos.simbolo, SIMBOLO_ESTADO_NEUMATICO.desconocido);
   });
+});
+
+test('panel de alertas del detalle usa la severidad «Alta» del dominio, no «Crítica»', async () => {
+  assert.equal(severidadLabel(3), 'Alta');
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../../assets/js/views/vehiculo-detalle.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /Crítica/);
+  assert.match(src, /severidadLabel/);
 });
 
 describe('desgaste mayor al normal', () => {

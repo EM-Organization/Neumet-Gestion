@@ -19,7 +19,7 @@ import { esAdmin } from '../core/auth.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
-import { semaforoVehiculo } from '../domain/flota.js';
+import { semaforoVehiculo, severidadLabel } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
@@ -314,8 +314,8 @@ function etiquetasPanel(fila, r) {
 function seccionAlertas(pos) {
   const al = datos.alertas.filter(a => Number(a.posicion) === pos).sort((a, b) => Number(b.severidad) - Number(a.severidad));
   if (!al.length) return html`<p class="vd-p-nota">Sin alertas activas.</p>`;
-  const cls = { 3: 'red', 2: 'orange', 1: 'gray' }, sim = { 3: '✕', 2: '▲', 1: 'i' }, lbl = { 3: 'Crítica', 2: 'Media', 1: 'Informativa' };
-  return html`<ul class="vd-alertas">${al.map(a => html`<li>${chip(cls[a.severidad] || 'gray', lbl[a.severidad] || 'Aviso', sim[a.severidad] || 'i')} ${a.mensaje}</li>`)}</ul>`;
+  const cls = { 3: 'red', 2: 'orange', 1: 'gray' }, sim = { 3: '✕', 2: '▲', 1: 'i' };
+  return html`<ul class="vd-alertas">${al.map(a => html`<li>${chip(cls[a.severidad] || 'gray', severidadLabel(a.severidad), sim[a.severidad] || 'i')} ${a.mensaje}</li>`)}</ul>`;
 }
 
 // Mediciones con observaciones del neumático montado ahí (sospechosas e invalidadas) y acciones para resolverlas.
