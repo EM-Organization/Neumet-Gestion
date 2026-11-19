@@ -25,7 +25,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 Nomenclatura (plan de [docs/17](17-plan-roles-admin.md), F10 en curso): el perfil global es el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal»; la base conserva los valores `cliente` y `admin`. Esta sección usa ambos nombres: «perfil global» equivale a «administrador de empresa».
 
-Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios, Umbrales y Dispositivos); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
+Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios y Umbrales); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
 flowchart TD

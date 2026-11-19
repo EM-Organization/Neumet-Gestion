@@ -9,7 +9,7 @@ const CLIENTE = ['inicio', 'vehiculos', 'stock', 'alertas', 'reportes'];
 // Neumáticos (Stock | Recauchutado) es una sola entrada de menú; la pestaña Recauchutado la ven admin y perfil global.
 const GLOBAL = CLIENTE;  // Dispositivos es solo de administración
 // Empresa (F10 PR 4): solo el administrador de empresa (cliente sin sucursal); el equipo Neumet no la ve.
-const EMPRESA = ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
+const EMPRESA = ['empresa-usuarios', 'empresa-umbrales'];
 const VISTAS = {
   admin: ['inicio', 'vehiculos', 'stock', 'alertas', 'reportes', 'dispositivos', 'flota', 'mediciones', 'clientes', 'balance', 'uso'],
   global: [...GLOBAL, 'sucursales', ...EMPRESA], salto: CLIENTE, montevideo: CLIENTE, otra: [...GLOBAL, 'sucursales', ...EMPRESA]

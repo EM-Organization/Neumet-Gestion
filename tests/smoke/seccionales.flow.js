@@ -100,7 +100,7 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   // El selector solo aparece donde filtra: Inicio, Vehículos, Alertas, Reportes y Mediciones a revisar; no en Stock, Recauchutado,
   // Sucursales, Usuarios, Umbrales ni el detalle de un vehículo.
   var visibleSel = function(){ var e = $('#sec-selector'); return !!e && e.getClientRects().length > 0; };
-  var conSel = ['inicio', 'vehiculos', 'alertas', 'reportes'], sinSel = ['stock', 'sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'];
+  var conSel = ['inicio', 'vehiculos', 'alertas', 'reportes'], sinSel = ['stock', 'sucursales', 'empresa-usuarios', 'empresa-umbrales'];
   for (var i = 0; i < conSel.length; i++) { await nav(conSel[i]); if (!visibleSel()) fail('selector: debe verse en ' + conSel[i]); }
   for (var j = 0; j < sinSel.length; j++) { await nav(sinSel[j]); if (visibleSel()) fail('selector: no debe verse en ' + sinSel[j]); }
   $('#view-stock [data-neu-tab="recauchutado"]') && (await nav('stock'), $('#view-stock [data-neu-tab="recauchutado"]').click(), await sleep(500));

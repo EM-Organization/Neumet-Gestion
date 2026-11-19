@@ -98,7 +98,7 @@ describe('mensajes y validación del ABM', () => {
 describe('selector de sucursal de la barra: solo en las vistas que filtran', () => {
   test('sí en Inicio, Vehículos, Alertas y Reportes; no en Stock, Recauchutado, Sucursales ni Empresa', () => {
     for (const v of ['inicio', 'vehiculos', 'alertas', 'reportes', 'calidad']) assert.equal(selectorEnVista(v), true, v);
-    for (const v of ['stock', 'recauchutado', 'sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos', 'vehiculo-detalle', 'ficha', '', null, undefined]) assert.equal(selectorEnVista(v), false, String(v));
+    for (const v of ['stock', 'recauchutado', 'sucursales', 'empresa-usuarios', 'empresa-umbrales', 'vehiculo-detalle', 'ficha', '', null, undefined]) assert.equal(selectorEnVista(v), false, String(v));
   });
   // Guarda contra el desfase: toda vista que consulta con el filtro de sucursal debe mostrar el selector, y ninguna otra.
   test('la lista coincide con las vistas que usan el filtro de core/seccional.js', () => {
