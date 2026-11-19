@@ -8,7 +8,7 @@ import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/a
 import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
-import { UMBRALES, wearStatus, avgMm, analyzeTire } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus, avgMm, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { fmtNum } from '../domain/formato.js';
 import { mLast, mTireColor, medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
@@ -236,9 +236,9 @@ function medDrawChart(hist){
   svgEl.appendChild(svgEl('rect',{x:pL,y:pT,width:cW,height:cH,fill:'#fafafa',rx:4,stroke:'rgba(0,0,0,0.06)','stroke-width':'0.5'}));
 
   // Zone fills (nuevo/poco desgaste, mayor desgaste, desgaste límite)
-  [[UMBRALES.BAJO_MM,12,'rgba(52,199,89,0.04)'],[UMBRALES.CRITICO_MM,UMBRALES.BAJO_MM,'rgba(255,149,0,0.04)'],[0,UMBRALES.CRITICO_MM,'rgba(255,59,48,0.04)']].forEach(([lo,hi,fill])=>{
-    const y1=yS(Math.min(hi,maxV)), y2=yS(Math.max(lo,minV));
-    if(y2>y1) svgEl.appendChild(svgEl('rect',{x:pL,y:y1,width:cW,height:y2-y1,fill}));
+  MEDICIONES_ZONAS.forEach(({ lo, hi, fill }) => {
+    const y1 = yS(Math.min(hi, maxV)), y2 = yS(Math.max(lo, minV));
+    if (y2 > y1) svgEl.appendChild(svgEl('rect', { x: pL, y: y1, width: cW, height: y2 - y1, fill }));
   });
 
   // Grid lines + labels

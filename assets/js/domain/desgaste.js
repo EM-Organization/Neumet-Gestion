@@ -36,6 +36,23 @@ export function wearClass(avg) {
   return 'ok';
 }
 
+// Zonas de fondo del gráfico de Mediciones: alineadas a los tres counters de la tarjeta.
+// El verde agrupa «nuevo» y «poco desgaste» (≥ crítico), naranja es «mayor desgaste», rojo es «desgaste límite».
+export const MEDICIONES_ZONAS = [
+  { lo: UMBRALES.CRITICO_MM, hi: Infinity, fill: 'rgba(52,199,89,0.04)' },
+  { lo: UMBRALES.RETIRO_MM, hi: UMBRALES.CRITICO_MM, fill: 'rgba(255,149,0,0.04)' },
+  { lo: 0, hi: UMBRALES.RETIRO_MM, fill: 'rgba(255,59,48,0.04)' },
+];
+
+// Zona visual de un promedio para el gráfico de Mediciones; null si no hay dato.
+export function medicionesZonaFill(avg) {
+  const st = wearStatus(avg);
+  if (st === null) return null;
+  if (st === 'desgaste_limite') return MEDICIONES_ZONAS[2].fill;
+  if (st === 'mayor_desgaste') return MEDICIONES_ZONAS[1].fill;
+  return MEDICIONES_ZONAS[0].fill;
+}
+
 // Cuenta promedios por nivel visual (los null se ignoran). Mantiene el contrato {ok, warn, crit} que usan las vistas de medición.
 export function countByStatus(avgs) {
   const c = { ok: 0, warn: 0, crit: 0 };

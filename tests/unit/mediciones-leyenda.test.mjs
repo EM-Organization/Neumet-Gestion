@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { medicionesZonaFill } from '../../assets/js/domain/desgaste.js';
 
 const html = readFileSync(new URL('../../adminpanel/index.html', import.meta.url), 'utf8');
 
@@ -30,4 +31,11 @@ test('leyenda de Mediciones muestra las cinco categorías sin vocabulario viejo'
   assert.doesNotMatch(block, /\bOK\b/);
   assert.doesNotMatch(block, /\bBajo\b/);
   assert.doesNotMatch(block, /\bCr[ií]tico\b/i);
+});
+
+test('zona del gráfico de Mediciones: 4,2 mm es mayor desgaste (naranja), 2,8 mm es desgaste límite (rojo)', () => {
+  assert.equal(medicionesZonaFill(4.2), 'rgba(255,149,0,0.04)');
+  assert.equal(medicionesZonaFill(2.8), 'rgba(255,59,48,0.04)');
+  assert.equal(medicionesZonaFill(7.0), 'rgba(52,199,89,0.04)');
+  assert.equal(medicionesZonaFill(null), null);
 });
