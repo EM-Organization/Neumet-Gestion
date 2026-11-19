@@ -2,7 +2,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, setStatus, userError, avatarFor } from '../core/ui.js';
 import { enSucursal, AYUDA_TODAS_SUCURSALES } from '../domain/seccional.js';
-import { chip, chipEstado, estadoVacio, estadoError } from '../core/componentes.js';
+import { chip, chipEstado, estadoVacio, estadoError, estadoCarga } from '../core/componentes.js';
 import { isClienteMode, currentClienteId, esAdminEmpresa } from '../core/auth.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
@@ -16,7 +16,7 @@ import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.
 import { DISTRIBUCIONES, OTRA_DISTRIBUCION, textoOpcion, textoRuedas } from '../domain/distribucion.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
-let vehiculos=[], resumenes=new Map(), resumenesListos=false;
+let vehiculos=[], resumenes=new Map(), resumenesListos=false, estadoPendiente=false;
 // Solo lectura para el equipo Neumet (docs/17 PR 9). El administrador de la empresa agrega vehículos desde aquí (RPC
 // vehiculo_crear; la base rechaza al resto) y los mueve entre sucursales en Sucursales (menú Empresa).
 
@@ -37,7 +37,7 @@ export async function loadVehiculos(){
   if(mi!==cargaId) return;
   if(error){ setStatus(false); showToast(userError(error),true); setHtml(document.getElementById('veh-lista'), estadoError('','loadVehiculos')); return; }
   vehiculos=rows;
-  resumenes=new Map(); resumenesListos=false;
+  resumenes=new Map(); resumenesListos=false; estadoPendiente=isClienteMode();
   setStatus(true);
   const filterSel=document.getElementById('filter-cliente-veh');
   const clientSet=new Map();
@@ -46,7 +46,9 @@ export async function loadVehiculos(){
   renderVehiculos();
   if(isClienteMode()){
     const est=await fetchAll((from,to)=>db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from,to),{pageSize:PAGE_SIZE,max:20000});
-    if(mi!==cargaId||est.error) return; // sin estado se sigue mostrando la lista, sin chips
+    if(mi!==cargaId) return;
+    estadoPendiente=false;
+    if(est.error){ renderVehiculos(); return; } // sin estado se muestra la lista por nombre, sin chips
     resumenes=new Map(agruparVehiculos(filtrarFilas(est.rows)).map(g=>[g.vehiculo_id,g]));
     resumenesListos=true;
     renderVehiculos();
@@ -65,6 +67,8 @@ function resumenTexto(g){
 function renderLista(){
   const lista=document.getElementById('veh-lista');
   const q=document.getElementById('search-vehiculos').value;
+  // El orden por urgencia depende del estado de los neumáticos: sin búsqueda no se pinta antes de tenerlo (evita el reordenamiento al llegar).
+  if(estadoPendiente&&!q.trim()){ setHtml(lista, html`<li>${estadoCarga()}</li>`); return; }
   const activos=vehiculos.filter(v=>v.activo!==false);
   let res=buscarVehiculos(activos,q);
   // Sin búsqueda: los más urgentes primero.

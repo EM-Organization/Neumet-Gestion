@@ -18,8 +18,20 @@
 <body>
 <a class="skip-link" href="#contenido">Saltar al contenido</a>
 
-<!-- LOGIN -->
-<div class="login-screen" id="login-screen">
+<!-- CARGANDO: estado inicial hasta resolver la sesión; evita mostrar el login a quien ya la tiene (core/auth.js lo oculta). -->
+<div class="login-screen" id="cargando-screen" role="status" aria-live="polite">
+  <div class="login-box">
+    <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
+      <img class="login-logo" src="../assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="220" height="24"/>
+    </div>
+    <div class="login-sub">Cargando…</div>
+    <!-- Si tras ~10 s sigue aquí (módulos que no cargan, red caída), la CSS lo muestra: no depende de ningún script. -->
+    <p class="cargando-aviso" id="cargando-aviso" role="status">No se pudo cargar. <a href="">Recargar la página</a>.</p>
+  </div>
+</div>
+
+<!-- LOGIN: oculto hasta saber que no hay sesión válida -->
+<div class="login-screen hidden" id="login-screen">
   <div class="login-box">
     <div class="login-brand" style="flex-direction:column;gap:16px;align-items:center">
       <img class="login-logo" src="../assets/brand/logo/logo-horizontal-claro.svg" alt="NEUMET" width="220" height="24"/>
