@@ -34,9 +34,9 @@ function destinoElegido() {
   return r ? r.value : '';
 }
 
-function radio(id, label, checked, disabled) {
+function radio(id, label, checked, disabled, aviso) {
   return html`<label class="cambio-op"><input type="radio" name="veh-elim-destino" value="${id}" ${checked ? 'checked' : ''}
-    ${disabled ? 'disabled aria-describedby="veh-elim-aviso"' : ''} data-change="vehiculo-eliminar-resumen"/> <span>${label}</span></label>`;
+    ${disabled ? 'disabled aria-describedby="veh-elim-aviso"' : ''} data-change="vehiculo-eliminar-resumen"/> <span>${label}${disabled ? html`<small class="veh-elim-motivo"> (no disponible: ${aviso})</small>` : ''}</span></label>`;
 }
 
 function actualizar() {
@@ -54,7 +54,7 @@ function pintar() {
     : `El vehículo tiene ${total === 1 ? '1 neumático' : `${total} neumáticos`}. Elegir qué hacer con ${total === 1 ? 'él' : 'ellos'}. Esta acción no se puede deshacer.`;
   $('veh-elim-grupo').hidden = total === 0;
   setHtml($('veh-elim-destinos'), total === 0 ? joinHtml([]) : joinHtml([
-    radio('stock', etiquetaDestino('stock', total), opciones.porDefecto === 'stock', !opciones.stockPosible),
+    radio('stock', etiquetaDestino('stock', total), opciones.porDefecto === 'stock', !opciones.stockPosible, opciones.avisoStock),
     radio('baja', etiquetaDestino('baja', total), false, false)
   ]));
   $('veh-elim-aviso').textContent = opciones.avisoStock;
