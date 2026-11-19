@@ -466,6 +466,8 @@
   .cambio-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
   .cambio-op { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 9px 10px; font-size: 14px; cursor: pointer; background: var(--surface); }
   .cambio-op:has(input:checked) { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
+  .cambio-op:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+  .veh-elim-motivo { display: block; font-size: 12px; }
   .cambio-op:focus-within { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
   .cambio-resumen { font-size: 13px; color: var(--text-secondary); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; min-height: 20px; }
   .cambio-error { font-size: 13px; color: var(--danger); margin-top: 8px; min-height: 0; }
