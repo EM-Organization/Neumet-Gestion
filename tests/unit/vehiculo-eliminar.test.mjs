@@ -26,9 +26,12 @@ test('opcionesDestino: el stock se preelige solo si todos tienen quema; la baja 
 });
 
 test('textos: cuentan los neumáticos, sin segunda persona ni signos de exclamación', () => {
-  assert.equal(etiquetaDestino('stock', 4), 'Enviar los 4 neumáticos al stock');
-  assert.equal(etiquetaDestino('baja', 4), 'Dar de baja los 4 neumáticos');
-  assert.equal(etiquetaDestino('stock', 1), 'Enviar el neumático al stock');
+  assert.equal(etiquetaDestino('stock', 4), 'Enviar los 4 neumáticos al stock, conservan su historial');
+  assert.equal(etiquetaDestino('baja', 4), 'Dar de baja los 4 neumáticos, dejan de verse en Neumáticos y en los reportes');
+  assert.equal(etiquetaDestino('stock', 1), 'Enviar el neumático al stock, conservan su historial');
+  // La baja dice su consecuencia en llano y se distingue del stock.
+  assert.match(etiquetaDestino('baja', 2), /dejan de verse en Neumáticos y en los reportes/);
+  assert.doesNotMatch(etiquetaDestino('baja', 2), /historial/);
   assert.equal(textoResumen({ total: 2, destino: 'stock' }), '2 neumáticos vuelven al stock y conservan su historial.');
   assert.equal(textoResumen({ total: 1, destino: 'baja' }), '1 neumático queda dado de baja con el vehículo.');
   assert.equal(textoResumen({ total: 3, destino: 'baja' }), '3 neumáticos quedan dados de baja con el vehículo.');
