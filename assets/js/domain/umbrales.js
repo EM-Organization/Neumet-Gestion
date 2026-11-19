@@ -10,7 +10,7 @@ export const CAMPOS_UMBRAL = [
   // Margen de la alerta (columna alerta_histeresis_mm): puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los
   // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
   { key: 'alerta_histeresis_mm', lbl: 'Histéresis de alerta (mm)', ayuda: 'Margen sobre el umbral de retiro para resolver la alerta (0 a 3 mm)', mm: false, hist: true },
-  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para alertar', ayuda: 'Alerta «sin medir» pasado este plazo', mm: false },
+  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para indicador', ayuda: 'Indicador «sin medir» pasado este plazo (solo en la vista de estado)', mm: false },
   { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true }
 ];
 

@@ -74,6 +74,12 @@ describe('textos y orden de los campos (docs/14)', () => {
     }
     assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').lbl, 'Histéresis de alerta (mm)');
   });
+  test('días sin medir es indicador, no alerta', () => {
+    const c = CAMPOS_UMBRAL.find(c => c.key === 'dias_sin_medir_alerta');
+    assert.doesNotMatch(c.lbl, /alerta/i);
+    assert.doesNotMatch(c.ayuda, /alerta/i);
+    assert.match(c.ayuda, /Indicador/);
+  });
 });
 
 describe('mensajeErrorUmbrales', () => {
