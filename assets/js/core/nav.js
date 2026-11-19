@@ -49,6 +49,9 @@ export function setTitulo(actual,padre=null){
 export function switchView(v){
   if(!panelHabilitado()) return;
   if((SOLO_ADMIN.has(v)&&isClienteMode())||(SOLO_EMPRESA.has(v)&&!esAdminEmpresa())) v='inicio';
+  // Una vista que ya no existe (p. ej. un botón o enlace viejo a una vista retirada) vuelve a Inicio en lugar de dejar la pantalla en blanco.
+  // Las islas registran su vista pero crean el `div#view-<nombre>` al montar, por eso se exige que no esté registrada ni en el DOM.
+  if(!hayVista(v)&&!document.getElementById(`view-${v}`)) v='inicio';
   if(VETOS[v]&&VETOS[v].cuando()) v=VETOS[v].vista;
   const anterior=activa;
   activa=v;

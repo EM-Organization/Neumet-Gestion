@@ -160,8 +160,8 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var visibles = all('.nav-item[data-view]').filter(function(n){ return visible(n); }).map(function(n){ return n.dataset.view; });
   if(cliMode){
     // Menú: Inicio, Vehículos, Neumáticos (Stock y Recauchutado son pestañas), Alertas, Reportes. Sucursales vive en la sección Empresa,
-    // junto a Usuarios, Umbrales y Dispositivos, y solo para el administrador de empresa (cliente sin sucursal); el de sucursal no la ve.
-    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,stock,alertas,reportes' : 'inicio,vehiculos,stock,alertas,reportes,sucursales,empresa-usuarios,empresa-umbrales,empresa-dispositivos';
+    // junto a Usuarios y Umbrales, y solo para el administrador de empresa (cliente sin sucursal); el de sucursal no la ve.
+    var esperado = /[?&]secuser=1/.test(w.parent.location.search) ? 'inicio,vehiculos,stock,alertas,reportes' : 'inicio,vehiculos,stock,alertas,reportes,sucursales,empresa-usuarios,empresa-umbrales';
     if(visibles.join(',') !== esperado) fail('menu(cliente): menú inesperado: '+visibles.join(','));
     if(!/[?&]secuser=1/.test(w.parent.location.search)){
       var navs = all('.sidebar-nav > *'), iEmp = navs.findIndex(function(n){ return n.classList.contains('nav-section') && n.textContent.trim() === 'Empresa'; });
@@ -180,7 +180,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(visible($('[data-action="openStockModal"]'))) fail('stock(cliente): ve el alta de compras');
   } else {
     ['flota','mediciones','clientes','balance'].forEach(function(v){ if(!navVisible(v)) fail('menu(admin): falta '+v); });
-    ['empresa-usuarios','empresa-umbrales','empresa-dispositivos'].forEach(function(v){ if(navVisible(v)) fail('menu(admin): el equipo Neumet ve la sección Empresa: '+v); });
+    ['empresa-usuarios','empresa-umbrales'].forEach(function(v){ if(navVisible(v)) fail('menu(admin): el equipo Neumet ve la sección Empresa: '+v); });
+    if(!navVisible('dispositivos')) fail('menu(admin): el equipo Neumet no ve Dispositivos');
+    if(d.querySelector('.nav-item[data-view="empresa-dispositivos"]') || d.querySelector('#view-empresa-dispositivos')) fail('menu(admin): sigue existiendo empresa-dispositivos');
     if(!/administración/i.test($('.sidebar-nav').innerText)) fail('menu(admin): falta sección Administración');
   }
   var activos = all('.nav-item.active');

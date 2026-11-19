@@ -42,7 +42,7 @@ views/
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
   stock.js  reportes.js  neumaticos.js (pestañas Stock | Recauchutado del ítem «Neumáticos»; cada pestaña sigue siendo la vista `stock` / `recauchutado`)
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
-  empresa-usuarios.js  empresa-umbrales.js  empresa-dispositivos.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
+  empresa-usuarios.js  empresa-umbrales.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
   uso.js (Uso mensual por cliente, solo administración: registra la isla Svelte `uso`; sin vista vieja, con la bandera apagada muestra un aviso estático)
 ```
 

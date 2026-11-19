@@ -11,7 +11,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   var confirmar = async function () { await esperar(function () { return $('#modal-confirm').classList.contains('show'); }, 'diálogo de confirmación'); $('#confirm-ok').click(); await sleep(250); };
 
   // Menú: sección Empresa visible solo para el administrador de empresa
-  ['sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
+  ['sucursales', 'empresa-usuarios', 'empresa-umbrales'].forEach(function (v) {
     if (!visible($('.nav-item[data-view="' + v + '"]'))) fail('empresa: falta en el menú ' + v);
   });
   if (visible($('.nav-item[data-view="clientes"]')) || visible($('.nav-item[data-view="balance"]'))) fail('empresa: el menú muestra Clientes o Balance');
@@ -217,11 +217,11 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!visible($('#alert-umbral-aviso')) || !/Empresa > Umbrales/.test($('#alert-umbral-aviso').textContent)) fail('empresa: Alertas sin el aviso hacia Empresa > Umbrales');
   if (fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length !== nCfgAl) fail('empresa: Alertas llamó a alerta_configurar');
 
-  // Dispositivos: solo lectura
-  $('.nav-item[data-view="empresa-dispositivos"]').click(); await sleep(500);
-  if (all('#tbody-empresa-dispositivos tr[data-estado]').length !== 2) fail('empresa: se esperaban 2 dispositivos del cliente 1, hay ' + all('#tbody-empresa-dispositivos tr[data-estado]').length);
-  var acc = all('#view-empresa-dispositivos button, #view-empresa-dispositivos input, #view-empresa-dispositivos select');
-  for (var k = 0; k < acc.length; k++) if (acc[k].dataset.action !== 'loadEmpresaDispositivos') fail('empresa: dispositivos no es de solo lectura: ' + acc[k].outerHTML.slice(0, 80));
+  // Dispositivos de la empresa se retiró (decisión del dueño): ni ítem de menú ni vista; forzar la ruta cae a Inicio.
+  if (d.querySelector('.nav-item[data-view="empresa-dispositivos"]') || d.querySelector('#view-empresa-dispositivos')) fail('empresa: sigue existiendo empresa-dispositivos');
+  var fz = d.createElement('button'); fz.setAttribute('data-action', 'irA'); fz.setAttribute('data-args', '["empresa-dispositivos"]'); d.body.appendChild(fz);
+  fz.click(); await sleep(400); fz.remove();
+  if (!$('#view-inicio').classList.contains('active') || d.querySelectorAll('.view.active').length !== 1) fail('empresa: irA("empresa-dispositivos") no cayó a Inicio');
   // Móvil (390 px): lo que se toca con el dedo mide al menos 44 px de alto (enlaces de Inicio, botones de Usuarios, menú)
   var marco = w.frameElement, anchoAntes = marco.style.width;
   marco.style.width = '390px'; await sleep(300);
@@ -245,22 +245,22 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
 window.empresaBloqueadaFlow = async function (w, d, sleep, fail, log, quien) {
   var fx = w.__empFx, $ = function (s) { return d.querySelector(s); };
   var oculto = function (el) { return !el || el.getClientRects().length === 0; };
-  ['sucursales', 'empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
+  ['sucursales', 'empresa-usuarios', 'empresa-umbrales'].forEach(function (v) {
     if (!oculto($('.nav-item[data-view="' + v + '"]'))) fail('empresa(' + quien + '): el menú muestra ' + v);
   });
   if (quien === 'sucursal' && d.querySelector('#user-role').textContent !== 'Usuario de sucursal') fail('empresa(sucursal): rol mostrado: ' + d.querySelector('#user-role').textContent);
   if (quien === 'neumet' && d.querySelector('#user-role').textContent !== 'Equipo Neumet') fail('empresa(neumet): rol mostrado: ' + d.querySelector('#user-role').textContent);
   // Entrar a la fuerza (el botón está oculto, no ausente): el router redirige a Inicio sin llamar a la base
-  ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) { var b = $('.nav-item[data-view="' + v + '"]'); if (b) b.click(); });
+  ['empresa-usuarios', 'empresa-umbrales'].forEach(function (v) { var b = $('.nav-item[data-view="' + v + '"]'); if (b) b.click(); });
   await sleep(500);
-  ['empresa-usuarios', 'empresa-umbrales', 'empresa-dispositivos'].forEach(function (v) {
+  ['empresa-usuarios', 'empresa-umbrales'].forEach(function (v) {
     if ($('#view-' + v).classList.contains('active')) fail('empresa(' + quien + '): entró a ' + v);
   });
   // Defensa en profundidad: los botones «Actualizar» de las vistas de empresa (data-action al loader crudo) tampoco consultan
-  var tb = $('#tbody-empresa-dispositivos').innerHTML, tu = $('#tbody-empresa-usuarios').innerHTML;
-  ['loadEmpresaUsuarios', 'loadEmpresaUmbrales', 'loadEmpresaDispositivos'].forEach(function (a) { var b = $('[data-action="' + a + '"]'); if (b) b.click(); });
+  var tu = $('#tbody-empresa-usuarios').innerHTML;
+  ['loadEmpresaUsuarios', 'loadEmpresaUmbrales'].forEach(function (a) { var b = $('[data-action="' + a + '"]'); if (b) b.click(); });
   await sleep(500);
-  if ($('#tbody-empresa-dispositivos').innerHTML !== tb || $('#tbody-empresa-usuarios').innerHTML !== tu || $('#emp-umb-campos').innerHTML !== '') fail('empresa(' + quien + '): un loader de empresa cargó datos sin ser administrador de empresa');
+  if ($('#tbody-empresa-usuarios').innerHTML !== tu || $('#emp-umb-campos').innerHTML !== '') fail('empresa(' + quien + '): un loader de empresa cargó datos sin ser administrador de empresa');
   if (fx.rpcs.length || fx.llamadas.length) fail('empresa(' + quien + '): hubo llamadas a la base: ' + JSON.stringify(fx.rpcs.concat(fx.llamadas)));
   if (quien === 'sucursal') {
     // El usuario de sucursal tampoco ve Clientes ni Balance (siempre fue así)

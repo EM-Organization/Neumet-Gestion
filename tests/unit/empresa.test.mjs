@@ -149,9 +149,16 @@ test('los loaders de empresa pasan por el filtro soloEmpresa de registerView', a
   const nav = readFileSync(new URL('../../assets/js/core/nav.js', import.meta.url), 'utf8');
   assert.match(nav, /soloEmpresa\s*\?\s*esAdminEmpresa/);
   assert.match(nav, /return LOADERS\[name\]/);
-  for (const [vista, n] of [['usuarios', 'Usuarios'], ['umbrales', 'Umbrales'], ['dispositivos', 'Dispositivos']]) {
+  for (const [vista, n] of [['usuarios', 'Usuarios'], ['umbrales', 'Umbrales']]) {
     const src = readFileSync(new URL(`../../assets/js/views/empresa-${vista}.js`, import.meta.url), 'utf8');
     assert.ok(src.includes(`ACTIONS.loadEmpresa${n} = registerView('empresa-${vista}'`), `empresa-${vista}: la acción debe ser el loader filtrado`);
     assert.ok(!new RegExp(`ACTIONS\\.loadEmpresa${n} = loadEmpresa${n}`).test(src), `empresa-${vista}: acción sin filtro`);
   }
+  // «Dispositivos de la empresa» se retiró: ni módulo ni registro; el equipo Neumet conserva la vista `dispositivos` (soloAdmin).
+  const { existsSync } = await import('node:fs');
+  assert.ok(!existsSync(new URL('../../assets/js/views/empresa-dispositivos.js', import.meta.url)), 'empresa-dispositivos.js no debe existir');
+  const main = readFileSync(new URL('../../assets/js/main.js', import.meta.url), 'utf8');
+  assert.ok(!/empresa-dispositivos/.test(main), 'main.js no importa empresa-dispositivos');
+  const disp = readFileSync(new URL('../../assets/js/views/dispositivos.js', import.meta.url), 'utf8');
+  assert.match(disp, /registerView\('dispositivos'[^\n]*soloAdmin:\s*true/, 'Dispositivos sigue siendo solo del equipo Neumet');
 });

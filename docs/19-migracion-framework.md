@@ -295,7 +295,7 @@ Estado del piloto de la ola 1 (rama `feat/f11-piloto-uso`, pantalla «Uso», sol
 - F10 va en serie (PR 4, 5 y 6 antes del 7) y la ola 0 son 3 a 4 PR, por lo que se prevé que la ola 0 termine antes. Si F10 llegara al PR 7 antes: el autor A **no** construye la pantalla; sigue con los PR siguientes que no dependen de ella (PR 8, 9, 10, 11 y 12 de [17](17-plan-roles-admin.md) §9: ninguno la requiere) y «Uso» espera a la ola 0.
 - **Piloto de reserva, también si F10 se atrasa.** Si al terminar la ola 0 la migración B no está aplicada (porque B se atrasó o porque F10 aún no llegó al PR 6), la pista de migración no espera: el piloto es Flota (libre, de solo lectura) y las olas 2 y 3 avanzan sobre pantallas libres. «Uso» se construye después, cuando B esté aplicada, como una pantalla más de la ola 2.
 - Solo si la falta de «Uso» bloqueara a todo lo demás de F10, se hace una versión mínima en el panel viejo y se avisa al dueño; esa versión se reemplaza después por la del stack nuevo.
-- Lo mismo vale para la alternativa «Dispositivos de la empresa» (F10 PR 4): queda descartada como piloto de reserva mientras F10 PR 4 no esté fusionado. Si el piloto de reserva se activa, se elige entre las pantallas libres de la tabla (Flota; si ya se usó, Calidad), nunca una pantalla en conflicto, y nunca Reportes mientras F10 PR 4 no esté fusionado.
+- La alternativa «Dispositivos de la empresa» ya no existe (la vista se retiró del panel): no es piloto posible. Si el piloto de reserva se activa, se elige entre las pantallas libres de la tabla (Flota; si ya se usó, Calidad), nunca una pantalla en conflicto, y nunca Reportes mientras F10 PR 4 no esté fusionado.
 
 ### 7.3 Reparto de agentes
 
