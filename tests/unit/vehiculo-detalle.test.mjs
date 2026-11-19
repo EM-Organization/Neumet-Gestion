@@ -144,7 +144,8 @@ describe('escala de color', () => {
     assert.equal(nivelDesgaste(5, u), 'bajo');
     assert.equal(nivelDesgaste(4.9, u), 'critico');
     assert.equal(nivelDesgaste(3.1, u), 'critico');
-    assert.equal(nivelDesgaste(3, u), 'retiro');
+    assert.equal(nivelDesgaste(3, u), 'critico', '3,0 mm es mayor desgaste (límite exacto, no está estrictamente bajo el umbral)');
+    assert.equal(nivelDesgaste(2.99, u), 'retiro', '2,99 mm ya es desgaste límite');
     assert.equal(nivelDesgaste(0, u), 'retiro');
     assert.equal(nivelDesgaste(null, u), 'sin_datos');
     assert.equal(nivelDesgaste('', u), 'sin_datos');

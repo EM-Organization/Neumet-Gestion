@@ -27,7 +27,7 @@ begin;
 do $$
 declare r record; v_est text;
 begin
-  for r in select * from (values (7.99,'poco_desgaste'),(8.00,'nuevo'),(8.01,'nuevo'),(5.00,'poco_desgaste'),(4.99,'mayor_desgaste'),(0.00,'desgaste_limite')) t(val, esp) loop
+  for r in select * from (values (7.99,'poco_desgaste'),(8.00,'nuevo'),(8.01,'nuevo'),(5.00,'poco_desgaste'),(4.99,'mayor_desgaste'),(3.00,'mayor_desgaste'),(2.99,'desgaste_limite'),(0.00,'desgaste_limite')) t(val, esp) loop
     insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3, created_at)
     values (1, 1, 3, r.val, r.val, r.val, now() + interval '1 hour');
     select estado into v_est from v_estado_neumaticos where vehiculo_id=1 and posicion=3;

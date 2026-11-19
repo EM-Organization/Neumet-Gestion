@@ -165,7 +165,7 @@ function leyenda() {
   setHtml($('vd-leyenda'), html`
     <div class="vd-escala">
       <div class="vd-escala-barra" style="background:linear-gradient(90deg,${paradas})" aria-hidden="true"></div>
-      <div class="vd-escala-marcas" aria-hidden="true">${marca(u.retiro, `≤ ${fmtNum(u.retiro, 0)}`)}${marca(u.critico, fmtNum(u.critico, 0))}${marca(u.bajo, `≥ ${fmtNum(u.bajo, 0)} mm`)}</div>
+      <div class="vd-escala-marcas" aria-hidden="true">${marca(u.retiro, `< ${fmtNum(u.retiro, 0)}`)}${marca(u.critico, fmtNum(u.critico, 0))}${marca(u.bajo, `≥ ${fmtNum(u.bajo, 0)} mm`)}</div>
       <p class="vd-escala-nota">Desgaste del neumático en mm. Cada rueda muestra además un símbolo de su estado.</p>
     </div>
     <div class="vd-leyenda-extra"><span class="vd-leyenda-item"><span class="vd-muestra vd-muestra-sd" aria-hidden="true"></span>Desconocido</span><span class="vd-leyenda-item"><span class="vd-insignia" aria-hidden="true">!</span>Desgaste mayor al normal</span>${itemVacia}</div>`);
@@ -268,7 +268,7 @@ function seccionTasa(fila, u, razonMostrada) {
   const tasa = fila.tasa_mm_semana;
   if (nulo(tasa)) return html`<p class="vd-p-nota">Mediciones insuficientes para calcular la velocidad de desgaste (se necesitan dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
-  const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) <= u.retiro;
+  const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) < u.retiro;
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
     <ul class="vd-alertas">${frase(`Poco desgaste / mayor desgaste (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Desgaste límite (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }

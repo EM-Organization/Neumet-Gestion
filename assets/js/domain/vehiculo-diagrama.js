@@ -126,11 +126,12 @@ export const COLORES = {
 const mezcla = (a, b, t) => a.map((c, i) => Math.round(c + (b[i] - c) * t));
 const aHex = rgb => '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');
 
-// Nivel de la rueda según los mm medios: 'ok' (>= bajo) · 'bajo' · 'critico' (< crítico) · 'retiro' (<= retiro) · 'sin_datos'.
+// Nivel de la rueda según los mm medios: 'ok' (>= bajo) · 'bajo' · 'critico' (< crítico) · 'retiro' (< retiro) · 'sin_datos'.
+// La base usa < umbral_retiro_mm para «desgaste límite»: 3,0 mm es «mayor desgaste», 2,99 es límite.
 export function nivelDesgaste(mm, u) {
   if (mm === null || mm === undefined || mm === '' || !Number.isFinite(Number(mm))) return 'sin_datos';
   const v = Number(mm);
-  if (v <= u.retiro) return 'retiro';
+  if (v < u.retiro) return 'retiro';
   if (v < u.critico) return 'critico';
   if (v < u.bajo) return 'bajo';
   return 'ok';
