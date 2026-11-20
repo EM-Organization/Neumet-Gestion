@@ -117,7 +117,7 @@ async function traerCubiertas(){
   const [r,p]=await Promise.all([fetchAll((from,to)=>{
     let q=db.from('neumaticos')
       .select('id,cliente_id,numero_quema,marca,modelo,fecha_compra,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
-      .is('vehiculo_id',null).order('id').range(from,to);
+      .is('vehiculo_id',null).eq('estado','almacenado').order('id').range(from,to);
     if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
     return q;
   },{pageSize:PAGE_SIZE,max:50000}),traerPrecios({soloStock:true})]);

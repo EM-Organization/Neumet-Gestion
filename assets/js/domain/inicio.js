@@ -1,6 +1,7 @@
 // Reglas puras de la pantalla de Inicio (sin DOM ni supabase). Tests: tests/unit/inicio.test.mjs
 // Entradas: filas de v_estado_neumaticos (una por neumático), v_salud_dispositivos y v_resumen_flota_cliente.
 import { referenciaTasas, evaluarDesgaste } from './desgaste-flota.js';
+import { esAuxilio, estadoContable } from './auxilio.js';
 
 export const SEMANAS_ATENCION = 4;   // "cruza el límite en ~N semanas" entra en Requieren atención (igual que la alerta de la base)
 export const SEMANAS_PROXIMOS = 12;  // horizonte de Próximos cambios
@@ -25,7 +26,8 @@ export function resumenNeumaticos(rows) {
   const r = { total: 0, nuevo: 0, poco_desgaste: 0, mayor_desgaste: 0, desgaste_limite: 0, desconocido: 0 };
   for (const f of rows || []) {
     r.total++;
-    if (r[f.estado] !== undefined) r[f.estado]++;
+    const est = estadoContable(f); // el auxilio no cuenta como advertencia
+    if (r[est] !== undefined) r[est]++;
     else r.desconocido++;
   }
   const claves = ['nuevo', 'poco_desgaste', 'mayor_desgaste', 'desgaste_limite', 'desconocido'];
@@ -55,18 +57,18 @@ const posiciones = filas => [...new Set(filas.map(f => Number(f.posicion)))].sor
 // Causa principal de un vehículo, en una frase. Orden de urgencia (rango): desgaste límite, cruza el límite pronto,
 // mayor desgaste, desgaste mayor al normal, sin medir. Devuelve null si el vehículo no necesita atención.
 function causaDe(filas, ref) {
-  const limite = filas.filter(f => f.estado === 'desgaste_limite');
+  const limite = filas.filter(f => estadoContable(f) === 'desgaste_limite');
   if (limite.length) return { nivel: 'limite', rango: 0, n: limite.length, posiciones: posiciones(limite), causa: plural(limite.length, 'neumático en desgaste límite', 'neumáticos en desgaste límite') };
   const cruza = filas
-    .filter(f => (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= SEMANAS_ATENCION)
+    .filter(f => !esAuxilio(f) && (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= SEMANAS_ATENCION)
     .sort((a, b) => num(a.semanas_hasta_retiro) - num(b.semanas_hasta_retiro));
   if (cruza.length) {
     const s = num(cruza[0].semanas_hasta_retiro);
     return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(cruza[0].posicion)], causa: `Cruza el desgaste límite en ${textoSemanas(s)}` };
   }
-  const mayor = filas.filter(f => f.estado === 'mayor_desgaste');
+  const mayor = filas.filter(f => estadoContable(f) === 'mayor_desgaste');
   if (mayor.length) return { nivel: 'mayor_desgaste', rango: 2, n: mayor.length, posiciones: posiciones(mayor), causa: plural(mayor.length, 'neumático con mayor desgaste', 'neumáticos con mayor desgaste') };
-  const anormal = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal);
+  const anormal = filas.filter(f => !esAuxilio(f) && evaluarDesgaste(f, ref).mayorAlNormal);
   if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, posiciones: posiciones(anormal), causa: 'Desgaste mayor al normal' };
   const sinMedir = filas.filter(f => f.sin_medir);
   if (sinMedir.length) {
@@ -105,7 +107,7 @@ export function requierenAtencion(rows, { max = MAX_ATENCION } = {}) {
 // Neumáticos que cruzarán el desgaste límite dentro del horizonte (aún no en límite), el más cercano primero.
 export function proximosCambios(rows, { max = MAX_PROXIMOS, semanas = SEMANAS_PROXIMOS } = {}) {
   const lista = (rows || [])
-    .filter(f => (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= semanas)
+    .filter(f => !esAuxilio(f) && (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= semanas)
     .map(f => ({
       vehiculo_id: f.vehiculo_id, nombre: f.vehiculo_nombre || '', patente: f.patente || '', posicion: f.posicion,
       semanas: num(f.semanas_hasta_retiro), mm: num(f.promedio),

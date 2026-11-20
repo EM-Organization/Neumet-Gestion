@@ -1038,7 +1038,7 @@ Migración aplicada y verificada → recién entonces la función `api-proveedor
 
 ## S.4 Límites
 
-El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución de un vehículo ya creado con «Cambiar distribución» (apéndice W). La app móvil no la usa todavía.
+El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución de un vehículo ya creado con «Cambiar distribución» (apéndice X). La app móvil no la usa todavía.
 
 ## S.5 Pruebas
 
@@ -1181,20 +1181,56 @@ Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administr
 - SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
 - Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.
 
-## W. Cambiar la distribución de un vehículo (`20261125600000_vehiculo_cambiar_distribucion.sql`)
+# Apéndice V · Baja sin vehículo (`20261125000000_baja_sin_vehiculo.sql`)
+
+Permite guardar neumáticos dados de baja sin vehículo (descartes de una carga inicial, issue #137). Sin tablas nuevas.
+
+- **`neumaticos_stock_ck`**: sin vehículo, el estado es `almacenado` (stock, como antes) **o** `baja` con `fecha_baja` y `motivo_baja` (no vacío). Sin auxilio y sin posición en ambos casos; el resto de las reglas no cambia.
+- **No es stock**: `neumaticos_precios(p_solo_stock := true)` solo devuelve `almacenado`. El panel filtra `estado = 'almacenado'` en Stock (`views/stock.js`), montar, cambio de neumático y la búsqueda global. La RLS de lectura (`neumaticos_stock_cliente_select`) no cambia: el perfil global del cliente sigue pudiendo leer sus bajas por la API, y los costos de una baja siguen autorizados como los de cualquier cubierta del cliente. No hay vista «Dadas de baja» todavía.
+- **Pruebas**: `t_100_baja_sin_vehiculo.sql` (el check rechaza baja sin fecha o motivo y montado sin vehículo; el precio de la baja no entra al stock) y `importar_carga_inicial.sh` (la carga completa usa esta restricción).
+
+# Apéndice W · El auxilio no cuenta como advertencia (`20261125500000_auxilio_sin_alerta.sql`)
+
+Migración idempotente, sin `begin/commit`. **No está aplicada en producción**: la aplica el director tras la compuerta de calidad. Orden: migración aplicada y verificada, luego fusionar el front.
+
+## W.1 Regla
+
+La rueda de auxilio casi siempre tiene poca vida útil: su mayor desgaste y su desgaste límite no son advertencia. Es auxilio **la rueda que está en la posición 99**: la posición manda y el indicador `neumaticos.auxilio` no es confiable (`v_estado_neumaticos` no lo expone y antes `neumatico_rotar` no lo mantenía). Se sigue mostrando con su estado y su medición (`v_estado_neumaticos` no cambia) y sigue en el total de neumáticos.
+
+## W.2 Qué cambia
+
+| Objeto | Cambio |
+|---|---|
+| `alerta_sincronizar` | Un neumático en la posición 99 no abre alerta y sus alertas abiertas se resuelven con `resuelta_motivo = 'sin_datos'`. Al salir de 99 el trigger de `neumaticos` (que ya mira `posicion`) lo reevalúa y abre alerta si sigue en límite |
+| `v_alertas` | Excluye las alertas de una rueda que está hoy en la posición 99: no figuran en la lista ni en los conteos de alertas del inicio y la flota |
+| `neumatico_rotar` | Mantiene `auxilio = (posicion = 99)` y ya no aparca en 99 durante el intercambio (usa la más alta libre bajo 99; 99 solo si no hay otra), para no cerrar un instante la alerta de una rueda de ruta |
+| Datos | `update` idempotente: `auxilio = (posicion = 99)` en los montados (primero libera, luego asigna, por el índice de un auxilio por vehículo) |
+| `v_resumen_flota_cliente` | Mismas columnas; el auxilio en mayor desgaste o límite se cuenta como poco desgaste (`n_bajo`) y sigue en `n_neumaticos_con_datos` |
+
+Alertas existentes: se resuelven (no se borra nada). El paso final reevalúa todos los clientes.
+
+## W.3 Front
+
+`assets/js/domain/auxilio.js` (`esAuxilio`, `estadoContable`) aplica la misma regla en flota, inicio, ficha de cliente (`seccional`), reportes y detalle del vehículo (chips y semáforo). El diagrama y el detalle de la rueda no cambian.
+
+## W.4 Pruebas
+
+SQL `t_101_auxilio_sin_alerta.sql`; unitaria `tests/unit/auxilio.test.mjs`.
+
+# Apéndice X · Cambiar la distribución de un vehículo (`20261125600000_vehiculo_cambiar_distribucion.sql`)
 
 Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una carga inicial) sin eliminarlo y crearlo de nuevo.
 
-### W.1 RPC `vehiculo_cambiar_distribucion(p_vehiculo_id bigint, p_distribucion text, p_tipo_ruedas smallint default null) returns jsonb`
+### X.1 RPC `vehiculo_cambiar_distribucion(p_vehiculo_id bigint, p_distribucion text, p_tipo_ruedas smallint default null) returns jsonb`
 - `SECURITY DEFINER`, `search_path` vacío. Autoriza con `neumatico_autorizar_vehiculo`: administrador de empresa o usuario de la sucursal del vehículo. El equipo Neumet (solo lectura), `api`, sin perfil, anónimo y otra empresa reciben `42501`.
 - `p_distribucion`: un código del catálogo (`4x2`, `6x2`, `6x4`, `8x2`, `8x4`; `tipo_ruedas` se deriva: hasta 10 ruedas, 10; si no, 16) u `otra` (la distribución queda `NULL` y `p_tipo_ruedas` 10 o 16 es obligatorio).
 - Rechaza (`23514`, en español, con las posiciones) una distribución con menos ruedas que las posiciones con neumático no dado de baja; el auxilio (99) no cuenta. Los neumáticos no se tocan.
 - Devuelve `{vehiculo_id, distribucion, tipo_ruedas, anterior}`. La base no audita cambios de vehículo, así que no deja evento.
 
-### W.2 Panel
+### X.2 Panel
 - Detalle del coche: botón «Cambiar distribución» (quien puede operar) y diálogo con las mismas opciones que «Agregar vehículo». Tres clics (abrir, elegir, guardar; Enter guarda).
 - El diagrama y los nombres de posición se dibujan según la distribución (`layoutRuedas(posiciones, tipoLayout(veh))`): 6x2 = 8 ruedas (simple, doble, simple), sin ejes de más. Sin distribución o «Otra» se conserva el dibujo por `tipo_ruedas`. Un neumático en una posición fuera de la distribución se dibuja como eje extra.
 
-### W.3 Pruebas
+### X.3 Pruebas
 `tests/sql/t_102_vehiculo_cambiar_distribucion.sql`, unitarias (`distribucion`, `vehiculo-detalle`) y smoke `montar`.
 

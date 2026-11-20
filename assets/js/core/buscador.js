@@ -60,7 +60,7 @@ async function traerCubiertas() {
   if (esUsuarioSucursal()) return [];
   const r = await fetchAll((from, to) => {
     let q = db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,cliente_id,clientes(nombre),sucursales(nombre)')
-      .is('vehiculo_id', null).not('numero_quema', 'is', null).order('id').range(from, to);
+      .is('vehiculo_id', null).eq('estado', 'almacenado').not('numero_quema', 'is', null).order('id').range(from, to);
     if (isClienteMode()) q = q.eq('cliente_id', currentClienteId);
     return q;
   }, { pageSize: PAGE_SIZE, max: MAX_VEHICULOS });
