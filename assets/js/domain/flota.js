@@ -33,6 +33,8 @@ export const TIPO_LABEL = {
   sin_medir: 'Sin medir',
 };
 
+import { esAuxilio, estadoContable } from './auxilio.js';
+
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 export const estadoRank = e => (e in ESTADO_RANK ? ESTADO_RANK[e] : ESTADO_RANK.desconocido);
 export const estadoLabel = e => ESTADO_LABEL[e] || 'Desconocido';
@@ -66,16 +68,17 @@ export function agruparVehiculos(rows) {
       map.set(key, v);
     }
     v.n_neumaticos++;
-    v.estados.push(r.estado);
-    if (r.estado === 'nuevo') v.n_nuevo++;
-    else if (r.estado === 'poco_desgaste') v.n_poco_desgaste++;
-    else if (r.estado === 'mayor_desgaste') v.n_mayor_desgaste++;
-    else if (r.estado === 'desgaste_limite') v.n_desgaste_limite++;
+    const est = estadoContable(r); // el auxilio no cuenta como advertencia
+    v.estados.push(est);
+    if (est === 'nuevo') v.n_nuevo++;
+    else if (est === 'poco_desgaste') v.n_poco_desgaste++;
+    else if (est === 'mayor_desgaste') v.n_mayor_desgaste++;
+    else if (est === 'desgaste_limite') v.n_desgaste_limite++;
     else v.n_desconocido++;
     if (r.sin_medir) v.n_sin_medir++;
     if (r.desgaste_irregular) v.n_irregular++;
     const mm = num(r.promedio);
-    if (mm !== null && (v.min_mm === null || mm < v.min_mm)) { v.min_mm = mm; v.peor_posicion = r.posicion; }
+    if (mm !== null && !esAuxilio(r) && (v.min_mm === null || mm < v.min_mm)) { v.min_mm = mm; v.peor_posicion = r.posicion; }
     if (r.ultima_medicion_at && (!v.ultima_medicion_at || r.ultima_medicion_at > v.ultima_medicion_at)) v.ultima_medicion_at = r.ultima_medicion_at;
   }
   const out = [...map.values()].map(v => {
@@ -142,8 +145,8 @@ export function kpisFlota(estadoRows, resumen = null, clienteId = '') {
   }
   return {
     vehiculos: new Set(rows.map(r => r.vehiculo_id)).size,
-    limite: rows.filter(r => r.estado === 'desgaste_limite').length,
-    mayor_desgaste: rows.filter(r => r.estado === 'mayor_desgaste').length,
+    limite: rows.filter(r => estadoContable(r) === 'desgaste_limite').length,
+    mayor_desgaste: rows.filter(r => estadoContable(r) === 'mayor_desgaste').length,
     sin_medir: sinMedir,
     alertas: null,
   };

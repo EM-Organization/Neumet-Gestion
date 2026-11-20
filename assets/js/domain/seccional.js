@@ -2,6 +2,8 @@
 // La seguridad la da la RLS (un perfil de sucursal solo recibe sus filas); esto solo acota lo ya visible
 // cuando un perfil GLOBAL elige una sucursal en el selector.
 
+import { estadoContable } from './auxilio.js';
+
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
 // Set de ids de vehículo de una sucursal ('' = todas => null, sin filtro). vehs: [{id, sucursal_id}].
@@ -21,7 +23,7 @@ export function filtrarPorVehiculos(rows, ids, key = 'vehiculo_id') {
 // Equivalente de una fila de v_resumen_flota_cliente para un subconjunto (una sucursal), calculada en cliente.
 export function resumenDesdeFilas(estadoRows, alertas, { clienteId = null, nombre = '', nVehiculos = null } = {}) {
   const rows = estadoRows || [];
-  const cnt = e => rows.filter(r => r.estado === e).length;
+  const cnt = e => rows.filter(r => estadoContable(r) === e).length;
   const sev = s => (alertas || []).filter(a => num(a.severidad) === s).length;
   let ultima = null;
   for (const r of rows) if (r.ultima_medicion_at && (!ultima || r.ultima_medicion_at > ultima)) ultima = r.ultima_medicion_at;

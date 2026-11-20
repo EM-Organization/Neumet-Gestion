@@ -1180,3 +1180,29 @@ Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administr
 
 - SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
 - Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.
+
+# Apéndice V · El auxilio no cuenta como advertencia (`20261125500000_auxilio_sin_alerta.sql`)
+
+Migración idempotente, sin `begin/commit`. **No está aplicada en producción**: la aplica el director tras la compuerta de calidad. Orden: migración aplicada y verificada, luego fusionar el front.
+
+## V.1 Regla
+
+La rueda de auxilio (`neumaticos.auxilio = true` o posición 99) casi siempre tiene poca vida útil: su mayor desgaste y su desgaste límite no son advertencia. Se sigue mostrando con su estado y su medición (`v_estado_neumaticos` no cambia) y sigue en el total de neumáticos.
+
+## V.2 Qué cambia
+
+| Objeto | Cambio |
+|---|---|
+| `alerta_sincronizar` | Un neumático con `auxilio = true` o en la posición 99 no abre alerta. Las alertas abiertas de un neumático con el indicador `auxilio` se resuelven con `resuelta_motivo = 'sin_datos'`. La posición 99 sola no cierra alertas: `neumatico_rotar` aparca ahí una rueda durante un intercambio |
+| `v_alertas` | Excluye alertas de auxilio (posición 99 o indicador): no figuran en la lista ni en los conteos de alertas del inicio y la flota |
+| `v_resumen_flota_cliente` | Mismas columnas; el auxilio en mayor desgaste o límite se cuenta como poco desgaste (`n_bajo`) y sigue en `n_neumaticos_con_datos` |
+
+Alertas existentes: se resuelven (no se borra nada). El paso final reevalúa todos los clientes.
+
+## V.3 Front
+
+`assets/js/domain/auxilio.js` (`esAuxilio`, `estadoContable`) aplica la misma regla en flota, inicio, ficha de cliente (`seccional`), reportes y detalle del vehículo (chips y semáforo). El diagrama y el detalle de la rueda no cambian.
+
+## V.4 Pruebas
+
+SQL `t_100_auxilio_sin_alerta.sql`; unitaria `tests/unit/auxilio.test.mjs`.
