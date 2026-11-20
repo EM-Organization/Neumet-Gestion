@@ -1181,15 +1181,23 @@ Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administr
 - SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
 - Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.
 
-# Apéndice V · El auxilio no cuenta como advertencia (`20261125500000_auxilio_sin_alerta.sql`)
+# Apéndice V · Baja sin vehículo (`20261125000000_baja_sin_vehiculo.sql`)
+
+Permite guardar neumáticos dados de baja sin vehículo (descartes de una carga inicial, issue #137). Sin tablas nuevas.
+
+- **`neumaticos_stock_ck`**: sin vehículo, el estado es `almacenado` (stock, como antes) **o** `baja` con `fecha_baja` y `motivo_baja` (no vacío). Sin auxilio y sin posición en ambos casos; el resto de las reglas no cambia.
+- **No es stock**: `neumaticos_precios(p_solo_stock := true)` solo devuelve `almacenado`. El panel filtra `estado = 'almacenado'` en Stock (`views/stock.js`), montar, cambio de neumático y la búsqueda global. La RLS de lectura (`neumaticos_stock_cliente_select`) no cambia: el perfil global del cliente sigue pudiendo leer sus bajas por la API, y los costos de una baja siguen autorizados como los de cualquier cubierta del cliente. No hay vista «Dadas de baja» todavía.
+- **Pruebas**: `t_100_baja_sin_vehiculo.sql` (el check rechaza baja sin fecha o motivo y montado sin vehículo; el precio de la baja no entra al stock) y `importar_carga_inicial.sh` (la carga completa usa esta restricción).
+
+# Apéndice W · El auxilio no cuenta como advertencia (`20261125500000_auxilio_sin_alerta.sql`)
 
 Migración idempotente, sin `begin/commit`. **No está aplicada en producción**: la aplica el director tras la compuerta de calidad. Orden: migración aplicada y verificada, luego fusionar el front.
 
-## V.1 Regla
+## W.1 Regla
 
 La rueda de auxilio casi siempre tiene poca vida útil: su mayor desgaste y su desgaste límite no son advertencia. Es auxilio **la rueda que está en la posición 99**: la posición manda y el indicador `neumaticos.auxilio` no es confiable (`v_estado_neumaticos` no lo expone y antes `neumatico_rotar` no lo mantenía). Se sigue mostrando con su estado y su medición (`v_estado_neumaticos` no cambia) y sigue en el total de neumáticos.
 
-## V.2 Qué cambia
+## W.2 Qué cambia
 
 | Objeto | Cambio |
 |---|---|
@@ -1201,10 +1209,10 @@ La rueda de auxilio casi siempre tiene poca vida útil: su mayor desgaste y su d
 
 Alertas existentes: se resuelven (no se borra nada). El paso final reevalúa todos los clientes.
 
-## V.3 Front
+## W.3 Front
 
 `assets/js/domain/auxilio.js` (`esAuxilio`, `estadoContable`) aplica la misma regla en flota, inicio, ficha de cliente (`seccional`), reportes y detalle del vehículo (chips y semáforo). El diagrama y el detalle de la rueda no cambian.
 
-## V.4 Pruebas
+## W.4 Pruebas
 
-SQL `t_100_auxilio_sin_alerta.sql`; unitaria `tests/unit/auxilio.test.mjs`.
+SQL `t_101_auxilio_sin_alerta.sql`; unitaria `tests/unit/auxilio.test.mjs`.

@@ -20,10 +20,8 @@ Cómo completarlo después, sin migración:
 - **Lo normal:** en cada vehículo, registrar el odómetro actual desde el panel o la app; desde ahí los desmontajes y bajas futuros cierran tramos con dato y el CPK empieza a calcularse.
 - **Para recuperar también el tramo ya recorrido:** `update eventos_neumatico set odometro_km = <odómetro del vehículo a la fecha del montaje>` sobre los eventos cuya nota empieza con «Carga inicial Excel» y tipo `montaje`, a partir del dato «Km del montaje actual» que cada cubierta tiene en `notas` (odómetro actual del vehículo menos esos km). Lo ejecuta el director con el odómetro real de cada vehículo; no se automatiza porque el listado no lo trae.
 
-## Bloqueo conocido: los descartes como baja
-`neumaticos_stock_ck` exige que un neumático sin vehículo esté `almacenado`: **una baja sin vehículo no se puede guardar hoy**. Por eso `--descarte baja` (por defecto, la decisión del dueño) se **niega con un mensaje claro** si la base no lo admite, sin escribir nada. Opciones:
-- Cargar ya todo lo demás con `--descarte omitir` (vehículos, montados y stock) y los descartes después.
-- Una migración propia (fuera de este PR) que relaje la restricción para `baja`. Al hacerlo hay que revisar `assets/js/views/stock.js` y la política de `stock_neumaticos`, que hoy listan por `vehiculo_id is null` y mostrarían las bajas como stock.
+## Descartes como baja sin vehículo
+La migración `20261125000000_baja_sin_vehiculo.sql` (pendiente de aplicar; apéndice V de `docs/08`) relaja `neumaticos_stock_ck`: un neumático sin vehículo puede estar `baja` si trae `fecha_baja` y `motivo_baja`. Esas bajas no cuentan como stock (los listados de Stock, montaje, cambio y búsqueda filtran `estado = 'almacenado'`). **Antes de aplicarla**, `--descarte baja` (por defecto, la decisión del dueño) se **niega con un mensaje claro** y sin escribir nada; mientras tanto se puede cargar el resto con `--descarte omitir` y repetir la carga con la migración aplicada (es idempotente, completa solo los descartes).
 
 ## Decisiones de mapeo
 - **Montados**: van a su vehículo y posición. **En depósito (no DESCARTE)**: stock (`almacenado`, sin vehículo ni posición, en la sucursal elegida). **DESCARTE**: `baja`, motivo «Descarte (carga inicial)», fecha de baja = fecha de la carga. «Depósito: X» queda en `notas` de cada cubierta.

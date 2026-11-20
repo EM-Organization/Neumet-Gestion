@@ -126,7 +126,7 @@ async function abrir(vehiculoId, posicion) {
     db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad').eq('cliente_id', neum.cliente_id).gte('cantidad', 1),
     puedeStock
       ? db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,vehiculo_id,estado')
-        .is('vehiculo_id', null).eq('cliente_id', neum.cliente_id).order('numero_quema')
+        .is('vehiculo_id', null).eq('estado', 'almacenado').eq('cliente_id', neum.cliente_id).order('numero_quema')
       : Promise.resolve({ data: [] }),
     puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', neum.cliente_id).order('nombre') : Promise.resolve({ data: [] })
   ]);
