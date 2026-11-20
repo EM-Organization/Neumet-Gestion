@@ -192,6 +192,10 @@ echo "== migración baja sin vehículo (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125000000_baja_sin_vehiculo.sql"
 echo "== migración baja sin vehículo (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125000000_baja_sin_vehiculo.sql"
+echo "== migración auxilio sin alerta (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125500000_auxilio_sin_alerta.sql"
+echo "== migración auxilio sin alerta (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125500000_auxilio_sin_alerta.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

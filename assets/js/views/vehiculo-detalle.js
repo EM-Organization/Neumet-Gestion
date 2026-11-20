@@ -27,6 +27,7 @@ import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costo
 import {
   layoutRuedas, geometriaDiagrama, umbralesDe, colorDesgaste, colorTexto, NIVEL_INFO,
 } from '../domain/vehiculo-diagrama.js';
+import { esAuxilio, estadoContable } from '../domain/auxilio.js';
 import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -110,7 +111,7 @@ function datosDeFila(f, u) {
 
 function cabecera() {
   const { veh, filas } = datos;
-  const sem = semaforoVehiculo(filas.map(f => f.estado));
+  const sem = semaforoVehiculo(filas.map(estadoContable));
   const ult = filas.reduce((m, f) => (f.ultima_medicion_at && (!m || f.ultima_medicion_at > m) ? f.ultima_medicion_at : m), null);
   const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
@@ -138,11 +139,11 @@ function resumen() {
       ${puedeOperar() ? html`<button type="button" class="btn primary" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}">Cargar neumáticos</button>` : ''}</div>`);
     return;
   }
-  const limite = filas.filter(f => f.estado === 'desgaste_limite').length;
-  const mayorDesgaste = filas.filter(f => f.estado === 'mayor_desgaste').length;
-  const poco = filas.filter(f => f.estado === 'poco_desgaste').length;
+  const limite = filas.filter(f => estadoContable(f) === 'desgaste_limite').length;
+  const mayorDesgaste = filas.filter(f => estadoContable(f) === 'mayor_desgaste').length;
+  const poco = filas.filter(f => estadoContable(f) === 'poco_desgaste').length;
   const desconocido = filas.filter(f => f.estado === 'desconocido').length;
-  const mayor = filas.filter(f => evaluarDesgaste(f, ref).mayorAlNormal).length;
+  const mayor = filas.filter(f => !esAuxilio(f) && evaluarDesgaste(f, ref).mayorAlNormal).length;
   setHtml($('vd-resumen'), joinHtml([
     chip('gray', plural(filas.length, 'neumático', 'neumáticos'), '●'),
     limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), SIMBOLO_ESTADO_NEUMATICO.desgaste_limite) : '',

@@ -1,5 +1,6 @@
 // Dominio: reportes exportables. Funciones PURAS (sin DOM, sin supabase) para testear con node:test.
 import { wearStatus, avgMm } from './desgaste.js';
+import { estadoContable } from './auxilio.js';
 
 export const PAGE_SIZE = 1000;
 export const MAX_ROWS = 50000;
@@ -77,7 +78,7 @@ export function resumenFlota(rows) {
       estado: wearStatus(avg), created_at: r.created_at };
   }).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.posicion ?? 0) - (b.posicion ?? 0));
   neumaticos.forEach(n => {
-    const key = n.estado ?? 'desconocido';
+    const key = estadoContable(n) ?? 'desconocido'; // el auxilio no cuenta como advertencia
     const vehKey = key === 'poco_desgaste' ? 'pocoDesgaste'
       : key === 'mayor_desgaste' ? 'mayorDesgaste'
       : key === 'desgaste_limite' ? 'limite'
