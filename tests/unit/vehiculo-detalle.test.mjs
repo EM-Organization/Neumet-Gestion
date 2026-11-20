@@ -108,6 +108,29 @@ describe('layoutRuedas', () => {
     const l = layoutRuedas([1, 1, 0, -3, 100, 'x', 2], 10);
     assert.deepEqual(l.ruedas.filter(r => r.presente).map(r => r.posicion), [1, 2]);
   });
+  test('con distribución del catálogo los ejes salen de ella (6x2, 6x4, 4x2) y posiciones consecutivas', () => {
+    const forma = l => l.ejes.map(e => e.ruedas.map(r => r.posicion).join('-')).join(' | ');
+    const l62 = layoutRuedas([1, 2, 3], '6x2');
+    assert.equal(forma(l62), '1-2 | 3-4-5-6 | 7-8');
+    assert.deepEqual(l62.ejes.map(e => e.dual), [false, true, false]);
+    assert.equal(l62.ruedas.length, 8);
+    assert.equal(l62.tipo, 10);
+    assert.equal(l62.ruedas.filter(r => r.presente).length, 3);
+    assert.equal(forma(layoutRuedas([], '6x4')), '1-2 | 3-4-5-6 | 7-8-9-10');
+    assert.equal(forma(layoutRuedas([1, 2, 3, 4, 5, 6], '4x2')), '1-2 | 3-4-5-6');
+    assert.equal(layoutRuedas([], '8x4').tipo, 16);
+  });
+  test('con distribución, una posición fuera de ella no se pierde: eje extra; el auxilio queda igual', () => {
+    const l = layoutRuedas([1, 9, 99], '6x2');
+    assert.equal(l.ruedas.length, 9);
+    assert.equal(l.ruedas.find(r => r.posicion === 9).presente, true);
+    assert.equal(l.auxilios.length, 1);
+  });
+  test('distribución nula, «otra» o numérica: igual que por tipo_ruedas', () => {
+    assert.equal(layoutRuedas([], 10).ruedas.length, 10);
+    assert.equal(layoutRuedas([], 'otra').ruedas.length, 10);
+    assert.equal(layoutRuedas([], 16).ruedas.length, 16);
+  });
   test('ejeDePosicion', () => {
     assert.deepEqual([1, 2, 3, 6, 7, 10, 11, 14, 15, 16, 17, 20, 21, 99].map(ejeDePosicion), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 0]);
   });

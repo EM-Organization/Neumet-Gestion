@@ -188,6 +188,10 @@ echo "== migración eliminar vehículo (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261124000000_vehiculo_eliminar.sql"
 echo "== migración eliminar vehículo (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261124000000_vehiculo_eliminar.sql"
+echo "== migración cambiar distribución (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125500000_vehiculo_cambiar_distribucion.sql"
+echo "== migración cambiar distribución (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125500000_vehiculo_cambiar_distribucion.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

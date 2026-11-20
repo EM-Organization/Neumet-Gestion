@@ -2,6 +2,7 @@
 // El equipo Neumet solo mira (docs/17 PR 9: ya no escribe vehículos ni neumáticos ni eventos); el cliente escribe solo por RPC
 // acotadas (cambio de neumático, odómetro) y ve la línea de tiempo de lo suyo. Nadie hace escritura directa sobre neumaticos,
 // eventos_neumatico ni vehiculos desde esta vista.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
@@ -26,12 +27,12 @@ let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(),
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
-const nomPos=p=>nombrePosicion(p, veh&&veh.tipo_ruedas);
+const nomPos=p=>nombrePosicion(p, tipoLayout(veh));
 const neumLabel=n=>`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Sin marca'} · ${n.estado||'montado'} · vida ${n.vida||0}${n.numero_quema?` · quema ${n.numero_quema}`:''}`;
 
 async function cargar(){
   const [rv,rn,re,rs,rk,rc,rcc]=await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
+    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,distribucion,odometro_km,odometro_actualizado_at').eq('id',vehId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,fecha_baja,motivo_baja,numero_quema,km_previos').eq('vehiculo_id',vehId).order('posicion'),
     db.from('eventos_neumatico').select(EVENTO_COLS).eq('vehiculo_id',vehId).order('created_at',{ascending:false}).limit(500),
     // Solo colorea el mini vehículo: si falla, las ruedas salen sin datos.
@@ -88,7 +89,7 @@ function renderTimeline(){
   // Km del neumático (v_km_cubierta): km que ya traía + tramos montados (también los de otros vehículos).
   const km=v=>v==null?'Sin dato':fmtKm(v);
   const kmRows=neums.filter(n=>kmCub.has(n.id)||n.numero_quema||n.km_previos>0).map(n=>{ const k=resumenKm(kmCub.get(n.id)); return html`<tr>
-    <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td>
+    <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:tipoLayout(veh)}))}<span>${nomPos(n.posicion)}</span></div></td>
     <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td><td class="mono-cell" data-label="N.º de quema">${n.numero_quema||'—'}</td><td data-label="Vida">${n.vida||0}</td>
     <td class="mono-cell" data-label="Km previos">${fmtKm(n.km_previos||0)}</td>
     ${k.disponible?html`<td class="mono-cell" data-label="Km recorridos">${km(k.recorridos)}</td>
@@ -102,7 +103,7 @@ function renderTimeline(){
   $('ciclo-costo-wrap').hidden=!ver;
   if(ver){
     const cRows=neums.filter(n=>costoCub.has(n.id)).map(n=>{ const c=resumenCosto(costoCub.get(n.id)); return html`<tr>
-      <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:veh.tipo_ruedas}))}<span>${nomPos(n.posicion)}</span></div></td>
+      <td data-label="Posición"><div class="pos-mini">${miniVehiculo(modeloMini(estadoFilas,{destacadas:[n.posicion],tipo:tipoLayout(veh)}))}<span>${nomPos(n.posicion)}</span></div></td>
       <td data-label="Neumático">${[n.marca,n.modelo].filter(Boolean).join(' ')||'—'}</td>
       <td class="mono-cell" data-label="Costo">${c.textoCosto}</td>
       <td class="mono-cell" data-label="Costo por km">${c.textoCpk}</td>

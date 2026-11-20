@@ -2,6 +2,7 @@
 // próximos cambios y últimas mediciones, con enlace directo al detalle de cada vehículo. Usa las vistas SQL v_estado_neumaticos,
 // v_alertas y v_salud_dispositivos y la función ultimas_mediciones (security invoker: la RLS decide qué ve cada rol; la
 // sucursal elegida se aplica además aquí). Los dispositivos solo se gestionan desde administración.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -211,7 +212,7 @@ export async function load() {
     // Últimos vehículos medidos con la medición anterior de cada neumático; si falla, solo ese bloque muestra el error.
     db.rpc('ultimas_mediciones', { p_limite: MAX_ULTIMAS, p_sucursal: sel ? Number(sel) : null }),
     // Solo para dibujar el chasis correcto; si falla, se deduce de las posiciones.
-    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas').eq('activo', true)).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
+    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas,distribucion').eq('activo', true)).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     // Mediciones sospechosas por resolver (la RLS limita el alcance). Si falla, solo se omite el aviso.
     db.from('mediciones').select('id,vehiculo_id,calidad').eq('calidad', 'sospechosa').limit(1000),
   ]);
@@ -225,7 +226,7 @@ export async function load() {
     estadoRows: filtrarFilas(est.rows), alertas: filtrarFilas(al.rows), salud, resumen: res.data || [],
     vehiculosTotal: veh.count ?? 0, ultimas: ult.error ? null : (ult.data || []),
     revision: rev.error ? 0 : filtrarFilas((rev.data || []).filter(r => r.calidad === 'sospechosa')).length,
-    tiposRuedas: vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas])),
+    tiposRuedas: vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, tipoLayout(v)])),
     sucursal: sel ? nombreSucursal(sel) : '',
   }));
 }

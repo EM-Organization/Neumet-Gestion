@@ -4,6 +4,7 @@
 // Toda la escritura pasa por las RPC medicion_invalidar y medicion_revalidar (autorización en la base: otro cliente u
 // otra sucursal reciben «permiso denegado»). `listaCalidad` la reutiliza el detalle del vehículo.
 // Acciones: calidad-invalidar (id), calidad-revalidar (id), calidad-confirmar, calidad-cerrar, calidad-filtro.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
@@ -21,7 +22,7 @@ import {
 } from '../domain/calidad.js';
 
 const $ = id => document.getElementById(id);
-export const SEL_CALIDAD = 'id,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,created_at,calidad,calidad_motivo,calidad_at,vehiculos(nombre,patente,tipo_ruedas)';
+export const SEL_CALIDAD = 'id,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,created_at,calidad,calidad_motivo,calidad_at,vehiculos(nombre,patente,tipo_ruedas,distribucion)';
 const CLS = { sospechosa: 'orange', invalidada: 'gray' };
 
 let filas = [];       // observadas del alcance del usuario (sospechosas e invalidadas)
@@ -34,7 +35,7 @@ let ocupado = false;
 export function listaCalidad(rows, { conVehiculo = false, tipos = null } = {}) {
   return html`<ul class="cal-lista">${joinHtml(soloObservadas(rows).map(r => {
     const veh = r.vehiculos || {};
-    const donde = [conVehiculo ? etiquetaCoche(veh.nombre || '') : '', nombrePosicion(r.posicion, (tipos && tipos.get(r.vehiculo_id)) || veh.tipo_ruedas)]
+    const donde = [conVehiculo ? etiquetaCoche(veh.nombre || '') : '', nombrePosicion(r.posicion, (tipos && tipos.get(r.vehiculo_id)) || tipoLayout(veh))]
       .filter(Boolean).join(' · ');
     const inval = r.calidad === 'invalidada';
     return html`<li class="cal-fila cal-${safeCls(r.calidad)}">

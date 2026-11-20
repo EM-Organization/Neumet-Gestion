@@ -6,6 +6,7 @@
 // con data-vehiculo-id y data-posicion (y data-args='[vehiculoId, posicion]'). Esta vista NO implementa esas acciones:
 // si no están registradas en ACTIONS muestra el aviso "No disponible". Tras operar, la acción puede llamar a
 // ACTIONS.recargarVehiculoDetalle() para refrescar el diagrama.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { svgEl } from '../core/svg.js';
@@ -37,7 +38,7 @@ import { listaCalidad, SEL_CALIDAD } from './calidad.js';
 const $ = id => document.getElementById(id);
 const nulo = v => v === null || v === undefined;
 const MAX_FILAS = 20000;
-const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,sucursal_id,odometro_km,odometro_actualizado_at,clientes(nombre)';
+const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,distribucion,activo,cliente_id,sucursal_id,odometro_km,odometro_actualizado_at,clientes(nombre)';
 const NIVEL_CLS = { ok: 'green', bajo: 'blue', critico: 'orange', retiro: 'red', sin_datos: 'gray' };
 
 let vehiculoId = null;
@@ -116,6 +117,7 @@ function cabecera() {
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
     <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? chipEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
+      ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Cambiar distribución</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
@@ -546,10 +548,10 @@ export async function load() {
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
-  const layout = layoutRuedas(posiciones, v.data.tipo_ruedas);
+  const layout = layoutRuedas(posiciones, tipoLayout(v.data));
   const obs = cal.error ? [] : soloObservadas(cal.data || []);
   datos = {
-    obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, v.data.tipo_ruedas]]),
+    obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, tipoLayout(v.data)]]),
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
     km: indexarKm(kc.error ? [] : kc.data),

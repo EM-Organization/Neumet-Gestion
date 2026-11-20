@@ -3,6 +3,7 @@
 // (la autorización se verifica en la base: otro cliente u otra sucursal reciben "permiso denegado").
 // Acciones: neumatico-cambiar (vehiculoId, posicion), neumatico-rotar-pos (vehiculoId, posA, posB).
 // Al terminar emite el evento DOM "neumet:neumatico-cambiado" y recarga la vista activa (flota/vehículo/inicio/alertas).
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast } from '../core/ui.js';
@@ -54,7 +55,7 @@ function estado() {
     origen: orig ? orig.value : '', stockId: val('cambio-stock'), stock: ctx ? ctx.stock : [],
     marca: val('cambio-marca'), modelo: val('cambio-modelo'), odometro: val('cambio-odo'),
     numeroQuema: val('cambio-quema'), kmPrevios: val('cambio-km-previos'),
-    odometroActual: ctx && ctx.veh ? ctx.veh.odometro_km : null, tipo: ctx && ctx.veh ? ctx.veh.tipo_ruedas : null,
+    odometroActual: ctx && ctx.veh ? ctx.veh.odometro_km : null, tipo: ctx && ctx.veh ? tipoLayout(ctx.veh) : null,
     cubiertaId: val('cambio-cubierta'), cubiertas: ctx ? ctx.cubiertas : [], sucursales: ctx ? ctx.sucursales : [],
     // Solo admin y perfil global gestionan el stock: ahí «Almacenar» devuelve el neumático al stock.
     devolverStock: !!(ctx && ctx.puedeStock), sucursalStock: val('cambio-retorno-suc'), quemaViejo: val('cambio-quema-viejo')
@@ -82,7 +83,7 @@ function pintar() {
   const { veh, neum, stock, cubiertas, sucursales } = ctx;
   const hayStock = stock.length > 0, hayCubiertas = cubiertas.length > 0;
   $('cambio-sub').textContent = veh && veh.nombre ? etiquetaCoche(veh.nombre) : 'Registro del cambio hecho en el taller';
-  setHtml($('cambio-actual'), html`<div>Neumático actual en <strong>${nombrePos(neum.posicion, veh && veh.tipo_ruedas)}</strong>:
+  setHtml($('cambio-actual'), html`<div>Neumático actual en <strong>${nombrePos(neum.posicion, tipoLayout(veh))}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>
     · ${neum.estado || 'montado'} · ${etiquetaVida(neum.vida)}${neum.numero_quema ? html` · quema ${neum.numero_quema}` : ''}${veh && veh.odometro_km != null ? html` · vehículo con ${fmtNum(veh.odometro_km)} km` : ''}</div>`);
   setHtml($('cambio-destinos'), joinHtml(DESTINOS.map((d, i) => radio('cambio-destino', d.id, d.label, i === 0, 'neumatico-cambiar-resumen'))));
@@ -112,13 +113,13 @@ async function abrir(vehiculoId, posicion) {
   if (ocupado) { showToast(AVISO_EN_CURSO, true); return; }
   if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a cambiar', true); return; }
   const [rv, rn] = await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,odometro_km,tipo_ruedas').eq('id', vehiculoId).maybeSingle(),
+    db.from('vehiculos').select('id,nombre,cliente_id,odometro_km,tipo_ruedas,distribucion').eq('id', vehiculoId).maybeSingle(),
     db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vehiculoId).eq('posicion', posicion).maybeSingle()
   ]);
   if (rv.error || rn.error) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático. Reintentar', true); return; }
   const neum = rn.data, veh0 = rv.data || {};
-  if (!neum) { showToast(`No hay un neumático montado en ${nombrePos(posicion, veh0.tipo_ruedas)}`, true); return; }
-  if (neum.estado === 'baja') { showToast(`El neumático de ${nombrePos(posicion, veh0.tipo_ruedas)} ya está dado de baja`, true); return; }
+  if (!neum) { showToast(`No hay un neumático montado en ${nombrePos(posicion, tipoLayout(veh0))}`, true); return; }
+  if (neum.estado === 'baja') { showToast(`El neumático de ${nombrePos(posicion, tipoLayout(veh0))} ya está dado de baja`, true); return; }
   const veh = rv.data || { id: vehiculoId };
   // El stock es del cliente del vehículo; la RLS ya limita qué ve cada perfil (el de sucursal no ve ninguno).
   const puedeStock = esAdminEmpresa();
@@ -154,7 +155,7 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   if (!r.ok) { $('cambio-error').textContent = r.error; showToast(r.error, true); return; }
   ocupado = true; $('cambio-confirmar').disabled = true;
   const mio = ctx; // la respuesta solo toca el modal del neumático que la originó
-  const { posicion, vehiculo_id: vehiculoId } = ctx.neum, ctxTipo = ctx.veh && ctx.veh.tipo_ruedas;
+  const { posicion, vehiculo_id: vehiculoId } = ctx.neum, ctxTipo = tipoLayout(ctx.veh);
   const coche = ctx.veh && ctx.veh.nombre ? etiquetaCoche(ctx.veh.nombre) : '';
   try {
     const res = await conLimite(db.rpc('neumatico_cambiar', r.params));
@@ -190,10 +191,10 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
     const vid = Number(vehiculoId);
     const [rn, rv] = await Promise.all([
       db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vid),
-      db.from('vehiculos').select('id,nombre,tipo_ruedas').eq('id', vid).maybeSingle()
+      db.from('vehiculos').select('id,nombre,tipo_ruedas,distribucion').eq('id', vid).maybeSingle()
     ]);
     if (rn.error) { console.error(rn.error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }
-    const tipo = rv.data ? rv.data.tipo_ruedas : null;
+    const tipo = rv.data ? tipoLayout(rv.data) : null;
     const coche = rv.data && rv.data.nombre ? etiquetaCoche(rv.data.nombre) : '';
     const r = validarRotacion(rn.data || [], vid, posA, posB, tipo);
     if (!r.ok) { showToast(r.error, true); return; }
