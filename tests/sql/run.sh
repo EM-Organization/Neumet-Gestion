@@ -38,6 +38,7 @@ if [ -n "${TEST_PG_URL:-}" ]; then
   # Sustituye la base del URL por la temporal.
   CONN="${TEST_PG_URL%/*}/$DB"
   PSQL=(psql "$CONN")
+  DB_URL="$CONN"
 elif BIN="$(find_bin)"; then
   export PATH="$BIN:$PATH"
   DATA="$WORK/data"; SOCK="$WORK/s"; mkdir -p "$SOCK"
@@ -47,6 +48,7 @@ elif BIN="$(find_bin)"; then
   CLEANUP+=("pg_ctl -D '$DATA' -m immediate stop >/dev/null 2>&1")
   createdb -h "$SOCK" -U postgres neumet_test
   PSQL=(psql -h "$SOCK" -U postgres neumet_test)
+  DB_URL="postgresql://postgres@/neumet_test?host=$SOCK"
 elif command -v docker >/dev/null 2>&1; then
   CID="$(docker run -d --rm -e POSTGRES_PASSWORD=pw -p 127.0.0.1:0:5432 postgres:16)"
   CLEANUP+=("docker stop '$CID' >/dev/null 2>&1")
@@ -55,6 +57,7 @@ elif command -v docker >/dev/null 2>&1; then
   until docker exec "$CID" pg_isready -U postgres >/dev/null 2>&1; do sleep 1; done
   sleep 2
   PSQL=(psql -h 127.0.0.1 -p "$PORT" -U postgres postgres)
+  DB_URL="postgresql://postgres@127.0.0.1:$PORT/postgres"
 else
   echo "No hay Postgres disponible: ni TEST_PG_URL, ni initdb/pg_ctl, ni docker." >&2
   echo "Los tests SQL están listos en tests/sql; instala postgresql y reintenta." >&2
@@ -209,4 +212,7 @@ source "$SQL/concurrencia_api_alta.sh"
 source "$SQL/concurrencia_api_distribucion.sh"
 # shellcheck source=tests/sql/concurrencia_vehiculo_eliminar.sh
 source "$SQL/concurrencia_vehiculo_eliminar.sh"
+# Carga inicial de Agencia Central (supabase/seed/importar-agencia-central.mjs) contra esta base, con listado sintético
+# shellcheck source=tests/sql/importar_agencia_central.sh
+source "$SQL/importar_agencia_central.sh"
 echo "TODOS LOS TESTS SQL PASARON"
