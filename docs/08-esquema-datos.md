@@ -1181,7 +1181,7 @@ Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administr
 - SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
 - Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.
 
-## W. Cambiar la distribución de un vehículo (`20261125500000_vehiculo_cambiar_distribucion.sql`)
+## W. Cambiar la distribución de un vehículo (`20261125600000_vehiculo_cambiar_distribucion.sql`)
 
 Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una carga inicial) sin eliminarlo y crearlo de nuevo.
 

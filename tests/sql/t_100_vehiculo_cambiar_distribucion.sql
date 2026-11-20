@@ -1,4 +1,4 @@
--- Cambiar la distribución de un vehículo (migración 20261125500000_vehiculo_cambiar_distribucion.sql).
+-- Cambiar la distribución de un vehículo (migración 20261125600000_vehiculo_cambiar_distribucion.sql).
 -- Matriz por rol: administrador de empresa (OK), usuario de la sucursal del vehículo (OK), usuario de otra sucursal,
 -- equipo Neumet, otra empresa, api, sin perfil, anon (rechazados). Reglas: no reducir por debajo de lo montado,
 -- el auxilio (99) no cuenta, tipo_ruedas derivado, «otra» deja la distribución sin definir.
