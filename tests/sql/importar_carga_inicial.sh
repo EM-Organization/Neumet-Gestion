@@ -2,9 +2,10 @@
 # Carga inicial del listado de un cliente (supabase/seed/importar-carga-inicial.mjs) contra el Postgres desechable.
 # Se carga con `source` desde tests/sql/run.sh (usa PSQL, DB_URL, ROOT y WORK, con los fixtures ya cargados).
 # Listado SINTÉTICO; el cliente 1 de los fixtures se llama «Cliente A». Comprueba: dry-run sin escribir, falla limpia con la
-# restricción actual (baja sin vehículo), carga con --descarte omitir, idempotencia, carga completa con la restricción
-# relajada, visibilidad por RLS para el administrador de empresa y el perfil de la sucursal de la carga, y que otra
-# sucursal y el cliente 2 no ven nada. Todo se borra al terminar.
+# restricción anterior a 20261125000000 (baja sin vehículo prohibida, repuesta a propósito en el paso 3), carga con
+# --descarte omitir, idempotencia, carga completa con la restricción vigente (las bajas sin vehículo entran, una vez),
+# visibilidad por RLS para el administrador de empresa y el perfil de la sucursal de la carga, y que otra sucursal y
+# el cliente 2 no ven nada. Todo se borra al terminar.
 
 IC_PSQL() { "${PSQL[@]}" -X -q -At -v ON_ERROR_STOP=1 "$@"; }
 IC_CLI() { NEUMET_DB_URL="$DB_URL" node "$ROOT/supabase/seed/importar-carga-inicial.mjs" --archivo "$WORK/listado.xlsx" \

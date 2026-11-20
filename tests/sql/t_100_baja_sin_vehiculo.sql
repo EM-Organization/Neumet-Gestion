@@ -29,4 +29,14 @@ select test.eq('admin: precios del stock sin la baja',
     where n.idneumatico like 'B137-%'), 'B137-stock');
 reset role;
 
+-- C. Una baja sin vehículo no es stock: editar, mover y eliminar la rechazan (55000), con el usuario global del cliente dueño.
+select test.become('authenticated', test.u_cli_a());
+select test.denied('baja sin vehículo: no se mueve',
+  format('select public.stock_cubierta_mover(%s, null::bigint)', (select id from public.neumaticos where idneumatico = 'B137-baja')), '55000');
+select test.denied('baja sin vehículo: no se edita',
+  format($q$select public.stock_cubierta_editar(%s, '{"marca":"X"}'::jsonb)$q$, (select id from public.neumaticos where idneumatico = 'B137-baja')), '55000');
+select test.denied('baja sin vehículo: no se elimina',
+  format('select public.stock_cubierta_eliminar(%s)', (select id from public.neumaticos where idneumatico = 'B137-baja')), '55000');
+reset role;
+
 rollback;
