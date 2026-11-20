@@ -49,7 +49,11 @@ ic_igual "dry-run no escribe neumáticos" "select count(*) from public.neumatico
 if IC_CLI --nombre-cliente 'Otra empresa' --ejecutar >"$WORK/ic_nom.txt" 2>&1; then ic_falla "debía rechazar un nombre de cliente distinto"; fi
 ic_igual "nombre de cliente distinto: no escribe" "select count(*) from public.neumaticos where idneumatico like 'CI-1-%'" 0
 
-# 3. Con la restricción actual (baja sin vehículo prohibida) falla limpio y no deja nada a medias.
+# 3. Con la restricción anterior a 20261125000000 (baja sin vehículo prohibida) falla limpio y no deja nada a medias.
+IC_PSQL -c "alter table public.neumaticos drop constraint neumaticos_stock_ck;
+  alter table public.neumaticos add constraint neumaticos_stock_ck check (
+    ((vehiculo_id is null) = (posicion is null)) and (vehiculo_id is not null or (estado = 'almacenado' and not auxilio))
+    and (sucursal_id is null or vehiculo_id is null) and (condicion <> 'nuevo' or vehiculo_id is null))"
 if IC_CLI --ejecutar >"$WORK/ic_ck.txt" 2>&1; then ic_falla "debía negarse: la base no admite bajas sin vehículo"; fi
 grep -q 'no admite neumáticos en baja sin vehículo' "$WORK/ic_ck.txt" || { cat "$WORK/ic_ck.txt"; ic_falla "mensaje de la restricción inesperado"; }
 ic_igual "restricción actual: no escribe nada" "select count(*) from public.neumaticos where idneumatico like 'CI-1-%'" 0
@@ -84,11 +88,8 @@ ic_igual "perfil de otra sucursal del mismo cliente no ve vehículos de la carga
 ic_igual "perfil de otra sucursal no ve montados ni stock de la carga" "begin; select test.become('authenticated', test.u_ic_otra()); select count(*) from public.neumaticos where idneumatico like 'CI-1-%'; rollback;" 0
 ic_igual "otro cliente no ve la carga" "begin; select test.become('authenticated', test.u_cli_b()); select count(*) from public.neumaticos where idneumatico like 'CI-1-%'; rollback;" 0
 
-# 7. Con la restricción relajada (lo que haría la migración futura) las bajas también entran, una vez.
-IC_PSQL -c "alter table public.neumaticos drop constraint neumaticos_stock_ck;
-  alter table public.neumaticos add constraint neumaticos_stock_ck check (
-    ((vehiculo_id is null) = (posicion is null)) and (vehiculo_id is not null or (estado in ('almacenado','baja') and not auxilio))
-    and (sucursal_id is null or vehiculo_id is null) and (condicion <> 'nuevo' or vehiculo_id is null))"
+# 7. Con la restricción de la migración 20261125000000 (la original de esta base) las bajas también entran, una vez.
+IC_PSQL -c "alter table public.neumaticos drop constraint neumaticos_stock_ck; alter table public.neumaticos add constraint neumaticos_stock_ck $CK_ORIG"
 IC_CLI --ejecutar >"$WORK/ic_baja.txt" 2>&1 || { cat "$WORK/ic_baja.txt"; ic_falla "la carga con bajas falló con la restricción relajada"; }
 ic_igual "bajas cargadas" "select count(*) from public.neumaticos where idneumatico like 'CI-1-%' and estado = 'baja' and motivo_baja = 'Descarte (carga inicial)' and fecha_baja = date '2026-11-20' and vehiculo_id is null" 2
 ic_igual "las bajas dicen su depósito" "select count(*) from public.neumaticos where idneumatico like 'CI-1-%' and estado = 'baja' and notas like '%Depósito: DESCARTE%'" 2

@@ -194,7 +194,7 @@ vercel.json, .gitleaks.toml        Despliegue y escaneo de secretos
 - **Eliminar vehículo (migración `20261124000000`, pendiente de aplicar)**: baja lógica por el administrador de empresa; los neumáticos van al stock o a baja. [`docs/08`](docs/08-esquema-datos.md) apéndice U.
 - **Rotación**: la acción manual existe; la recomendación automática de qué rotar está diseñada (sección A del mismo documento) y pendiente.
 - **Rendimiento y tasa de desgaste (hecho en parte)**: la tasa robusta (al menos 3 mediciones y 14 días, ventana reiniciada por evento) y `v_estado_neumaticos` por neumático ya están aplicadas (migración `20261111000000`); la referencia de flota exige `MIN_MUESTRAS` = 5 neumáticos por posición. Siguen pendientes la referencia calculada en el servidor y la tabla de estado por neumático (sección C del mismo documento), según el tamaño de la flota.
-- **Estado de las migraciones**: todos los archivos de `supabase/migrations/` están aplicados en el proyecto vigente, salvo `20261124000000` (eliminar vehículo, en revisión). Comprobarlo con `supabase migration list --remote` en lugar de confiar en un número escrito aquí.
+- **Estado de las migraciones**: todos los archivos de `supabase/migrations/` están aplicados en el proyecto vigente, salvo `20261125000000` (baja sin vehículo, en revisión). Comprobarlo con `supabase migration list --remote` en lugar de confiar en un número escrito aquí.
 - **Decisiones abiertas** con el dueño del producto: retención de `mediciones`, plan de Vercel y Supabase, región y política de datos. Lista en [`docs/05-roadmap.md`](docs/05-roadmap.md).
 - **Estado operativo**: prueba de punta a punta con sesión y datos reales, y sugerencias del revisor sin resolver, en [`docs/10-tablero.md`](docs/10-tablero.md).
 
