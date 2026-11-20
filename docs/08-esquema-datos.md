@@ -1180,3 +1180,11 @@ Botón «Eliminar vehículo» en la cabecera del detalle, solo para el administr
 
 - SQL: `t_99_vehiculo_eliminar.sql` (roles denegados, validaciones, stock, baja, sin neumáticos, reintento, visibilidad incluida la de las funciones de precios, costos y km, privilegio de `anon`, reutilización de patente, sucursal, recauchutado) y `concurrencia_vehiculo_eliminar.sh` (dos sesiones). `t_96` suma la función al catálogo de `SECURITY DEFINER`.
 - Unitarias: `tests/unit/vehiculo-eliminar.test.mjs`. Smoke: `montar` (diálogo con y sin neumáticos, foco al cerrar, error, doble envío), `montar-sucursal` y `detalle-admin` (el botón no aparece). e2e: `specs/eliminar-vehiculo.mjs`.
+
+# Apéndice V · Baja sin vehículo (`20261125000000_baja_sin_vehiculo.sql`)
+
+Permite guardar neumáticos dados de baja sin vehículo (descartes de una carga inicial, issue #137). Sin tablas nuevas.
+
+- **`neumaticos_stock_ck`**: sin vehículo, el estado es `almacenado` (stock, como antes) **o** `baja` con `fecha_baja` y `motivo_baja` (no vacío). Sin auxilio y sin posición en ambos casos; el resto de las reglas no cambia.
+- **No es stock**: `neumaticos_precios(p_solo_stock := true)` solo devuelve `almacenado`. El panel filtra `estado = 'almacenado'` en Stock (`views/stock.js`), montar, cambio de neumático y la búsqueda global. La RLS de lectura (`neumaticos_stock_cliente_select`) no cambia: el perfil global del cliente sigue pudiendo leer sus bajas por la API, y los costos de una baja siguen autorizados como los de cualquier cubierta del cliente. No hay vista «Dadas de baja» todavía.
+- **Pruebas**: `t_100_baja_sin_vehiculo.sql` (el check rechaza baja sin fecha o motivo y montado sin vehículo; el precio de la baja no entra al stock) y `importar_carga_inicial.sh` (la carga completa usa esta restricción).
