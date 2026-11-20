@@ -41,3 +41,36 @@ export function textoRuedas(vehiculo) {
   const d = buscarDistribucion(vehiculo && vehiculo.distribucion);
   return d ? etiquetaDistribucion(d) : `${vehiculo && vehiculo.tipo_ruedas} ruedas`;
 }
+
+// Lo que se pasa como `tipo` a layoutRuedas y a los nombres de posición: el código de la distribución si es del catálogo;
+// si no («Otra» o sin definir), el tipo_ruedas de siempre.
+export const tipoLayout = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : v ? v.tipo_ruedas : null);
+
+// Valor que se preselecciona al cambiar la distribución de un vehículo: la actual si es del catálogo; si no, ninguna (el
+// operario elige, no se le propone «Otra» por él).
+export const distribucionActual = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : '');
+
+// Parámetros de la RPC vehiculo_cambiar_distribucion (mismas opciones que al crear). «Otra» pide el tipo de ruedas (10 o 16).
+export function validarCambioDistribucion({ vehiculoId, distribucion, tipoRuedas } = {}) {
+  if (!Number.isInteger(vehiculoId)) return { ok: false, error: 'Elegir el vehículo' };
+  const dist = String(distribucion ?? '').trim();
+  if (!dist) return { ok: false, error: 'Falta elegir la distribución de neumáticos' };
+  if (dist === OTRA_DISTRIBUCION) {
+    const tipo = Number(tipoRuedas);
+    if (tipo !== 10 && tipo !== 16) return { ok: false, error: 'El tipo de ruedas debe ser 10 o 16' };
+    return { ok: true, params: { p_vehiculo_id: vehiculoId, p_distribucion: dist, p_tipo_ruedas: tipo } };
+  }
+  if (!buscarDistribucion(dist)) return { ok: false, error: 'La distribución elegida no es válida' };
+  return { ok: true, params: { p_vehiculo_id: vehiculoId, p_distribucion: dist, p_tipo_ruedas: null } };
+}
+
+// Texto para el operario ante un rechazo de la base. El de «hay neumáticos en posiciones que no existen» ya viene en español
+// con las posiciones afectadas: se muestra tal cual.
+export function traducirErrorDistribucion(err) {
+  const msg = String((err && err.message) || '');
+  if (/^la distribución tiene \d+ ruedas/.test(msg)) return msg.charAt(0).toUpperCase() + msg.slice(1);
+  if (err && err.code === '42501') return 'Sin permiso para cambiar este vehículo';
+  if (err && err.code === '22023') return 'Falta elegir la distribución de neumáticos';
+  if (err && err.code === '23514') return 'La distribución o el tipo de ruedas no es válido';
+  return 'No se pudo cambiar la distribución. Reintentar';
+}

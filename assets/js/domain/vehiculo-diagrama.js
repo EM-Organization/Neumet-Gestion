@@ -1,6 +1,7 @@
 // Diagrama del vehículo visto desde arriba: disposición de ruedas, geometría y escala de color por desgaste.
 // Funciones PURAS (sin DOM ni red). Tests: tests/unit/vehiculo-detalle.test.mjs
 import { MED_CFG } from './camion.js';
+import { buscarDistribucion } from './distribucion.js';
 
 export const POS_AUXILIO = 99;
 
@@ -44,6 +45,7 @@ function rueda(posicion, eje, codigo, presentes, dual) {
 
 /**
  * Mapeo posición -> (eje, lado, interna/externa) para un vehículo.
+ *  - Con distribución del catálogo (tipo = «6x2»): ejes de la distribución; posiciones fuera de ella se agregan como ejes extra.
  *  - Base: MED_CFG según tipo_ruedas. Con tipo 10 y alguna posición 11..98 presente se usa la disposición de 16
  *    (igual que el RPC de ingesta, que crea el vehículo con 16 si alguna posición > 10). Cualquier otro tipo -> 10.
  *  - Siempre se dibuja el chasis completo del tipo (las ruedas sin dato salen en gris, `presente: false`).
@@ -55,12 +57,26 @@ function rueda(posicion, eje, codigo, presentes, dual) {
 export function layoutRuedas(posiciones, tipo) {
   const pos = normPos(posiciones);
   const presentes = new Set(pos);
-  const tipoEf = (Number(tipo) === 16 || pos.some(p => p >= 11 && p <= 98)) ? 16 : 10;
-  const ejes = MED_CFG[String(tipoEf)].map((cfg, i) => ({
-    eje: i + 1,
-    dual: !cfg.single,
-    ruedas: cfg.positions.map(p => rueda(p.pos, i + 1, p.side, presentes, !cfg.single)),
-  }));
+  // `tipo` es tipo_ruedas (10 o 16) o, si el vehículo la tiene definida, el código de su distribución («6x2»; ver tipoLayout).
+  // Con distribución los ejes salen del catálogo, en posiciones consecutivas de adelante hacia atrás (S = 2 ruedas, D = 4).
+  const dist = typeof tipo === 'string' ? buscarDistribucion(tipo) : null;
+  let tipoEf, ejes;
+  if (dist) {
+    tipoEf = dist.ruedas <= 10 ? 10 : 16;
+    let sig = 1;
+    ejes = [...dist.ejes].map((e, i) => {
+      const dual = e === 'D';
+      const cods = dual ? ['LL', 'LR', 'RL', 'RR'] : ['L', 'R'];
+      return { eje: i + 1, dual, ruedas: cods.map(c => rueda(sig++, i + 1, c, presentes, dual)) };
+    });
+  } else {
+    tipoEf = (Number(tipo) === 16 || pos.some(p => p >= 11 && p <= 98)) ? 16 : 10;
+    ejes = MED_CFG[String(tipoEf)].map((cfg, i) => ({
+      eje: i + 1,
+      dual: !cfg.single,
+      ruedas: cfg.positions.map(p => rueda(p.pos, i + 1, p.side, presentes, !cfg.single)),
+    }));
+  }
   const conocidas = new Set(ejes.flatMap(e => e.ruedas.map(r => r.posicion)));
   const extra = pos.filter(p => p < POS_AUXILIO && !conocidas.has(p));
   for (let i = 0; i < extra.length; i += 4) {

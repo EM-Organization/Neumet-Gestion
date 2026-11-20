@@ -190,6 +190,44 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(rpcs('neumatico_montar').length !== antes + 1) fail('montar: un Enter inmediato tras montar montó la cubierta que quedaba en el stock');
   $('#mont-cerrar').click(); await sleep(300);
 
+  // Cambiar la distribución (quien opera): tres clics (abrir, elegir, guardar), Enter envía una sola vez y el diagrama se redibuja.
+  var bd = $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]');
+  if(!bd || bd.textContent.trim() !== 'Cambiar distribución') { fail('distribución: falta «Cambiar distribución» en la cabecera'); return; }
+  bd.click();
+  if(!await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').options.length === 7; }, 'el diálogo de distribución')) return;
+  if($('#veh-dist-distribucion').value !== '') fail('distribución: un vehículo sin distribución no debe traer una elegida: ' + $('#veh-dist-distribucion').value);
+  $('#veh-dist-form').requestSubmit(); await sleep(100);
+  if(rpcs('vehiculo_cambiar_distribucion').length || !/Falta elegir la distribución/.test(txt('#veh-dist-error'))) fail('distribución: sin elegir no debe llegar a la RPC: ' + txt('#veh-dist-error'));
+  poner('#veh-dist-distribucion', 'otra');
+  if($('#veh-dist-tipo-campo').hidden) fail('distribución: «Otra» debe pedir el tipo de ruedas');
+  poner('#veh-dist-distribucion', '6x2');
+  if(!$('#veh-dist-tipo-campo').hidden) fail('distribución: con una del catálogo no se pide el tipo de ruedas');
+  $('#veh-dist-form').requestSubmit(); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_cambiar_distribucion').length >= 1; }, 'la RPC de distribución');
+  await sleep(500);
+  if(rpcs('vehiculo_cambiar_distribucion').length !== 1) fail('distribución: el doble envío llegó a la RPC ' + rpcs('vehiculo_cambiar_distribucion').length + ' veces');
+  if(JSON.stringify(rpcs('vehiculo_cambiar_distribucion')[0].args) !== '{"p_vehiculo_id":13,"p_distribucion":"6x2","p_tipo_ruedas":null}') fail('distribución: argumentos: ' + JSON.stringify(rpcs('vehiculo_cambiar_distribucion')[0].args));
+  if($('#modal-veh-dist').classList.contains('show')) fail('distribución: el diálogo no se cerró al guardar');
+  // 6x2 = 8 ruedas: el diagrama ya no dibuja las posiciones 9 y 10 del tipo de 10 ruedas.
+  if(!await esperar(function(){ return !$('#vd-diagrama .vd-rueda[data-pos="9"]') && !!$('#vd-diagrama .vd-rueda[data-pos="8"]'); }, 'el diagrama con la distribución 6x2')) return;
+  // Los nombres siguen la distribución, no el tipo de ruedas: en 6x2 (tipo 10) la P7 es «Eje 3 izquierda» y la P8 «Eje 3 derecha»
+  // (con tipo_ruedas serían «Eje 3 izquierda interior» y «Eje 3 derecha interior»); nombres de las ruedas y del panel coinciden.
+  var r8 = $('#vd-diagrama .vd-rueda[data-pos="8"]'), r7 = $('#vd-diagrama .vd-rueda[data-pos="7"]');
+  if(!/Eje 3 derecha(?! interior)/.test(r8.getAttribute('aria-label') || '') || /interior/.test(r8.getAttribute('aria-label'))) fail('distribución: aria de la P8 no sigue la distribución: ' + r8.getAttribute('aria-label'));
+  r8.dispatchEvent(new w.KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true})); await sleep(300);
+  if(txt('#vd-panel-titulo') !== 'Eje 3 derecha') fail('distribución: título del panel de la P8: ' + txt('#vd-panel-titulo'));
+  r7.dispatchEvent(new w.KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true})); await sleep(300);
+  if(txt('#vd-panel-titulo') !== 'Eje 3 izquierda') fail('distribución: título del panel de la P7: ' + txt('#vd-panel-titulo'));
+  var selRot = $('#vd-rotar-destino');
+  if(selRot){
+    var opts = [].map.call(selRot.options, function(o){ return o.value + '=' + o.textContent; }).join('|');
+    if(/(^|\|)(9|10)=/.test(opts) || /interior/.test(opts) || opts.indexOf('8=Eje 3 derecha') === -1) fail('distribución: opciones de Rotar no siguen la distribución: ' + opts);
+  }
+  // Con 6x2 elegida, el diálogo la trae preseleccionada.
+  $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click();
+  await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').value === '6x2'; }, 'la distribución actual preseleccionada');
+  $('#veh-dist-form').querySelector('[data-action="vehiculo-cambiar-distribucion-cerrar"]').click(); await sleep(100);
+
   // Eliminar el vehículo (administrador de empresa): el botón está en la cabecera y el diálogo ofrece stock o baja.
   var T = w.__vehFx.T;
   var vivos = function(){ return T.neumaticos.filter(function(x){ return x.vehiculo_id === 13 && x.estado !== 'baja'; }); };

@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DISTRIBUCIONES, OTRA_DISTRIBUCION, buscarDistribucion, tipoRuedasDe, detalleEjes, etiquetaDistribucion, textoOpcion, textoRuedas,
+  DISTRIBUCIONES, OTRA_DISTRIBUCION, buscarDistribucion, tipoRuedasDe, detalleEjes, etiquetaDistribucion, textoOpcion, textoRuedas, tipoLayout, distribucionActual, validarCambioDistribucion, traducirErrorDistribucion,
 } from '../../assets/js/domain/distribucion.js';
 
 const leer = ruta => readFileSync(new URL(ruta, import.meta.url), 'utf8');
@@ -51,5 +51,33 @@ describe('el catálogo coincide con la base y con la API', () => {
     const lista = ts.match(/DISTRIBUCIONES = \[([^\]]*)\]/)[1];
     const ids = [...lista.matchAll(/'([0-9]x[0-9])'/g)].map(m => m[1]);
     assert.equal(ids.join(','), DISTRIBUCIONES.map(d => d.id).join(','));
+  });
+});
+
+describe('cambiar la distribución de un vehículo', () => {
+  test('tipoLayout: el código si es del catálogo; si no, tipo_ruedas', () => {
+    assert.equal(tipoLayout({ distribucion: '6x2', tipo_ruedas: 10 }), '6x2');
+    assert.equal(tipoLayout({ distribucion: null, tipo_ruedas: 16 }), 16);
+    assert.equal(tipoLayout({ distribucion: 'otra', tipo_ruedas: 10 }), 10);
+    assert.equal(tipoLayout(null), null);
+  });
+  test('distribucionActual solo preselecciona una del catálogo', () => {
+    assert.equal(distribucionActual({ distribucion: '6x4' }), '6x4');
+    assert.equal(distribucionActual({ distribucion: null }), '');
+  });
+  test('validarCambioDistribucion: igual que al crear', () => {
+    assert.equal(validarCambioDistribucion({ vehiculoId: 1, distribucion: '' }).ok, false);
+    assert.equal(validarCambioDistribucion({ vehiculoId: null, distribucion: '6x2' }).ok, false);
+    assert.equal(validarCambioDistribucion({ vehiculoId: 1, distribucion: '2x2' }).ok, false);
+    assert.equal(validarCambioDistribucion({ vehiculoId: 1, distribucion: 'otra', tipoRuedas: '12' }).ok, false);
+    assert.deepEqual(validarCambioDistribucion({ vehiculoId: 1, distribucion: '6x2', tipoRuedas: '16' }).params,
+      { p_vehiculo_id: 1, p_distribucion: '6x2', p_tipo_ruedas: null });
+    assert.deepEqual(validarCambioDistribucion({ vehiculoId: 1, distribucion: 'otra', tipoRuedas: '16' }).params,
+      { p_vehiculo_id: 1, p_distribucion: 'otra', p_tipo_ruedas: 16 });
+  });
+  test('traducirErrorDistribucion muestra el rechazo por posiciones montadas tal cual', () => {
+    const m = 'la distribución tiene 10 ruedas y hay neumáticos montados en las posiciones 11: retirarlos o elegir otra distribución';
+    assert.match(traducirErrorDistribucion({ code: '23514', message: m }), /^La distribución tiene 10 ruedas .*posiciones 11/);
+    assert.equal(traducirErrorDistribucion({ code: '42501' }), 'Sin permiso para cambiar este vehículo');
   });
 });

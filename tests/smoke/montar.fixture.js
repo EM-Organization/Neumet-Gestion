@@ -22,10 +22,18 @@
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), rpc = c.rpc;
     c.rpc = function(name, args){
-      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar' && name !== 'vehiculo_eliminar') return rpc.apply(c, arguments);
+      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar' && name !== 'vehiculo_eliminar' && name !== 'vehiculo_cambiar_distribucion') return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
       if(fx.rpcThrow) return Promise.reject(new TypeError('Failed to fetch')); // sin red: la promesa se rechaza
       if(fx.rpcError) return Promise.resolve({data: null, error: fx.rpcError});
+      if(name === 'vehiculo_cambiar_distribucion'){
+        // Como la RPC: «otra» deja la distribución sin definir con el tipo indicado; si no, el tipo se deriva (<= 10 ruedas -> 10).
+        var veh = T.vehiculos.filter(function(v){ return v.id === args.p_vehiculo_id; })[0];
+        var ruedas = {'4x2':6,'6x2':8,'6x4':10,'8x2':10,'8x4':12}[args.p_distribucion];
+        if(args.p_distribucion === 'otra'){ veh.distribucion = null; veh.tipo_ruedas = args.p_tipo_ruedas; }
+        else { veh.distribucion = args.p_distribucion; veh.tipo_ruedas = ruedas <= 10 ? 10 : 16; }
+        return Promise.resolve({data: {vehiculo_id: veh.id, distribucion: veh.distribucion, tipo_ruedas: veh.tipo_ruedas}, error: null});
+      }
       if(name === 'vehiculo_eliminar'){
         // Baja lógica como la RPC: los neumáticos vigentes van al stock o a baja y el vehículo deja de verse.
         var vivos = T.neumaticos.filter(function(x){ return x.vehiculo_id === VID && x.estado !== 'baja'; });

@@ -4,6 +4,7 @@
 // base: otro cliente u otra sucursal reciben «permiso denegado»).
 // Acciones: neumatico-montar (vehiculoId, posicion opcional), neumatico-retirar (vehiculoId, posicion).
 // Al terminar emite el evento DOM «neumet:neumatico-cambiado» y recarga la vista activa, igual que el cambio de neumático.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast } from '../core/ui.js';
@@ -44,7 +45,7 @@ function estadoMontar() {
     cubiertaId: mont.cubiertaId, cubiertas: mont.cubiertas,
     marca: val('mont-marca'), modelo: val('mont-modelo'), quema: val('mont-quema'), kmPrevios: val('mont-km-previos'),
     fechaCompra: val('mont-fecha'), precio: val('mont-precio'), vida: val('mont-vida'),
-    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km, tipoRuedas: mont.veh.tipo_ruedas,
+    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km, tipoRuedas: tipoLayout(mont.veh),
   };
 }
 
@@ -77,7 +78,7 @@ function actualizarMontar() {
 }
 
 function pintarPosiciones(posicion) {
-  setHtml($('mont-pos'), joinHtml(mont.libres.map(p => html`<option value="${p.posicion}">${etiquetaPosicion(p, mont.veh.tipo_ruedas)}</option>`)));
+  setHtml($('mont-pos'), joinHtml(mont.libres.map(p => html`<option value="${p.posicion}">${etiquetaPosicion(p, tipoLayout(mont.veh))}</option>`)));
   $('mont-pos').value = String(posicion);
   $('mont-sub').textContent = `${etiquetaCoche(mont.veh.nombre)} · ${resumenLibres(mont.libres)}`;
 }
@@ -97,13 +98,13 @@ function limpiarFormulario({ conservar = false } = {}) {
 async function abrirMontar(vehiculoId, posicion) {
   if (!Number.isInteger(vehiculoId)) { showToast('Elegir el vehículo', true); return; }
   const [rv, rn] = await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km').eq('id', vehiculoId).maybeSingle(),
+    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,distribucion,odometro_km').eq('id', vehiculoId).maybeSingle(),
     db.from('neumaticos').select('id,posicion,estado').eq('vehiculo_id', vehiculoId),
   ]);
   if (rv.error || rn.error || !rv.data) { console.error(rv.error || rn.error); showToast('No se pudo cargar el vehículo. Reintentar', true); return; }
   const veh = rv.data;
   const ocupadas = (rn.data || []).filter(n => n.estado === 'montado').map(n => n.posicion);
-  const libres = posicionesLibres(ocupadas, veh.tipo_ruedas);
+  const libres = posicionesLibres(ocupadas, tipoLayout(veh));
   if (!libres.length) { showToast('Todas las posiciones tienen un neumático montado'); return; }
   const puedeStock = puedeUsarStock();
   const [rc, rs] = await Promise.all([
@@ -179,8 +180,8 @@ async function confirmarMontar({ viaClic = false } = {}) {
     mont.ocupadas.push(pos);
     if (r.params.p_cubierta_id) mont.cubiertas = mont.cubiertas.filter(c => c.id !== r.params.p_cubierta_id);
     if (data && data.odometro_km !== null && data.odometro_km !== undefined) mont.veh.odometro_km = data.odometro_km;
-    mont.libres = posicionesLibres(mont.ocupadas, mont.veh.tipo_ruedas);
-    showToast(`Neumático montado: ${nombrePos(pos, mont.veh.tipo_ruedas)}`);
+    mont.libres = posicionesLibres(mont.ocupadas, tipoLayout(mont.veh));
+    showToast(`Neumático montado: ${nombrePos(pos, tipoLayout(mont.veh))}`);
     document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));
     notificarCambio({ vehiculoId, posicion: pos, montaje: data });
     // Sigue con la siguiente posición libre sin cerrar el flujo; al no quedar ninguna, se cierra.
@@ -191,7 +192,7 @@ async function confirmarMontar({ viaClic = false } = {}) {
     pintarPosiciones(sig.posicion);
     limpiarFormulario({ conservar: eraNuevo });
     pintarLista();
-    $('mont-aviso').textContent = `Montado: ${nombrePos(pos, mont.veh.tipo_ruedas)}. Siguiente posición libre: ${etiquetaPosicion(sig, mont.veh.tipo_ruedas)}.`;
+    $('mont-aviso').textContent = `Montado: ${nombrePos(pos, tipoLayout(mont.veh))}. Siguiente posición libre: ${etiquetaPosicion(sig, tipoLayout(mont.veh))}.`;
     $('mont-cerrar').textContent = 'Terminar';
     actualizarMontar();
     // Con marca y modelo conservados, lo primero por completar es la quema.
@@ -208,7 +209,7 @@ function estadoRetirar() {
   return {
     vehiculoId: ret.veh.id, posicion: ret.neum.posicion, neum: ret.neum, destino: d ? d.value : '', motivo: val('ret-motivo'),
     sucursalStock: val('ret-suc'), quema: val('ret-quema'), odometro: val('ret-odo'), odometroActual: ret.veh.odometro_km,
-    puedeStock: ret.puedeStock, tipoRuedas: ret.veh.tipo_ruedas,
+    puedeStock: ret.puedeStock, tipoRuedas: tipoLayout(ret.veh),
   };
 }
 
@@ -228,17 +229,17 @@ async function abrirRetirar(vehiculoId, posicion) {
   if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a retirar', true); return; }
   const puedeStock = puedeUsarStock();
   const [rv, rn] = await Promise.all([
-    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,odometro_km').eq('id', vehiculoId).maybeSingle(),
+    db.from('vehiculos').select('id,nombre,cliente_id,tipo_ruedas,distribucion,odometro_km').eq('id', vehiculoId).maybeSingle(),
     db.from('neumaticos').select('id,vehiculo_id,posicion,marca,modelo,idneumatico,vida,estado,numero_quema').eq('vehiculo_id', vehiculoId).eq('posicion', posicion).maybeSingle(),
   ]);
   if (rv.error || rn.error || !rv.data) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático. Reintentar', true); return; }
   const neum = rn.data;
-  if (!neum || neum.estado !== 'montado') { showToast(`No hay un neumático montado en ${nombrePos(posicion, rv.data.tipo_ruedas)}`, true); return; }
+  if (!neum || neum.estado !== 'montado') { showToast(`No hay un neumático montado en ${nombrePos(posicion, tipoLayout(rv.data))}`, true); return; }
   const rs = puedeStock ? await db.from('sucursales').select('id,nombre').eq('cliente_id', rv.data.cliente_id).order('nombre') : { data: [] };
   ret = { veh: rv.data, neum, sucursales: rs.error ? [] : (rs.data || []), puedeStock };
   const destinos = DESTINOS_RETIRO.filter(d => puedeStock || d.id !== 'almacenado');
   $('ret-sub').textContent = etiquetaCoche(rv.data.nombre);
-  setHtml($('ret-actual'), html`<div>Neumático en <strong>${nombrePos(posicion, rv.data.tipo_ruedas)}</strong>:
+  setHtml($('ret-actual'), html`<div>Neumático en <strong>${nombrePos(posicion, tipoLayout(rv.data))}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>${neum.numero_quema ? html` · quema ${neum.numero_quema}` : ''}${neum.vida ? html` · recauchutado ${neum.vida}` : ''}</div>`);
   setHtml($('ret-destinos'), joinHtml(destinos.map((d, i) => html`<label class="cambio-op"><input type="radio" name="ret-destino" value="${d.id}" ${i === 0 ? 'checked' : ''}
     data-change="neumatico-retirar-resumen"/> <span>${d.label}</span></label>`)));
@@ -262,7 +263,7 @@ async function confirmarRetirar() {
     const { data, error } = await db.rpc('neumatico_desmontar', r.params);
     if (error) throw error;
     const pos = r.params.p_posicion, vehiculoId = r.params.p_vehiculo_id;
-    const tipo = ret.veh.tipo_ruedas;
+    const tipo = tipoLayout(ret.veh);
     cerrarRetirar();
     showToast(`Neumático retirado: ${nombrePos(pos, tipo)}`);
     document.dispatchEvent(new CustomEvent('neumet:stock-cambiado'));

@@ -6,6 +6,7 @@
 // con data-vehiculo-id y data-posicion (y data-args='[vehiculoId, posicion]'). Esta vista NO implementa esas acciones:
 // si no están registradas en ACTIONS muestra el aviso "No disponible". Tras operar, la acción puede llamar a
 // ACTIONS.recargarVehiculoDetalle() para refrescar el diagrama.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { svgEl } from '../core/svg.js';
@@ -38,7 +39,7 @@ import { listaCalidad, SEL_CALIDAD } from './calidad.js';
 const $ = id => document.getElementById(id);
 const nulo = v => v === null || v === undefined;
 const MAX_FILAS = 20000;
-const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,activo,cliente_id,sucursal_id,odometro_km,odometro_actualizado_at,clientes(nombre)';
+const SEL_VEHICULO = 'id,nombre,patente,numero,tipo_ruedas,distribucion,activo,cliente_id,sucursal_id,odometro_km,odometro_actualizado_at,clientes(nombre)';
 const NIVEL_CLS = { ok: 'green', bajo: 'blue', critico: 'orange', retiro: 'red', sin_datos: 'gray' };
 
 let vehiculoId = null;
@@ -117,6 +118,7 @@ function cabecera() {
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
     <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? chipEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
+      ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Cambiar distribución</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
@@ -174,7 +176,7 @@ function leyenda() {
 }
 
 function etiquetaAria(r, info, mm, ind) {
-  const base = nombrePos(r.posicion, datos.veh.tipo_ruedas);
+  const base = nombrePos(r.posicion, tipoLayout(datos.veh));
   const medida = nulo(mm) ? 'desconocido' : `${fmtNum(mm, 1)} milímetros, ${info.texto}`;
   return `${base}: ${medida}.${ind && ind.mayorAlNormal ? ' Desgaste mayor al normal.' : ''}`;
 }
@@ -182,7 +184,7 @@ function etiquetaAria(r, info, mm, ind) {
 // Posición sin neumático: contorno punteado, sin color de desgaste. Selecciona la rueda y el panel ofrece montarlo.
 function dibujarRuedaVacia(svg, r) {
   const sel = r.posicion === seleccion;
-  const donde = nombrePos(r.posicion, datos.veh.tipo_ruedas);
+  const donde = nombrePos(r.posicion, tipoLayout(datos.veh));
   const etq = `${donde}: vacía. Elegir para montar un neumático.`;
   const g = svgEl('g', {
     class: `vd-rueda vd-vacia${sel ? ' sel' : ''}`, tabindex: '0', role: 'button', 'aria-pressed': String(sel), 'aria-label': etq,
@@ -361,7 +363,7 @@ function acciones(pos) {
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
-    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, datos.veh.tipo_ruedas)}</option>`)}</select>
+    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, tipoLayout(datos.veh))}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
   const retirar = html`<button type="button" class="btn" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}${retirar}</div>${rotar}</div>`;
@@ -383,7 +385,7 @@ function renderPanel() {
   if (!fila) {
     setHtml(body, html`
       <div class="vd-p-head">
-        <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
+        <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, tipoLayout(datos.veh))}</h3>
           <div class="vd-p-sub">${etiquetasPanel(null, r)}</div></div>
         <button type="button" class="vd-cerrar" data-action="detalleCerrarPanel" aria-label="Cerrar detalle de la posición"><span aria-hidden="true">&times;</span></button>
       </div>
@@ -394,7 +396,7 @@ function renderPanel() {
   }
   setHtml(body, html`
     <div class="vd-p-head">
-      <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, datos.veh.tipo_ruedas)}</h3>
+      <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, tipoLayout(datos.veh))}</h3>
         <div class="vd-p-sub">${etiquetasPanel(fila, r)}</div></div>
       <button type="button" class="vd-cerrar" data-action="detalleCerrarPanel" aria-label="Cerrar detalle del neumático"><span aria-hidden="true">&times;</span></button>
     </div>
@@ -547,10 +549,10 @@ export async function load() {
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
-  const layout = layoutRuedas(posiciones, v.data.tipo_ruedas);
+  const layout = layoutRuedas(posiciones, tipoLayout(v.data));
   const obs = cal.error ? [] : soloObservadas(cal.data || []);
   datos = {
-    obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, v.data.tipo_ruedas]]),
+    obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, tipoLayout(v.data)]]),
     veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
     km: indexarKm(kc.error ? [] : kc.data),

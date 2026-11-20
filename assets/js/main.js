@@ -28,6 +28,7 @@ import * as cicloVida from './views/ciclo-vida.js';
 import * as cambioNeumatico from './views/cambio-neumatico.js';
 import * as montarNeumatico from './views/montar-neumatico.js';
 import * as eliminarVehiculo from './views/eliminar-vehiculo.js';
+import * as cambiarDistribucion from './views/cambiar-distribucion.js';
 import * as costos from './views/costos.js';
 import * as recauchutado from './views/recauchutado.js';
 import * as neumaticos from './views/neumaticos.js';
@@ -44,7 +45,7 @@ initModales();
 initConexion();
 initBuscador();
 initMenuMas();
-[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,eliminarVehiculo,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,islaHumo,uso].forEach(v=>v.init());
+[inicio,clientes,balance,vehiculos,vehiculoDetalle,dispositivos,mediciones,stock,reportes,cicloVida,cambioNeumatico,montarNeumatico,eliminarVehiculo,cambiarDistribucion,calidad,costos,recauchutado,neumaticos,flota,alertas,ficha,seccionalesAdmin,sucursalesView,empresaUsuarios,empresaUmbrales,islaHumo,uso].forEach(v=>v.init());
 onLogin(() => {
   const { vehiculo, pos } = leerUrl();
   if (vehiculo) abrirDetalle(Number(vehiculo), pos, 'inicio', true);

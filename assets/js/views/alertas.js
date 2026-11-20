@@ -1,6 +1,7 @@
 // Centro de alertas: la alerta única «Neumático crítico» (v_alertas) con acciones (reconocer, silenciar, resolver, ver
 // vehículo). La RLS limita lo visible por rol; las transiciones van por RPC (alerta_reconocer, alerta_silenciar,
 // alerta_resolver) que autorizan en la base. El nivel crítico ya no se edita aquí: vive solo en Empresa > Umbrales.
+import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate } from '../core/ui.js';
@@ -116,12 +117,12 @@ export async function load() {
     isClienteMode() ? Promise.resolve({ data: [], error: null }) : db.from('v_resumen_flota_cliente').select('cliente_id,nombre').order('nombre'),
     // Solo para colorear el mini vehículo: si falla, las ruedas salen sin datos y la lista sigue funcionando.
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
-    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas')).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
+    fetchAll((from, to) => filtrarConsulta(db.from('vehiculos').select('id,tipo_ruedas,distribucion')).order('id').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS * 2 }),
   ]);
   pintarAviso(); // antes del retorno por error: el aviso no depende de que la lista cargue
   if (al.error || res.error) { showToast(userError(al.error || res.error), true); setHtml($('alert-tbody'), filaEstado(6, estadoError('', 'loadAlertas'))); return; }
   alertas = filtrarFilas(al.rows);
-  tipos = vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, v.tipo_ruedas]));
+  tipos = vtp.error ? new Map() : new Map(vtp.rows.map(v => [v.id, tipoLayout(v)]));
   porVeh = est.error ? new Map() : agruparPorVehiculo(est.rows);
   clientes = res.data || [];
   fillFiltros();

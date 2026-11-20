@@ -1038,7 +1038,7 @@ Migración aplicada y verificada → recién entonces la función `api-proveedor
 
 ## S.4 Límites
 
-El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen todavía de `tipo_ruedas`. El panel no edita la distribución de un vehículo ya creado. La app móvil no la usa todavía.
+El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución de un vehículo ya creado con «Cambiar distribución» (apéndice X). La app móvil no la usa todavía.
 
 ## S.5 Pruebas
 
@@ -1216,3 +1216,21 @@ Alertas existentes: se resuelven (no se borra nada). El paso final reevalúa tod
 ## W.4 Pruebas
 
 SQL `t_101_auxilio_sin_alerta.sql`; unitaria `tests/unit/auxilio.test.mjs`.
+
+# Apéndice X · Cambiar la distribución de un vehículo (`20261125600000_vehiculo_cambiar_distribucion.sql`)
+
+Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una carga inicial) sin eliminarlo y crearlo de nuevo.
+
+### X.1 RPC `vehiculo_cambiar_distribucion(p_vehiculo_id bigint, p_distribucion text, p_tipo_ruedas smallint default null) returns jsonb`
+- `SECURITY DEFINER`, `search_path` vacío. Autoriza con `neumatico_autorizar_vehiculo`: administrador de empresa o usuario de la sucursal del vehículo. El equipo Neumet (solo lectura), `api`, sin perfil, anónimo y otra empresa reciben `42501`.
+- `p_distribucion`: un código del catálogo (`4x2`, `6x2`, `6x4`, `8x2`, `8x4`; `tipo_ruedas` se deriva: hasta 10 ruedas, 10; si no, 16) u `otra` (la distribución queda `NULL` y `p_tipo_ruedas` 10 o 16 es obligatorio).
+- Rechaza (`23514`, en español, con las posiciones) una distribución con menos ruedas que las posiciones con neumático no dado de baja; el auxilio (99) no cuenta. Los neumáticos no se tocan.
+- Devuelve `{vehiculo_id, distribucion, tipo_ruedas, anterior}`. La base no audita cambios de vehículo, así que no deja evento.
+
+### X.2 Panel
+- Detalle del coche: botón «Cambiar distribución» (quien puede operar) y diálogo con las mismas opciones que «Agregar vehículo». Tres clics (abrir, elegir, guardar; Enter guarda).
+- El diagrama y los nombres de posición se dibujan según la distribución (`layoutRuedas(posiciones, tipoLayout(veh))`): 6x2 = 8 ruedas (simple, doble, simple), sin ejes de más. Sin distribución o «Otra» se conserva el dibujo por `tipo_ruedas`. Un neumático en una posición fuera de la distribución se dibuja como eje extra.
+
+### X.3 Pruebas
+`tests/sql/t_102_vehiculo_cambiar_distribucion.sql`, unitarias (`distribucion`, `vehiculo-detalle`) y smoke `montar`.
+
