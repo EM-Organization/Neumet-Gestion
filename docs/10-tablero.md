@@ -61,6 +61,9 @@
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
 
 ## Pendientes
+
+- Distribución por eje en el desgaste de flota (PR 141): `ejeDePosicion` (`assets/js/domain/vehiculo-diagrama.js`), que usa `domain/desgaste-flota.js` para agrupar la referencia por eje, numera por `tipo_ruedas`; en 8x2 y 8x4 los ejes no coinciden con los del diagrama por distribución. Pendiente: que agrupe según `tipoLayout(veh)`.
+
 ### Acciones del dueño (dashboard de Supabase) **[confirmar]**
 1. Existencia del usuario administrador con su fila en `perfiles` y **Allow new users to sign up** desactivado (runbook §1).
 2. Secretos de `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional` (`ALLOWED_ORIGINS`; opcional `INVITE_REDIRECT_TO`).

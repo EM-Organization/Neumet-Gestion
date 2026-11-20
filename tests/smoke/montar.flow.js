@@ -210,6 +210,19 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if($('#modal-veh-dist').classList.contains('show')) fail('distribución: el diálogo no se cerró al guardar');
   // 6x2 = 8 ruedas: el diagrama ya no dibuja las posiciones 9 y 10 del tipo de 10 ruedas.
   if(!await esperar(function(){ return !$('#vd-diagrama .vd-rueda[data-pos="9"]') && !!$('#vd-diagrama .vd-rueda[data-pos="8"]'); }, 'el diagrama con la distribución 6x2')) return;
+  // Los nombres siguen la distribución, no el tipo de ruedas: en 6x2 (tipo 10) la P7 es «Eje 3 izquierda» y la P8 «Eje 3 derecha»
+  // (con tipo_ruedas serían «Eje 3 izquierda interior» y «Eje 3 derecha interior»); nombres de las ruedas y del panel coinciden.
+  var r8 = $('#vd-diagrama .vd-rueda[data-pos="8"]'), r7 = $('#vd-diagrama .vd-rueda[data-pos="7"]');
+  if(!/Eje 3 derecha(?! interior)/.test(r8.getAttribute('aria-label') || '') || /interior/.test(r8.getAttribute('aria-label'))) fail('distribución: aria de la P8 no sigue la distribución: ' + r8.getAttribute('aria-label'));
+  r8.dispatchEvent(new w.KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true})); await sleep(300);
+  if(txt('#vd-panel-titulo') !== 'Eje 3 derecha') fail('distribución: título del panel de la P8: ' + txt('#vd-panel-titulo'));
+  r7.dispatchEvent(new w.KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true})); await sleep(300);
+  if(txt('#vd-panel-titulo') !== 'Eje 3 izquierda') fail('distribución: título del panel de la P7: ' + txt('#vd-panel-titulo'));
+  var selRot = $('#vd-rotar-destino');
+  if(selRot){
+    var opts = [].map.call(selRot.options, function(o){ return o.value + '=' + o.textContent; }).join('|');
+    if(/(^|\|)(9|10)=/.test(opts) || /interior/.test(opts) || opts.indexOf('8=Eje 3 derecha') === -1) fail('distribución: opciones de Rotar no siguen la distribución: ' + opts);
+  }
   // Con 6x2 elegida, el diálogo la trae preseleccionada.
   $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click();
   await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').value === '6x2'; }, 'la distribución actual preseleccionada');

@@ -1038,7 +1038,7 @@ Migración aplicada y verificada → recién entonces la función `api-proveedor
 
 ## S.4 Límites
 
-El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen todavía de `tipo_ruedas`. El panel no edita la distribución de un vehículo ya creado. La app móvil no la usa todavía.
+El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución de un vehículo ya creado con «Cambiar distribución» (apéndice W). La app móvil no la usa todavía.
 
 ## S.5 Pruebas
 
@@ -1196,5 +1196,5 @@ Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una ca
 - El diagrama y los nombres de posición se dibujan según la distribución (`layoutRuedas(posiciones, tipoLayout(veh))`): 6x2 = 8 ruedas (simple, doble, simple), sin ejes de más. Sin distribución o «Otra» se conserva el dibujo por `tipo_ruedas`. Un neumático en una posición fuera de la distribución se dibuja como eje extra.
 
 ### W.3 Pruebas
-`tests/sql/t_100_vehiculo_cambiar_distribucion.sql`, unitarias (`distribucion`, `vehiculo-detalle`) y smoke `montar`.
+`tests/sql/t_102_vehiculo_cambiar_distribucion.sql`, unitarias (`distribucion`, `vehiculo-detalle`) y smoke `montar`.
 
