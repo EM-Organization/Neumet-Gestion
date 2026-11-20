@@ -13,10 +13,12 @@ const f = (pos, estado, prom, extra = {}) => ({
 });
 
 describe('auxilio', () => {
-  test('esAuxilio: posición 99 o indicador', () => {
+  test('esAuxilio: manda la posición 99; el indicador auxilio no es confiable (queda desfasado tras rotar)', () => {
     assert.equal(esAuxilio({ posicion: 99 }), true);
     assert.equal(esAuxilio({ posicion: '99' }), true);
-    assert.equal(esAuxilio({ posicion: 3, auxilio: true }), true);
+    assert.equal(esAuxilio({ posicion: 99, auxilio: false }), true);
+    assert.equal(esAuxilio({ posicion: 3, auxilio: true }), false);
+    assert.equal(estadoContable(f(3, 'desgaste_limite', 2, { auxilio: true })), 'desgaste_limite');
     assert.equal(esAuxilio({ posicion: 3 }), false);
     assert.equal(esAuxilio(null), false);
   });
@@ -47,7 +49,7 @@ describe('auxilio', () => {
   test('ficha de cliente (seccional): conteos sin el auxilio', () => {
     const s = resumenDesdeFilas([f(1, 'desgaste_limite', 1), f(99, 'desgaste_limite', 1), f(98, 'mayor_desgaste', 4, { auxilio: true })], []);
     assert.equal(s.n_critico, 1);
-    assert.equal(s.n_mayor_desgaste, 0);
+    assert.equal(s.n_mayor_desgaste, 1); // la posición 98 con el indicador desfasado NO es auxilio
     assert.equal(s.n_neumaticos_con_datos, 3);
   });
   test('reportes: el auxilio no suma en límite ni mayor desgaste', () => {

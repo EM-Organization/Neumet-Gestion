@@ -3,17 +3,22 @@
 -- =============================================================================
 -- Requiere 20261123000000_categorias_desgaste.sql. Sin begin/commit. Idempotente.
 --
--- Regla de negocio: el auxilio (neumaticos.auxilio = true o posición 99) casi siempre tiene poca vida útil,
+-- Regla de negocio: el auxilio (la rueda en la posición 99) casi siempre tiene poca vida útil,
 -- así que su mayor desgaste / desgaste límite no es una advertencia. Se sigue mostrando con su estado y su
 -- medición (v_estado_neumaticos no cambia) y sigue en el total de neumáticos.
 --
---  1. alerta_sincronizar: el auxilio nunca abre alerta; las abiertas de una rueda con el indicador auxilio se
---     resuelven con resuelta_motivo = 'sin_datos' (no se borra nada: la tabla ya tiene estado «resuelta»).
---     La posición 99 sola no cierra alertas: neumatico_rotar aparca ahí una rueda durante un intercambio.
---  2. v_alertas: excluye las alertas de auxilio (defensa si alguna quedara).
+-- UNA sola regla en SQL y JS: es auxilio la rueda que está en la posición 99. La posición manda; el indicador
+-- neumaticos.auxilio no es confiable (v_estado_neumaticos no lo expone y neumatico_rotar no lo mantenía).
+--  1. alerta_sincronizar: el auxilio nunca abre alerta; las abiertas de una rueda que pasa a 99 se resuelven con
+--     resuelta_motivo = 'sin_datos' (no se borra nada). Al salir de 99 el trigger de neumaticos la reevalúa y,
+--     si sigue en límite, abre alerta.
+--  2. v_alertas: excluye las alertas de una rueda en 99 (por su posición actual).
 --  3. v_resumen_flota_cliente: su mayor desgaste / límite se cuenta como poco desgaste (mismas columnas).
---  4. Reevaluación inicial de todos los clientes (cierra las alertas de auxilio existentes).
--- La misma regla vive en assets/js/domain/auxilio.js (posición 99 o auxilio verdadero).
+--  4. neumatico_rotar mantiene auxilio = (posicion = 99) y ya no aparca en 99 durante el intercambio (cerraría
+--     la alerta de una rueda de ruta por un instante); solo usa 99 si no queda otra posición libre.
+--  5. Sincroniza el dato: auxilio = (posicion = 99) en los neumáticos montados.
+--  6. Reevaluación inicial de todos los clientes.
+-- La misma regla vive en assets/js/domain/auxilio.js.
 -- =============================================================================
 
 -- 1. alerta_sincronizar
@@ -45,13 +50,10 @@ begin
   with e as (
     select s.neumatico_id, s.vehiculo_id, s.posicion, s.idneumatico, s.promedio, s.ultima_medicion_at,
            c.umbral_retiro_mm as umbral, c.alerta_histeresis_mm as hist,
-           -- Regla del auxilio: su poca vida útil es normal, no es advertencia (posición 99 o neumáticos.auxilio).
-           -- Abrir alerta nuevo excluye ambos; cerrar y dejar de actualizar solo con el indicador, porque
-           -- neumatico_rotar «aparca» una rueda en la posición 99 un instante y cerraría su alerta sin motivo.
-           coalesce(n.auxilio, false) as auxilio, (s.posicion = 99) as en_99
+           -- Regla del auxilio: su poca vida útil es normal, no es advertencia. Es auxilio la rueda en la posición 99.
+           (s.posicion = 99) as auxilio
       from public.v_estado_neumaticos s
       join public.clientes c on c.id = s.cliente_id
-      left join public.neumaticos n on n.id = s.neumatico_id
      where s.cliente_id = p_cliente_id
        and s.neumatico_id is not null
        and (p_neumaticos is null or s.neumatico_id = any (p_neumaticos))
@@ -85,7 +87,7 @@ begin
     -- Neumáticos en desgaste límite sin alerta no resuelta (el promedio nulo nunca genera alerta).
     select e.* from e
      where e.promedio is not null
-       and not e.auxilio and not e.en_99
+       and not e.auxilio
        and e.promedio < e.umbral
        and not exists (select 1 from public.alertas x
                         where x.neumatico_id = e.neumatico_id and x.estado <> 'resuelta')
@@ -137,8 +139,8 @@ join public.vehiculos v on v.id = a.vehiculo_id
 left join public.neumaticos n on n.id = a.neumatico_id
 join public.clientes c on c.id = a.cliente_id and c.deleted_at is null
 where a.estado <> 'resuelta'
-  -- El auxilio no genera advertencias (posición 99 o neumáticos.auxilio).
-  and not (a.posicion = 99 or coalesce(n.auxilio, false));
+  -- El auxilio (la rueda en la posición 99) no genera advertencias; manda la posición actual del neumático.
+  and coalesce(n.posicion, a.posicion) is distinct from 99;
 
 revoke all on public.v_alertas from public, anon;
 grant select on public.v_alertas to authenticated;
@@ -173,10 +175,9 @@ left join (select cliente_id,
            -- Auxilio: sigue en el total, pero su mayor desgaste / desgaste límite cuenta como poco desgaste.
            from (select s.cliente_id,
                         case when s.estado in ('mayor_desgaste', 'desgaste_limite')
-                                  and (s.posicion = 99 or coalesce(n.auxilio, false))
+                                  and s.posicion = 99
                              then 'poco_desgaste' else s.estado end as estado
-                   from public.v_estado_neumaticos s
-                   left join public.neumaticos n on n.id = s.neumatico_id) s
+                   from public.v_estado_neumaticos s) s
           group by cliente_id) e on e.cliente_id = c.id
 left join (select cliente_id,
                   count(*) filter (where severidad = 1) as sev1,
@@ -191,5 +192,108 @@ where c.deleted_at is null;
 revoke all on public.v_resumen_flota_cliente from authenticated, public, anon;
 grant select on public.v_resumen_flota_cliente to authenticated;
 
--- 4. Reevaluación inicial
+-- 4. neumatico_rotar: mantiene auxilio = (posicion = 99) y no aparca en 99 mientras intercambia.
+-- Misma lógica y autorización que 20261108000000; cambia el aparcamiento y el indicador auxilio.
+-- El índice único de un auxilio por vehículo se respeta en cada paso: el indicador solo es true en 99.
+create or replace function public.neumatico_rotar(
+  p_vehiculo_id bigint,
+  p_pos_a       smallint,
+  p_pos_b       smallint,
+  p_odometro_km integer default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_a    public.neumaticos%rowtype;
+  v_b    public.neumaticos%rowtype;
+  v_tmp  smallint;
+  v_swap boolean;
+begin
+  perform 1 from public.neumatico_autorizar_vehiculo(p_vehiculo_id);
+  if p_pos_a is null or p_pos_b is null then
+    raise exception 'parámetros obligatorios' using errcode = '22004';
+  end if;
+  if p_pos_a = p_pos_b then
+    raise exception 'las posiciones deben ser distintas' using errcode = '22023';
+  end if;
+  if p_pos_a not between 1 and 99 or p_pos_b not between 1 and 99 then
+    raise exception 'posición fuera de rango (1-99)' using errcode = '23514';
+  end if;
+  if p_odometro_km is not null and p_odometro_km < 0 then
+    raise exception 'odómetro negativo' using errcode = '23514';
+  end if;
+
+  perform 1
+    from public.neumaticos n
+   where n.vehiculo_id = p_vehiculo_id and n.posicion in (p_pos_a, p_pos_b)
+   order by n.id
+     for update;
+
+  select * into v_a from public.neumaticos
+   where vehiculo_id = p_vehiculo_id and posicion = p_pos_a;
+  if not found then
+    raise exception 'no hay neumático en la posición % del vehículo %', p_pos_a, p_vehiculo_id
+      using errcode = 'P0002';
+  end if;
+  if v_a.estado = 'baja' then
+    raise exception 'el neumático de la posición % está dado de baja', p_pos_a using errcode = '23514';
+  end if;
+
+  select * into v_b from public.neumaticos
+   where vehiculo_id = p_vehiculo_id and posicion = p_pos_b;
+  v_swap := found;
+  if v_swap and v_b.estado = 'baja' then
+    raise exception 'el neumático de la posición % está dado de baja', p_pos_b using errcode = '23514';
+  end if;
+
+  if v_swap then
+    -- Posición de aparcamiento: la más alta libre por debajo de 99 (en 99 la rueda contaría como auxilio un
+    -- instante y el trigger le cerraría la alerta). 99 solo si no queda otra.
+    select g into v_tmp
+      from generate_series(98, 1, -1) g
+     where not exists (select 1 from public.neumaticos n
+                        where n.vehiculo_id = p_vehiculo_id and n.posicion = g)
+     limit 1;
+    if v_tmp is null and not exists (select 1 from public.neumaticos n
+                                      where n.vehiculo_id = p_vehiculo_id and n.posicion = 99) then
+      v_tmp := 99;
+    end if;
+    if v_tmp is null then
+      raise exception 'no hay posición libre para intercambiar' using errcode = '53400';
+    end if;
+    update public.neumaticos set posicion = v_tmp,   auxilio = (v_tmp = 99)   where id = v_a.id;
+    update public.neumaticos set posicion = p_pos_a, auxilio = (p_pos_a = 99) where id = v_b.id;
+    update public.neumaticos set posicion = p_pos_b, auxilio = (p_pos_b = 99) where id = v_a.id;
+  else
+    update public.neumaticos set posicion = p_pos_b, auxilio = (p_pos_b = 99) where id = v_a.id;
+  end if;
+
+  insert into public.eventos_neumatico
+    (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, posicion_origen, posicion_destino, odometro_km, created_by)
+  values (v_a.cliente_id, v_a.vehiculo_id, v_a.id, v_a.idneumatico, 'rotacion', p_pos_a, p_pos_b, p_odometro_km, auth.uid());
+  if v_swap then
+    insert into public.eventos_neumatico
+      (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, posicion_origen, posicion_destino, odometro_km, created_by)
+    values (v_b.cliente_id, v_b.vehiculo_id, v_b.id, v_b.idneumatico, 'rotacion', p_pos_b, p_pos_a, p_odometro_km, auth.uid());
+  end if;
+
+  return jsonb_build_object('vehiculo_id', p_vehiculo_id, 'intercambio', v_swap,
+                            'neumatico_a', v_a.id, 'neumatico_b', case when v_swap then v_b.id end);
+end
+$$;
+
+revoke all on function public.neumatico_rotar(bigint, smallint, smallint, integer) from public, anon;
+grant execute on function public.neumatico_rotar(bigint, smallint, smallint, integer) to authenticated;
+
+-- 5. Sincronizar el dato: auxilio = (posicion = 99) en los montados. Dos pasos para respetar el índice único
+-- de un auxilio por vehículo (primero se libera, luego se asigna). No dispara el trigger de alertas (no mira auxilio).
+update public.neumaticos set auxilio = false
+ where estado = 'montado' and vehiculo_id is not null and auxilio and posicion is distinct from 99;
+update public.neumaticos set auxilio = true
+ where estado = 'montado' and vehiculo_id is not null and posicion = 99 and not auxilio;
+
+-- 6. Reevaluación inicial
 select public.alerta_sincronizar(c.id, null) from public.clientes c where c.deleted_at is null;

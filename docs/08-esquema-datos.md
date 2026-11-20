@@ -1187,14 +1187,16 @@ Migración idempotente, sin `begin/commit`. **No está aplicada en producción**
 
 ## V.1 Regla
 
-La rueda de auxilio (`neumaticos.auxilio = true` o posición 99) casi siempre tiene poca vida útil: su mayor desgaste y su desgaste límite no son advertencia. Se sigue mostrando con su estado y su medición (`v_estado_neumaticos` no cambia) y sigue en el total de neumáticos.
+La rueda de auxilio casi siempre tiene poca vida útil: su mayor desgaste y su desgaste límite no son advertencia. Es auxilio **la rueda que está en la posición 99**: la posición manda y el indicador `neumaticos.auxilio` no es confiable (`v_estado_neumaticos` no lo expone y antes `neumatico_rotar` no lo mantenía). Se sigue mostrando con su estado y su medición (`v_estado_neumaticos` no cambia) y sigue en el total de neumáticos.
 
 ## V.2 Qué cambia
 
 | Objeto | Cambio |
 |---|---|
-| `alerta_sincronizar` | Un neumático con `auxilio = true` o en la posición 99 no abre alerta. Las alertas abiertas de un neumático con el indicador `auxilio` se resuelven con `resuelta_motivo = 'sin_datos'`. La posición 99 sola no cierra alertas: `neumatico_rotar` aparca ahí una rueda durante un intercambio |
-| `v_alertas` | Excluye alertas de auxilio (posición 99 o indicador): no figuran en la lista ni en los conteos de alertas del inicio y la flota |
+| `alerta_sincronizar` | Un neumático en la posición 99 no abre alerta y sus alertas abiertas se resuelven con `resuelta_motivo = 'sin_datos'`. Al salir de 99 el trigger de `neumaticos` (que ya mira `posicion`) lo reevalúa y abre alerta si sigue en límite |
+| `v_alertas` | Excluye las alertas de una rueda que está hoy en la posición 99: no figuran en la lista ni en los conteos de alertas del inicio y la flota |
+| `neumatico_rotar` | Mantiene `auxilio = (posicion = 99)` y ya no aparca en 99 durante el intercambio (usa la más alta libre bajo 99; 99 solo si no hay otra), para no cerrar un instante la alerta de una rueda de ruta |
+| Datos | `update` idempotente: `auxilio = (posicion = 99)` en los montados (primero libera, luego asigna, por el índice de un auxilio por vehículo) |
 | `v_resumen_flota_cliente` | Mismas columnas; el auxilio en mayor desgaste o límite se cuenta como poco desgaste (`n_bajo`) y sigue en `n_neumaticos_con_datos` |
 
 Alertas existentes: se resuelven (no se borra nada). El paso final reevalúa todos los clientes.
