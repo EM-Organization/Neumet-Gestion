@@ -508,13 +508,13 @@ function construirGrafico(d, lugar) {
     const e = svgEl('text', { class: 'vd-g-eje', x: t.x, y: d.alto - 8, 'text-anchor': d.unico ? 'middle' : (i === 0 ? 'start' : 'end') }); e.textContent = t.texto; svg.appendChild(e);
   });
   if (d.linea) svg.appendChild(svgEl('path', { class: 'vd-g-serie', d: d.linea }));
+  // Los rótulos van antes de los puntos y en un sitio sin puntos (domain/grafico-desgaste.js): ningún punto los tapa (U3).
+  d.bandas.filter(b => b.rotuloVisible).forEach(b => {
+    const e = svgEl('text', { class: `vd-g-rotulo est-${b.estilo}`, x: b.rotuloX, y: b.rotuloY + 4, 'text-anchor': b.rotuloAncla }); e.textContent = b.rotulo; svg.appendChild(e);
+  });
   d.puntos.forEach(p => {
     const c = svgEl('circle', { class: `vd-g-punto est-${p.estilo}`, cx: p.x, cy: p.y, r: p.ultimo ? TOKENS.chart.lastPointRadiusPx : TOKENS.chart.pointRadiusPx });
     const t = svgEl('title'); t.textContent = tooltipPunto(p); c.appendChild(t); svg.appendChild(c);
-  });
-  // Los rótulos van al final con halo: si la serie pasa por debajo, el texto sigue legible y no queda tapado por un punto.
-  d.bandas.filter(b => b.rotuloVisible).forEach(b => {
-    const e = svgEl('text', { class: `vd-g-rotulo est-${b.estilo}`, x: b.rotuloX, y: b.rotuloY + 4 }); e.textContent = b.rotulo; svg.appendChild(e);
   });
   return svg;
 }

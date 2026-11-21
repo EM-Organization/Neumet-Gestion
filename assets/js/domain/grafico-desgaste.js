@@ -53,10 +53,27 @@ export function datosGrafico(puntos, th, { ancho = 320, alto = TOKENS.chart.heig
     const estado = wearStatus(p.mm, th);
     return { ...p, valor, estado, estilo: ESTADOS[estado].estilo, x: X(p.t), y: Y(valor), ultimo: i === puntos.length - 1 };
   });
+  // Un rótulo no puede quedar bajo un punto (U3): se prueba a la derecha y a la izquierda de la banda, y en el centro, la parte
+  // alta y la baja de su altura; el primer sitio libre gana. Si ninguno está libre, el rótulo se omite (la banda sigue en la leyenda).
+  const choca = (caja) => pts.some(p => {
+    const r = (p.ultimo ? c.lastPointRadiusPx : c.pointRadiusPx) + 1;
+    return p.x + r > caja.x && p.x - r < caja.x + caja.w && p.y + r > caja.y && p.y - r < caja.y + caja.h;
+  });
   const bandas = bandasGrafico(th, eje.max).map(b => {
     const yTop = Y(b.hasta), alto_ = Y(b.desde) - yTop;
-    const cabe = !!b.rotulo && alto_ >= c.bandLabelMinHeightPx && b.rotulo.length * ANCHO_CHAR <= (x1 - x0) - 2 * c.bandLabelInsetPx;
-    return { ...b, y: yTop, alto: alto_, rotuloVisible: cabe, rotuloX: x1 - c.bandLabelInsetPx, rotuloY: yTop + alto_ / 2 };
+    const w = b.rotulo ? b.rotulo.length * ANCHO_CHAR : 0, h = c.bandLabelMinHeightPx - 4;
+    const cabe = !!b.rotulo && alto_ >= c.bandLabelMinHeightPx && w <= (x1 - x0) - 2 * c.bandLabelInsetPx;
+    let pos = null;
+    if (cabe) {
+      const ys = [yTop + alto_ / 2, yTop + h / 2 + 2, yTop + alto_ - h / 2 - 2];
+      const lados = [{ ancla: 'end', x: x1 - c.bandLabelInsetPx }, { ancla: 'start', x: x0 + c.bandLabelInsetPx }];
+      for (const yy of ys) for (const l of lados) {
+        const x = l.ancla === 'end' ? l.x - w : l.x;
+        if (!choca({ x, y: yy - h / 2, w, h })) { pos = { ...l, y: yy }; break; }
+      }
+      // La caja libre puede quedar fuera de la banda si es más baja que el rótulo: ya se descartó arriba con alto_ mínimo.
+    }
+    return { ...b, y: yTop, alto: alto_, rotuloVisible: !!pos, rotuloX: pos ? pos.x : x1 - c.bandLabelInsetPx, rotuloAncla: pos ? pos.ancla : 'end', rotuloY: pos ? pos.y : yTop + alto_ / 2, rotuloAncho: w, rotuloAlto: h };
   });
   const conAnio = new Date(t0).getFullYear() !== new Date(tn).getFullYear();
   const fechas = unico ? [{ x: X(t0), t: t0 }] : [{ x: X(t0), t: t0 }, { x: X(tn), t: tn }];

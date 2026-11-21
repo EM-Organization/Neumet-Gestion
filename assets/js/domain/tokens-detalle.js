@@ -8,6 +8,7 @@ export const TOKENS = Object.freeze({
     heightPx: 220, yTickStepMm: 4, headroomAboveBuenMm: 4, plotInsetXPx: 24, bandLabelMinHeightPx: 20, bandLabelInsetPx: 8,
     linePx: 2, pointRadiusPx: 5, lastPointRadiusPx: 6, pointRingPx: 2,
   }),
-  // TODO(neumet-web: TODO-BREAKPOINTS): ancho a partir del cual la pantalla pasa a una columna (el CSS usa este mismo valor).
+  // TODO(neumet-web: TODO-BREAKPOINTS): la spec pasa a una columna bajo 1024 px, pero el CSS del detalle sigue en 860 px
+  // (media query de styles.css) y ningún código lee este valor; unificarlos es una decisión aparte (docs/21).
   layout: Object.freeze({ stickyTopOffsetPx: 16, singleColumnBelowPx: 1024 }),
 });

@@ -655,7 +655,7 @@
 .vd-g-eje { fill: var(--n-oliva); font-size: 11px; font-family: var(--font); }
 .vd-g-banda { fill-opacity: 0.55; stroke: none; }
 .vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }
-.vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); text-anchor: end; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
 .vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }
 .vd-g-serie { fill: none; stroke: var(--n-oscuro); stroke-width: 2; stroke-linejoin: round; }
 .vd-g-punto { stroke: #fff; stroke-width: 2; }

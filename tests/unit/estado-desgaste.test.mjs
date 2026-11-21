@@ -215,4 +215,22 @@ describe('datosGrafico', () => {
     const d = datosGrafico(serieDesgaste([med(-400, 9), med(0, 8)]), th, { ancho: 400 });
     assert.match(d.ejeX[0].texto, /\d{2}$/);
   });
+  test('U3: ningún punto queda bajo un rótulo de banda, a ningún ancho, aunque la serie termine dentro de la banda rotulada', () => {
+    const series = [[med(-56, 12), med(-28, 9), med(0, 4)], [med(-28, 6.5), med(0, 3.8)], [med(0, 4)], [med(-56, 4), med(-28, 4.2), med(0, 4.1)]];
+    let movidos = 0;
+    for (const ancho of [320, 390, 600, 1024, 1440]) for (const serie of series) {
+      const d = datosGrafico(serieDesgaste(serie), th, { ancho });
+      for (const b of d.bandas.filter(x => x.rotuloVisible)) {
+        const x = b.rotuloAncla === 'end' ? b.rotuloX - b.rotuloAncho : b.rotuloX;
+        if (b.rotuloAncla === 'start') movidos++;
+        for (const p of d.puntos) {
+          const r = p.ultimo ? TOKENS.chart.lastPointRadiusPx : TOKENS.chart.pointRadiusPx;
+          const bajo = p.x + r > x && p.x - r < x + b.rotuloAncho && p.y + r > b.rotuloY - b.rotuloAlto / 2 && p.y - r < b.rotuloY + b.rotuloAlto / 2;
+          assert.equal(bajo, false, `ancho ${ancho}: el punto (${p.x.toFixed(0)}, ${p.y.toFixed(0)}) queda bajo «${b.rotulo}»`);
+        }
+        assert.ok(b.rotuloY - b.rotuloAlto / 2 >= b.y - 0.01 && b.rotuloY + b.rotuloAlto / 2 <= b.y + b.alto + 0.01, 'el rótulo cabe en su banda');
+      }
+    }
+    assert.ok(movidos > 0, 'al menos un caso obligó a mover el rótulo a la izquierda (si no, la prueba no ejercita la colisión)');
+  });
 });
