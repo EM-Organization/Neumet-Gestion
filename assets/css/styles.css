@@ -190,20 +190,12 @@
 
   /* Modal neumáticos visual */
   .modal.modal-neum { width: 960px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; }
-  .neum-assign-layout { display: grid; grid-template-columns: 1fr 260px; flex: 1; min-height: 0; overflow: hidden; }
-  .neum-svg-panel { background: var(--surface-secondary); padding: 16px 12px 8px; display: flex; flex-direction: column; gap: 6px; overflow: auto; border-right: 1px solid var(--border); }
-  .neum-svg-hint { font-size: 11px; color: var(--text-tertiary); text-align: center; }
-  .neum-detail-panel { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; }
-  .neum-no-sel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-tertiary); font-size: 13px; }
   /* Panel detalle posición */
   .ndp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
   .ndp-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
   .ndp-clear { background: none; border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 6px; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; transition: all .15s; }
   .ndp-clear:hover { border-color: var(--danger); color: var(--danger); }
   .ndp-btn { width: 100%; margin-top: 8px; }
-  .neum-detail-panel .field { margin-bottom: 8px; }
-  .neum-detail-panel .field label { font-size: 11px; }
-  .neum-detail-panel .field input, .neum-detail-panel .field select, .neum-detail-panel .field textarea { font-size: 12px; padding: 6px 8px; }
   @keyframes modalIn { from { transform: scale(0.97) translateY(4px); opacity: 0 } to { transform: scale(1) translateY(0); opacity: 1 } }
   .modal-header { padding: 20px 22px 0; }
   .modal-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }
