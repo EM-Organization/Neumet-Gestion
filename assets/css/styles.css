@@ -566,7 +566,7 @@
 .vd-layout > * { min-width: 0; }
 /* Tarjeta fija bajo la barra superior (docs/21 §6); solo si no cabe, su propio contenido se desplaza. */
 .vd-diagrama-card { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); overflow-y: auto; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-.vd-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
+.vd-panel { scroll-margin-top: calc(var(--vd-topbar) + 16px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
 .vd-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 /* Chips de estado: leyenda y filtro a la vez (docs/21 §5.1). Alto 32, radio 16, borde 1,5; el estado lo dicen símbolo y texto, no el color. */
 .vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -586,6 +586,10 @@
 .vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: #fff; font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
 /* Etiqueta de estado (panel y título): mismo estilo que el chip, alto 28, sin conteo ni rango. */
 .vd-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); font-size: 13px; font-weight: 600; color: var(--n-oscuro); background: var(--surface); }
+.vd-tag.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
+.vd-tag.est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
+.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.vd-tag.est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
 .vd-tag.vd-tag-flag { border-color: var(--n-oscuro); background: var(--surface); }
 .vd-tag .vd-chip-sim { font-weight: 800; }
 .vd-p-estado { align-items: center; }

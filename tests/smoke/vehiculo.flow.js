@@ -112,10 +112,22 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   enter(inp); await sleep(900);
   if(!$('#view-vehiculo-detalle').classList.contains('active')) { fail('detalle: Enter no abrio el detalle'); return; }
 
+  // Escritorio de 1440 x 900: la medida de U1 (el panel no desplaza la página) y de U2 (colores de las etiquetas).
+  var marcoDet = w.frameElement; marcoDet.style.width = '1440px'; marcoDet.style.height = '900px'; await sleep(300);
+  // Color de un token resuelto por el navegador (sonda con background: var(...)): lo que debe pintar la etiqueta.
+  var colorDe = function(token){ var sonda = d.createElement('div'); sonda.style.background = 'var(--' + token + ')'; d.body.appendChild(sonda); var c = w.getComputedStyle(sonda).backgroundColor; sonda.remove(); return c; };
+  var etiquetaPinta = function(el, estilo, que){
+    var cs = w.getComputedStyle(el);
+    if(cs.backgroundColor !== colorDe('est-' + estilo + '-fill') || cs.borderTopColor !== colorDe('est-' + estilo + '-stroke')) fail('detalle: la etiqueta «' + que + '» debe pintar los tokens de ' + estilo + ' (fondo ' + cs.backgroundColor + ', borde ' + cs.borderTopColor + ')');
+  };
+
+  var llamadasScroll = [], scrollOriginal = w.Element.prototype.scrollIntoView;
+  w.Element.prototype.scrollIntoView = function(o){ if(this.id === 'vd-panel') llamadasScroll.push({block: o && o.block}); return scrollOriginal.apply(this, arguments); };
   // Cabecera
   var cab = $('#vd-cab').textContent;
   log.push('detalle-cab='+cab.replace(/\s+/g,' ').slice(0,120));
   ['Camión 01','AB123CD','07','123.456 km','Última medición'].forEach(function(t){ if(cab.indexOf(t) === -1) fail('detalle: cabecera sin "'+t+'"'); });
+  etiquetaPinta($('#vd-cab .vd-tag'), 'mayor', 'Desgaste límite de la cabecera');
   if(!$('#vd-cab .vd-tag.est-mayor')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de mayor desgaste');
 
   // Diagrama: 10 ruedas con una clase por estado, mm y símbolo (el color nunca va solo)
@@ -164,6 +176,20 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#vd-panel').classList.contains('abierto')) fail('detalle: el panel no se abrio');
   if(r3.getAttribute('aria-pressed') !== 'true') fail('detalle: rueda seleccionada sin aria-pressed');
   if(d.activeElement !== $('#vd-panel-titulo')) fail('detalle: el foco no paso al panel');
+  // U1 (docs/21 §5.6): elegir un neumático no desplaza la página si el panel ya se ve; el título no queda bajo la barra.
+  if(d.scrollingElement.scrollTop !== 0) fail('detalle: elegir P3 desplazó la página a ' + d.scrollingElement.scrollTop + ' (debe quedar en 0)');
+  if($('#vd-panel').getBoundingClientRect().top < $('.topbar, #topbar, header').getBoundingClientRect().bottom - 1) fail('detalle: el panel quedó bajo la barra superior');
+  // En el arnés el desplazamiento suave no avanza, así que además se mide la llamada: no hubo ningún scrollIntoView del panel.
+  if(llamadasScroll.length) fail('detalle: elegir P3 con el panel a la vista no debe desplazar nada, llamadas: ' + JSON.stringify(llamadasScroll));
+  // Si el inicio del panel quedó fuera de la vista (la persona había bajado la página), sí se desplaza, con block «start».
+  d.scrollingElement.scrollTop = 700; await sleep(200);
+  if($('#vd-panel').getBoundingClientRect().top >= 0) fail('detalle: el escenario de U1 no dejó el panel arriba de la ventana');
+  $('#vd-diagrama .vd-rueda[data-pos="1"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(300);
+  if(llamadasScroll.length !== 1 || llamadasScroll[0].block !== 'start') fail('detalle: con el panel fuera de la vista debe desplazar a «start»: ' + JSON.stringify(llamadasScroll));
+  d.scrollingElement.scrollTop = 0; llamadasScroll.length = 0;
+  $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
+  // U2: las etiquetas de estado del panel pintan los tokens de su estado (mayor desgaste en P3, límite en P4).
+  etiquetaPinta($('#vd-panel .vd-p-estado .vd-tag'), 'mayor', 'Mayor desgaste del panel');
   ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste acelerado','Interna','4,2','Alertas','Desgaste límite','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });

@@ -535,10 +535,17 @@ function seleccionarRueda(pos) {
   $('vd-panel').classList.add('abierto'); $('vd-backdrop').classList.add('abierto');
   const tit = $('vd-panel-titulo');
   if (tit) tit.focus();
-  // Al elegir otro neumático el panel vuelve al inicio (docs/21 §6); sin animación si la persona pidió menos movimiento.
-  const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // El panel solo se desplaza si su inicio quedó fuera de la vista (docs/21 §5.6): si ya se ve, mover la página deja el
+  // título bajo la barra superior. Sin animación si la persona pidió menos movimiento.
   const panel = $('vd-panel');
-  if (panel && panel.scrollIntoView) panel.scrollIntoView({ block: 'nearest', behavior: quieto ? 'auto' : 'smooth' });
+  if (panel && panel.scrollIntoView) {
+    const barra = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vd-topbar')) || 0;
+    const arriba = panel.getBoundingClientRect().top;
+    if (arriba < barra || arriba > window.innerHeight) {
+      const quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      panel.scrollIntoView({ block: 'start', behavior: quieto ? 'auto' : 'smooth' });
+    }
+  }
 }
 
 function cerrarPanel() {
