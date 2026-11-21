@@ -13,14 +13,14 @@ import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 import { INICIO_LISTO, LEER_INICIO } from './inicio.mjs';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
-const fila = (env, id, pos) => json(env, `select posicion, idneumatico, estado, round(promedio, 1)::text as mm, promedio, sin_medir, n_mediciones_90d, tasa_mm_semana
+const fila = (env, id, pos) => json(env, `select posicion, idneumatico, estado, trunc(round(promedio, 2), 1)::text as mm, promedio, sin_medir, n_mediciones_90d, tasa_mm_semana
   from public.v_estado_neumaticos where vehiculo_id = ${id} and posicion = ${pos}`)[0];
 const limiteAlerta = (env, id, pos) => Number(env.sql(`select count(*) from public.v_alertas where vehiculo_id = ${id} and posicion = ${pos} and tipo = 'limite'`));
 const mmUi = mm => (mm === null ? '—' : mm.replace('.', ','));
 
 // Lo que dibuja el diagrama para una rueda: texto de mm, relleno (color/patrón) y etiqueta accesible.
 const rueda = (p, pos) => p.eval(`(() => { const g = document.querySelector('#vd-diagrama .vd-rueda[data-pos="${pos}"]');
-  return g && { mm: g.querySelector('.vd-mm').textContent, fill: g.querySelector('rect.vd-goma').getAttribute('fill'), aria: g.getAttribute('aria-label') }; })()`);
+  return g && { mm: g.querySelector('.vd-mm').textContent, fill: getComputedStyle(g.querySelector('rect.vd-goma')).fill, clase: g.getAttribute('class'), aria: g.getAttribute('aria-label') }; })()`);
 
 // Neumáticos en desgaste límite que muestra Inicio (proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido).
 const limiteInicio = async p => {
@@ -72,8 +72,9 @@ export function registrar(env) {
       // El detalle se recarga: la rueda nueva figura desconocida (no hereda los mm del viejo)
       await p.esperar(`(() => { const g = document.querySelector('#vd-diagrama .vd-rueda[data-pos="${pos}"]'); return g && g.querySelector('.vd-mm').textContent === '—'; })()`, { que: 'la rueda nueva desconocida' });
       const r1 = await rueda(p, pos);
-      assert.equal(r1.fill, 'url(#vd-sin-datos)');
-      assert.match(r1.aria, /desconocido/i);
+      assert.match(r1.clase, /\best-sinDatos\b/);
+      assert.match(r1.fill, /vd-sin-datos/);
+      assert.match(r1.aria, /sin datos/i);
       // Panel: sin medición ni gráfico del viejo
       await seleccionarRueda(p, pos);
       await p.esperar(`/todavía no tiene mediciones/.test(document.querySelector('#vd-panel').textContent)`, { que: 'el panel dice que no tiene mediciones' });
@@ -108,9 +109,9 @@ export function registrar(env) {
     await flujo(env, 'cambio-limite-medido', 'global', async p => {
       await abrirDetallePorMatricula(p, patente);
       assert.equal((await rueda(p, pos)).mm, '11,0');
-      assert.match((await rueda(p, pos)).aria, /nuevo/i);
+      assert.match((await rueda(p, pos)).aria, /buen estado/i);
       await seleccionarRueda(p, pos);
-      await p.esperar(`/1 medición/.test(document.querySelector('#vd-chart-wrap').getAttribute('aria-label') || document.querySelector('#vd-chart-wrap .vd-chart')?.getAttribute('aria-label') || '')`, { que: 'gráfico con un solo punto (el del nuevo)' });
+      await p.esperar(`/1 lectura(?!s)/.test(document.querySelector('#vd-chart-wrap').getAttribute('aria-label') || document.querySelector('#vd-chart-wrap .vd-chart')?.getAttribute('aria-label') || '')`, { que: 'gráfico con un solo punto (el del nuevo)' });
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
       assert.match(panel, /Montaje/, 'el historial del nuevo muestra su montaje');
       assert.doesNotMatch(panel, /Baja|Dado de baja/, 'el historial no muestra la baja del viejo');
@@ -150,7 +151,7 @@ export function registrar(env) {
       // Panel de la posición nueva del neumático: su historial y su gráfico completo
       await seleccionarRueda(p, b);
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
-      await p.esperar(`/${nMedA} mediciones/.test((document.querySelector('#vd-chart-wrap .vd-chart') || {getAttribute: () => ''}).getAttribute('aria-label') || '')`, { que: `gráfico con las ${nMedA} mediciones del neumático` });
+      await p.esperar(`/${nMedA} lecturas/.test((document.querySelector('#vd-chart-wrap .vd-chart') || {getAttribute: () => ''}).getAttribute('aria-label') || '')`, { que: `gráfico con las ${nMedA} lecturas del neumático` });
       assert.match(panel, /Rotación/, 'el historial del neumático muestra la rotación');
     });
 

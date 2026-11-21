@@ -5,14 +5,17 @@ import assert from 'node:assert/strict';
 import { flujo, abrirDetallePorMatricula, texto, irA } from '../lib/flujo.mjs';
 import { json, vehiculosVisibles } from '../lib/verdad.mjs';
 import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
+import { ESTADOS, estadoDeBase } from '../../../assets/js/domain/estado-desgaste.js';
 
 const tipoDe = (env, patente) => Number(env.sql(`select tipo_ruedas from public.vehiculos where patente = '${patente}'`));
 
-const ETIQUETA = { nuevo: 'Nuevo', poco_desgaste: 'Poco desgaste', mayor_desgaste: 'Mayor desgaste', desgaste_limite: 'Desgaste límite', desconocido: 'Desconocido' };
+// Estado de la spec (docs/21) que corresponde al estado de la base: el estado se decide con el valor CRUDO de la base y el
+// número se muestra TRUNCADO a un decimal (7,97 -> «7,9», pero «poco desgaste»). Color por tokens `--est-*`, no por atributo.
+const estadoUi = estadoBase => ESTADOS[estadoDeBase(estadoBase)];
 
 // Rueda esperada según la base: posición -> {mm, nivel}
 function ruedasEsperadas(env, vehiculoId) {
-  const filas = json(env, `select e.posicion, round(e.promedio, 1)::text as mm, e.promedio, e.estado
+  const filas = json(env, `select e.posicion, trunc(round(e.promedio, 2), 1)::text as mm, e.promedio, e.estado
     from public.v_estado_neumaticos e where e.vehiculo_id = ${vehiculoId}`);
   const aux = json(env, `select 1 from public.neumaticos where vehiculo_id = ${vehiculoId} and posicion = 99 and estado = 'montado'`).length > 0;
   const porPos = new Map(filas.map(f => [f.posicion, f]));
@@ -25,18 +28,23 @@ function ruedasEsperadas(env, vehiculoId) {
   });
 }
 
+// '#E4EAD3' -> 'rgb(228,234,211)' (lo que devuelve getComputedStyle)
+const hexARgb = h => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h); return m ? `rgb(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)})` : h; };
+
 export function registrar(env) {
   for (const rol of ['global', 'salto']) {
     test(`Detalle (${rol}): las ruedas de cada camión coinciden con la base (mm, estado y color)`, async () => {
       const vehiculos = await vehiculosVisibles(env, rol);
       assert.ok(vehiculos.length >= 5);
-      let conAuxilio = 0, sinDatos = 0, vacias = 0, criticas = 0, verde = null; // verde: el color de "ok" (la paleta puede cambiar; debe ser uno solo)
+      let conAuxilio = 0, sinDatos = 0, vacias = 0, criticas = 0;
       await flujo(env, 'detalle', rol, async p => {
         for (const v of vehiculos) {
           await abrirDetallePorMatricula(p, v.patente);
           assert.match(await texto(p, '#vd-cab'), new RegExp(v.patente), `cabecera de ${v.patente}`);
           const dibujadas = await p.eval(`[...document.querySelectorAll('#vd-diagrama .vd-rueda')].map(g => ({
-            pos: Number(g.dataset.pos), fill: g.querySelector('rect.vd-goma').getAttribute('fill'), vacia: g.classList.contains('vd-vacia'),
+            pos: Number(g.dataset.pos), clase: g.getAttribute('class'), vacia: g.classList.contains('vd-vacia'),
+            fill: getComputedStyle(g.querySelector('rect.vd-goma')).fill,
+            token: ['bueno', 'poco', 'mayor', 'sinDatos'].reduce((o, k) => ({ ...o, [k]: getComputedStyle(document.documentElement).getPropertyValue('--est-' + k + '-fill').trim() }), {}),
             mm: (g.querySelector('.vd-mm') || {}).textContent, aria: g.getAttribute('aria-label') }))`);
           const esperadas = ruedasEsperadas(env, v.id);
           assert.deepEqual(dibujadas.map(r => r.pos).sort((a, b) => a - b), esperadas.map(r => r.pos), `[${v.patente}] posiciones dibujadas`);
@@ -46,7 +54,7 @@ export function registrar(env) {
             if (e.nivel === 'vacia') {
               vacias++;
               assert.equal(d.vacia, true, `${quien} vacía: rueda punteada`);
-              assert.equal(d.fill, null, `${quien} vacía: sin color de desgaste`);
+              assert.doesNotMatch(d.clase, /\best-/, `${quien} vacía: sin estilo de desgaste`);
               assert.equal(d.mm, undefined, quien);
               assert.match(d.aria, /vacía/, quien);
               continue;
@@ -54,15 +62,18 @@ export function registrar(env) {
             assert.equal(d.vacia, false, `${quien} tiene neumático: no es una rueda vacía`);
             if (e.nivel === 'desconocido') {
               sinDatos++;
-              assert.equal(d.fill, 'url(#vd-sin-datos)', `${quien} desconocido: patrón`);
+              assert.match(d.clase, /\best-sinDatos\b/, `${quien} sin datos: estilo propio`);
+              assert.match(d.fill, /vd-sin-datos/, `${quien} sin datos: patrón`);
               assert.equal(d.mm, '—', quien);
-              assert.match(d.aria, /desconocido/, quien);
+              assert.match(d.aria, /sin datos/, quien);
               continue;
             }
-            assert.equal(d.mm, e.mm, `${quien} mm`);
-            assert.ok(d.aria.includes(`${e.mm} milímetros, ${ETIQUETA[e.nivel]}.`), `${quien} etiqueta accesible: ${d.aria}`);
-            if (e.nivel === 'nuevo') { verde ??= d.fill; assert.equal(d.fill, verde, `${quien} mismo color que las demás ruedas en buen estado`); }
-            else { assert.match(d.fill, /^#[0-9a-f]{6}$/, quien); assert.notEqual(d.fill, verde, `${quien} no es el color de buen estado`); }
+            const est = estadoUi(e.nivel);
+            assert.equal(d.mm, e.mm, `${quien} mm (truncado a 1 decimal)`);
+            assert.ok(d.aria.includes(`${e.mm} milímetros, ${est.texto.toLowerCase()}`), `${quien} etiqueta accesible: ${d.aria}`);
+            // «Desgaste límite» tiene nombre propio pero usa el estilo (tokens) de «Mayor desgaste»
+            assert.match(d.clase, new RegExp(`\\best-${est.estilo}\\b`), `${quien} clase de estado`);
+            assert.equal(d.fill.replace(/\s/g, '').toLowerCase(), hexARgb(d.token[est.estilo]), `${quien} color = token --est-${est.estilo}-fill`);
             if (e.nivel === 'desgaste_limite') criticas++;
           }
           if (esperadas.some(r => r.pos === 99)) {
@@ -86,8 +97,8 @@ export function registrar(env) {
       await abrirDetallePorMatricula(p, 'DEMO010');
       const r = await p.eval(`[...document.querySelectorAll('#vd-diagrama .vd-rueda')].map(g => g.dataset.pos + ':' + g.getAttribute('aria-label'))`);
       assert.equal(r.length, 10);
-      assert.ok(r.find(x => x.startsWith('5:')).includes('Desgaste límite'));
-      assert.equal(r.filter(x => x.includes('Desgaste límite')).length, 1);
+      assert.ok(r.find(x => x.startsWith('5:')).includes('desgaste límite'));
+      assert.equal(r.filter(x => x.includes('desgaste límite')).length, 1);
       // Panel de la rueda en desgaste límite con teclado: muestra posición, estado y acciones del taller.
       await p.click('#vd-diagrama .vd-rueda[data-pos="5"]');
       await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto')`);
