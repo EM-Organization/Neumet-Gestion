@@ -35,6 +35,8 @@ let generacion=0;
 let entrada=null; // {gen, userId, promesa}
 // Id del usuario cuyo panel ya se mostró: TOKEN_REFRESHED no repite showApp ni los hooks de login.
 let mostrado=null;
+// Id del usuario cuya pantalla «Sin acceso» está a la vista: otro usuario que entra sin SIGNED_OUT la tapa en cuanto empieza su resolución.
+let sinAccesoDe=null;
 
 function applyClienteMode(){
   document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display='none'; });
@@ -96,7 +98,7 @@ export async function checkAuth(){
 function entrar(user){
   if(entrada&&entrada.gen===generacion&&entrada.userId===user.id) return entrada.promesa;
   // Otro usuario sin SIGNED_OUT: el panel del anterior se suelta y se tapa ya, sin esperar a la resolución del nuevo.
-  if(mostrado!==null&&mostrado!==user.id){ soltarEstado(); mostrarCargando(); }
+  if((mostrado!==null&&mostrado!==user.id)||(sinAccesoDe!==null&&sinAccesoDe!==user.id)){ soltarEstado(); mostrarCargando(); }
   generacion++;
   const gen=generacion;
   const promesa=resolverEntrada(user,gen);
@@ -114,7 +116,7 @@ async function resolverEntrada(user,gen){
   currentRol=r.rol; currentSucursalId=r.sucursalId;
   currentClienteId=r.rol==='cliente'?r.clienteId:null;
   currentClienteNombre=r.rol==='cliente'?r.clienteNombre:'';
-  if(!panelHabilitado()){ showSinAcceso(); return; }
+  if(!panelHabilitado()){ sinAccesoDe=user.id; showSinAcceso(); return; }
   if(mostrado!==user.id){ mostrado=user.id; showApp(user); }
 }
 
@@ -213,7 +215,7 @@ function limpiarSesion(){
 
 // Quita el estado de la sesión anterior: globals, vistas (hooks de logout) y menús por rol.
 function soltarEstado(){
-  mostrado=null;
+  mostrado=null; sinAccesoDe=null;
   if(currentRol===null) return;
   currentRol=null; currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
   logoutHooks.forEach(fn=>fn());

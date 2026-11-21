@@ -6,7 +6,7 @@
 // ?desde=N        el perfil (error o lento) solo afecta a la consulta N en adelante (por defecto, desde la primera)
 // ?sesionms=N     getSession responde N ms más tarde que el stub (400 ms): ventana de carrera de la escena «ventana»
 // Los perfiles del usuario u-2 se resuelven con la fila de u-1 (un segundo usuario con panel, para la escena «cambio»).
-// ?asinperfil=1  u-1 (cuenta A) no tiene perfil aunque exista su fila; u-2 (cuenta B) sigue resolviéndose con la fila de u-1 (escena «sinaccesocambio»).
+// ?asinperfil=1  u-1 (cuenta A) no tiene perfil aunque exista su fila; u-2 (cuenta B) sigue resolviéndose con la fila de u-1 (escena «sinaccesocambio», con perfil=lento&desde=2 para que B tarde).
 // window.__perfil.calls: consultas de perfiles hechas. window.__auth.emitir(evento, sesion): dispara el oyente de auth.
 (function () {
   if (!/[?&]arranque=1/.test(window.parent.location.search)) return;
