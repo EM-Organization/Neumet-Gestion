@@ -78,7 +78,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
 
   // A 390 px: los dos textos y el chip caben sin cortar el nombre letra por letra ni desbordar; cada fila es un objetivo de 44 px o mas.
   var marco = w.frameElement;
-  for(var ancho of [390]){
+  for(var ancho of [390, 481]){
   marco.style.width = ancho+'px'; await sleep(300);
   var listaEl = $('#veh-lista');
   if(listaEl.scrollWidth > listaEl.clientWidth) fail(ancho+'px: la lista desborda en horizontal ('+listaEl.scrollWidth+' > '+listaEl.clientWidth+')');
