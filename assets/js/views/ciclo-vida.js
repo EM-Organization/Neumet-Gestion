@@ -23,7 +23,7 @@ import { conValor, textoCosto } from '../domain/precios.js';
 
 // Columnas de eventos_neumatico sin costo (la base no lo entrega por select: se pide con traerCostos, solo admin y perfil global).
 const EVENTO_COLS='id,cliente_id,vehiculo_id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_by,created_at,sucursal_origen_id,sucursal_destino_id';
-let vehId=null, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), costoCub=new Map(), filtroNeum='';
+let vehId=null, desdeDetalle=false, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), costoCub=new Map(), filtroNeum='';
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
@@ -70,7 +70,8 @@ function renderOdometro(){
 // Contrato: data-action="neumatico-cambiar" + data-vehiculo-id + data-posicion.
 function renderCambio(){
   const disp=neums.filter(n=>n.estado==='montado' || !n.estado);
-  if(esAdmin() || !disp.length){ setHtml($('ciclo-cambio'), html``); return; }
+  // Desde el detalle la acción de la rueda ya cubre el cambio: no se repite aquí con otro botón primario.
+  if(esAdmin() || desdeDetalle || !disp.length){ setHtml($('ciclo-cambio'), html``); return; }
   setHtml($('ciclo-cambio'), html`
     <div class="field"><label for="ciclo-cambio-pos">Cambiar neumático (taller)</label>
       <select id="ciclo-cambio-pos" data-change="cicloCambioPos">${disp.map(n=>html`<option value="${n.posicion}">${neumLabel(n)}</option>`)}</select></div>
@@ -134,8 +135,8 @@ ACTIONS.cicloRegistrarCosto=function(id){
   abrirRegistroCosto({neumaticoId:n.id, etiqueta:`${nomPos(n.posicion)} · ${[n.marca,n.modelo].filter(Boolean).join(' ')||'Neumático'}`,
     alGuardar:async()=>{ if(await cargar()) renderTodo(); }});
 };
-ACTIONS.openCicloVida=async function(id){
-  vehId=id; filtroNeum='';
+ACTIONS.openCicloVida=async function(id, detalle){
+  vehId=id; desdeDetalle=detalle===true; filtroNeum='';
   $('modal-ciclo').classList.add('show');
   if(await cargar()) renderTodo(); else ACTIONS.closeCicloVida();
 };

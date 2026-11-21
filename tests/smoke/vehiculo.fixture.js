@@ -83,7 +83,20 @@
   var T = {vehiculos:veh, v_km_cubierta:kmcub, v_costo_cubierta:costocub, v_estado_neumaticos:estado, v_alertas:alertas, eventos_neumatico:eventos, mediciones:mediciones.concat(observadas), v_mediciones_neumatico:mediciones, neumaticos:neumaticos};
   var fx = window.__vehFx = { queries: [], T: T }; // T: datos mutables (los usa montar.fixture.js)
 
+  // Control de respuestas para las pruebas de concurrencia (vehiculo.flow.js): retenidas[i] suelta la i-ésima consulta de
+  // v_estado_neumaticos mientras `retener` esté activo; fallarVehiculos hace fallar la carga de vehiculos.
+  fx.retener = false; fx.retenidas = []; fx.fallarVehiculos = false;
+  fx.soltar = function(i){ var r = fx.retenidas[i]; if(r){ fx.retenidas[i] = null; r(); } };
   function Q(table){
+    var q = Q0(table);
+    var th = q.then;
+    if(table === 'vehiculos' && fx.fallarVehiculos) q.then = function(res, rej){ return Promise.resolve({data: null, error: {message: 'red caída'}}).then(res, rej); };
+    if(table === 'v_estado_neumaticos' && fx.retener) q.then = function(res, rej){
+      return new Promise(function(liberar){ fx.retenidas.push(liberar); }).then(function(){ return th.call(q, res, rej); });
+    };
+    return q;
+  }
+  function Q0(table){
     var rows = T[table].slice(), rng = null, single = false, tag = '';
     var q = {
       select:function(){ return q; }, order:function(){ return q; }, limit:function(){ return q; }, not:function(){ return q; },

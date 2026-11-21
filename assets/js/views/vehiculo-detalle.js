@@ -146,6 +146,7 @@ function cabecera() {
   setHtml($('vd-cab'), html`
     <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? tagEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
       ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Cambiar distribución</button>` : ''}
+      ${esAdminEmpresa() ? html`<button type="button" class="btn ghost" data-action="openCicloVida" data-args="[${vehiculoId}, true]">Odómetro y ciclo de vida</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}

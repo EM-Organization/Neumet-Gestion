@@ -57,7 +57,7 @@ flowchart TD
   VD -->|click en una rueda| PR[Panel de la rueda]
   PR --> CN[Cambiar neumático]
   PR --> RO[Rotar con otra posición, sin confirmar]
-  VD --> OD[Odómetro y ciclo de vida]
+  VD -->|solo administrador de empresa| OD[Odómetro y ciclo de vida]
   R -->|CSV / versión imprimible| X[Descarga]
 ```
 
