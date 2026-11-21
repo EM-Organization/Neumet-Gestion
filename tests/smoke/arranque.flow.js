@@ -114,9 +114,9 @@ var arranqueEscenas = {
   // Sin módulos ni supabase (la página solo tiene HTML y CSS): a los 10 s queda solo el aviso, también a 390 px.
   sinmodulos: async function(w, d, sleep, fail, log){
     var V = arranqueVisible;
-    await sleep(9900);
+    await sleep(10500);
     var av = d.getElementById('cargando-aviso');
-    if(!V(av)) fail('sinmodulos: no aparece el aviso «No se pudo cargar» a los 10 s');
+    if(!V(av) || w.getComputedStyle(av).visibility !== 'visible') fail('sinmodulos: no aparece el aviso «No se pudo cargar» a los 10 s');
     if(V(d.querySelector('#cargando-screen .login-sub'))) fail('sinmodulos: se ven a la vez «Cargando…» y «No se pudo cargar»');
     if(V(d.getElementById('app')) || V(d.getElementById('login-screen'))) fail('sinmodulos: se muestra el panel o el login sin módulos');
     if(av && av.getBoundingClientRect().right > w.innerWidth) fail('sinmodulos: el aviso se sale del ancho de '+w.innerWidth+' px');

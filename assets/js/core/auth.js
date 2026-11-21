@@ -132,6 +132,9 @@ function showFalloCarga(){
 function mostrarCargando(){
   const c=document.getElementById('cargando-screen');
   c.classList.remove('falla','hidden');
+  // La CSS anima «Cargando…» y el aviso a los 10 s con relleno: se anula para que la carga nueva vuelva a mostrar solo «Cargando…».
+  const sub=c.querySelector('.login-sub'); sub.style.animation='none'; sub.style.display='';
+  document.getElementById('cargando-aviso').style.animation='none';
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.add('hidden');
