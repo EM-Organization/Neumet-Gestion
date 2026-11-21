@@ -162,6 +162,8 @@ function showSinAcceso(){
 function showApp(user){
   ocultarCargando();
   document.getElementById('login-screen').classList.add('hidden');
+  // Cuenta A «Sin acceso» y luego B con panel (sin SIGNED_OUT): el aviso de A no debe quedar tapando el panel de B.
+  document.getElementById('sin-acceso-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('user-email').textContent=user.email;
   document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();
