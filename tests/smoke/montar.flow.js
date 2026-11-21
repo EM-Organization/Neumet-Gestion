@@ -30,8 +30,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(all('#vd-diagrama .vd-mm').length) fail('montar: una rueda vacía muestra mm');
   var v3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
   if(!/vacía/.test(v3.getAttribute('aria-label')) || v3.getAttribute('role') !== 'button' || v3.getAttribute('tabindex') !== '0') fail('montar: la rueda vacía no es accesible: ' + v3.getAttribute('aria-label'));
-  if(!/Posición vacía/.test(txt('#vd-leyenda'))) fail('montar: la leyenda no explica la posición vacía');
-  if(/Desgaste del neumático en mm/.test(txt('#vd-leyenda'))) fail('montar: la escala de desgaste no corresponde a un coche sin neumáticos');
+  // Sin leyenda de escala: la posición vacía se explica con su aria-label («vacía») y los chips sólo cuentan neumáticos montados
+  if($('#vd-leyenda') || all('#vd-resumen .vd-chip[data-filtro]').length) fail('montar: un coche sin neumáticos no lleva leyenda ni chips de estado');
 
   // Rueda vacía: el panel ofrece «Montar neumático» y abre el modal en esa posición
   v3.dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(300);
@@ -244,7 +244,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(abrio){
     if(!$('#veh-elim-grupo').hidden || txt('#veh-elim-destinos') !== '') fail('eliminar: sin neumáticos no debe haber opciones: ' + txt('#veh-elim-destinos'));
     if(!/no tiene neumáticos/.test(txt('#veh-elim-resumen'))) fail('eliminar: resumen sin neumáticos: ' + txt('#veh-elim-resumen'));
-    if(d.activeElement !== $('#veh-elim-confirmar')) fail('eliminar: sin neumáticos el foco debe quedar en «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+    if(d.activeElement !== $('#veh-elim-cancelar')) fail('eliminar: el foco inicial del alertdialog debe ser «Cancelar», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
     $('#veh-elim-cancelar').click(); await sleep(200);
     if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: «Cancelar» no cerró el diálogo (sin neumáticos)');
     if(d.activeElement !== be) fail('eliminar: al cancelar el foco debe volver a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));

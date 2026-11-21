@@ -48,22 +48,44 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var cab = $('#vd-cab').textContent;
   log.push('detalle-cab='+cab.replace(/\s+/g,' ').slice(0,120));
   ['Camión 01','AB123CD','07','123.456 km','Última medición'].forEach(function(t){ if(cab.indexOf(t) === -1) fail('detalle: cabecera sin "'+t+'"'); });
+  if(!$('#vd-cab .vd-tag.est-mayor')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de mayor desgaste');
 
-  // Diagrama: 10 ruedas coloreadas, con mm y simbolo
+  // Diagrama: 10 ruedas con una clase por estado, mm y símbolo (el color nunca va solo)
   var ruedas = all('#vd-diagrama .vd-rueda');
   log.push('ruedas='+ruedas.length);
   if(ruedas.length !== 10) fail('detalle: se esperaban 10 ruedas, hay '+ruedas.length);
-  var fills = {};
+  var estilos = {};
   Array.prototype.forEach.call(ruedas, function(g){
-    var f = g.querySelector('rect.vd-goma').getAttribute('fill'); fills[f] = 1;
-    if(!g.querySelector('.vd-mm').textContent || !g.querySelector('.vd-sim').textContent) fail('detalle: rueda sin mm o simbolo');
+    var m = /est-(bueno|poco|mayor|sinDatos)/.exec(g.getAttribute('class')); if(!m) { fail('detalle: rueda sin clase de estado'); return; }
+    estilos[m[1]] = (estilos[m[1]] || 0) + 1;
+    if(!g.querySelector('.vd-mm').textContent) fail('detalle: rueda sin mm');
+    if(m[1] !== 'sinDatos' && !g.querySelector('.vd-sim').textContent) fail('detalle: rueda sin símbolo');
     if(g.getAttribute('tabindex') !== '0' || g.getAttribute('role') !== 'button' || !g.getAttribute('aria-label')) fail('detalle: rueda no accesible');
+    if(g.querySelector('rect.vd-goma').hasAttribute('fill')) fail('detalle: el relleno de la rueda debe venir del CSS, no de un atributo');
   });
-  log.push('colores='+Object.keys(fills).length);
-  if(Object.keys(fills).length < 5) fail('detalle: la escala deberia dar varios colores, hay '+Object.keys(fills).length);
-  if(!fills['url(#vd-sin-datos)']) fail('detalle: la rueda sin datos deberia tener patron');
-  if(all('#vd-diagrama .vd-alerta-disco').length < 1) fail('detalle: falta marca de desgaste mayor al normal');
-  if(!$('#vd-leyenda .vd-escala-barra') || all('#vd-leyenda .vd-escala-marcas span').length !== 3 || all('#vd-leyenda .vd-leyenda-item').length < 2) fail('detalle: leyenda incompleta');
+  log.push('estilos='+JSON.stringify(estilos));
+  if(estilos.bueno !== 5 || estilos.poco !== 2 || estilos.mayor !== 2 || estilos.sinDatos !== 1) fail('detalle: estilos de las ruedas: '+JSON.stringify(estilos));
+  if(all('#vd-diagrama .vd-bandera').length < 1) fail('detalle: falta la insignia de desgaste acelerado');
+  var r4 = $('#vd-diagrama .vd-rueda[data-pos="4"]'), r5 = $('#vd-diagrama .vd-rueda[data-pos="5"]');
+  if(!/^Posición P4, .+, 2,5 milímetros, desgaste límite$/.test(r4.getAttribute('aria-label'))) fail('detalle: aria-label de la rueda 4: '+r4.getAttribute('aria-label'));
+  if(r5.querySelector('.vd-mm').textContent !== '—') fail('detalle: la rueda sin datos debe mostrar —');
+
+  // Chips: leyenda y filtro a la vez. La suma de los estados es el total y «Desgaste límite» se conserva (decisión del 2026-11-21).
+  var chips = all('#vd-resumen .vd-chip[data-filtro]');
+  var cuenta = {}; Array.prototype.forEach.call(chips, function(c){ cuenta[c.dataset.filtro] = c.textContent.replace(/\s+/g,' ').trim(); });
+  log.push('chips='+JSON.stringify(cuenta));
+  if(!/^.*1 Desgaste límite/.test(cuenta.limite || '') || !/1 Mayor desgaste/.test(cuenta.mayor || '') || !/2 Poco desgaste/.test(cuenta.poco || '') || !/5 Buen estado/.test(cuenta.bueno || '') || !/1 Sin datos/.test(cuenta.sinDatos || '')) fail('detalle: chips de estado: '+JSON.stringify(cuenta));
+  if($('#vd-resumen .vd-chip-total').textContent.trim() !== '10 neumáticos') fail('detalle: chip total: '+$('#vd-resumen .vd-chip-total').textContent);
+  if(/Desconocido|Nuevo|mayor al normal/.test($('#vd-resumen').textContent)) fail('detalle: texto viejo en los chips');
+  // Filtrar atenúa sin cambiar la selección; las atenuadas siguen siendo tocables; el total limpia.
+  chips[0].click(); await sleep(100);
+  if(chips[0].getAttribute('aria-pressed') !== 'true') fail('detalle: el chip filtro no marca aria-pressed');
+  if(all('#vd-diagrama .vd-rueda.dim').length !== 9) fail('detalle: el filtro debe atenuar las ruedas que no coinciden: '+all('#vd-diagrama .vd-rueda.dim').length);
+  if($('#vd-diagrama .vd-rueda.dim').getAttribute('tabindex') !== '0') fail('detalle: una rueda atenuada debe seguir siendo tocable');
+  $('#vd-resumen .vd-chip-total').click(); await sleep(100);
+  if(all('#vd-diagrama .vd-rueda.dim').length !== 0 || all('#vd-resumen [aria-pressed="true"]').length) fail('detalle: el chip total debe limpiar el filtro');
+  if($('#vd-leyenda')) fail('detalle: la leyenda de la escala continua ya no existe');
+
 
   // Panel de la rueda 3 (critica, desgaste por encima de lo normal) con el teclado
   var r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
@@ -74,7 +96,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!$('#vd-panel').classList.contains('abierto')) fail('detalle: el panel no se abrio');
   if(r3.getAttribute('aria-pressed') !== 'true') fail('detalle: rueda seleccionada sin aria-pressed');
   if(d.activeElement !== $('#vd-panel-titulo')) fail('detalle: el foco no paso al panel');
-  ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste mayor al normal','Interno','4,2','Alertas','Desgaste límite','Rotación'].forEach(function(t){
+  ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste acelerado','Interna','4,2','Alertas','Desgaste límite','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');
@@ -92,10 +114,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var ch = $('#vd-chart-wrap svg');
   if(!ch) fail('detalle: no se dibujo el grafico');
   else {
-    log.push('grafico-puntos='+ch.querySelectorAll('circle').length+' proy='+ch.querySelectorAll('.vd-g-proy').length);
+    log.push('grafico-puntos='+ch.querySelectorAll('circle').length+' bandas='+ch.querySelectorAll('.vd-g-banda').length);
     if(ch.querySelectorAll('circle').length !== 10) fail('detalle: el grafico deberia tener 10 puntos');
-    if(ch.querySelectorAll('.vd-g-umbral').length !== 3) fail('detalle: faltan lineas de umbral');
-    if(ch.querySelectorAll('.vd-g-proy').length !== 1) fail('detalle: falta la proyeccion punteada');
+    if(ch.querySelectorAll('.vd-g-banda').length < 3) fail('detalle: faltan las bandas de estado del grafico');
+    if(ch.querySelectorAll('.vd-g-proy,.vd-g-umbral').length) fail('detalle: el grafico no lleva proyeccion ni lineas de umbral');
+    if(ch.getAttribute('role') !== 'img' || !/^Evolución del desgaste de /.test(ch.getAttribute('aria-label') || '')) fail('detalle: el grafico necesita role img y aria-label');
+    var vd = $('#vd-chart-wrap details.vd-datos-det'); if(!vd || vd.querySelectorAll('tbody tr').length !== 10) fail('detalle: falta la tabla Ver datos con 10 filas');
   }
 
   // Contrato con el taller: botones presentes con data-*; handlers REALES de cambio-neumatico.js (no un stub)
