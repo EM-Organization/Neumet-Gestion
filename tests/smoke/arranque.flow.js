@@ -24,6 +24,10 @@ var arranqueEscenas = {
     if(!c.classList.contains('falla')) fail('red: falta la marca de fallo de carga');
     if(!V(av)) fail('red: no se ve «No se pudo cargar»');
     if(V(c.querySelector('.login-sub'))) fail('red: se ven a la vez «Cargando…» y «No se pudo cargar»');
+    // Con «Cargando…» fuera de la pantalla, la línea del aviso no queda pegada al logo (≥ 12 px).
+    var sep = av.getBoundingClientRect().top - c.querySelector('.login-brand').getBoundingClientRect().bottom;
+    if(sep < 12) fail('red: la línea del aviso queda pegada al logo ('+Math.round(sep)+' px, mínimo 12)');
+    if(av.getBoundingClientRect().right > w.innerWidth) fail('red: el aviso se sale del ancho de '+w.innerWidth+' px');
     if(V(d.getElementById('sin-acceso-screen'))) fail('red: se mostró «Sin acceso» ante un error de red');
     if(V(d.getElementById('login-screen'))) fail('red: se mostró el login ante un error de red');
     if(V(d.getElementById('app')) || w.__vistos.app) fail('red: se mostró el panel ante un error de red');
@@ -105,11 +109,31 @@ var arranqueEscenas = {
       if(V(d.getElementById('app'))) fail('cambio: B con error de red muestra el panel');
       if(d.getElementById('user-role').textContent.trim()!=='—') fail('cambio: tras fallar B, el rol de A sigue en el encabezado (currentRol debe ser null)');
       if(V(d.getElementById('login-screen')) || V(d.getElementById('sin-acceso-screen'))) fail('cambio: B con error de red muestra login o «Sin acceso»');
+      // Estado final completo: solo el aviso (con su enlace de recarga) y nada del panel de A al alcance.
+      if(V(cg.querySelector('.login-sub'))) fail('cambio: B con error de red muestra «Cargando…» junto al aviso');
+      if(!/No se pudo cargar/.test(d.getElementById('cargando-aviso').textContent) || !V(d.querySelector('#cargando-aviso a'))) fail('cambio: el aviso de B no trae el enlace para recargar');
+      if(!d.getElementById('app').classList.contains('hidden') || V(d.querySelector('#app .nav-item'))) fail('cambio: tras fallar B quedan elementos del panel de A accesibles');
+      if(w.__vistos && w.__vistos.sinAcceso) fail('cambio: B con error de red llegó a mostrar «Sin acceso»');
     } else {
       if(!V(d.getElementById('app'))) fail('cambio: el panel de B no se ve tras resolverse');
       if(!/otro@test\.local/.test(d.getElementById('user-email').textContent)) fail('cambio: el panel mostrado no es el de B');
     }
     log.push('escena cambio'+(error?'-error':'')+' perfiles='+w.__perfil.calls);
+  },
+  // Cuenta A «Sin acceso» y luego cuenta B (con panel) sin SIGNED_OUT: B no hereda la pantalla ni el estado de A.
+  sinaccesocambio: async function(w, d, sleep, fail, log){
+    var V = arranqueVisible;
+    await sleep(1200);
+    if(!V(d.getElementById('sin-acceso-screen'))) fail('sinaccesocambio: no se ve «Sin acceso» para la cuenta A');
+    if(V(d.getElementById('app')) || w.__vistos.app) fail('sinaccesocambio: la cuenta A sin perfil vio el panel');
+    w.__auth.emitir('SIGNED_IN', {user:{id:'u-2',email:'otro@test.local'}});
+    await sleep(1500);
+    if(V(d.getElementById('sin-acceso-screen'))) fail('sinaccesocambio: «Sin acceso» de A sigue visible con la cuenta B');
+    if(!V(d.getElementById('app'))) fail('sinaccesocambio: el panel de B no se ve');
+    if(V(d.getElementById('login-screen')) || V(d.getElementById('cargando-screen'))) fail('sinaccesocambio: quedan login o «Cargando» con la cuenta B');
+    if(d.getElementById('user-role').textContent.trim() === '—') fail('sinaccesocambio: B sin rol en el encabezado');
+    log.push('DBG '+JSON.stringify({sa:d.getElementById('sin-acceso-screen').className,app:d.getElementById('app').className,role:d.getElementById('user-role').textContent,cg:d.getElementById('cargando-screen').className,calls:w.__perfil.calls}));
+    log.push('escena sinaccesocambio perfiles='+w.__perfil.calls);
   },
   // Sin módulos ni supabase (la página solo tiene HTML y CSS): a los 10 s queda solo el aviso, también a 390 px.
   sinmodulos: async function(w, d, sleep, fail, log){
@@ -117,7 +141,9 @@ var arranqueEscenas = {
     await sleep(10500);
     var av = d.getElementById('cargando-aviso');
     if(!V(av) || w.getComputedStyle(av).visibility !== 'visible') fail('sinmodulos: no aparece el aviso «No se pudo cargar» a los 10 s');
-    if(V(d.querySelector('#cargando-screen .login-sub'))) fail('sinmodulos: se ven a la vez «Cargando…» y «No se pudo cargar»');
+    // «Cargando…» se oculta con visibility (animable; sin display:none): invisible, fuera del foco y de lectores de pantalla.
+    var sub = d.querySelector('#cargando-screen .login-sub'), cs = w.getComputedStyle(sub);
+    if(cs.visibility !== 'hidden' || cs.display === 'none') fail('sinmodulos: «Cargando…» debe ocultarse con visibility:hidden (no display:none) a los 10 s');
     if(V(d.getElementById('app')) || V(d.getElementById('login-screen'))) fail('sinmodulos: se muestra el panel o el login sin módulos');
     if(av && av.getBoundingClientRect().right > w.innerWidth) fail('sinmodulos: el aviso se sale del ancho de '+w.innerWidth+' px');
     log.push('escena sinmodulos ancho='+w.innerWidth);

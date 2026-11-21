@@ -6,6 +6,7 @@
 // ?desde=N        el perfil (error o lento) solo afecta a la consulta N en adelante (por defecto, desde la primera)
 // ?sesionms=N     getSession responde N ms más tarde que el stub (400 ms): ventana de carrera de la escena «ventana»
 // Los perfiles del usuario u-2 se resuelven con la fila de u-1 (un segundo usuario con panel, para la escena «cambio»).
+// ?asinperfil=1  u-1 (cuenta A) no tiene perfil aunque exista su fila; u-2 (cuenta B) sigue resolviéndose con la fila de u-1 (escena «sinaccesocambio»).
 // window.__perfil.calls: consultas de perfiles hechas. window.__auth.emitir(evento, sesion): dispara el oyente de auth.
 (function () {
   if (!/[?&]arranque=1/.test(window.parent.location.search)) return;
@@ -13,6 +14,7 @@
   var modo = (q.match(/[?&]perfil=(\w+)/) || [])[1] || '';
   var ms = +((q.match(/[?&]ms=(\d+)/) || [])[1] || 3000);
   var desde = +((q.match(/[?&]desde=(\d+)/) || [])[1] || 1);
+  var aSinPerfil = /[?&]asinperfil=1/.test(q);
   var sesionMs = +((q.match(/[?&]sesionms=(\d+)/) || [])[1] || 0);
   var ctl = window.__perfil = { calls: 0 };
   var auth = window.__auth = {
@@ -41,7 +43,7 @@
       var query = desdeTabla.apply(this, arguments);
       if (tabla !== 'perfiles') return query;
       var eqOrig = query.eq;
-      query.eq = function (col, val) { return eqOrig.call(query, col, col === 'user_id' && val === 'u-2' ? 'u-1' : val); };
+      query.eq = function (col, val) { return eqOrig.call(query, col, col === 'user_id' && val === 'u-2' ? 'u-1' : col === 'user_id' && val === 'u-1' && aSinPerfil ? 'u-sin-perfil' : val); };
       var then = query.then;
       query.then = function (ok, ko) {
         var n = ++ctl.calls, pr, afecta = n >= desde;
