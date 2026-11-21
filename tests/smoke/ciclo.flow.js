@@ -78,6 +78,8 @@ window.cicloEmpresaFlow = async function(w, d, sleep, fail, log){
   // Mismo modal que la lista: el kilometraje es editable para el cliente y el título nombra el vehículo abierto
   if(!$('#ciclo-odo-input')) fail('ciclo-empresa: falta el formulario de kilometraje para el administrador de empresa');
   if(!/Odómetro y ciclo de vida · /.test($('#ciclo-title').textContent)) fail('ciclo-empresa: título del modal: ' + $('#ciclo-title').textContent);
+  // La acción de la rueda ya cubre el cambio: el bloque «Cambiar neumático (taller)» no se duplica con un segundo botón primario
+  if($('#ciclo-cambio-btn') || /Cambiar neumático \(taller\)/.test($('#ciclo-cambio').textContent)) fail('ciclo-empresa: el modal abierto desde el detalle repite «Cambiar neumático (taller)»');
   log.push('ciclo-empresa-flow: entrada desde el detalle abre el modal');
   $('[data-action="closeCicloVida"]').click(); await sleep(100);
 };
