@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   wearStatus, umbralesEstado, truncar1, fmtMedida, contarEstados, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila, rangoEstado, rangoLargo, ejeY, bandasGrafico, estadoDeBase, ESTADOS, etiquetaChip,
 } from '../../assets/js/domain/estado-desgaste.js';
-import { datosGrafico, serieDesgaste, fechaEje } from '../../assets/js/domain/grafico-desgaste.js';
+import { datosGrafico, serieDesgaste, fechaEje, tooltipPunto } from '../../assets/js/domain/grafico-desgaste.js';
 import { TOKENS } from '../../assets/js/domain/tokens-detalle.js';
 
 const th = umbralesEstado({ bajo: 8, critico: 5, retiro: 3 });
@@ -196,6 +196,12 @@ describe('datosGrafico', () => {
     assert.ok(angosto.bandas.every(b => !b.rotuloVisible));
     const bajo = datosGrafico(serieDesgaste([med(0, 6)]), th, { ancho: 600, alto: 90 });
     assert.equal(bajo.bandas.find(b => b.id === 'mayor').rotuloVisible, false, 'banda de menos de 20 px de alto');
+  });
+  test('tooltip del punto: fecha, interna, centro, externa, promedio y estado (§5.4), truncado a un decimal', () => {
+    const d = datosGrafico(serieDesgaste([{ created_at: '2026-11-20T15:00:00Z', mm1: 8.2, mm2: 7.97, mm3: 7.7, promedio: 7.97 }]), th, { ancho: 400 });
+    const t = tooltipPunto(d.puntos[0]);
+    assert.match(t, /^20\/11\/2026|^\d{1,2}[/ -]/);
+    assert.match(t, /Interna 8,2 · Centro 7,9 · Externa 7,7 · Promedio 7,9 mm · Poco desgaste$/);
   });
   test('serieDesgaste conserva las tres huellas y descarta mediciones sin dato', () => {
     const s = serieDesgaste([{ created_at: '2026-11-20T10:00:00Z', mm1: 5, mm2: 6, mm3: 7 }, { created_at: '2026-11-21T10:00:00Z' }]);

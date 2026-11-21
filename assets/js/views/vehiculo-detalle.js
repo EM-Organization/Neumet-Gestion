@@ -27,7 +27,7 @@ import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js
 import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import { layoutRuedas, geometriaDiagrama, umbralesDe } from '../domain/vehiculo-diagrama.js';
 import { referenciaTasas } from '../domain/desgaste-flota.js';
-import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
+import { serieDesgaste, datosGrafico, tooltipPunto } from '../domain/grafico-desgaste.js';
 import {
   umbralesEstado, wearStatus, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila as banderaDe, fmtMedida,
 } from '../domain/estado-desgaste.js';
@@ -236,6 +236,8 @@ function dibujarRueda(svg, r, banderas) {
     'aria-label': etiquetaAria(r, e, ind, sel),
     'data-action': 'detalleRueda', 'data-args': JSON.stringify([r.posicion]), 'data-pos': String(r.posicion),
   });
+  // TODO(neumet-web: TODO-TOOLTIP-FOCUS): el <title> SVG solo se ve al pasar el mouse; con teclado la misma información la
+  // anuncia el aria-label. Un tooltip visible al enfocar exige un componente propio y no está definido en la spec (§5.2).
   const t = svgEl('title'); t.textContent = etiquetaTooltip(r, e, ind); g.appendChild(t);
   g.appendChild(svgEl('rect', { class: 'vd-goma', x: r.x, y: r.y, width: r.ancho, height: r.alto, rx: 6 }));
   const txt = (cls, y, s) => { const el = svgEl('text', { class: cls, x: r.x + r.ancho / 2, y }); el.textContent = s; g.appendChild(el); };
@@ -508,7 +510,7 @@ function construirGrafico(d, lugar) {
   if (d.linea) svg.appendChild(svgEl('path', { class: 'vd-g-serie', d: d.linea }));
   d.puntos.forEach(p => {
     const c = svgEl('circle', { class: `vd-g-punto est-${p.estilo}`, cx: p.x, cy: p.y, r: p.ultimo ? TOKENS.chart.lastPointRadiusPx : TOKENS.chart.pointRadiusPx });
-    const t = svgEl('title'); t.textContent = `${fmtFecha(p.fecha)}: ${fmtMedida(p.valor)} mm · ${ESTADOS[p.estado].texto}`; c.appendChild(t); svg.appendChild(c);
+    const t = svgEl('title'); t.textContent = tooltipPunto(p); c.appendChild(t); svg.appendChild(c);
   });
   // Los rótulos van al final con halo: si la serie pasa por debajo, el texto sigue legible y no queda tapado por un punto.
   d.bandas.filter(b => b.rotuloVisible).forEach(b => {

@@ -185,6 +185,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     log.push('grafico-puntos='+ch.querySelectorAll('circle').length+' bandas='+ch.querySelectorAll('.vd-g-banda').length);
     if(ch.querySelectorAll('circle').length !== 10) fail('detalle: el grafico deberia tener 10 puntos');
     if(ch.querySelectorAll('.vd-g-banda').length < 3) fail('detalle: faltan las bandas de estado del grafico');
+    var tipPunto = ch.querySelector('circle title').textContent;
+    if(!/Interna \d+,\d · Centro \d+,\d · Externa \d+,\d · Promedio \d+,\d mm · (Buen estado|Poco desgaste|Mayor desgaste|Desgaste límite)$/.test(tipPunto)) fail('detalle: el tooltip del punto debe traer fecha, interna, centro, externa, promedio y estado: '+tipPunto);
     if(ch.querySelectorAll('.vd-g-proy,.vd-g-umbral').length) fail('detalle: el grafico no lleva proyeccion ni lineas de umbral');
     if(ch.getAttribute('role') !== 'img' || !/^Evolución del desgaste de /.test(ch.getAttribute('aria-label') || '')) fail('detalle: el grafico necesita role img y aria-label');
     var vd = $('#vd-chart-wrap details.vd-datos-det'); if(!vd || vd.querySelectorAll('tbody tr').length !== 10) fail('detalle: falta la tabla Ver datos con 10 filas');

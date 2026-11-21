@@ -1,7 +1,8 @@
 // Datos del gráfico de desgaste de un neumático (mm vs. tiempo) listos para dibujar en SVG (lógica pura).
 // Las bandas y el estado de cada punto salen de estado-desgaste.js: gráfico, chips y esquema no pueden discrepar.
 import { TOKENS } from './tokens-detalle.js';
-import { wearStatus, ESTADOS, ejeY, bandasGrafico } from './estado-desgaste.js';
+import { fmtFecha } from './formato.js';
+import { wearStatus, ESTADOS, ejeY, bandasGrafico, fmtMedida } from './estado-desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
@@ -66,4 +67,10 @@ export function datosGrafico(puntos, th, { ancho = 320, alto = TOKENS.chart.heig
     linea: unico ? null : pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' '),
     ejeX: fechas.map(f => ({ ...f, texto: fechaEje(f.t, conAnio) })),
   };
+}
+
+// Tooltip de un punto del gráfico (docs/21 §5.4): fecha, las tres huellas, promedio y estado; todo con el mismo formato
+// de mm (truncado a 1 decimal). Una huella sin dato se muestra «—».
+export function tooltipPunto(p) {
+  return `${fmtFecha(p.fecha)} · Interna ${fmtMedida(p.mm1)} · Centro ${fmtMedida(p.mm2)} · Externa ${fmtMedida(p.mm3)} · Promedio ${fmtMedida(p.valor)} mm · ${ESTADOS[p.estado].texto}`;
 }

@@ -312,6 +312,7 @@ Interacción y accesibilidad:
 | TODO-DELETE-CONSEQUENCES | Qué se elimina junto con el vehículo (neumáticos, mediciones, historial) y textos de error |
 | TODO-DISTRIBUTION-PICKER | Si «Cambiar distribución» usará el selector visual con miniaturas de la especificación de la app |
 | TODO-BREAKPOINTS | Ancho a partir del cual la pantalla pasa a una columna |
+| TODO-TOOLTIP-FOCUS | Tooltip visible al enfocar una rueda con teclado (§5.2). Hoy el `<title>` SVG solo aparece con el mouse y el `aria-label` anuncia lo mismo a los lectores de pantalla; un tooltip propio al enfocar no está definido en la spec |
 | TODO-TERM-DISTRIBUCION, TODO-AXLE-NAMES-WEB, TODO-SIDE-GENDER, TODO-DECIMAL-FORMAT | Unificación de vocabulario y formatos con la app (sección 7) |
 
 > **Decisión del dueño (2026-11-21), TODO-STATUS-MEASURE:** el estado se decide con el valor CRUDO (promedio con 2 decimales, igual que la base y las alertas: 2,97 con umbral 3 es «Desgaste límite», 7,97 con umbral 8 es «Poco desgaste») y el número se MUESTRA TRUNCADO a 1 decimal (2,97 = «2,9»; 7,97 = «7,9») en el esquema, tooltips, tabla, gráfico y lectores de pantalla, de modo que lo que se ve coincide con lo que se decide. Un único helper (`fmtMedida`, `domain/estado-desgaste.js`). Sin migración.
