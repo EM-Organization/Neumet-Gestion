@@ -79,7 +79,7 @@ var arranqueEscenas = {
   // de cerrar sesión no debe mostrar el panel (checkAuth descarta la continuación).
   ventana: async function(w, d, sleep, fail, log){
     var V = arranqueVisible;
-    await sleep(100);
+    await sleep(700);
     w.__auth.emitir('SIGNED_OUT', null);
     await sleep(5000);
     if(!V(d.getElementById('login-screen'))) fail('ventana: no se ve el login tras cerrar sesión durante getSession');
