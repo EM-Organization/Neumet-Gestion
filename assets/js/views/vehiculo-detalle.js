@@ -19,18 +19,17 @@ import { ACTIONS, registerActions } from '../core/actions.js';
 import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
-import { fmtNum, fmtMm, fmtFecha, plural } from '../domain/formato.js';
+import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { severidadLabel } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
 import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import { layoutRuedas, geometriaDiagrama, umbralesDe } from '../domain/vehiculo-diagrama.js';
-import { esAuxilio } from '../domain/auxilio.js';
-import { referenciaTasas, evaluarDesgaste } from '../domain/desgaste-flota.js';
+import { referenciaTasas } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
 import {
-  umbralesEstado, wearStatus, valorMostrado, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstados,
+  umbralesEstado, wearStatus, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstadosFilas, estadoVehiculo, banderaDeFila as banderaDe, fmtMedida,
 } from '../domain/estado-desgaste.js';
 import { TOKENS } from '../domain/tokens-detalle.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -114,21 +113,7 @@ function estadoDeFila(f) {
   const id = wearStatus(mm, datos.th);
   return { mm: nulo(mm) ? null : Number(mm), id, ...ESTADOS[id] };
 }
-const banderaDeFila = f => evaluarDesgaste(f, datos.ref);
-
-// Estado del vehículo = el peor de sus neumáticos con datos. La rueda de auxilio no cuenta como aviso (PR 140): su
-// mayor desgaste o límite pasa a «poco». TODO(neumet-web: TODO-AUX-IN-STATUS): la spec lo cuenta como uno más.
-const RANGO_ESTADO = { limite: 0, mayor: 1, poco: 2, bueno: 3 };
-function estadoVehiculo(filas) {
-  let peor = 'sinDatos';
-  for (const f of filas) {
-    let id = wearStatus(f.promedio, datos.th);
-    if (id === 'sinDatos') continue;
-    if (esAuxilio(f) && (id === 'mayor' || id === 'limite')) id = 'poco';
-    if (peor === 'sinDatos' || RANGO_ESTADO[id] < RANGO_ESTADO[peor]) peor = id;
-  }
-  return peor;
-}
+const banderaDeFila = f => banderaDe(f, datos.ref);
 
 // Etiqueta de estado (alto 28): símbolo + texto; el color nunca va solo.
 function tagEstado(id) {
@@ -139,7 +124,7 @@ const tagBandera = () => html`<span class="vd-tag vd-tag-flag"><span class="vd-f
 
 function cabecera() {
   const { veh, filas } = datos;
-  const sem = estadoVehiculo(filas);
+  const sem = estadoVehiculo(filas, datos.th);
   const ult = filas.reduce((m, f) => (f.ultima_medicion_at && (!m || f.ultima_medicion_at > m) ? f.ultima_medicion_at : m), null);
   const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
@@ -170,10 +155,10 @@ function resumen() {
     return;
   }
   // Los chips son la leyenda y el filtro a la vez: un chip por estado con neumáticos, de lo más urgente a lo mejor.
-  // La suma de los estados es el total (el auxilio entra con su estado real); la bandera no es un estado, se cuenta aparte.
+  // La suma de los estados es el total (el auxilio cuenta como mucho «poco desgaste», PR 140); la bandera no es un estado, se cuenta aparte.
   const th = datos.th;
-  const n = contarEstados(filas.map(f => f.promedio), th);
-  const acelerados = filas.filter(f => !esAuxilio(f) && banderaDeFila(f).mayorAlNormal).length;
+  const n = contarEstadosFilas(filas, th);
+  const acelerados = filas.filter(f => banderaDeFila(f).mayorAlNormal).length;
   const chipFiltro = (clave, etiqueta, contenido) => html`<button type="button" class="vd-chip ${clave === 'acelerado' ? 'vd-chip-flag' : `est-${ESTADOS[clave].estilo}`}"
     data-action="detalleFiltro" data-args="${JSON.stringify([clave])}" data-filtro="${clave}" aria-pressed="${filtro === clave}" aria-label="${etiqueta}">${contenido}</button>`;
   const chipEst = id => {
@@ -209,13 +194,13 @@ const dondeDe = r => (r.auxilio ? 'Auxilio' : `P${r.posicion} · ${nombrePos(r.p
 
 // Texto del tooltip: «P3 · Eje 2 izquierda exterior · 4,7 mm · Mayor desgaste[ · Desgaste acelerado]».
 function etiquetaTooltip(r, e, ind) {
-  return [dondeDe(r), nulo(e.mm) ? e.texto : `${fmtNum(valorMostrado(e.mm), 1)} mm · ${e.texto}`, ind && ind.mayorAlNormal ? BANDERA.texto : null].filter(Boolean).join(' · ');
+  return [dondeDe(r), nulo(e.mm) ? e.texto : `${fmtMedida(e.mm)} mm · ${e.texto}`, ind && ind.mayorAlNormal ? BANDERA.texto : null].filter(Boolean).join(' · ');
 }
 
 // Texto para lectores: «Posición P3, Eje 2 izquierda exterior, 4,7 milímetros, mayor desgaste[, desgaste acelerado][, seleccionado]».
 function etiquetaAria(r, e, ind, sel) {
   const lugar = r.auxilio ? 'Auxilio' : `Posición P${r.posicion}, ${nombrePos(r.posicion, tipoLayout(datos.veh))}`;
-  const medida = nulo(e.mm) ? 'sin datos' : `${fmtNum(valorMostrado(e.mm), 1)} milímetros, ${e.texto.toLowerCase()}`;
+  const medida = nulo(e.mm) ? 'sin datos' : `${fmtMedida(e.mm)} milímetros, ${e.texto.toLowerCase()}`;
   return `${lugar}, ${medida}${ind && ind.mayorAlNormal ? `, ${BANDERA.texto.toLowerCase()}` : ''}${sel ? ', seleccionado' : ''}`;
 }
 
@@ -256,7 +241,7 @@ function dibujarRueda(svg, r, banderas) {
   const txt = (cls, y, s) => { const el = svgEl('text', { class: cls, x: r.x + r.ancho / 2, y }); el.textContent = s; g.appendChild(el); };
   // La etiqueta de posición baja a y+14: la insignia (metida 4 px en el borde superior) no debe cubrirla.
   txt('vd-pos', r.y + 14, r.auxilio ? 'AUX' : `P${r.posicion}`);
-  txt('vd-mm', r.y + 31, nulo(e.mm) ? '—' : fmtNum(valorMostrado(e.mm), 1));
+  txt('vd-mm', r.y + 31, nulo(e.mm) ? '—' : fmtMedida(e.mm));
   txt('vd-sim', r.y + 46, e.simbolo);
   svg.appendChild(g);
   if (ind.mayorAlNormal) banderas.push({ r, fila });
@@ -311,7 +296,7 @@ function frase(nombre, semanas, yaPaso) {
 function seccionMedicion(fila) {
   if (!fila || nulo(fila.promedio)) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones.</p>`;
   return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Promedio</th></tr></thead>
-    <tbody><tr><td>${fmtNum(fila.mm1, 1)}</td><td>${fmtNum(fila.mm2, 1)}</td><td>${fmtNum(fila.mm3, 1)}</td><td>${fmtNum(fila.promedio, 1)}</td></tr></tbody></table>
+    <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(fila.promedio)}</td></tr></tbody></table>
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
 
@@ -320,7 +305,9 @@ function seccionTasa(fila, u, razonMostrada) {
   const tasa = fila.tasa_mm_semana;
   if (nulo(tasa)) return html`<p class="vd-p-nota">Mediciones insuficientes para calcular la velocidad de desgaste (se necesitan dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
-  const yaCritico = Number(fila.promedio) < u.critico, yaRetiro = Number(fila.promedio) < u.retiro;
+  // El «ya se alcanzó» sale del mismo estado que el resto de la pantalla (wearStatus), no de otra comparación.
+  const est = wearStatus(fila.promedio, datos.th);
+  const yaCritico = est === 'mayor' || est === 'limite', yaRetiro = est === 'limite';
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
     <ul class="vd-alertas">${frase(`Poco desgaste / mayor desgaste (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Desgaste límite (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
@@ -495,7 +482,7 @@ async function cargarGrafico(pos) {
 
 // «Ver datos» / «Ocultar datos»: la misma serie del gráfico en una tabla, para quien no ve el gráfico.
 function tablaDatos(d) {
-  const filas = [...d.puntos].reverse().map(p => html`<tr><td>${fmtFecha(p.fecha)}</td><td>${nulo(p.mm1) ? '—' : fmtNum(p.mm1, 1)}</td><td>${nulo(p.mm2) ? '—' : fmtNum(p.mm2, 1)}</td><td>${nulo(p.mm3) ? '—' : fmtNum(p.mm3, 1)}</td><td>${fmtNum(p.valor, 1)}</td><td>${ESTADOS[p.estado].texto}</td></tr>`);
+  const filas = [...d.puntos].reverse().map(p => html`<tr><td>${fmtFecha(p.fecha)}</td><td>${fmtMedida(p.mm1)}</td><td>${fmtMedida(p.mm2)}</td><td>${fmtMedida(p.mm3)}</td><td>${fmtMedida(p.valor)}</td><td>${ESTADOS[p.estado].texto}</td></tr>`);
   return html`<details class="vd-datos-det"><summary><span class="vd-ver-datos">Ver datos</span></summary>
     <div class="vd-datos-scroll"><table class="vd-datos-tabla"><caption class="sr-only">Mediciones del neumático, en milímetros</caption>
     <thead><tr><th scope="col">Fecha</th><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Promedio</th><th scope="col">Estado</th></tr></thead>
@@ -505,7 +492,7 @@ function tablaDatos(d) {
 function construirGrafico(d, lugar) {
   const pn = d.puntos[d.puntos.length - 1];
   const svg = svgEl('svg', { class: 'vd-chart', viewBox: `0 0 ${d.ancho} ${d.alto}`, role: 'img',
-    'aria-label': `Evolución del desgaste de ${lugar}: ${plural(d.puntos.length, 'lectura', 'lecturas')}, última ${fmtNum(pn.valor, 1)} mm el ${fmtFecha(pn.fecha)}, estado ${ESTADOS[pn.estado].texto.toLowerCase()}` });
+    'aria-label': `Evolución del desgaste de ${lugar}: ${plural(d.puntos.length, 'lectura', 'lecturas')}, última ${fmtMedida(pn.valor)} mm el ${fmtFecha(pn.fecha)}, estado ${ESTADOS[pn.estado].texto.toLowerCase()}` });
   const { x0, x1 } = d.area;
   // Bandas por estado (las del modelo): el color es de fondo, el rótulo con texto dice el estado; nunca solo color.
   d.bandas.forEach(b => {
@@ -521,7 +508,7 @@ function construirGrafico(d, lugar) {
   if (d.linea) svg.appendChild(svgEl('path', { class: 'vd-g-serie', d: d.linea }));
   d.puntos.forEach(p => {
     const c = svgEl('circle', { class: `vd-g-punto est-${p.estilo}`, cx: p.x, cy: p.y, r: p.ultimo ? TOKENS.chart.lastPointRadiusPx : TOKENS.chart.pointRadiusPx });
-    const t = svgEl('title'); t.textContent = `${fmtFecha(p.fecha)}: ${fmtMm(p.valor)} · ${ESTADOS[p.estado].texto}`; c.appendChild(t); svg.appendChild(c);
+    const t = svgEl('title'); t.textContent = `${fmtFecha(p.fecha)}: ${fmtMedida(p.valor)} mm · ${ESTADOS[p.estado].texto}`; c.appendChild(t); svg.appendChild(c);
   });
   // Los rótulos van al final con halo: si la serie pasa por debajo, el texto sigue legible y no queda tapado por un punto.
   d.bandas.filter(b => b.rotuloVisible).forEach(b => {

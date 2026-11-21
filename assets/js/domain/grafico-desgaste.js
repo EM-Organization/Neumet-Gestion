@@ -1,7 +1,7 @@
 // Datos del gráfico de desgaste de un neumático (mm vs. tiempo) listos para dibujar en SVG (lógica pura).
 // Las bandas y el estado de cada punto salen de estado-desgaste.js: gráfico, chips y esquema no pueden discrepar.
 import { TOKENS } from './tokens-detalle.js';
-import { wearStatus, ESTADOS, ejeY, bandasGrafico, valorMostrado } from './estado-desgaste.js';
+import { wearStatus, ESTADOS, ejeY, bandasGrafico } from './estado-desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
@@ -48,7 +48,7 @@ export function datosGrafico(puntos, th, { ancho = 320, alto = TOKENS.chart.heig
   const unico = puntos.length === 1 || tn === t0;
   const X = t => (unico ? (x0 + x1) / 2 : (x0 + c.plotInsetXPx) + ((t - t0) / (tn - t0)) * ((x1 - x0) - 2 * c.plotInsetXPx));
   const pts = puntos.map((p, i) => {
-    const valor = valorMostrado(p.mm);
+    const valor = p.mm; // crudo: decide el estado y la altura; se muestra con fmtMedida (truncado)
     const estado = wearStatus(p.mm, th);
     return { ...p, valor, estado, estilo: ESTADOS[estado].estilo, x: X(p.t), y: Y(valor), ultimo: i === puntos.length - 1 };
   });

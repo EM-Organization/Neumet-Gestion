@@ -314,6 +314,10 @@ Interacción y accesibilidad:
 | TODO-BREAKPOINTS | Ancho a partir del cual la pantalla pasa a una columna |
 | TODO-TERM-DISTRIBUCION, TODO-AXLE-NAMES-WEB, TODO-SIDE-GENDER, TODO-DECIMAL-FORMAT | Unificación de vocabulario y formatos con la app (sección 7) |
 
+> **Decisión del dueño (2026-11-21), TODO-STATUS-MEASURE:** el estado se decide con el valor CRUDO (promedio con 2 decimales, igual que la base y las alertas: 2,97 con umbral 3 es «Desgaste límite», 7,97 con umbral 8 es «Poco desgaste») y el número se MUESTRA TRUNCADO a 1 decimal (2,97 = «2,9»; 7,97 = «7,9») en el esquema, tooltips, tabla, gráfico y lectores de pantalla, de modo que lo que se ve coincide con lo que se decide. Un único helper (`fmtMedida`, `domain/estado-desgaste.js`). Sin migración.
+
+> **Estado actual, TODO-AUX-IN-STATUS:** se mantiene la regla del producto (PR 140, `domain/auxilio.js`): el auxilio (posición 99) en mayor desgaste o límite cuenta como «Poco desgaste» en los chips y en la etiqueta de la cabecera, suma en el total, se dibuja con su estado real y no lleva «Desgaste acelerado». Chips, cabecera, insignia y filtro usan la misma regla (`estadoContable`, `banderaDeFila`).
+
 ## 11. Fuera del alcance
 
 No forma parte de este cambio y no se debe modificar:

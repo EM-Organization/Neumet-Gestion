@@ -7,23 +7,28 @@
 // solo se les da el nombre de la especificación: { buen, poco, mayor }.
 import { fmtNum, plural } from './formato.js';
 import { TOKENS } from './tokens-detalle.js';
+import { esAuxilio } from './auxilio.js';
+import { evaluarDesgaste } from './desgaste-flota.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
 // { bajo, critico, retiro } (umbralesDe) -> { buen, poco, mayor }.
 export const umbralesEstado = u => ({ buen: u.bajo, poco: u.critico, mayor: u.retiro });
 
-// Valor con el que se decide el estado: el que el neumático MUESTRA (un decimal). Se redondea con el mismo motor que
-// fmtNum para que el número visible y la decisión nunca discrepen (TODO-STATUS-MEASURE).
-export function valorMostrado(v) {
+// Decisión del dueño (2026-11-21, TODO-STATUS-MEASURE): el estado se decide con el valor CRUDO (promedio con 2 decimales,
+// igual que la base y las alertas: 7,97 con umbral 8 es «poco desgaste») y el número se MUESTRA TRUNCADO a un decimal
+// (7,97 -> «7,9»), de modo que lo que se ve coincide con lo que se decide. Este es el único formato de mm del detalle.
+export function truncar1(v) {
   const n = num(v);
   if (n === null) return null;
-  return Number(n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).replace(/,/g, ''));
+  // Primero a 2 decimales (la precisión de la base) para que el error de coma flotante no mueva el corte (2,3*10 = 22,999…).
+  return Math.floor(Math.round(n * 100) / 10) / 10;
 }
+export const fmtMedida = v => (num(v) === null ? '—' : fmtNum(truncar1(v), 1));
 
 // Límite inferior inclusivo de cada banda (TODO-BOUNDARY): 5,0 es «poco», 8,0 es «bueno», 3,0 es «mayor».
 export function wearStatus(valor, th) {
-  const m = valorMostrado(valor);
+  const m = num(valor);
   if (m === null) return 'sinDatos';
   if (m >= th.buen) return 'bueno';
   if (m >= th.poco) return 'poco';
@@ -48,6 +53,39 @@ export const DE_ESTADO_BASE = Object.freeze({
   nuevo: 'bueno', poco_desgaste: 'poco', mayor_desgaste: 'mayor', desgaste_limite: 'limite', desconocido: 'sinDatos',
 });
 export const estadoDeBase = e => DE_ESTADO_BASE[e] || 'sinDatos';
+
+// Regla PR 140 (domain/auxilio.js): la rueda de auxilio (posición 99) no cuenta como advertencia. Su mayor desgaste o
+// límite cuenta como «poco desgaste» en chips y semáforo del vehículo; sigue sumando en el total y se dibuja con su estado
+// real. TODO(neumet-web: TODO-AUX-IN-STATUS): la spec lo cuenta como uno más; se mantiene la regla del producto.
+export function estadoContable(fila, th) {
+  const id = wearStatus(fila && fila.promedio, th);
+  return esAuxilio(fila) && (id === 'mayor' || id === 'limite') ? 'poco' : id;
+}
+
+// Estado del vehículo (cabecera) = el peor de sus neumáticos con datos, con la regla del auxilio.
+const RANGO_ESTADO = { limite: 0, mayor: 1, poco: 2, bueno: 3 };
+export function estadoVehiculo(filas, th) {
+  let peor = 'sinDatos';
+  for (const f of filas || []) {
+    const id = estadoContable(f, th);
+    if (id === 'sinDatos') continue;
+    if (peor === 'sinDatos' || RANGO_ESTADO[id] < RANGO_ESTADO[peor]) peor = id;
+  }
+  return peor;
+}
+
+// Conteo de los chips: el mismo estado contable que la cabecera, de modo que chips y cabecera no discrepen.
+export function contarEstadosFilas(filas, th) {
+  const out = { total: 0, bueno: 0, poco: 0, mayor: 0, limite: 0, sinDatos: 0 };
+  for (const f of filas || []) { out[estadoContable(f, th)] += 1; out.total += 1; }
+  return out;
+}
+
+// «Desgaste acelerado»: UNA regla para el chip, la insignia, el filtro, la etiqueta y el panel. El auxilio no la lleva.
+export function banderaDeFila(fila, ref) {
+  const ind = evaluarDesgaste(fila, ref);
+  return esAuxilio(fila) ? { ...ind, mayorAlNormal: false } : ind;
+}
 
 // Umbral con coma y sin decimales sobrantes: 8 -> «8», 3,5 -> «3,5».
 export const fmtUmbral = v => fmtNum(v, Number.isInteger(Number(v)) ? 0 : 1);
@@ -89,7 +127,7 @@ export function contarEstados(valores, th) {
 // Con umbrales 8/5/3: lectura 4,7 -> 0–12; lectura 16,0 -> 0–16.
 export function ejeY(lecturaMax, th) {
   const { yTickStepMm: paso, headroomAboveBuenMm: margen } = TOKENS.chart;
-  const m = valorMostrado(lecturaMax);
+  const m = num(lecturaMax);
   const techo = m === null ? 0 : Math.ceil(m / paso) * paso;
   const max = Math.max(th.buen + margen, techo);
   const marcas = [];

@@ -2,7 +2,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  wearStatus, umbralesEstado, valorMostrado, contarEstados, rangoEstado, rangoLargo, ejeY, bandasGrafico, estadoDeBase, ESTADOS, etiquetaChip,
+  wearStatus, umbralesEstado, truncar1, fmtMedida, contarEstados, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila, rangoEstado, rangoLargo, ejeY, bandasGrafico, estadoDeBase, ESTADOS, etiquetaChip,
 } from '../../assets/js/domain/estado-desgaste.js';
 import { datosGrafico, serieDesgaste, fechaEje } from '../../assets/js/domain/grafico-desgaste.js';
 import { TOKENS } from '../../assets/js/domain/tokens-detalle.js';
@@ -36,11 +36,26 @@ describe('wearStatus', () => {
     for (const v of [null, undefined, '', 'x', NaN]) assert.equal(wearStatus(v, th), 'sinDatos');
     assert.equal(wearStatus(0, th), 'limite');
   });
-  test('decide con el valor mostrado (un decimal): 7,96 se muestra 8,0 y es bueno; 4,96 se muestra 5,0 y es poco', () => {
-    assert.equal(valorMostrado(7.96), 8);
-    assert.equal(wearStatus(7.96, th), 'bueno');
-    assert.equal(wearStatus(4.96, th), 'poco');
-    assert.equal(wearStatus(2.96, th), 'mayor');
+  test('decide con el valor CRUDO y muestra TRUNCADO a un decimal (decisión del dueño, TODO-STATUS-MEASURE)', () => {
+    assert.equal(wearStatus(7.97, th), 'poco');
+    assert.equal(wearStatus(7.96, th), 'poco');
+    assert.equal(wearStatus(4.97, th), 'mayor');
+    assert.equal(wearStatus(2.97, th), 'limite');
+    assert.equal(fmtMedida(7.96), '7,9');
+    assert.equal(fmtMedida(7.97), '7,9');
+    assert.equal(fmtMedida(2.97), '2,9');
+    assert.equal(fmtMedida(8), '8,0');
+    assert.equal(fmtMedida(2.3), '2,3', 'sin error de coma flotante (2,3*10 = 22,999…)');
+    assert.equal(fmtMedida(null), '—');
+    assert.equal(truncar1(7.96), 7.9);
+  });
+  test('lo que se ve coincide con lo que se decide: ningún valor muestra un número de otro estado', () => {
+    for (let c = 0; c <= 1600; c++) {
+      const v = c / 100, mostrado = Number(fmtMedida(v).replace(',', '.'));
+      assert.ok(mostrado <= v + 1e-9, `${v} muestra ${mostrado}`);
+      // Mostrar «8,0» implica ser «bueno»; mostrar menos de 8 implica no serlo.
+      assert.equal(mostrado >= 8, wearStatus(v, th) === 'bueno', `${v} -> ${fmtMedida(v)}`);
+    }
   });
   test('umbrales vivos: otros umbrales del cliente cambian el resultado, sin números fijos en el código', () => {
     const o = umbralesEstado({ bajo: 10, critico: 6, retiro: 4 });
@@ -81,6 +96,43 @@ describe('chips', () => {
     assert.equal(rangoLargo('poco', th), 'de 5 mm a menos de 8 mm');
     assert.equal(etiquetaChip('mayor', 2, th), '2 neumáticos con mayor desgaste, de 3 mm a menos de 5 mm');
     assert.equal(etiquetaChip('sinDatos', 1, th), '1 neumático sin datos');
+  });
+});
+
+describe('auxilio y bandera (regla PR 140)', () => {
+  const f = (posicion, promedio, extra) => ({ posicion, promedio, ...extra });
+  const filas = [f(1, 10), f(2, 9), f(3, 12), f(99, 2.0)];
+  test('estadoContable: el auxilio en mayor/límite cuenta como poco; el resto, su estado real', () => {
+    assert.equal(estadoContable(f(99, 2.0), th), 'poco');
+    assert.equal(estadoContable(f(99, 4.0), th), 'poco');
+    assert.equal(estadoContable(f(99, 10), th), 'bueno');
+    assert.equal(estadoContable(f(99, null), th), 'sinDatos');
+    assert.equal(estadoContable(f(3, 2.0), th), 'limite');
+  });
+  test('auxilio en 2,0 mm y el resto bueno: ni chips ni cabecera marcan límite; el total lo incluye', () => {
+    const n = contarEstadosFilas(filas, th);
+    assert.deepEqual(n, { total: 4, bueno: 3, poco: 1, mayor: 0, limite: 0, sinDatos: 0 });
+    assert.equal(estadoVehiculo(filas, th), 'poco', 'sin auxilio sería límite, con el auxilio como poco queda poco');
+    assert.equal(estadoVehiculo(filas.slice(0, 3), th), 'bueno');
+  });
+  test('chips y cabecera coherentes: el peor estado de la cabecera es el peor estado con chip', () => {
+    const casos = [filas, [f(1, 2.5), f(99, 2)], [f(1, 4), f(99, 2)], [f(99, 2)], [f(1, null), f(99, 2)], []];
+    for (const fs of casos) {
+      const n = contarEstadosFilas(fs, th);
+      const peorChip = ['limite', 'mayor', 'poco', 'bueno'].find(id => n[id] > 0) || 'sinDatos';
+      assert.equal(estadoVehiculo(fs, th), peorChip);
+    }
+  });
+  test('un neumático normal en límite sí marca límite en chip y cabecera', () => {
+    const fs = [f(1, 2.0), f(99, 2.0)];
+    assert.equal(contarEstadosFilas(fs, th).limite, 1);
+    assert.equal(estadoVehiculo(fs, th), 'limite');
+  });
+  test('«Desgaste acelerado»: una sola regla (el auxilio nunca la lleva)', () => {
+    const irregular = { desgaste_irregular: true, diferencia_huellas_mm: 3 };
+    assert.equal(banderaDeFila(f(3, 6, irregular), null).mayorAlNormal, true);
+    assert.equal(banderaDeFila(f(99, 6, irregular), null).mayorAlNormal, false);
+    assert.equal(banderaDeFila(f(99, 6, irregular), null).irregular, true, 'el detalle del indicador se conserva');
   });
 });
 

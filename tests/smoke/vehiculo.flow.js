@@ -327,6 +327,17 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   log.push('ruedas-tipo16='+n16);
   if(n16 !== 17) fail('detalle: tipo 16 con auxilio deberia dibujar 17 ruedas, hay '+n16);
   if(!$('#vd-diagrama .vd-rueda[data-pos="99"]')) fail('detalle: falta el auxilio');
+  // Decision del dueno (TODO-STATUS-MEASURE): el estado se decide con el valor crudo y el numero se muestra truncado.
+  // P3 = 7,97 mm -> «7,9» y «Poco desgaste» (no «Buen estado»). El auxilio (2,0 mm) no cuenta como advertencia (PR 140):
+  // ni el chip «Desgaste limite» ni la cabecera; si cuenta en el total y se dibuja con su estado real.
+  var rP3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
+  if(!rP3 || rP3.querySelector('.vd-mm').textContent !== '7,9' || !/poco desgaste/.test(rP3.getAttribute('aria-label')) || !/7,9 milímetros/.test(rP3.getAttribute('aria-label'))) fail('detalle: 7,97 mm debe mostrarse «7,9» y ser poco desgaste: '+(rP3 && rP3.getAttribute('aria-label')));
+  if(!/7,9 mm · Poco desgaste/.test(rP3.querySelector('title').textContent)) fail('detalle: tooltip de P3: '+rP3.querySelector('title').textContent);
+  var rAux = $('#vd-diagrama .vd-rueda[data-pos="99"]');
+  if(rAux.querySelector('.vd-mm').textContent !== '2,0' || !/desgaste límite/.test(rAux.getAttribute('aria-label'))) fail('detalle: el auxilio debe dibujarse con su estado real: '+rAux.getAttribute('aria-label'));
+  if($('#vd-resumen [data-filtro="limite"]') || $('#vd-resumen [data-filtro="mayor"]')) fail('detalle: el auxilio cuenta como advertencia en los chips: '+$('#vd-resumen').textContent);
+  if(!/3 neumáticos/.test($('#vd-resumen .vd-chip-total').textContent) || !/1 Buen estado/.test($('#vd-resumen [data-filtro="bueno"]').textContent) || !/2 Poco desgaste/.test($('#vd-resumen [data-filtro="poco"]').textContent)) fail('detalle: chips del auxilio: '+$('#vd-resumen').textContent.replace(/\s+/g,' '));
+  if(!/Poco desgaste/.test($('#vd-cab .vd-tag').textContent)) fail('detalle: la cabecera cuenta el auxilio como advertencia: '+$('#vd-cab .vd-tag').textContent);
 
   // Buscador global: matrícula, número de coche y número de quema abren el vehículo (la quema, el de su neumático montado)
   var bg = $('#busq-global-input');
