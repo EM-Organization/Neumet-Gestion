@@ -72,6 +72,11 @@ window.cicloEmpresaFlow = async function(w, d, sleep, fail, log){
   if(!det){ fail('ciclo-empresa: sin fila de vehículo en la lista'); return; }
   det.click(); await sleep(500);
   var entrada = $('#vd-cab [data-action="openCicloVida"]');
+  // Usuario de sucursal: no tiene entrada al modal desde el detalle (a propósito: el kilometraje y el ciclo de vida son del administrador de empresa)
+  if(/[?&]secuser=1/.test(w.parent.location.search)){
+    if(entrada) fail('ciclo-sucursal: el usuario de sucursal ve «Odómetro y ciclo de vida» en el detalle');
+    log.push('ciclo-sucursal-flow: sin entrada al ciclo de vida en el detalle'); return;
+  }
   if(!entrada){ fail('ciclo-empresa: el administrador de empresa no ve «Odómetro y ciclo de vida» en el detalle'); return; }
   entrada.click(); await sleep(500);
   if(!$('#modal-ciclo').classList.contains('show')) { fail('ciclo-empresa: la entrada del detalle no abre el modal'); return; }
