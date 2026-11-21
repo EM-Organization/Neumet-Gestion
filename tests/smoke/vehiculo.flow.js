@@ -52,9 +52,18 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   fx.soltar(iA); await sleep(200);
   if(!$('#veh-lista .error-state') || $('#veh-lista .loading-state')) fail('tardia: la respuesta de A pisó el estado de B');
   if(contador() !== '') fail('tardia: el contador cambió con la respuesta tardía de A: «'+contador()+'»');
-  // Al volver a pintar la lista (buscar y borrar) no debe reaparecer «Cargando…».
+  // Al volver a pintar la lista (buscar y borrar) no debe reaparecer «Cargando…» ni las filas de una carga anterior:
+  // el estado de error con su botón Reintentar tiene que seguir ahí.
   escribir('x'); await sleep(100); escribir(''); await sleep(100);
   if(/Cargando/.test($('#veh-lista').textContent)) fail('error: «Cargando…» quedó pegado tras una carga fallida');
+  if(filas().length || !$('#veh-lista .error-state')) fail('recuperacion: buscar y borrar tras el error pisó el estado de error (filas: '+filas().length+')');
+  if(contador() !== '') fail('recuperacion: el contador de una carga anterior reapareció tras el error: «'+contador()+'»');
+  // Reintentar (con la red de vuelta) recupera la lista sin recargar la página.
+  var reint = $('#veh-lista [data-action="loadVehiculos"]');
+  if(!reint) fail('recuperacion: el estado de error no ofrece Reintentar');
+  fx.retener = false; reint.click(); await sleep(300);
+  if(filas().length !== 3 || $('#veh-lista .error-state') || contador() !== '3 vehículos') fail('recuperacion: Reintentar no recuperó la lista (filas '+filas().length+', contador «'+contador()+'»)');
+  fx.retener = false; fx.retenidas = [];
   // Orden: A y B vigente. Soltar A no toca la espera de B; al completar B el contador muestra el total.
   fx.retener = true; var iA2 = fx.retenidas.length;
   await irA(); var iB = fx.retenidas.length;
@@ -68,18 +77,21 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(filas().length !== 3 || !filas()[0].textContent.match(/Desgaste límite/)) fail('completa: la lista no quedo con la carga de B y sus estados');
 
   // A 390 px: los dos textos y el chip caben sin cortar el nombre letra por letra ni desbordar; cada fila es un objetivo de 44 px o mas.
-  var marco = w.frameElement; marco.style.width = '390px'; await sleep(300);
+  var marco = w.frameElement;
+  for(var ancho of [390]){
+  marco.style.width = ancho+'px'; await sleep(300);
   var listaEl = $('#veh-lista');
-  if(listaEl.scrollWidth > listaEl.clientWidth) fail('390px: la lista desborda en horizontal ('+listaEl.scrollWidth+' > '+listaEl.clientWidth+')');
-  if(d.documentElement.scrollWidth > marco.clientWidth) fail('390px: la pagina desborda en horizontal ('+d.documentElement.scrollWidth+' > '+marco.clientWidth+')');
+  if(listaEl.scrollWidth > listaEl.clientWidth) fail(ancho+'px: la lista desborda en horizontal ('+listaEl.scrollWidth+' > '+listaEl.clientWidth+')');
+  if(d.documentElement.scrollWidth > marco.clientWidth) fail(ancho+'px: la pagina desborda en horizontal ('+d.documentElement.scrollWidth+' > '+marco.clientWidth+')');
   filas().forEach(function(f){
     var r = f.getBoundingClientRect(), nb = f.querySelector('.veh-fila-nombre').getBoundingClientRect();
-    if(r.height < 44) fail('390px: fila de '+r.height+' px, objetivo menor a 44');
-    if(nb.width < 120) fail('390px: el nombre se corta (ancho '+Math.round(nb.width)+' px): '+f.textContent.replace(/\s+/g,' ').slice(0,80));
-    if(f.scrollWidth > f.clientWidth) fail('390px: la fila desborda: '+f.textContent.replace(/\s+/g,' ').slice(0,80));
+    if(r.height < 44) fail(ancho+'px: fila de '+r.height+' px, objetivo menor a 44');
+    if(nb.width < 120) fail(ancho+'px: el nombre se corta (ancho '+Math.round(nb.width)+' px): '+f.textContent.replace(/\s+/g,' ').slice(0,80));
+    if(f.scrollWidth > f.clientWidth) fail(ancho+'px: la fila desborda: '+f.textContent.replace(/\s+/g,' ').slice(0,80));
     var fe = f.querySelector('.veh-fila-estado');
-    if(fe && fe.getBoundingClientRect().right > r.right + 0.5) fail('390px: el estado se sale de la fila');
+    if(fe && fe.getBoundingClientRect().right > r.right + 0.5) fail(ancho+'px: el estado se sale de la fila');
   });
+  }
   marco.style.width = '';
 
   // Buscar por patente (parcial, sin mayusculas ni espacios)
