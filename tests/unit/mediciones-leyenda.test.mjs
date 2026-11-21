@@ -33,6 +33,14 @@ test('leyenda de Mediciones muestra las cinco categorías sin vocabulario viejo'
   assert.doesNotMatch(block, /\bCr[ií]tico\b/i);
 });
 
+test('Mediciones nombra la suma como «Buen estado o poco desgaste» y la rueda sin lecturas como «Sin datos»', () => {
+  assert.match(html, /tire-counter-l">Buen estado o poco desgaste</);
+  assert.doesNotMatch(html, /Buen estado \/ poco desgaste/);
+  const js = readFileSync(new URL('../../assets/js/views/mediciones.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(js, /\/ poco desgaste/);
+  assert.match(js, /neutral:\{cls:'',txt:ESTADOS\.sinDatos\.texto\}/);
+});
+
 test('zona del gráfico de Mediciones: 4,2 mm es mayor desgaste (naranja), 2,8 mm es desgaste límite (rojo)', () => {
   assert.equal(medicionesZonaFill(4.2), 'rgba(255,149,0,0.04)');
   assert.equal(medicionesZonaFill(2.8), 'rgba(255,59,48,0.04)');

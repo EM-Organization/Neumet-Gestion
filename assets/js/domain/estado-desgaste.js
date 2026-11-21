@@ -55,6 +55,8 @@ export const DE_ESTADO_BASE = Object.freeze({
 export const estadoDeBase = e => DE_ESTADO_BASE[e] || 'sinDatos';
 // Nombre mostrado de un estado de la base: ÚNICA fuente de los nombres en todo el panel (docs/14 §3). Los valores de la base
 // («nuevo», «desconocido») no cambian; solo el texto que ve el operario.
+// La suma de los dos primeros estados, con una sola redacción para Inicio, ficha, reportes y Mediciones (docs/14 §3).
+export const BUENO_O_POCO = `${ESTADOS.bueno.texto} o ${ESTADOS.poco.texto.toLowerCase()}`;
 export const textoEstadoBase = e => ESTADOS[estadoDeBase(e)].texto;
 
 // Regla PR 140 (domain/auxilio.js): la rueda de auxilio (posición 99) no cuenta como advertencia. Su mayor desgaste o

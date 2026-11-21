@@ -225,8 +225,8 @@ function buildDoc(rows, truncated) {
 <div class="header"><div class="brand">NEU<span>MET</span></div>
 <div class="meta"><strong>${titulo}</strong><br>Última medición de cada neumático · Generado el ${fmtDate(new Date().toISOString())}</div></div>
 ${truncated ? html`<div class="warn">Datos incompletos: se alcanzó el tope de ${MAX_ROWS} mediciones.</div>` : ''}
-<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, 'Buen estado (≥8mm)')}${kpi('poco', r.pocoDesgaste, 'Poco desgaste (5–7.9mm)')}${kpi('mayor', r.mayorDesgaste, 'Mayor desgaste (3–4.9mm)')}${kpi('limite', r.limite, 'Desgaste límite (<3mm)')}</div>
-${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>Buen estado</th><th>Poco desgaste</th><th>Mayor desgaste</th><th>Desgaste límite</th><th>Sin datos</th></tr></thead><tbody>${porVeh}</tbody></table>`}
+<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, `${ESTADOS.bueno.texto} (≥8mm)`)}${kpi('poco', r.pocoDesgaste, `${ESTADOS.poco.texto} (5–7.9mm)`)}${kpi('mayor', r.mayorDesgaste, `${ESTADOS.mayor.texto} (3–4.9mm)`)}${kpi('limite', r.limite, `${ESTADOS.limite.texto} (<3mm)`)}</div>
+${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>${ESTADOS.bueno.texto}</th><th>${ESTADOS.poco.texto}</th><th>${ESTADOS.mayor.texto}</th><th>${ESTADOS.limite.texto}</th><th>${ESTADOS.sinDatos.texto}</th></tr></thead><tbody>${porVeh}</tbody></table>`}
 <h3>Estado por neumático</h3>
 <table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
 <div class="footer">NEUMET · Sistema de gestión de neumáticos</div>

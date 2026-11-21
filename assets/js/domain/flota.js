@@ -27,7 +27,7 @@ export const ESTADO_BADGE = {
 export const SEVERIDAD_LABEL = { 3: 'Alta', 2: 'Media', 1: 'Informativa' };
 export const SEVERIDAD_BADGE = { 3: 'red', 2: 'orange', 1: 'gray' };
 export const TIPO_LABEL = {
-  limite: 'Desgaste límite',
+  limite: ESTADOS.limite.texto,
   cruza_limite_pronto: 'Cruzará desgaste límite',
   desgaste_irregular: 'Desgaste irregular',
   sin_medir: 'Sin medir',

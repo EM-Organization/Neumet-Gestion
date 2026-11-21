@@ -11,6 +11,7 @@ import { ACTIONS } from '../core/actions.js';
 import { UMBRALES, wearStatus, avgMm, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { fmtNum } from '../domain/formato.js';
+import { ESTADOS, BUENO_O_POCO } from '../domain/estado-desgaste.js';
 import { mLast, mTireColor, medDrawTruck, medUpdateCounters } from './mediciones-camion.js';
 import { medSwitchMode, initDispositivoMode } from './mediciones-dispositivo.js';
 import './report.js';
@@ -178,7 +179,7 @@ export function medSelectTire(pos){
   document.getElementById('med-tire-sub').textContent=a!=null?`Promedio actual: ${fmtNum(a,1)} mm`:'Sin mediciones recientes';
 
   const statusEl=document.getElementById('med-tire-status');
-  const statusMap={ok:{cls:'ok',txt:'Buen estado / poco desgaste'},warn:{cls:'warn',txt:'Mayor desgaste'},crit:{cls:'crit',txt:'Desgaste límite'},neutral:{cls:'',txt:'Sin mediciones'}};
+  const statusMap={ok:{cls:'ok',txt:BUENO_O_POCO},warn:{cls:'warn',txt:ESTADOS.mayor.texto},crit:{cls:'crit',txt:ESTADOS.limite.texto},neutral:{cls:'',txt:ESTADOS.sinDatos.texto}};
   const s=statusMap[col.status]||statusMap.neutral;
   statusEl.className=`tire-status ${s.cls}`;
   statusEl.textContent=s.txt+(a!=null?` · ${fmtNum(a,1)} mm`:'');

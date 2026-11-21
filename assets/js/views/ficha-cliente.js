@@ -9,6 +9,7 @@ import { ACTIONS } from '../core/actions.js';
 import { CAMPOS_UMBRAL, resumenFlota } from '../domain/umbrales.js';
 import { cargarSeccionalesAdmin } from './seccionales-admin.js';
 import { contarPorEstado, infoEstado, ESTADOS } from '../domain/salud.js';
+import { ESTADOS as EST, BUENO_O_POCO } from '../domain/estado-desgaste.js';
 
 // Ficha de cliente: resumen (v_resumen_flota_cliente), salud de sus dispositivos (v_salud_dispositivos) y umbrales
 // (columnas de clientes). Los umbrales son de solo lectura: los edita el administrador de la empresa (Empresa > Umbrales, docs/17 PR 9).
@@ -61,10 +62,10 @@ function renderResumen(r){
   setHtml(el, joinHtml([
     kpi('',r.n_vehiculos_activos??0,'Vehículos activos'),
     kpi('',r.n_neumaticos_con_datos??0,'Neumáticos con datos'),
-    kpi('green',s.nuevo+s.pocoDesgaste,'Buen estado o poco desgaste',s.conDatos?`${s.pctNuevo+s.pctPocoDesgaste}%`:''),
-    kpi('orange',s.mayorDesgaste,'Mayor desgaste',s.conDatos?`${s.pctMayorDesgaste}%`:''),
-    kpi('red',s.limite,'Desgaste límite',s.conDatos?`${s.pctLimite}%`:''),
-    kpi('gray',s.desconocido,'Sin datos'),
+    kpi('green',s.nuevo+s.pocoDesgaste,BUENO_O_POCO,s.conDatos?`${s.pctNuevo+s.pctPocoDesgaste}%`:''),
+    kpi('orange',s.mayorDesgaste,EST.mayor.texto,s.conDatos?`${s.pctMayorDesgaste}%`:''),
+    kpi('red',s.limite,EST.limite.texto,s.conDatos?`${s.pctLimite}%`:''),
+    kpi('gray',s.desconocido,EST.sinDatos.texto),
     kpi(s.alertas?'red':'',s.alertas,'Alertas activas',`${r.n_alertas_sev3??0} graves · ${r.n_alertas_sev2??0} medias · ${r.n_alertas_sev1??0} leves`),
     kpi('', r.ultima_medicion_at?relDate(r.ultima_medicion_at):'—','Última medición')
   ]));
