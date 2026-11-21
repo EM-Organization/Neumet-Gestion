@@ -27,6 +27,9 @@
   .cargando-aviso a { color: var(--accent-dark); font-weight: 600; text-decoration: underline; }
   #cargando-screen.falla .cargando-aviso { animation: none; visibility: visible; }
   @keyframes avisoVisible { to { visibility: visible } }
+  /* Sin módulos, «Cargando…» desaparece a los 10 s junto con la aparición del aviso (no se ven a la vez). */
+  #cargando-screen .login-sub { animation: cargandoOculto 0s 10s forwards; }
+  @keyframes cargandoOculto { to { display: none } }
   .login-form .field { margin-bottom: 12px; }
   .login-form label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; letter-spacing: 0.01em; }
   .login-form input { width: 100%; background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 13px; color: var(--text-primary); font-family: var(--font); font-size: 15px; outline: none; transition: all .15s; }
