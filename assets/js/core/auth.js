@@ -1,6 +1,6 @@
 import { db } from './supabase.js';
 import { userError } from './ui.js';
-import { decidirRol, puedeUsarPanel, puedeVerPrecios as rolVePrecios, esAdminEmpresa as rolEsAdminEmpresa, esUsuarioSucursal as rolEsUsuarioSucursal, rotuloRol, ROL_ADMIN, ROL_SIN_ACCESO } from '../domain/rol.js';
+import { decidirRol, puedeUsarPanel, puedeVerPrecios as rolVePrecios, esAdminEmpresa as rolEsAdminEmpresa, esUsuarioSucursal as rolEsUsuarioSucursal, rotuloRol, ROL_ADMIN } from '../domain/rol.js';
 
 // ── MODO CLIENTE ─────────────────────────────────
 // null = admin (ve todo), número = cliente (ve solo lo suyo). Exportados como live bindings (solo auth.js los modifica).
@@ -28,6 +28,14 @@ const loginHooks=[], logoutHooks=[];
 export function onLogin(fn){ loginHooks.push(fn); }
 export function onLogout(fn){ logoutHooks.push(fn); }
 
+// Generación de sesión: sube al entrar otro usuario y al cerrar sesión. Un resultado de una generación anterior se descarta
+// (p. ej. la consulta de perfil que volvió después de un SIGNED_OUT no debe mostrar el panel).
+let generacion=0;
+// Entrada en curso o resuelta de la generación actual: dedupe de login + SIGNED_IN simultáneos (una sola consulta de perfil).
+let entrada=null; // {gen, userId, promesa}
+// Id del usuario cuyo panel ya se mostró: TOKEN_REFRESHED no repite showApp ni los hooks de login.
+let mostrado=null;
+
 function applyClienteMode(){
   document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display='none'; });
   document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display=''; });
@@ -39,23 +47,25 @@ function applyClienteMode(){
   document.getElementById('user-role').textContent=rotuloRol(currentRol,currentSucursalId);
 }
 
-// Resuelve el rol con decidirRol (domain/rol.js). Primero el perfil (cubre usuarios de sucursal, que no figuran en
+// Consulta el rol con decidirRol (domain/rol.js). Primero el perfil (cubre usuarios de sucursal, que no figuran en
 // clientes.auth_user_id); si no hay perfil de cliente, se usa el vínculo clientes.auth_user_id (cuentas anteriores
-// a las sucursales). Sin ninguno, o ante un error de consulta, la sesión queda «sin acceso» (falla cerrado).
+// a las sucursales). Devuelve el resultado sin tocar los globals: entrar() los confirma si la generación sigue vigente.
+// Un error de consulta no es «sin acceso»: se devuelve {fallo:true} para mostrar «No se pudo cargar».
 async function resolverRol(userId){
-  currentRol=ROL_SIN_ACCESO; currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
   const {data:perfil,error:ePerfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();
-  if(ePerfil) return;
+  if(ePerfil) return {fallo:true};
   let clientePerfil=null, clienteVinculado=null;
   if(perfil&&perfil.rol==='cliente'&&perfil.cliente_id!=null){
-    ({data:clientePerfil}=await db.from('clientes').select('id,nombre').eq('id',perfil.cliente_id).maybeSingle());
+    const {data,error}=await db.from('clientes').select('id,nombre').eq('id',perfil.cliente_id).maybeSingle();
+    if(error) return {fallo:true};
+    clientePerfil=data;
   }
   if(!perfil||perfil.rol==='cliente'){
-    ({data:clienteVinculado}=await db.from('clientes').select('id,nombre').eq('auth_user_id',userId).maybeSingle());
+    const {data,error}=await db.from('clientes').select('id,nombre').eq('auth_user_id',userId).maybeSingle();
+    if(error) return {fallo:true};
+    clienteVinculado=data;
   }
-  const r=decidirRol({perfil,clientePerfil,clienteVinculado});
-  currentRol=r.rol; currentSucursalId=r.sucursalId;
-  if(r.rol==='cliente'){ currentClienteId=r.clienteId; currentClienteNombre=r.clienteNombre; }
+  return {fallo:false, ...decidirRol({perfil,clientePerfil,clienteVinculado})};
 }
 
 // supabase-js no trae tiempo de espera: sin esto, una red que no responde deja «Cargando» para siempre.
@@ -68,32 +78,59 @@ function conEspera(p){
 
 // AUTH — detecta rol
 // Mientras se resuelve, la pantalla «Cargando» (HTML inicial) es lo único visible: el login solo aparece si se sabe que no hay sesión.
-// Sesión ilegible o sin respuesta en ESPERA_MS = sin sesión (login). Si falla la resolución del rol, queda el aviso «No se pudo cargar»;
-// si ni siquiera cargan los módulos, lo muestra la CSS de index.html tras ~10 s.
+// Sesión ilegible o sin respuesta en ESPERA_MS = sin sesión (login); si el SIGNED_IN o TOKEN_REFRESHED llega después, entra igual.
+// Si ni siquiera cargan los módulos, lo muestra la CSS de index.html tras ~10 s.
 export async function checkAuth(){
   let session=null;
-  try{ ({data:{session}}=await conEspera(db.auth.getSession())); }catch(e){ session=null; }
+  try{ ({data:{session}}=await conEspera(db.auth.getSession())); }catch{ session=null; }
   if(!session){ showLogin(); return; }
   await entrar(session.user);
 }
 
 // Tras resolver el rol: panel para admin/cliente; «Sin acceso» para el resto (sin cargar vistas ni datos).
 // Si la consulta del rol falla o no responde no se sabe qué rol es: nunca se muestra el panel, solo el aviso con salida (recargar).
-async function entrar(user){
-  try{ await conEspera(resolverRol(user.id)); }
-  catch(e){ currentRol=ROL_SIN_ACCESO; showFalloCarga(); return; }
-  if(panelHabilitado()) showApp(user); else showSinAcceso();
+// Dedupe dentro de la misma generación: login y SIGNED_IN a la vez, o TOKEN_REFRESHED, comparten una sola resolución.
+function entrar(user){
+  if(entrada&&entrada.gen===generacion&&entrada.userId===user.id) return entrada.promesa;
+  generacion++;
+  const gen=generacion;
+  const promesa=resolverEntrada(user,gen);
+  entrada={gen,userId:user.id,promesa};
+  return promesa;
+}
+
+async function resolverEntrada(user,gen){
+  let r;
+  try{ r=await conEspera(resolverRol(user.id)); }
+  catch{ r={fallo:true}; }
+  // Cerró sesión (o entró otro usuario) mientras se resolvía: este resultado ya no corresponde a la pantalla.
+  if(gen!==generacion) return;
+  if(r.fallo){ showFalloCarga(); return; }
+  // Otro usuario sin SIGNED_OUT previo: se sueltan las vistas del anterior antes de mostrar al nuevo.
+  if(mostrado!==null&&mostrado!==user.id) soltarEstado();
+  currentRol=r.rol; currentSucursalId=r.sucursalId;
+  currentClienteId=r.rol==='cliente'?r.clienteId:null;
+  currentClienteNombre=r.rol==='cliente'?r.clienteNombre:'';
+  if(!panelHabilitado()){ showSinAcceso(); return; }
+  if(mostrado!==user.id){ mostrado=user.id; showApp(user); }
 }
 
 function showFalloCarga(){
   const c=document.getElementById('cargando-screen');
   c.classList.remove('hidden'); c.classList.add('falla');
+  // «Cargando…» y «No se pudo cargar» no deben verse a la vez: la marca .falla ya muestra el aviso.
+  c.querySelector('.login-sub').style.display='none';
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.add('hidden');
 }
 
-function ocultarCargando(){ document.getElementById('cargando-screen').classList.add('hidden'); }
+function ocultarCargando(){
+  const c=document.getElementById('cargando-screen');
+  c.classList.remove('falla');
+  c.querySelector('.login-sub').style.display='';
+  c.classList.add('hidden');
+}
 function showLogin(){
   ocultarCargando();
   document.getElementById('login-screen').classList.remove('hidden');
@@ -118,7 +155,10 @@ function showApp(user){
   loginHooks.forEach(fn=>fn({cliente:isClienteMode(),user}));
 }
 
+let oyenteRegistrado=false;
 export function initAuth(){
+  if(oyenteRegistrado) return;
+  oyenteRegistrado=true;
   document.getElementById('login-form').addEventListener('submit',async e=>{
     e.preventDefault();
     const email=document.getElementById('login-email').value.trim();
@@ -138,19 +178,30 @@ export function initAuth(){
   const cerrarSesion=async()=>{ await db.auth.signOut(); limpiarSesion(); };
   document.getElementById('logout-btn').addEventListener('click',cerrarSesion);
   document.getElementById('sin-acceso-cerrar').addEventListener('click',cerrarSesion);
-  // SIGNED_OUT también llega al cerrar sesión en otra pestaña o al expirar el token: mismo estado final que el botón.
-  db.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') limpiarSesion(); });
+  // Único oyente de auth. SIGNED_OUT (botón, otra pestaña o token vencido) cierra la sesión; SIGNED_IN y TOKEN_REFRESHED
+  // entran si traen usuario (tras el tope de getSession, o al volver a entrar).
+  db.auth.onAuthStateChange((evento,session)=>{
+    if(evento==='SIGNED_OUT') limpiarSesion();
+    else if((evento==='SIGNED_IN'||evento==='TOKEN_REFRESHED')&&session&&session.user) entrar(session.user);
+  });
 }
 
-// Idempotente: el botón y el evento SIGNED_OUT convergen aquí y los hooks de logout corren una sola vez.
+// Idempotente: el botón y el evento SIGNED_OUT convergen aquí. Invalida la resolución en curso (generación nueva).
 function limpiarSesion(){
-  if(currentRol!==null){
-    currentRol=null; currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
-    logoutHooks.forEach(fn=>fn());
-    document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
-    document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display='none'; });
-    document.querySelectorAll('[data-empresa-only]').forEach(el=>{ el.style.display='none'; });
-    document.getElementById('user-role').textContent='—';
-  }
+  generacion++;
+  entrada=null;
+  soltarEstado();
   showLogin();
+}
+
+// Quita el estado de la sesión anterior: globals, vistas (hooks de logout) y menús por rol.
+function soltarEstado(){
+  mostrado=null;
+  if(currentRol===null) return;
+  currentRol=null; currentClienteId=null; currentClienteNombre=''; currentSucursalId=null;
+  logoutHooks.forEach(fn=>fn());
+  document.querySelectorAll('[data-admin-only]').forEach(el=>{ el.style.display=''; });
+  document.querySelectorAll('[data-cliente-only]').forEach(el=>{ el.style.display='none'; });
+  document.querySelectorAll('[data-empresa-only]').forEach(el=>{ el.style.display='none'; });
+  document.getElementById('user-role').textContent='—';
 }

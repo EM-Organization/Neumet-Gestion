@@ -30,7 +30,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script><script src="/tests/smoke/empresa.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script><script src="/tests/smoke/empresa.fixture.js"><\/script><script src="/tests/smoke/arranque.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     var fr=document.createElement('iframe');
     var vw=(location.search.match(/[?&]vw=(\d+)/)||[])[1]||1400, vh=(location.search.match(/[?&]vh=(\d+)/)||[])[1]||900;
@@ -52,7 +52,7 @@
     var nav=function(v){ return click($('.nav-item[data-view="'+v+'"]'),'nav '+v); };
     await sleep(600);
     var sinAcceso=/[?&](sinperfil|api)=1/.test(location.search);
-    if($('#app').classList.contains('hidden') && !sinAcceso && !/[?&](nosession=1|roto=1|colgada=\w+)/.test(location.search)) fail('la app no salio del login');
+    if($('#app').classList.contains('hidden') && !sinAcceso && !/[?&](nosession=1|roto=1|colgada=\w+|escena=\w+)/.test(location.search)) fail('la app no salio del login');
 
     if(/[?&]arranque=1/.test(location.search)){
       // Qué se ve mientras se resuelve la sesión (tests/smoke/arranque.flow.js)
