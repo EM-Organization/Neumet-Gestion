@@ -95,6 +95,8 @@ export async function checkAuth(){
 // Dedupe dentro de la misma generación: login y SIGNED_IN a la vez, o TOKEN_REFRESHED, comparten una sola resolución.
 function entrar(user){
   if(entrada&&entrada.gen===generacion&&entrada.userId===user.id) return entrada.promesa;
+  // Otro usuario sin SIGNED_OUT: el panel del anterior se suelta y se tapa ya, sin esperar a la resolución del nuevo.
+  if(mostrado!==null&&mostrado!==user.id){ soltarEstado(); mostrarCargando(); }
   generacion++;
   const gen=generacion;
   const promesa=resolverEntrada(user,gen);
@@ -109,8 +111,6 @@ async function resolverEntrada(user,gen){
   // Cerró sesión (o entró otro usuario) mientras se resolvía: este resultado ya no corresponde a la pantalla.
   if(gen!==generacion) return;
   if(r.fallo){ showFalloCarga(); return; }
-  // Otro usuario sin SIGNED_OUT previo: se sueltan las vistas del anterior antes de mostrar al nuevo.
-  if(mostrado!==null&&mostrado!==user.id) soltarEstado();
   currentRol=r.rol; currentSucursalId=r.sucursalId;
   currentClienteId=r.rol==='cliente'?r.clienteId:null;
   currentClienteNombre=r.rol==='cliente'?r.clienteNombre:'';
@@ -123,6 +123,15 @@ function showFalloCarga(){
   c.classList.remove('hidden'); c.classList.add('falla');
   // «Cargando…» y «No se pudo cargar» no deben verse a la vez: la marca .falla ya muestra el aviso.
   c.querySelector('.login-sub').style.display='none';
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('sin-acceso-screen').classList.add('hidden');
+}
+
+// Pantalla «Cargando» mientras se resuelve otro usuario: tapa el panel anterior.
+function mostrarCargando(){
+  const c=document.getElementById('cargando-screen');
+  c.classList.remove('falla','hidden');
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('sin-acceso-screen').classList.add('hidden');
