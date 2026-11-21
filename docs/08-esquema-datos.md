@@ -365,7 +365,7 @@ política de lectura) y siempre del mismo cliente del vehículo; el de sucursal 
 
 `views/cambio-neumatico.js` registra `neumatico-cambiar` (`data-vehiculo-id`, `data-posicion`; `core/actions.js` pasa esos números como argumentos si no hay `data-args`) y
 `neumatico-rotar-pos`; lógica pura y traducción de errores en `domain/cambio-neumatico.js`. Al terminar emite `neumet:neumatico-cambiado` y recarga la vista activa.
-Punto de entrada temporal: botón "Cambiar neumático" en el modal de ciclo de vida.
+Punto de entrada temporal: botón "Cambiar neumático" en el modal de ciclo de vida abierto desde la lista de vehículos; abierto desde el detalle (administrador de empresa) el bloque se oculta, porque la acción de la rueda ya existe.
 
 ## C.4 Pruebas
 
