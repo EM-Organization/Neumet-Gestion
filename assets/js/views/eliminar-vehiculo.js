@@ -39,6 +39,14 @@ function radio(id, label, checked, disabled, aviso) {
     ${disabled ? 'disabled aria-describedby="veh-elim-aviso"' : ''} data-change="vehiculo-eliminar-resumen"/> <span>${label}${disabled ? html`<small class="veh-elim-motivo"> (no disponible: ${aviso})</small>` : ''}</span></label>`;
 }
 
+// Estado de «eliminando»: botón con progreso y deshabilitado (no se puede enviar dos veces ni leer como colgado).
+function enCurso(si) {
+  const b = $('veh-elim-confirmar');
+  b.disabled = si;
+  b.textContent = si ? 'Eliminando…' : 'Eliminar vehículo';
+  if (si) b.setAttribute('aria-busy', 'true'); else b.removeAttribute('aria-busy');
+}
+
 function actualizar() {
   const { total } = ctx;
   const d = destinoElegido();
@@ -48,7 +56,7 @@ function actualizar() {
 
 function pintar() {
   const { nombre, total, opciones } = ctx;
-  $('veh-elim-sub').textContent = nombre ? etiquetaCoche(nombre) : '';
+  $('veh-elim-title').textContent = nombre ? `¿Eliminar ${etiquetaCoche(nombre)}?` : '¿Eliminar vehículo?';
   $('veh-elim-intro').textContent = total === 0
     ? 'El vehículo dejará de verse en la lista. Esta acción no se puede deshacer.'
     : `El vehículo tiene ${total === 1 ? '1 neumático' : `${total} neumáticos`}. Elegir qué hacer con ${total === 1 ? 'él' : 'ellos'}. Esta acción no se puede deshacer.`;
@@ -58,7 +66,7 @@ function pintar() {
     radio('baja', etiquetaDestino('baja', total), false, false)
   ]));
   $('veh-elim-aviso').textContent = opciones.avisoStock;
-  $('veh-elim-confirmar').disabled = false;
+  enCurso(false);
   actualizar();
 }
 
@@ -77,13 +85,8 @@ async function abrir(vehiculoId) {
   ctx = { vehiculoId, nombre: rv.data.nombre, total, sinQuema, opciones: opcionesDestino({ total, sinQuema }) };
   pintar();
   $('modal-veh-eliminar').classList.add('show');
-  // modal-a11y guarda el elemento que abrió el diálogo (para devolverle el foco al cerrar) y enfoca de forma asíncrona:
-  // enfocar aquí, de forma síncrona, le haría guardar el radio y el foco caería en <body> al cerrar. Va después.
-  // Sin neumáticos no hay opciones: el foco queda en «Eliminar vehículo» para que Enter confirme.
-  setTimeout(() => {
-    const primero = document.querySelector('input[name="veh-elim-destino"]:checked, input[name="veh-elim-destino"]:not(:disabled)');
-    if (ctx) (primero || $(total === 0 ? 'veh-elim-confirmar' : 'veh-elim-cancelar')).focus();
-  }, 60);
+  // El foco inicial lo pone modal-a11y (data-foco-inicial="veh-elim-cancelar"): en lo destructivo empieza en la salida
+  // segura. Enfocar aquí lo haría guardar otro elemento como «el que abrió» y el foco caería en <body> al cerrar.
 }
 
 // El equipo Neumet y los usuarios de sucursal no ven el botón; aquí además se rechaza (un data-action ajeno no abre el diálogo).
@@ -96,7 +99,7 @@ ACTIONS['vehiculo-eliminar-confirmar'] = async function () {
   if (!ctx || ocupado || !esAdminEmpresa()) return;
   const r = validarEliminar({ vehiculoId: ctx.vehiculoId, total: ctx.total, sinQuema: ctx.sinQuema, destino: destinoElegido() });
   if (!r.ok) { $('veh-elim-error').textContent = r.error; showToast(r.error, true); return; }
-  ocupado = true; $('veh-elim-confirmar').disabled = true;
+  ocupado = true; enCurso(true);
   const mio = ctx; // la respuesta solo toca el diálogo del vehículo que la originó
   const coche = mio.nombre ? etiquetaCoche(mio.nombre) : '';
   try {
@@ -125,7 +128,7 @@ ACTIONS['vehiculo-eliminar-confirmar'] = async function () {
     }
     if (ctx === mio) $('veh-elim-error').textContent = msg;
     showToast(msg, true);
-    if (ctx === mio) $('veh-elim-confirmar').disabled = false;
+    if (ctx === mio) enCurso(false);
   } finally { ocupado = false; }
 };
 

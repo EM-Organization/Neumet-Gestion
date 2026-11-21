@@ -92,8 +92,8 @@ export function registrar(env) {
       await abrirDetallePorMatricula(p, 'DEMO010');
       await seleccionarRueda(p, 1);
       assert.match(await texto(p, '#vd-panel'), /Rotación/);
-      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /Desgaste límite/);
-      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /Desgaste límite/);
+      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /desgaste límite/);
+      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /desgaste límite/);
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-rueda').length`), 10);
     });
   });

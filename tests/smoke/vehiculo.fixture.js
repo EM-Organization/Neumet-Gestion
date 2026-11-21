@@ -29,7 +29,7 @@
     fila(10,'Camión 01','AB123CD',6,12,{mm1:14,mm2:12,mm3:10.9,diferencia_huellas_mm:3.1,desgaste_irregular:true}),
     fila(10,'Camión 01','AB123CD',7,9), fila(10,'Camión 01','AB123CD',8,6.5), fila(10,'Camión 01','AB123CD',9,10), fila(10,'Camión 01','AB123CD',10,13),
     fila(12,'Unidad <Crítica>','CR0001',1,3.5,{tasa_mm_semana:0.5}), fila(12,'Unidad <Crítica>','CR0001',3,9,{tasa_mm_semana:0.4}),
-    fila(14,'Tractor 16','ZZ999YY',1,12), fila(14,'Tractor 16','ZZ999YY',3,10,{tasa_mm_semana:0.5}), fila(14,'Tractor 16','ZZ999YY',99,11)
+    fila(14,'Tractor 16','ZZ999YY',1,12), fila(14,'Tractor 16','ZZ999YY',3,7.97,{tasa_mm_semana:0.5}), fila(14,'Tractor 16','ZZ999YY',99,2.0,{tasa_mm_semana:0.6,desgaste_irregular:true,diferencia_huellas_mm:3})
   ];
   var alertas = [
     {cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:4,tipo:'limite',severidad:3,valor:2.5,mensaje:'Desgaste límite: 2,5 mm (umbral 3 mm)',ultima_medicion_at:D(2)}

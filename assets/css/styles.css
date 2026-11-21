@@ -356,7 +356,7 @@
   .confirm-icon svg[hidden] { display:none; }
   .confirm-modal .modal-body { padding-top:14px; }
   .confirm-modal .modal-footer { padding-top:4px; }
-  .btn.danger { background:var(--danger); color:white; border-color:var(--danger); }
+  .btn.danger { background:var(--err); color:white; border-color:var(--err); }
   .btn.danger:hover:not(:disabled) { background:#a93226; border-color:#a93226; }
 
   /* FIELD SELECT */
@@ -550,15 +550,49 @@
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
 .vd-cab { margin-bottom: 18px; }
 .vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.vd-cab-eliminar { margin-left: auto; }
+/* Acciones de la cabecera (docs/21 §5.7): grupo a la derecha del título, alto 40; la destructiva va última, en rojo y separada.
+   Solo CSS (no se tocan los botones del markup): Cambiar distribución empuja el grupo a la derecha; Eliminar, si lo sigue, deja 24 px. */
+.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"], .vd-cab-titulo > .vd-cab-eliminar { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
+.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] { margin-left: auto; }
+.vd-cab-titulo > .vd-cab-eliminar { margin-left: auto; border-color: var(--err); color: var(--err-on-white); }
+.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] + .vd-cab-eliminar { margin-left: 12px; }
+.vd-cab-titulo > .vd-cab-eliminar:hover:not(:disabled) { background: rgba(179,54,42,0.08); }
+.vd-cab-titulo > .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
 .vd-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
 .vd-datos dt { font-size: 12px; color: var(--text-secondary); }
 .vd-datos dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .vd-layout { display: grid; grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); gap: 20px; align-items: start; }
-.vd-diagrama-card { position: sticky; top: 12px; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-.vd-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
-.vd-resumen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.vd-layout > * { min-width: 0; }
+/* Tarjeta fija bajo la barra superior (docs/21 §6); solo si no cabe, su propio contenido se desplaza. */
+.vd-diagrama-card { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); overflow-y: auto; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+.vd-panel { scroll-margin-top: calc(var(--vd-topbar) + 16px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
+.vd-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+/* Chips de estado: leyenda y filtro a la vez (docs/21 §5.1). Alto 32, radio 16, borde 1,5; el estado lo dicen símbolo y texto, no el color. */
+.vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.vd-chip .vd-chip-rango { font-weight: 400; color: var(--n-oliva); }
+.vd-chip .vd-chip-sim { font-weight: 800; }
+.vd-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--n-oscuro); }
+.vd-chip-flag { border-color: var(--n-oscuro); }
+.vd-chip:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
+.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
+.est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
+.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
+.vd-chip.est-bueno .vd-chip-sim, .vd-tag.est-bueno .vd-chip-sim { color: var(--est-bueno-sym); }
+.vd-chip.est-poco .vd-chip-sim, .vd-tag.est-poco .vd-chip-sim { color: var(--est-poco-sym); }
+.vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); }
+.vd-chip-rayas { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: repeating-linear-gradient(45deg, var(--est-sinDatos-fill) 0 5px, var(--est-hatch) 5px 6px); border: 1px dashed var(--est-sinDatos-stroke); }
+.vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: #fff; font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
+/* Etiqueta de estado (panel y título): mismo estilo que el chip, alto 28, sin conteo ni rango. */
+.vd-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); font-size: 13px; font-weight: 600; color: var(--n-oscuro); background: var(--surface); }
+.vd-tag.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
+.vd-tag.est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
+.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.vd-tag.est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
+.vd-tag.vd-tag-flag { border-color: var(--n-oscuro); background: var(--surface); }
+.vd-tag .vd-chip-sim { font-weight: 800; }
+.vd-p-estado { align-items: center; }
 .vd-diagrama { display: flex; justify-content: center; }
 .vd-svg { width: 100%; max-width: 380px; height: auto; display: block; }
 .vd-chasis { fill: rgba(56,52,36,0.04); stroke: rgba(56,52,36,0.35); stroke-width: 1; }
@@ -566,28 +600,31 @@
 .vd-eje { stroke: rgba(56,52,36,0.18); stroke-width: 2; stroke-linecap: round; }
 .vd-txt-suave { fill: var(--text-secondary); font-family: var(--font); font-size: 9px; letter-spacing: 0.14em; }
 .vd-rueda { cursor: pointer; outline: none; }
-.vd-rueda rect.vd-goma { stroke-width: 1; }
-.vd-rueda:hover rect.vd-goma { stroke-width: 1.8; }
-.vd-rueda:focus-visible rect.vd-goma { stroke-width: 2; stroke: #0b57d0; }
-.vd-rueda.sel rect.vd-goma { stroke-width: 1.6; stroke: var(--text-primary); }
+/* Neumático: un estado, un color (docs/21 §5.2). Trazo 2; seleccionado 3 en --n-oscuro; foco 3 con separación 2; atenuado por el filtro 0,35. */
+.vd-rueda rect.vd-goma { stroke-width: 2; }
+.vd-rueda.est-bueno rect.vd-goma { fill: var(--est-bueno-fill); stroke: var(--est-bueno-stroke); }
+.vd-rueda.est-poco rect.vd-goma { fill: var(--est-poco-fill); stroke: var(--est-poco-stroke); }
+.vd-rueda.est-mayor rect.vd-goma { fill: var(--est-mayor-fill); stroke: var(--est-mayor-stroke); }
+.vd-rueda.est-sinDatos rect.vd-goma { fill: url(#vd-sin-datos); stroke: var(--est-sinDatos-stroke); stroke-dasharray: 4 3; }
+.vd-rueda.est-bueno .vd-sim { fill: var(--est-bueno-sym); }
+.vd-rueda.est-poco .vd-sim { fill: var(--est-poco-sym); }
+.vd-rueda.est-mayor .vd-sim { fill: var(--est-mayor-sym); }
+.vd-rueda.est-sinDatos .vd-sim { fill: var(--est-sinDatos-sym); }
+.vd-rueda:hover rect.vd-goma { stroke-width: 2.6; }
+.vd-rueda:focus-visible rect.vd-goma { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
+.vd-rueda:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
+.vd-rueda.sel rect.vd-goma { stroke-width: 3; stroke: var(--n-oscuro); }
+.vd-rueda.dim, .vd-bandera.dim { opacity: 0.35; }
 .vd-rueda text { font-family: var(--font); text-anchor: middle; pointer-events: none; }
-.vd-rueda .vd-mm { font-size: 12px; font-weight: 600; }
-.vd-rueda .vd-pos, .vd-rueda .vd-sim { font-size: 9px; font-weight: 500; opacity: 0.75; }
-.vd-rueda .vd-sim { font-size: 10px; }
-.vd-alerta-disco { fill: #f6ecc8; stroke: #a9822c; stroke-width: 1; }
-.vd-alerta-signo { fill: #7a5a12; font-size: 8px; font-weight: 700; text-anchor: middle; font-family: var(--font); pointer-events: none; }
-.vd-leyenda { margin-top: 18px; font-size: 12px; color: var(--text-secondary); }
-.vd-escala-barra { height: 8px; border-radius: 4px; }
-.vd-escala-marcas { position: relative; height: 16px; margin: 4px 0 0; }
-.vd-escala-marcas span { white-space: nowrap; position: absolute; top: 0; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
-.vd-escala-marcas span:first-child { transform: none; }
-.vd-escala-marcas span:last-child { transform: translateX(-100%); }
-.vd-escala-nota { margin: 6px 0 0; color: var(--text-tertiary); }
-.vd-leyenda-extra { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; }
-.vd-leyenda-item { display: inline-flex; align-items: center; gap: 6px; }
-.vd-muestra { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border-strong); }
-.vd-muestra-sd { background: repeating-linear-gradient(45deg, #f1efe7 0 3px, #d3cfbd 3px 4px); }
-.vd-insignia { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #f6ecc8; border: 1px solid #a9822c; color: #7a5a12; font-size: 10px; font-weight: 700; }
+.vd-rueda .vd-mm { font-size: 12px; font-weight: 800; fill: var(--n-oscuro); }
+.vd-rueda .vd-pos { font-size: 9px; font-weight: 700; fill: var(--n-oliva); }
+.vd-rueda .vd-sim { font-size: 10px; font-weight: 700; }
+.vd-hatch-fondo { fill: var(--est-sinDatos-fill); }
+.vd-hatch-raya { stroke: var(--est-hatch); stroke-width: 1; }
+/* Insignia de «Desgaste acelerado»: círculo con aro blanco, metido 4 en el borde superior; se dibuja después de todas las ruedas. */
+.vd-bandera { pointer-events: none; }
+.vd-bandera circle { fill: var(--est-bandera); stroke: #fff; stroke-width: 2; }
+.vd-bandera text { fill: #fff; font-family: var(--font); font-size: 10px; font-weight: 800; text-anchor: middle; }
 .vd-cerrar { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary); font-size: 28px; line-height: 1; display: grid; place-items: center; cursor: pointer; transition: all .12s; flex-shrink: 0; }
 .vd-cerrar:hover { background: var(--surface-secondary); color: var(--text-primary); }
 .vd-etiqueta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); background: var(--surface-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
@@ -613,14 +650,22 @@
 .vd-p-texto { font-size: 14px; margin: 4px 0; }
 .vd-alertas, .vd-eventos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .vd-chart { width: 100%; height: auto; display: block; }
-.vd-g-grid { stroke: rgba(56,52,36,0.06); stroke-width: 1; }
-.vd-g-eje { fill: var(--text-tertiary); font-size: 10px; font-family: var(--font); }
-.vd-g-serie { fill: none; stroke: var(--text-primary); stroke-width: 1.5; stroke-linejoin: round; }
-.vd-g-proy { fill: none; stroke: var(--text-primary); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 2 4; stroke-linecap: round; }
-.vd-g-punto { fill: var(--text-primary); fill-opacity: 0.6; stroke: none; }
-.vd-g-ultimo { fill-opacity: 1; }
-.vd-g-umbral { stroke-width: 1; stroke-dasharray: 3 3; }
-.vd-g-umbral-txt { font-size: 9.5px; }
+/* Gráfico de evolución (docs/21 §5.4): bandas por estado, línea 2, puntos coloreados por estado con aro blanco. */
+.vd-g-grid { stroke: rgba(56,52,36,0.10); stroke-width: 1; }
+.vd-g-eje { fill: var(--n-oliva); font-size: 11px; font-family: var(--font); }
+.vd-g-banda { fill-opacity: 0.55; stroke: none; }
+.vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }
+.vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }
+.vd-g-serie { fill: none; stroke: var(--n-oscuro); stroke-width: 2; stroke-linejoin: round; }
+.vd-g-punto { stroke: #fff; stroke-width: 2; }
+.vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
+.vd-datos-det { margin-top: 8px; font-size: 13px; }
+.vd-datos-scroll { max-width: 100%; overflow-x: auto; }
+.vd-datos-det summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.vd-datos-tabla { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.vd-datos-tabla th, .vd-datos-tabla td { padding: 4px 6px; text-align: right; }
+.vd-datos-tabla th:first-child, .vd-datos-tabla td:first-child, .vd-datos-tabla th:last-child, .vd-datos-tabla td:last-child { text-align: left; }
 .vd-p-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .vd-pie { flex: none; background: var(--surface); margin: 12px -20px -20px; padding: 12px 20px 16px; border-top: 1px solid var(--border); }
 .vd-panel-backdrop { display: none; }
@@ -637,7 +682,7 @@
 }
 .vd-rotar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 .vd-rotar label { font-size: 13px; color: var(--text-secondary); flex: 1 1 100%; }
-.vd-rotar select { flex: 1 1 160px; min-height: 36px; }
+.vd-rotar select { flex: 1 1 160px; min-width: 0; max-width: 100%; min-height: 36px; }
 /* ── Consistencia de espaciado (cabeceras, pestañas, barras de filtros y tablas) ─────────────────────────────
    Escala de 4 px: cabecera -> 20, pestañas -> 24, filtros -> 16, secciones -> 28. Solo tokens de marca. */
 .page-header { align-items: center; gap: 12px 16px; margin-bottom: 20px; min-height: 40px; }
@@ -658,8 +703,8 @@
 }
 /* Pantallas bajas (p. ej. 1280x720): acciones del panel en una sola fila para dejar sitio al gráfico */
 @media (min-width: 861px) and (max-height: 800px) {
-  .vd-pie { display: flex; align-items: flex-end; gap: 10px; padding: 10px 20px 12px; position: relative; }
-  .vd-pie .vd-rotar { margin-top: 0; flex: 1 1 auto; flex-wrap: nowrap; }
+  .vd-pie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; padding: 10px 20px 12px; position: relative; }
+  .vd-pie .vd-rotar { margin-top: 0; flex: 1 1 220px; flex-wrap: nowrap; }
   .vd-pie .vd-rotar label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
@@ -808,12 +853,11 @@
 .vd-montar-mas { margin-left: auto; padding: 2px 8px; min-height: 0; font-size: 13px; }
 .vd-goma-vacia { fill: var(--surface); stroke: rgba(56,52,36,0.45); stroke-width: 1.4; stroke-dasharray: 4 3; }
 .vd-vacia:hover rect.vd-goma-vacia { stroke-width: 1.8; }
-.vd-vacia:focus-visible rect.vd-goma-vacia { stroke: #0b57d0; stroke-dasharray: none; }
+.vd-vacia:focus-visible rect.vd-goma-vacia { stroke: var(--n-oscuro); stroke-width: 3; stroke-dasharray: none; }
 .vd-vacia.sel rect.vd-goma-vacia { stroke: var(--text-primary); stroke-width: 1.8; }
 .vd-vacia text { fill: var(--text-secondary); }
 .vd-vacia .vd-sim { font-size: 8px; letter-spacing: 0; }
 .vd-rueda .vd-mas { font-size: 16px; font-weight: 400; fill: var(--text-secondary); }
-.vd-muestra-vacia { background: transparent; border: 1.4px dashed rgba(56,52,36,0.45); }
 .mont-aviso { font-size: 13px; color: var(--text-primary); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; }
 .mont-aviso:empty { display: none; }
 .mont-tabs[hidden] { display: none; }

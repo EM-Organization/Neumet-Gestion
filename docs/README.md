@@ -18,6 +18,8 @@ Punto de partida: el [README](../README.md) de la raíz (qué es NEUMET, arquite
 | [18 · Rotación y reposición para vehículos pesados](18-rotacion-vehiculos-pesados.md) | Investigación y propuesta de diseño (F8): reglas por eje y posición para camiones y buses, datos que faltan, casos de prueba, plan en PR en serie y reposición; solo propuesta, sin código |
 | [19 · Migración gradual a un framework con build](19-migracion-framework.md) | Plan (estado: planificado, F11): sistema de diseño, evaluación de stack, estrategia de islas dentro del panel actual, validación del stack en el piloto, olas, reparto de agentes, riesgos y preguntas al dueño; sin código |
 | [20 · Carga inicial del listado de un cliente](20-carga-inicial.md) | Script de carga del listado de neumáticos de un cliente (dry-run, transacción única, idempotente), decisiones de mapeo, km del tramo actual sin dato y el bloqueo de los descartes como baja; sin migración |
+| [21 · Especificación de la interfaz web](21-spec-ui-web.md) | Spec de UI del panel (W-01..W-10, criterios de aceptación y casos de prueba); el detalle de vehículo la cumple, el resto del panel se alinea en PR posteriores |
+| [22 · Tokens de la interfaz web](22-tokens-ui-web.json) | Tokens de diseño de esa spec (colores por estado, bandera, chips, gráfico); manda sobre la spec en caso de conflicto |
 | [03 · Despliegue Vercel + Supabase](03-despliegue-vercel-supabase.md) | Plan de despliegue y decisiones de la CSP (la sección final está al día) |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos y tipografía (assets en [`assets/brand/`](../assets/brand/README.md)) |
 

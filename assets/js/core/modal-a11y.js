@@ -13,14 +13,17 @@ function abrir(bd) {
   const dlg = bd.querySelector('.modal');
   if (!dlg) return;
   const titulo = dlg.querySelector('.modal-title');
-  dlg.setAttribute('role', bd.id === 'modal-confirm' ? 'alertdialog' : 'dialog');
+  // Un diálogo destructivo se declara con data-modal-rol="alertdialog" (los lectores de pantalla lo anuncian con prioridad).
+  dlg.setAttribute('role', bd.id === 'modal-confirm' || bd.dataset.modalRol === 'alertdialog' ? 'alertdialog' : 'dialog');
   dlg.setAttribute('aria-modal', 'true');
   if (titulo && titulo.id) dlg.setAttribute('aria-labelledby', titulo.id);
   dlg.setAttribute('tabindex', '-1');
   const previo = document.activeElement;
   abiertos.push({ bd, dlg, previo, firma: firmaDe(previo) });
   const items = focusables(dlg);
-  (items.find(el => !el.closest('.modal-footer')) || items[0] || dlg).focus();
+  // data-foco-inicial="<id>": en lo destructivo el foco empieza en la salida segura («Cancelar»), no en un campo ni en confirmar.
+  const inicial = bd.dataset.focoInicial ? items.find(el => el.id === bd.dataset.focoInicial) : null;
+  (inicial || items.find(el => !el.closest('.modal-footer')) || items[0] || dlg).focus();
 }
 
 // Si la vista se repintó mientras el modal estaba abierto (p. ej. tras montar un neumático), el botón que lo abrió ya no es el mismo

@@ -1,0 +1,171 @@
+{
+  "$description": "Tokens de la pantalla web «Detalle de vehículo» (arreglos de estado de desgaste). Extiende neumet-tokens.json: la paleta base (NeumetLightGrey, NeumetGoldBeige, NeumetOliveDark, NeumetDeepOlive y derivados) se toma de ese archivo. Si hay conflicto, manda este archivo en lo que esté definido aquí.",
+  "extends": "neumet-tokens.json",
+  "wearStatus": {
+    "_nota": "Cuatro estados discretos. Un estado = relleno + trazo + símbolo + texto. Nunca solo color. El valor que muestra el neumático es el valor con el que se decide el estado.",
+    "bueno": {
+      "id": "bueno",
+      "name": "Buen estado",
+      "symbol": "✓",
+      "fill": "#E4EAD3",
+      "stroke": "#4F6B26",
+      "symbolColor": "#4F6B26",
+      "equivalesA": {
+        "fill": "NeumetSuccessTint",
+        "stroke": "NeumetSuccess"
+      }
+    },
+    "poco": {
+      "id": "poco",
+      "name": "Poco desgaste",
+      "symbol": "▲",
+      "fill": "#F8E4B5",
+      "stroke": "#B9791A",
+      "symbolColor": "#7A4E08"
+    },
+    "mayor": {
+      "id": "mayor",
+      "name": "Mayor desgaste",
+      "symbol": "×",
+      "fill": "#F7E3E0",
+      "stroke": "#B3362A",
+      "symbolColor": "#8E2419",
+      "equivalesA": {
+        "fill": "NeumetErrorTint",
+        "stroke": "NeumetError",
+        "symbolColor": "NeumetErrorOnWhite"
+      }
+    },
+    "sinDatos": {
+      "id": "sinDatos",
+      "name": "Sin datos",
+      "symbol": "—",
+      "fill": "#EBEBEB",
+      "stroke": "#857F66",
+      "strokeStyle": "dashed",
+      "symbolColor": "#615A3F",
+      "hatch": {
+        "color": "#C9C4A8",
+        "angleDeg": 45,
+        "widthPx": 1,
+        "gapPx": 5
+      },
+      "equivalesA": {
+        "fill": "NeumetLightGrey",
+        "stroke": "NeumetInputBorder",
+        "symbolColor": "NeumetOliveDark",
+        "hatch": "NeumetTruckOutline"
+      }
+    }
+  },
+  "flagAcelerado": {
+    "_nota": "Bandera independiente del estado. Marca desgaste más rápido de lo normal (regla: TODO-RATE-RULE). Nombre propuesto: TODO-STATUS-NAMES.",
+    "name": "Desgaste acelerado",
+    "glyph": "!",
+    "badgeDiameterPx": 16,
+    "fill": "#383424",
+    "glyphColor": "#FFFFFF",
+    "ringColor": "#FFFFFF",
+    "ringPx": 2,
+    "overlapIntoTirePx": 4,
+    "equivalesA": {
+      "fill": "NeumetDeepOlive"
+    }
+  },
+  "thresholds": {
+    "_nota": "Valores actuales observados en la pantalla Umbrales (8, 5 y 3 mm). SIEMPRE se leen de la configuración, nunca se escriben en el código. Cada valor es el límite inferior (inclusivo, propuesta TODO-BOUNDARY) de la banda que nombra.",
+    "buenMm": 8,
+    "pocoMm": 5,
+    "mayorMm": 3,
+    "estado": "EJEMPLO. Origen real: TODO-THRESHOLD-SCOPE"
+  },
+  "tireNode": {
+    "_nota": "Tamaño y disposición de los neumáticos NO cambian. Solo cambian color, símbolo, selección e insignia.",
+    "strokePx": 2,
+    "selectedStrokePx": 3,
+    "selectedStrokeColor": "NeumetDeepOlive",
+    "focusOutlinePx": 3,
+    "focusOutlineOffsetPx": 2,
+    "focusOutlineColor": "NeumetGoldDeep",
+    "dimOpacity": 0.35
+  },
+  "chip": {
+    "height": 32,
+    "radius": 16,
+    "paddingX": 12,
+    "gap": 6,
+    "gapBetweenChips": 8,
+    "borderPx": 1.5,
+    "tagHeight": 28
+  },
+  "chart": {
+    "heightPx": 220,
+    "yMin": 0,
+    "yTickStepMm": 4,
+    "headroomAboveBuenMm": 4,
+    "plotInsetXPx": 24,
+    "bandLabelMinHeightPx": 20,
+    "bandLabelInsetPx": 8,
+    "linePx": 2,
+    "lineColor": "NeumetDeepOlive",
+    "pointRadiusPx": 5,
+    "lastPointRadiusPx": 6,
+    "pointRingPx": 2,
+    "pointRingColor": "#FFFFFF",
+    "yMaxRule": "max(buenMm + headroomAboveBuenMm, techo al múltiplo de yTickStepMm de la lectura máxima)"
+  },
+  "layout": {
+    "diagramCardSticky": true,
+    "stickyTopOffsetPx": 16,
+    "stickyMaxHeight": "calc(100vh - topbarHeight - 32px)",
+    "singleColumnBelowPx": 1024,
+    "singleColumnBelowPx_estado": "POR DEFINIR (TODO-BREAKPOINTS)"
+  },
+  "dialog": {
+    "widthPx": 440,
+    "radius": 16,
+    "scrim": "NeumetScrim",
+    "padding": 24
+  },
+  "buttons": {
+    "headerHeight": 40,
+    "borderPx": 1.5,
+    "destructiveText": "NeumetErrorOnWhite",
+    "destructiveBorder": "NeumetError",
+    "destructiveFill": "NeumetError"
+  },
+  "contrast_checked": {
+    "_nota": "Relación de contraste calculada (WCAG). Trazos y símbolos de componentes ≥ 3:1; texto ≥ 4.5:1. Las bandas del gráfico son fondo decorativo: el estado lo dicen el texto y el símbolo.",
+    "bueno": {
+      "trazoSobreBlanco": 6.06,
+      "simboloSobreRelleno": 4.91,
+      "textoDeepOliveSobreRelleno": 10.1,
+      "textoOliveDarkSobreRelleno": 5.59
+    },
+    "poco": {
+      "trazoSobreBlanco": 3.61,
+      "trazoSobreLightGrey": 3.03,
+      "simboloSobreRelleno": 5.74,
+      "textoDeepOliveSobreRelleno": 9.95,
+      "textoOliveDarkSobreRelleno": 5.51
+    },
+    "mayor": {
+      "trazoSobreBlanco": 6.04,
+      "simboloSobreRelleno": 7.04,
+      "textoDeepOliveSobreRelleno": 10.1,
+      "textoOliveDarkSobreRelleno": 5.59
+    },
+    "sinDatos": {
+      "trazoSobreBlanco": 4.02,
+      "simboloSobreRelleno": 5.79,
+      "textoDeepOliveSobreRelleno": 10.46,
+      "textoOliveDarkSobreRelleno": 5.79
+    },
+    "insigniaBlancoSobreDeepOlive": 12.46,
+    "eliminarTextoErrorOnWhiteSobreLightGrey": 7.29,
+    "rellenosEntreSi": "1.0 a 1.02: los rellenos se distinguen por tono (verde, ámbar, rojo), trazo y símbolo, no por luminosidad"
+  },
+  "typography": {
+    "_nota": "Misma tipografía y escala que neumet-tokens.json. Etiqueta del neumático 11/700, valor 15/800, símbolo 12, texto de chip 13/600, texto de banda 12/600."
+  }
+}

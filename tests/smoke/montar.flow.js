@@ -30,8 +30,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(all('#vd-diagrama .vd-mm').length) fail('montar: una rueda vacía muestra mm');
   var v3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
   if(!/vacía/.test(v3.getAttribute('aria-label')) || v3.getAttribute('role') !== 'button' || v3.getAttribute('tabindex') !== '0') fail('montar: la rueda vacía no es accesible: ' + v3.getAttribute('aria-label'));
-  if(!/Posición vacía/.test(txt('#vd-leyenda'))) fail('montar: la leyenda no explica la posición vacía');
-  if(/Desgaste del neumático en mm/.test(txt('#vd-leyenda'))) fail('montar: la escala de desgaste no corresponde a un coche sin neumáticos');
+  // Sin leyenda de escala: la posición vacía se explica con su aria-label («vacía») y los chips sólo cuentan neumáticos montados
+  if($('#vd-leyenda') || all('#vd-resumen .vd-chip[data-filtro]').length) fail('montar: un coche sin neumáticos no lleva leyenda ni chips de estado');
 
   // Rueda vacía: el panel ofrece «Montar neumático» y abre el modal en esa posición
   v3.dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(300);
@@ -235,7 +235,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   var be = $('#vd-cab [data-action="vehiculo-eliminar"]');
   if(!be || be.textContent.trim() !== 'Eliminar vehículo' || nVivos < 2) { fail('eliminar: falta «Eliminar vehículo» en la cabecera o el coche no tiene neumáticos (' + nVivos + ')'); return; }
   // Vehículo sin neumáticos (todos dados de baja): el diálogo abre como confirmación simple, sin errores de consola,
-  // con el foco en «Eliminar vehículo» (Enter confirma) y, al cancelar, el foco vuelve al botón que lo abrió.
+  // con el foco inicial en «Cancelar» (la salida segura; Enter no elimina) y, al cancelar, el foco vuelve al botón que lo abrió.
   var estados = vivos().map(function(x){ return [x, x.estado]; });
   estados.forEach(function(e){ e[0].estado = 'baja'; });
   be.focus(); be.click();
@@ -244,7 +244,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(abrio){
     if(!$('#veh-elim-grupo').hidden || txt('#veh-elim-destinos') !== '') fail('eliminar: sin neumáticos no debe haber opciones: ' + txt('#veh-elim-destinos'));
     if(!/no tiene neumáticos/.test(txt('#veh-elim-resumen'))) fail('eliminar: resumen sin neumáticos: ' + txt('#veh-elim-resumen'));
-    if(d.activeElement !== $('#veh-elim-confirmar')) fail('eliminar: sin neumáticos el foco debe quedar en «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+    if(d.activeElement !== $('#veh-elim-cancelar')) fail('eliminar: el foco inicial del alertdialog debe ser «Cancelar», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
     $('#veh-elim-cancelar').click(); await sleep(200);
     if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: «Cancelar» no cerró el diálogo (sin neumáticos)');
     if(d.activeElement !== be) fail('eliminar: al cancelar el foco debe volver a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
@@ -254,6 +254,21 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   vivos()[0].numero_quema = null; // un neumático sin quema no puede volver al stock
   be.focus(); be.click();
   if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar')) return;
+  // Accesibilidad del alertdialog (docs/21 §5.5), con neumáticos: rol, foco inicial en «Cancelar» y no en el radio,
+  // Tab que no sale del diálogo y Escape que cierra y devuelve el foco a «Eliminar vehículo».
+  var dlgEl = $('#modal-veh-eliminar .modal');
+  if(dlgEl.getAttribute('role') !== 'alertdialog' || dlgEl.getAttribute('aria-modal') !== 'true') fail('eliminar: el diálogo debe ser role="alertdialog" aria-modal: ' + dlgEl.getAttribute('role'));
+  if(dlgEl.getAttribute('aria-labelledby') !== 'veh-elim-title') fail('eliminar: el alertdialog debe nombrarse con su título');
+  if(d.activeElement !== $('#veh-elim-cancelar') || d.activeElement.type === 'radio') fail('eliminar: con neumáticos el foco inicial debe ser «Cancelar», no el radio; está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  $('#veh-elim-confirmar').focus();
+  d.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Tab', bubbles: true, cancelable: true}));
+  var primero = Array.prototype.filter.call($('#modal-veh-eliminar .modal').querySelectorAll('button,input'), function(x){ return !x.disabled && x.getClientRects().length > 0; })[0];
+  if(d.activeElement !== primero) fail('eliminar: Tab desde «Eliminar vehículo» (el último) debe volver al primer control, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  d.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true})); await sleep(200);
+  if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: Escape no cerró el diálogo');
+  if(d.activeElement !== be) fail('eliminar: Escape debe devolver el foco a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  be.click();
+  if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'reabrir el diálogo tras Escape')) return;
   var radioStock = $('input[name="veh-elim-destino"][value="stock"]');
   if(!radioStock.disabled || d.querySelector('input[name="veh-elim-destino"]:checked')) fail('eliminar: con un neumático sin quema el stock se deshabilita y no se elige nada');
   if(!/1 neumático no tiene número de quema/.test(txt('#veh-elim-aviso'))) fail('eliminar: falta el aviso de la quema: ' + txt('#veh-elim-aviso'));
