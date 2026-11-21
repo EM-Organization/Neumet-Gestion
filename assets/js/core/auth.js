@@ -81,8 +81,11 @@ function conEspera(p){
 // Sesión ilegible o sin respuesta en ESPERA_MS = sin sesión (login); si el SIGNED_IN o TOKEN_REFRESHED llega después, entra igual.
 // Si ni siquiera cargan los módulos, lo muestra la CSS de index.html tras ~10 s.
 export async function checkAuth(){
+  const gen=generacion;
   let session=null;
   try{ ({data:{session}}=await conEspera(db.auth.getSession())); }catch{ session=null; }
+  // Un SIGNED_OUT (o un login) llegó mientras se leía la sesión: esta respuesta ya no corresponde a la pantalla.
+  if(gen!==generacion) return;
   if(!session){ showLogin(); return; }
   await entrar(session.user);
 }

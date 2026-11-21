@@ -74,6 +74,53 @@ var arranqueEscenas = {
     if(!V(d.getElementById('app'))) fail('login: el panel no se ve tras iniciar sesión');
     if(w.__perfil.calls !== 1) fail('login: consultas de perfil '+w.__perfil.calls+' (esperada 1 con login y SIGNED_IN a la vez)');
     log.push('escena login perfiles='+w.__perfil.calls);
+  },
+  // SIGNED_OUT mientras getSession aún no respondió (1,4 s) y el perfil tarda 3 s: la sesión que llega después
+  // de cerrar sesión no debe mostrar el panel (checkAuth descarta la continuación).
+  ventana: async function(w, d, sleep, fail, log){
+    var V = arranqueVisible;
+    await sleep(100);
+    w.__auth.emitir('SIGNED_OUT', null);
+    await sleep(5000);
+    if(!V(d.getElementById('login-screen'))) fail('ventana: no se ve el login tras cerrar sesión durante getSession');
+    if(V(d.getElementById('app')) || w.__vistos.app) fail('ventana: el panel viejo volvio tras SIGNED_OUT durante getSession');
+    if(V(d.getElementById('sin-acceso-screen'))) fail('ventana: se ve «Sin acceso» tras cerrar sesión');
+    log.push('escena ventana perfiles='+w.__perfil.calls);
+  },
+  // Cambio de usuario A → B sin SIGNED_OUT (perfil de B lento, o fallido por red): el panel de A se oculta de inmediato
+  // y, si B falla, queda el aviso con el rol vacío (fail closed: currentRol null, sin panel).
+  cambio: async function(w, d, sleep, fail, log){
+    var V = arranqueVisible, error = /[?&]perfil=error/.test(window.parent.location.search);
+    var sesionB = {user:{id:'u-2',email:'otro@test.local'}};
+    await sleep(1000);
+    if(!V(d.getElementById('app'))) fail('cambio: el panel de A no se vio antes del cambio');
+    w.__auth.emitir('SIGNED_IN', sesionB);
+    await sleep(300);
+    if(V(d.getElementById('app'))) fail('cambio: el panel de A sigue visible mientras se resuelve B');
+    if(!V(d.getElementById('cargando-screen'))) fail('cambio: no se muestra «Cargando» mientras se resuelve B');
+    await sleep(error ? 1200 : 3500);
+    if(error){
+      var cg = d.getElementById('cargando-screen');
+      if(!cg.classList.contains('falla') || !V(d.getElementById('cargando-aviso'))) fail('cambio: B con error de red sin aviso «No se pudo cargar»');
+      if(V(d.getElementById('app'))) fail('cambio: B con error de red muestra el panel');
+      if(d.getElementById('user-role').textContent.trim()!=='—') fail('cambio: tras fallar B, el rol de A sigue en el encabezado (currentRol debe ser null)');
+      if(V(d.getElementById('login-screen')) || V(d.getElementById('sin-acceso-screen'))) fail('cambio: B con error de red muestra login o «Sin acceso»');
+    } else {
+      if(!V(d.getElementById('app'))) fail('cambio: el panel de B no se ve tras resolverse');
+      if(!/otro@test\.local/.test(d.getElementById('user-email').textContent)) fail('cambio: el panel mostrado no es el de B');
+    }
+    log.push('escena cambio'+(error?'-error':'')+' perfiles='+w.__perfil.calls);
+  },
+  // Sin módulos ni supabase (la página solo tiene HTML y CSS): a los 10 s queda solo el aviso, también a 390 px.
+  sinmodulos: async function(w, d, sleep, fail, log){
+    var V = arranqueVisible;
+    await sleep(9900);
+    var av = d.getElementById('cargando-aviso');
+    if(!V(av)) fail('sinmodulos: no aparece el aviso «No se pudo cargar» a los 10 s');
+    if(V(d.querySelector('#cargando-screen .login-sub'))) fail('sinmodulos: se ven a la vez «Cargando…» y «No se pudo cargar»');
+    if(V(d.getElementById('app')) || V(d.getElementById('login-screen'))) fail('sinmodulos: se muestra el panel o el login sin módulos');
+    if(av && av.getBoundingClientRect().right > w.innerWidth) fail('sinmodulos: el aviso se sale del ancho de '+w.innerWidth+' px');
+    log.push('escena sinmodulos ancho='+w.innerWidth);
   }
 };
 
