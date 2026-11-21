@@ -1,4 +1,5 @@
-// Los nombres de estado salen de `domain/estado-desgaste.js` (docs/14 §3): ningún módulo de assets/js los repite como literal.
+// Los nombres de estado salen de `domain/estado-desgaste.js` (docs/14 §3): ningún módulo de assets/js los repite como literal
+// con mayúscula inicial o en mayúsculas (la prosa en minúscula no se verifica).
 // Si se cambia `ESTADOS.<id>.texto`, el panel entero debe seguir al cambio; este test lo garantiza por código.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

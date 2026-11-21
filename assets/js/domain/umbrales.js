@@ -6,7 +6,7 @@
 import { ESTADOS } from './estado-desgaste.js';
 const bajo = e => e.texto.toLowerCase();
 // Orden de los nombres para los mensajes de umbrales: de mayor a menor.
-const ORDEN_NOMBRES = `${bajo(ESTADOS.mayor)}, ${bajo(ESTADOS.poco)}, ${bajo(ESTADOS.bueno)}`;
+export const ORDEN_NOMBRES = `${bajo(ESTADOS.mayor)}, ${bajo(ESTADOS.poco)}, ${bajo(ESTADOS.bueno)}`;
 
 export const CAMPOS_UMBRAL = [
   { key: 'umbral_bajo_mm', lbl: `${ESTADOS.bueno.texto} desde (mm)`, ayuda: `Por encima: «${bajo(ESTADOS.bueno)}»`, mm: true },
