@@ -546,6 +546,12 @@
 .veh-fila-nombre { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
 .veh-fila-meta { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }
 .veh-fila-estado { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 12px; color: var(--text-secondary); text-align: right; }
+/* En pantallas angostas el estado baja a una línea propia: si quedara a la derecha con flex-shrink:0, el nombre se cortaba letra por letra. */
+@media (max-width: 480px) {
+  .veh-fila { flex-wrap: wrap; }
+  .veh-fila-main { flex: 1 1 auto; }
+  .veh-fila-estado { flex: 1 1 100%; justify-content: flex-start; text-align: left; }
+}
 
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
 .vd-cab { margin-bottom: 18px; }

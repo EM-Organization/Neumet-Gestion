@@ -26,6 +26,62 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('detalle: nombre sin escapar');
   if(!filas()[0].textContent.match(/Desgaste límite/)) fail('detalle: la lista no pone primero al vehiculo mas urgente / sin chip: '+filas()[0].textContent);
 
+  // Concurrencia de la carga (loadVehiculos, guarda cargaId). Las cargas se disparan cambiando de vista; el estado de
+  // neumáticos se retiene (fixture: __vehFx.retener / soltar) para que la carga A siga esperando cuando llega B.
+  var contador = function(){ return $('#veh-contador').textContent; };
+  var irA = function(){ $('.nav-item[data-view="mediciones"]').click(); return sleep(250).then(function(){ $('.nav-item[data-view="vehiculos"]').click(); return sleep(250); }); };
+  var fx = w.__vehFx;
+  // A espera el estado; el contador dice «Cargando…» y no un número viejo.
+  fx.retener = true; var iA = fx.retenidas.length;
+  await irA();
+  if(contador() !== 'Cargando…') fail('espera: el contador debe decir «Cargando…» mientras espera el estado: «'+contador()+'»');
+  if(!$('#veh-lista .loading-state')) fail('espera: la lista no muestra el estado de carga');
+  // B falla mientras A espera: el error no deja «Cargando…» pegado ni el contador con un numero viejo.
+  // El error de la carga se registra una vez con userError (console.error): es el fallo esperado, no un ruido del flujo.
+  var ceOriginal = w.console.error, registrado = [];
+  w.console.error = function(){ registrado.push(arguments[0] && arguments[0].message); };
+  fx.fallarVehiculos = true;
+  $('.nav-item[data-view="mediciones"]').click(); await sleep(200);
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(300);
+  fx.fallarVehiculos = false;
+  w.console.error = ceOriginal;
+  if(registrado.length !== 1 || registrado[0] !== 'red caída') fail('error: se esperaba un solo error registrado («red caída»): '+JSON.stringify(registrado));
+  if(!$('#veh-lista .error-state')) fail('error: la lista no muestra el error de la carga');
+  if(contador() !== '') fail('error: el contador debe quedar vacio tras el error: «'+contador()+'»');
+  // Liberación tardía de A: no pisa el error de B.
+  fx.soltar(iA); await sleep(200);
+  if(!$('#veh-lista .error-state') || $('#veh-lista .loading-state')) fail('tardia: la respuesta de A pisó el estado de B');
+  if(contador() !== '') fail('tardia: el contador cambió con la respuesta tardía de A: «'+contador()+'»');
+  // Al volver a pintar la lista (buscar y borrar) no debe reaparecer «Cargando…».
+  escribir('x'); await sleep(100); escribir(''); await sleep(100);
+  if(/Cargando/.test($('#veh-lista').textContent)) fail('error: «Cargando…» quedó pegado tras una carga fallida');
+  // Orden: A y B vigente. Soltar A no toca la espera de B; al completar B el contador muestra el total.
+  fx.retener = true; var iA2 = fx.retenidas.length;
+  await irA(); var iB = fx.retenidas.length;
+  $('.nav-item[data-view="mediciones"]').click(); await sleep(200);
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(250);
+  fx.soltar(iA2); await sleep(200);
+  if(contador() !== 'Cargando…' || !$('#veh-lista .loading-state')) fail('orden: la respuesta tardia de A quito la espera vigente de B');
+  fx.soltar(iB); await sleep(200);
+  fx.retener = false; fx.retenidas = [];
+  if(contador() !== '3 vehículos') fail('completa: el contador debe mostrar el total al completar: «'+contador()+'»');
+  if(filas().length !== 3 || !filas()[0].textContent.match(/Desgaste límite/)) fail('completa: la lista no quedo con la carga de B y sus estados');
+
+  // A 390 px: los dos textos y el chip caben sin cortar el nombre letra por letra ni desbordar; cada fila es un objetivo de 44 px o mas.
+  var marco = w.frameElement; marco.style.width = '390px'; await sleep(300);
+  var listaEl = $('#veh-lista');
+  if(listaEl.scrollWidth > listaEl.clientWidth) fail('390px: la lista desborda en horizontal ('+listaEl.scrollWidth+' > '+listaEl.clientWidth+')');
+  if(d.documentElement.scrollWidth > marco.clientWidth) fail('390px: la pagina desborda en horizontal ('+d.documentElement.scrollWidth+' > '+marco.clientWidth+')');
+  filas().forEach(function(f){
+    var r = f.getBoundingClientRect(), nb = f.querySelector('.veh-fila-nombre').getBoundingClientRect();
+    if(r.height < 44) fail('390px: fila de '+r.height+' px, objetivo menor a 44');
+    if(nb.width < 120) fail('390px: el nombre se corta (ancho '+Math.round(nb.width)+' px): '+f.textContent.replace(/\s+/g,' ').slice(0,80));
+    if(f.scrollWidth > f.clientWidth) fail('390px: la fila desborda: '+f.textContent.replace(/\s+/g,' ').slice(0,80));
+    var fe = f.querySelector('.veh-fila-estado');
+    if(fe && fe.getBoundingClientRect().right > r.right + 0.5) fail('390px: el estado se sale de la fila');
+  });
+  marco.style.width = '';
+
   // Buscar por patente (parcial, sin mayusculas ni espacios)
   escribir('ab 12'); await sleep(100);
   if(filas().length !== 1 || filas()[0].textContent.indexOf('Camión 01') === -1) fail('detalle: busqueda parcial por patente');
