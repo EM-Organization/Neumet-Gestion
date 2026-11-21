@@ -127,7 +127,11 @@ var arranqueEscenas = {
     if(!V(d.getElementById('sin-acceso-screen'))) fail('sinaccesocambio: no se ve «Sin acceso» para la cuenta A');
     if(V(d.getElementById('app')) || w.__vistos.app) fail('sinaccesocambio: la cuenta A sin perfil vio el panel');
     w.__auth.emitir('SIGNED_IN', {user:{id:'u-2',email:'otro@test.local'}});
-    await sleep(1500);
+    // El perfil de B tarda (fixture lento desde la consulta 2): mientras se resuelve no debe verse «Sin acceso» de A.
+    await sleep(300);
+    if(V(d.getElementById('sin-acceso-screen'))) fail('sinaccesocambio: «Sin acceso» de A sigue visible mientras se resuelve B');
+    if(!V(d.getElementById('cargando-screen'))) fail('sinaccesocambio: no se muestra «Cargando» mientras se resuelve B');
+    await sleep(3500);
     if(V(d.getElementById('sin-acceso-screen'))) fail('sinaccesocambio: «Sin acceso» de A sigue visible con la cuenta B');
     if(!V(d.getElementById('app'))) fail('sinaccesocambio: el panel de B no se ve');
     if(V(d.getElementById('login-screen')) || V(d.getElementById('cargando-screen'))) fail('sinaccesocambio: quedan login o «Cargando» con la cuenta B');

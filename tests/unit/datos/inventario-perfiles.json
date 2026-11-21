@@ -1,7 +1,7 @@
 [
  {
   "archivo": "assets/js/core/auth.js",
-  "linea": 55,
+  "linea": 57,
   "texto": "const {data:perfil,error:ePerfil}=await db.from('perfiles').select('rol,cliente_id,sucursal_id').eq('user_id',userId).maybeSingle();"
  },
  {
