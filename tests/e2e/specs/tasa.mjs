@@ -2,7 +2,7 @@
 //   * solo existe con al menos 3 mediciones y 14 días entre la primera y la última de la ventana (reiniciada por
 //     reencauche, reparación o montaje del neumático); nunca es negativa;
 //   * dos mediciones a pocas horas que cruzan la medianoche UTC no dan una tasa;
-//   * la ficha del vehículo y Inicio solo marcan «desgaste mayor al normal» con tasa válida.
+//   * la ficha del vehículo y Inicio solo marcan «Desgaste acelerado» con tasa válida.
 // Comprueba contra un cálculo independiente en SQL (v_mediciones_neumatico + eventos_neumatico).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

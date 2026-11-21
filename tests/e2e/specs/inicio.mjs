@@ -66,7 +66,7 @@ export function registrar(env) {
         assert.ok(e.alertas > 0 && e.limite > 0, 'el demo debe tener alertas y desgaste límite (si no, la prueba no prueba nada)');
         // Proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido y total de neumáticos.
         assert.deepEqual(l.cifras, [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido], `proporciones de Inicio (${rol})`);
-        const m = l.frase.match(/^(?:(\d[\d.]*) de )?(\d[\d.]*) neumáticos? están en buen estado$|^Los (\d[\d.]*) neumáticos están en buen estado$/);
+        const m = l.frase.match(/^(?:(\d[\d.]*) de )?(\d[\d.]*) neumáticos? están en buen estado o con poco desgaste$|^Los (\d[\d.]*) neumáticos están en buen estado o con poco desgaste$/);
         assert.ok(m, `frase de resumen inesperada: ${l.frase}`);
         const total = Number((m[2] || m[3]).replace(/\D/g, ''));
         assert.equal(total, e.total, 'total de neumáticos');

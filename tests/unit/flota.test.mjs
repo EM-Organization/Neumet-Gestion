@@ -111,7 +111,7 @@ describe('alertas', () => {
 
 describe('etiquetas', () => {
   test('conocidas y desconocidas', () => {
-    assert.equal(estadoLabel('desgaste_limite'), 'Desgaste límite'); assert.equal(estadoLabel('zz'), 'Desconocido');
+    assert.equal(estadoLabel('desgaste_limite'), 'Desgaste límite'); assert.equal(estadoLabel('zz'), 'Sin datos');
     assert.equal(severidadLabel('3'), 'Alta'); assert.equal(severidadLabel(null), 'Informativa');
     assert.equal(tipoLabel('cruza_limite_pronto'), 'Cruzará desgaste límite'); assert.equal(tipoLabel('nuevo'), 'nuevo');
   });

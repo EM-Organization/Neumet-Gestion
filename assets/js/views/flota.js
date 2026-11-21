@@ -49,8 +49,8 @@ function card(v, mostrarCliente) {
       ${v.n_desgaste_limite ? html`<span class="flota-n red">${v.n_desgaste_limite} límite</span>` : ''}
       ${v.n_mayor_desgaste ? html`<span class="flota-n">${v.n_mayor_desgaste} mayor</span>` : ''}
       ${v.n_poco_desgaste ? html`<span class="flota-n">${v.n_poco_desgaste} poco</span>` : ''}
-      ${v.n_nuevo ? html`<span class="flota-n">${v.n_nuevo} nuevo</span>` : ''}
-      ${v.n_desconocido ? html`<span class="flota-n">${v.n_desconocido} desconocido</span>` : ''}
+      ${v.n_nuevo ? html`<span class="flota-n">${v.n_nuevo} buen estado</span>` : ''}
+      ${v.n_desconocido ? html`<span class="flota-n">${v.n_desconocido} sin datos</span>` : ''}
     </div>
     <div class="flota-meta">
       ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: ${nombrePosicion(v.peor_posicion).toLowerCase()}, ${fmtMm(v.min_mm)}`}

@@ -75,13 +75,13 @@ const cifra = (cls, n, etiqueta) => html`<li class="inicio-cifra"><span class="i
 
 function bloqueResumen(rs, ult) {
   const buenos = rs.nuevo + rs.poco_desgaste;
-  const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en buen estado`;
+  const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado o con poco desgaste` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en buen estado o con poco desgaste`;
   return html`<section class="inicio-card" aria-labelledby="inicio-h-resumen">
     <div class="inicio-resumen-cab"><h3 id="inicio-h-resumen" class="inicio-h">${frase}</h3>
       ${ult ? html`<span class="inicio-meta">Última medición ${relDate(ult)}</span>` : ''}</div>
-    <div class="inicio-barra" role="img" aria-label="${`Nuevo ${rs.nuevo}, poco desgaste ${rs.poco_desgaste}, mayor desgaste ${rs.mayor_desgaste}, desgaste límite ${rs.desgaste_limite}, desconocido ${rs.desconocido}`}">
-      ${segmento('ok', rs.pct.nuevo, 'Nuevo')}${segmento('bajo', rs.pct.poco_desgaste, 'Poco desgaste')}${segmento('mayor', rs.pct.mayor_desgaste, 'Mayor desgaste')}${segmento('limite', rs.pct.desgaste_limite, 'Desgaste límite')}${segmento('neutral', rs.pct.desconocido, 'Desconocido')}</div>
-    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, 'nuevo')}${cifra('bajo', rs.poco_desgaste, 'poco desgaste')}${cifra('mayor', rs.mayor_desgaste, 'mayor desgaste')}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, rs.desgaste_limite === 1 ? 'desgaste límite' : 'desgaste límite')}${cifra('neutral', rs.desconocido, 'desconocido')}</ul>
+    <div class="inicio-barra" role="img" aria-label="${`Buen estado ${rs.nuevo}, poco desgaste ${rs.poco_desgaste}, mayor desgaste ${rs.mayor_desgaste}, desgaste límite ${rs.desgaste_limite}, sin datos ${rs.desconocido}`}">
+      ${segmento('ok', rs.pct.nuevo, 'Buen estado')}${segmento('bajo', rs.pct.poco_desgaste, 'Poco desgaste')}${segmento('mayor', rs.pct.mayor_desgaste, 'Mayor desgaste')}${segmento('limite', rs.pct.desgaste_limite, 'Desgaste límite')}${segmento('neutral', rs.pct.desconocido, 'Sin datos')}</div>
+    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, 'buen estado')}${cifra('bajo', rs.poco_desgaste, 'poco desgaste')}${cifra('mayor', rs.mayor_desgaste, 'mayor desgaste')}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, rs.desgaste_limite === 1 ? 'desgaste límite' : 'desgaste límite')}${cifra('neutral', rs.desconocido, 'sin datos')}</ul>
   </section>`;
 }
 

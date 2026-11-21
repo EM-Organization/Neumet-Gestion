@@ -23,11 +23,11 @@ function leyendaMediciones() {
 test('leyenda de Mediciones muestra las cinco categorías sin vocabulario viejo', () => {
   const block = leyendaMediciones();
   assert.ok(block, 'existe el bloque de leyenda');
-  assert.match(block, /Nuevo/);
+  assert.match(block, /Buen estado/);
   assert.match(block, /Poco desgaste/);
   assert.match(block, /Mayor desgaste/);
   assert.match(block, /Desgaste límite/);
-  assert.match(block, /Desconocido/);
+  assert.match(block, /Sin datos/);
   assert.doesNotMatch(block, /\bOK\b/);
   assert.doesNotMatch(block, /\bBajo\b/);
   assert.doesNotMatch(block, /\bCr[ií]tico\b/i);

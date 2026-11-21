@@ -147,6 +147,6 @@ export function mensajeErrorConfigurar(err) {
   const code = err && err.code;
   const msg = String((err && err.message) || '').trim();
   if (code === '42501') return 'Sin permiso para editar los umbrales';
-  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : 'Los umbrales no son válidos: deben descender de mayor a menor (mayor desgaste, poco desgaste, nuevo)';
+  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : 'Los umbrales no son válidos: deben descender de mayor a menor (mayor desgaste, poco desgaste, buen estado)';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';
 }

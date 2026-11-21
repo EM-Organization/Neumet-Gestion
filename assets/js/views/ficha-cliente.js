@@ -61,10 +61,10 @@ function renderResumen(r){
   setHtml(el, joinHtml([
     kpi('',r.n_vehiculos_activos??0,'Vehículos activos'),
     kpi('',r.n_neumaticos_con_datos??0,'Neumáticos con datos'),
-    kpi('green',s.nuevo+s.pocoDesgaste,'En buen estado',s.conDatos?`${s.pctNuevo+s.pctPocoDesgaste}%`:''),
+    kpi('green',s.nuevo+s.pocoDesgaste,'Buen estado o poco desgaste',s.conDatos?`${s.pctNuevo+s.pctPocoDesgaste}%`:''),
     kpi('orange',s.mayorDesgaste,'Mayor desgaste',s.conDatos?`${s.pctMayorDesgaste}%`:''),
     kpi('red',s.limite,'Desgaste límite',s.conDatos?`${s.pctLimite}%`:''),
-    kpi('gray',s.desconocido,'Desconocido'),
+    kpi('gray',s.desconocido,'Sin datos'),
     kpi(s.alertas?'red':'',s.alertas,'Alertas activas',`${r.n_alertas_sev3??0} graves · ${r.n_alertas_sev2??0} medias · ${r.n_alertas_sev1??0} leves`),
     kpi('', r.ultima_medicion_at?relDate(r.ultima_medicion_at):'—','Última medición')
   ]));

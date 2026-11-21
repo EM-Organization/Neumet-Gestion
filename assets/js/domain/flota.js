@@ -10,11 +10,11 @@ export const ESTADO_RANK = {
   nuevo: 4,
 };
 export const ESTADO_LABEL = {
-  desgaste_limite: 'Desgaste límite',
-  desconocido: 'Desconocido',
-  mayor_desgaste: 'Mayor desgaste',
-  poco_desgaste: 'Poco desgaste',
-  nuevo: 'Nuevo',
+  desgaste_limite: ESTADOS.limite.texto,
+  desconocido: ESTADOS.sinDatos.texto,
+  mayor_desgaste: ESTADOS.mayor.texto,
+  poco_desgaste: ESTADOS.poco.texto,
+  nuevo: ESTADOS.bueno.texto,
 };
 export const ESTADO_BADGE = {
   desgaste_limite: 'red',
@@ -34,10 +34,11 @@ export const TIPO_LABEL = {
 };
 
 import { esAuxilio, estadoContable } from './auxilio.js';
+import { ESTADOS, textoEstadoBase } from './estado-desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 export const estadoRank = e => (e in ESTADO_RANK ? ESTADO_RANK[e] : ESTADO_RANK.desconocido);
-export const estadoLabel = e => ESTADO_LABEL[e] || 'Desconocido';
+export const estadoLabel = e => ESTADO_LABEL[e] || ESTADOS.sinDatos.texto;
 export const severidadLabel = s => SEVERIDAD_LABEL[num(s)] || 'Informativa';
 export const tipoLabel = t => TIPO_LABEL[t] || String(t ?? '');
 

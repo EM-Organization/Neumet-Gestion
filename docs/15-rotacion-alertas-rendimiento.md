@@ -254,7 +254,7 @@ Tests: `tests/sql/t_80_alertas.sql` y `tests/sql/t_92_alerta_limite.sql` (puntos
 
 ---
 
-## C. Auditoría de rendimiento del indicador «Desgaste mayor al normal»
+## C. Auditoría de rendimiento del indicador «Desgaste mayor al normal» (hoy «Desgaste acelerado»)
 
 Ejemplo de texto: «Desgaste mayor al normal. Se gasta 0,69 mm por semana, 1,7 veces lo habitual en la posición 3 de la flota (0,41 mm por semana).»
 

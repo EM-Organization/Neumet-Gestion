@@ -13,7 +13,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var cont = $('#inicio-contenido');
   var txt = cont.textContent.replace(/\s+/g, ' ');
   // Fixtures de flota: 7 neumáticos (3 nuevo, 3 desgaste límite en 2 vehículos, 1 desconocido) en 4 vehículos
-  if(!/3 de 7 neumáticos están en buen estado/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,200));
+  if(!/3 de 7 neumáticos están en buen estado o con poco desgaste/.test(txt)) fail('inicio('+rol+'): falta la frase de proporción: '+txt.slice(0,200));
   if(all('#inicio-contenido .inicio-seg').length < 3) fail('inicio('+rol+'): falta la barra segmentada');
   var filas = all('#inicio-contenido [data-action="verVehiculo"]');
   if(!filas.length) fail('inicio('+rol+'): sin lista de vehículos que requieren atención');

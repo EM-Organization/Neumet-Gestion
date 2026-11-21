@@ -76,7 +76,7 @@ test('requierenAtencion: orden por urgencia y una frase de causa por vehículo',
     fila(3, 1, 'desgaste_limite', { promedio: 3 }), fila(3, 2, 'desgaste_limite', { promedio: 4 }),        // 2 límite
     fila(4, 1, 'desgaste_limite', { promedio: 2 }),                                                // 1 límite
     fila(5, 1, 'mayor_desgaste'),                                                                    // mayor desgaste
-    fila(6, 1, 'nuevo', { desgaste_irregular: true }),                                        // mayor al normal
+    fila(6, 1, 'nuevo', { desgaste_irregular: true }),                                        // desgaste acelerado
     fila(7, 1, 'nuevo'),
   ];
   const r = requierenAtencion(rows, { max: 10 });
@@ -86,7 +86,7 @@ test('requierenAtencion: orden por urgencia y una frase de causa por vehículo',
   assert.equal(r.items[1].causa, '1 neumático en desgaste límite');
   assert.equal(r.items[2].causa, 'Cruza el desgaste límite en ~2 semanas');
   assert.equal(r.items[3].causa, '1 neumático con mayor desgaste');
-  assert.equal(r.items[4].causa, 'Desgaste mayor al normal');
+  assert.equal(r.items[4].causa, 'Desgaste acelerado');
   assert.equal(r.items[5].causa, 'Sin medir hace 19 días');
   // Las posiciones van aparte (la vista las dibuja en el mini vehículo): nunca en el texto como «P1».
   assert.deepEqual(r.items.map(v => v.posiciones), [[1, 2], [1], [1], [1], [1], [1]]);

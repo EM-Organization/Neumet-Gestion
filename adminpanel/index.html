@@ -539,7 +539,7 @@
         </div>
         <form class="ficha-card" id="emp-umb-form" novalidate>
           <div class="ficha-card-title">Umbrales de desgaste</div>
-          <div class="ficha-sub">Se aplican a los estados de la flota. Cada umbral debe ser menor que el anterior: nuevo, poco desgaste y mayor desgaste, de mayor a menor. Por debajo del último: desgaste límite.</div>
+          <div class="ficha-sub">Se aplican a los estados de la flota. Cada umbral debe ser menor que el anterior: buen estado, poco desgaste y mayor desgaste, de mayor a menor. Por debajo del último: desgaste límite.</div>
           <div class="ficha-umbrales" id="emp-umb-campos"></div>
           <div class="login-error" id="emp-umb-error" role="alert"></div>
           <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button></div>
@@ -662,16 +662,16 @@
 
             <div class="med-card med-top-right" id="med-counters-card" style="display:none">
               <div class="tire-counters" style="border-top:none">
-                <div class="tire-counter"><div class="tire-counter-n" id="med-ok" style="color:#1a7f37">0</div><div class="tire-counter-l">Nuevo / poco desgaste</div></div>
+                <div class="tire-counter"><div class="tire-counter-n" id="med-ok" style="color:#1a7f37">0</div><div class="tire-counter-l">Buen estado / poco desgaste</div></div>
                 <div class="tire-counter"><div class="tire-counter-n" id="med-warn" style="color:#b25000">0</div><div class="tire-counter-l">Mayor desgaste</div></div>
                 <div class="tire-counter"><div class="tire-counter-n" id="med-crit" style="color:#c0392b">0</div><div class="tire-counter-l">Desgaste límite</div></div>
               </div>
               <div class="tire-legend" style="border-top:1px solid var(--border)">
-                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#34c759"></div>≥ 8 mm Nuevo</div>
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#34c759"></div>≥ 8 mm Buen estado</div>
                 <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#9aca8a"></div>5 – 8 mm Poco desgaste</div>
                 <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#ff9500"></div>3 – 5 mm Mayor desgaste</div>
                 <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#ff3b30"></div>&lt; 3 mm Desgaste límite</div>
-                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#48484a"></div>Desconocido</div>
+                <div class="tire-leg-item"><div class="tire-leg-dot" style="background:#48484a"></div>Sin datos</div>
               </div>
               <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
                 <button id="med-export-btn" data-action="exportMedicionesCSV" class="btn-secondary" style="flex:1;font-size:13px;gap:6px">
@@ -801,8 +801,8 @@
             <option value="desgaste_limite">Desgaste límite</option>
             <option value="mayor_desgaste">Mayor desgaste</option>
             <option value="poco_desgaste">Poco desgaste</option>
-            <option value="nuevo">Nuevo</option>
-            <option value="desconocido">Desconocido</option>
+            <option value="nuevo">Buen estado</option>
+            <option value="desconocido">Sin datos</option>
           </select>
           <div class="search"><input id="flota-q" type="text" placeholder="Matrícula o número de coche" aria-label="Filtrar por matrícula o número de coche"/></div>
         </div>

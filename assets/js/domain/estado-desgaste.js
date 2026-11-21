@@ -53,6 +53,9 @@ export const DE_ESTADO_BASE = Object.freeze({
   nuevo: 'bueno', poco_desgaste: 'poco', mayor_desgaste: 'mayor', desgaste_limite: 'limite', desconocido: 'sinDatos',
 });
 export const estadoDeBase = e => DE_ESTADO_BASE[e] || 'sinDatos';
+// Nombre mostrado de un estado de la base: ÚNICA fuente de los nombres en todo el panel (docs/14 §3). Los valores de la base
+// («nuevo», «desconocido») no cambian; solo el texto que ve el operario.
+export const textoEstadoBase = e => ESTADOS[estadoDeBase(e)].texto;
 
 // Regla PR 140 (domain/auxilio.js): la rueda de auxilio (posición 99) no cuenta como advertencia. Su mayor desgaste o
 // límite cuenta como «poco desgaste» en chips y semáforo del vehículo; sigue sumando en el total y se dibuja con su estado

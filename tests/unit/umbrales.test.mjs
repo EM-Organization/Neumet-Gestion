@@ -21,7 +21,7 @@ describe('validarUmbrales', () => {
     for (const o of [{ umbral_critico_mm: '8' }, { umbral_retiro_mm: '5' }, { umbral_bajo_mm: '4' }, { umbral_retiro_mm: '6' }]) {
       const v = validarUmbrales({ ...OK, ...o });
       assert.equal(v.ok, false, JSON.stringify(o));
-      assert.match(v.error, /mayor desgaste, poco desgaste, nuevo/);
+      assert.match(v.error, /mayor desgaste, poco desgaste, buen estado/);
     }
   });
   test('campo vacío o no numérico', () => {
@@ -85,7 +85,7 @@ describe('textos y orden de los campos (docs/14)', () => {
     for (const t of labels) {
       assert.doesNotMatch(t, /\b(bajo|crítico|critico|retiro)\b/i, t);
     }
-    assert.ok(labels.some(t => /Nuevo desde/.test(t)));
+    assert.ok(labels.some(t => /Buen estado desde/.test(t)));
     assert.ok(labels.some(t => /Poco desgaste/.test(t)));
     assert.ok(labels.some(t => /Mayor desgaste/.test(t)));
   });

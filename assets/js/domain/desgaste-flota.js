@@ -1,4 +1,4 @@
-// Indicador "desgaste mayor al normal" por neumático (lógica pura). Criterio transparente:
+// Indicador «Desgaste acelerado» (antes «desgaste mayor al normal») por neumático (lógica pura). Criterio transparente:
 //   1) irregular: la diferencia entre huellas supera la irregularidad_mm del cliente (la vista ya lo calcula: desgaste_irregular), o
 //   2) la tasa de desgaste (mm/semana) es mayor a FACTOR_TASA (1,5) veces la mediana de la tasa de los neumáticos
 //      de la misma posición en la flota visible; si esa posición tiene menos de MIN_MUESTRAS neumáticos con tasa,
