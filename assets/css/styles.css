@@ -550,7 +550,7 @@
    Un corte por media query dejaba una franja (481 px y más con panel angosto) donde el nombre se partía letra por letra. */
 .veh-fila { flex-wrap: wrap; }
 .veh-fila-main { flex: 1 1 160px; }
-.veh-fila-estado { margin-left: auto; }
+.veh-fila-estado { margin-left: auto; min-width: 0; max-width: 100%; flex-shrink: 1; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
 .vd-cab { margin-bottom: 18px; }
