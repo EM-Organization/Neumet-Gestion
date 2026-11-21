@@ -48,6 +48,15 @@ Q=""
 [ "$MODE" = arranque-colgada-perfiles ] && Q="?arranque=1&colgada=perfiles"
 [ "$MODE" = arranque-colgada-lanza ] && Q="?arranque=1&colgada=lanza"
 [ "$MODE" = arranque-colgada-tardia ] && Q="?arranque=1&colgada=tardia"
+[ "$MODE" = arranque-signout ] && Q="?arranque=1&escena=signout&perfil=lento&ms=3000"
+[ "$MODE" = arranque-red ] && Q="?arranque=1&escena=red&perfil=error"
+[ "$MODE" = arranque-reingreso ] && Q="?arranque=1&escena=reingreso&perfil=nunca1"
+[ "$MODE" = arranque-tope ] && Q="?arranque=1&escena=tope&colgada=sesion"
+[ "$MODE" = arranque-login ] && Q="?arranque=1&escena=login&nosession=1&perfil=lento&ms=1000"
+[ "$MODE" = arranque-ventana ] && Q="?arranque=1&escena=ventana&perfil=lento&ms=3000&sesionms=1000"
+[ "$MODE" = arranque-cambio ] && Q="?arranque=1&escena=cambio&perfil=lento&ms=3000&desde=2"
+[ "$MODE" = arranque-cambio-error ] && Q="?arranque=1&escena=cambio&perfil=error&desde=2"
+[ "$MODE" = arranque-sinmodulos ] && Q="?arranque=1&escena=sinmodulos&vw=390"
 OUT=$("$CHROME" --headless=new --disable-gpu --virtual-time-budget=${BUDGET:-250000} --dump-dom "http://127.0.0.1:$PORT/tests/smoke/harness.html$Q" 2>/dev/null)
 echo "$OUT" | grep -o '<title>[^<]*</title>' | head -1
 echo "$OUT" | awk '/<pre id="smoke-log">/{f=1} f{print} /<\/pre>/{f=0}' | sed 's/<[^>]*>//g'
