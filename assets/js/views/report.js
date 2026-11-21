@@ -4,6 +4,7 @@ import { html, setHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
 import { UMBRALES, wearStatus } from '../domain/desgaste.js';
+import { ESTADOS, BUENO_O_POCO } from '../domain/estado-desgaste.js';
 import { med } from './mediciones-state.js';
 import { etiquetaCoche } from '../domain/coche.js';
 
@@ -96,9 +97,10 @@ export async function generarReportePDF(){
       return st==='desgaste_limite'?'#c0392b':st==='mayor_desgaste'?'#b25000':st==='poco_desgaste'?'#1a7f37':'#1a7f37';
     };
     const statusLabel=mm=>{
-      if(mm==null) return 'Sin datos';
+      if(mm==null) return ESTADOS.sinDatos.texto;
       const st=wearStatus(mm);
-      return st==='desgaste_limite'?'DESGASTE LÍMITE':st==='mayor_desgaste'?'MAYOR DESGASTE':st==='poco_desgaste'?'POCO DESGASTE':'NUEVO';
+      const e=st==='desgaste_limite'?ESTADOS.limite:st==='mayor_desgaste'?ESTADOS.mayor:st==='poco_desgaste'?ESTADOS.poco:ESTADOS.bueno;
+      return e.texto.toUpperCase();
     };
 
     // Construir filas de la tabla de neumáticos
@@ -221,9 +223,9 @@ export async function generarReportePDF(){
 
 <div class="kpis">
   <div class="kpi total"><div class="kpi-n">${posiciones.length}</div><div class="kpi-l">Posiciones totales</div></div>
-  <div class="kpi ok"><div class="kpi-n">${nuevo + poco}</div><div class="kpi-l">En buen estado (≥5mm)</div></div>
-  <div class="kpi mayor"><div class="kpi-n">${mayor}</div><div class="kpi-l">Mayor desgaste (3–4.9mm)</div></div>
-  <div class="kpi limite"><div class="kpi-n">${limite}</div><div class="kpi-l">Desgaste límite (&lt;3mm)</div></div>
+  <div class="kpi ok"><div class="kpi-n">${nuevo + poco}</div><div class="kpi-l">${BUENO_O_POCO} (≥5mm)</div></div>
+  <div class="kpi mayor"><div class="kpi-n">${mayor}</div><div class="kpi-l">${ESTADOS.mayor.texto} (3–4.9mm)</div></div>
+  <div class="kpi limite"><div class="kpi-n">${limite}</div><div class="kpi-l">${ESTADOS.limite.texto} (&lt;3mm)</div></div>
 </div>
 
 <h3>Detalle por posición</h3>

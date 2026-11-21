@@ -15,6 +15,7 @@ import { etiquetaCoche } from '../domain/coche.js';
 import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.js';
 import { DISTRIBUCIONES, OTRA_DISTRIBUCION, textoOpcion, textoRuedas } from '../domain/distribucion.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
+import { ESTADOS } from '../domain/estado-desgaste.js';
 
 let vehiculos=[], resumenes=new Map(), resumenesListos=false, estadoPendiente=false, cargaFallida=false;
 // Solo lectura para el equipo Neumet (docs/17 PR 9). El administrador de la empresa agrega vehículos desde aquí (RPC
@@ -64,8 +65,8 @@ export async function loadVehiculos(){
 function resumenTexto(g){
   if(!g) return '';
   const p=[];
-  if(g.n_desgaste_limite) p.push(plural(g.n_desgaste_limite,'desgaste límite','desgaste límite'));
-  if(g.n_mayor_desgaste) p.push(plural(g.n_mayor_desgaste,'mayor desgaste','mayor desgaste'));
+  if(g.n_desgaste_limite) p.push(plural(g.n_desgaste_limite,ESTADOS.limite.texto.toLowerCase(),ESTADOS.limite.texto.toLowerCase()));
+  if(g.n_mayor_desgaste) p.push(plural(g.n_mayor_desgaste,ESTADOS.mayor.texto.toLowerCase(),ESTADOS.mayor.texto.toLowerCase()));
   return p.join(' · ');
 }
 

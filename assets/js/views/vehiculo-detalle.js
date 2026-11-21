@@ -311,13 +311,13 @@ function seccionTasa(fila, u, razonMostrada) {
   const est = wearStatus(fila.promedio, datos.th);
   const yaCritico = est === 'mayor' || est === 'limite', yaRetiro = est === 'limite';
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
-    <ul class="vd-alertas">${frase(`Poco desgaste / mayor desgaste (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`Desgaste límite (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
+    <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
 }
 
 // Datos propios del neumático montado: número de quema y km (previos + tramos montados, calculados en v_km_cubierta).
 function seccionNeumatico(fila) {
   const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
-  if (!n) return html`<p class="vd-p-nota">Sin datos del neumático.</p>`;
+  if (!n) return html`<p class="vd-p-nota">${ESTADOS.sinDatos.texto} del neumático.</p>`;
   const k = resumenKm(datos.km.get(n.id));
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   const km = v => (v === null ? 'Sin dato' : `${fmtNum(v)} km`);

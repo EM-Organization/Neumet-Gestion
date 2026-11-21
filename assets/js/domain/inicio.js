@@ -2,6 +2,7 @@
 // Entradas: filas de v_estado_neumaticos (una por neumático), v_salud_dispositivos y v_resumen_flota_cliente.
 import { referenciaTasas, evaluarDesgaste } from './desgaste-flota.js';
 import { esAuxilio, estadoContable } from './auxilio.js';
+import { BANDERA } from './estado-desgaste.js';
 
 export const SEMANAS_ATENCION = 4;   // "cruza el límite en ~N semanas" entra en Requieren atención (igual que la alerta de la base)
 export const SEMANAS_PROXIMOS = 12;  // horizonte de Próximos cambios
@@ -55,7 +56,7 @@ const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 const posiciones = filas => [...new Set(filas.map(f => Number(f.posicion)))].sort((a, b) => a - b);
 
 // Causa principal de un vehículo, en una frase. Orden de urgencia (rango): desgaste límite, cruza el límite pronto,
-// mayor desgaste, desgaste mayor al normal, sin medir. Devuelve null si el vehículo no necesita atención.
+// mayor desgaste, desgaste acelerado, sin medir. Devuelve null si el vehículo no necesita atención.
 function causaDe(filas, ref) {
   const limite = filas.filter(f => estadoContable(f) === 'desgaste_limite');
   if (limite.length) return { nivel: 'limite', rango: 0, n: limite.length, posiciones: posiciones(limite), causa: plural(limite.length, 'neumático en desgaste límite', 'neumáticos en desgaste límite') };
@@ -69,7 +70,7 @@ function causaDe(filas, ref) {
   const mayor = filas.filter(f => estadoContable(f) === 'mayor_desgaste');
   if (mayor.length) return { nivel: 'mayor_desgaste', rango: 2, n: mayor.length, posiciones: posiciones(mayor), causa: plural(mayor.length, 'neumático con mayor desgaste', 'neumáticos con mayor desgaste') };
   const anormal = filas.filter(f => !esAuxilio(f) && evaluarDesgaste(f, ref).mayorAlNormal);
-  if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, posiciones: posiciones(anormal), causa: 'Desgaste mayor al normal' };
+  if (anormal.length) return { nivel: 'anormal', rango: 3, n: anormal.length, posiciones: posiciones(anormal), causa: BANDERA.texto };
   const sinMedir = filas.filter(f => f.sin_medir);
   if (sinMedir.length) {
     const dias = Math.max(...sinMedir.map(f => num(f.dias_desde_medicion) ?? -1));

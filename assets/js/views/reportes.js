@@ -13,13 +13,15 @@ import { printDoc } from './report.js';
 import { contextoListo, hayFiltroSeccional, sucursalSeleccionada, filtrarConsulta } from '../core/seccional.js';
 import { fmtMm } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
+import { ESTADOS } from '../domain/estado-desgaste.js';
 
 const $ = id => document.getElementById(id);
 const COLOR = {
   nuevo: '#1a7f37', pocoDesgaste: '#1a7f37', mayorDesgaste: '#b25000', limite: '#c0392b', desconocido: '#8e8e93', null: '#8e8e93'
 };
+const MAYUS = id => ESTADOS[id].texto.toUpperCase();
 const LABEL = {
-  nuevo: 'NUEVO', pocoDesgaste: 'POCO DESGASTE', mayorDesgaste: 'MAYOR DESGASTE', limite: 'DESGASTE LÍMITE', desconocido: 'DESCONOCIDO', null: 'Sin datos'
+  nuevo: MAYUS('bueno'), pocoDesgaste: MAYUS('poco'), mayorDesgaste: MAYUS('mayor'), limite: MAYUS('limite'), desconocido: MAYUS('sinDatos'), null: ESTADOS.sinDatos.texto
 };
 let busy = false;
 let cpkRows = [];            // última respuesta de cpk_por_grupo (para el CSV)
@@ -223,8 +225,8 @@ function buildDoc(rows, truncated) {
 <div class="header"><div class="brand">NEU<span>MET</span></div>
 <div class="meta"><strong>${titulo}</strong><br>Última medición de cada neumático · Generado el ${fmtDate(new Date().toISOString())}</div></div>
 ${truncated ? html`<div class="warn">Datos incompletos: se alcanzó el tope de ${MAX_ROWS} mediciones.</div>` : ''}
-<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, 'Nuevo (≥8mm)')}${kpi('poco', r.pocoDesgaste, 'Poco desgaste (5–7.9mm)')}${kpi('mayor', r.mayorDesgaste, 'Mayor desgaste (3–4.9mm)')}${kpi('limite', r.limite, 'Desgaste límite (<3mm)')}</div>
-${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>Nuevo</th><th>Poco desgaste</th><th>Mayor desgaste</th><th>Desgaste límite</th><th>Desconocido</th></tr></thead><tbody>${porVeh}</tbody></table>`}
+<div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, `${ESTADOS.bueno.texto} (≥8mm)`)}${kpi('poco', r.pocoDesgaste, `${ESTADOS.poco.texto} (5–7.9mm)`)}${kpi('mayor', r.mayorDesgaste, `${ESTADOS.mayor.texto} (3–4.9mm)`)}${kpi('limite', r.limite, `${ESTADOS.limite.texto} (<3mm)`)}</div>
+${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>${ESTADOS.bueno.texto}</th><th>${ESTADOS.poco.texto}</th><th>${ESTADOS.mayor.texto}</th><th>${ESTADOS.limite.texto}</th><th>${ESTADOS.sinDatos.texto}</th></tr></thead><tbody>${porVeh}</tbody></table>`}
 <h3>Estado por neumático</h3>
 <table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
 <div class="footer">NEUMET · Sistema de gestión de neumáticos</div>

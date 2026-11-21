@@ -2,6 +2,7 @@
 // Reglas: el estado nunca se comunica solo con color (siempre hay texto + símbolo), y todo estado vacío o de error
 // explica qué hacer. Los textos van en español claro.
 import { html } from './html.js';
+import { ESTADOS } from '../domain/estado-desgaste.js';
 
 // Chip de estado: color + símbolo + texto. cls = green | orange | red | gray (clases .badge de styles.css).
 export function chip(cls, texto, simbolo = '●') {
@@ -9,11 +10,11 @@ export function chip(cls, texto, simbolo = '●') {
 }
 
 const ESTADO_NEUMATICO = {
-  nuevo: { cls: 'green', lbl: 'Nuevo', sim: '✓' },
-  poco_desgaste: { cls: 'blue', lbl: 'Poco desgaste', sim: '▲' },
-  mayor_desgaste: { cls: 'orange', lbl: 'Mayor desgaste', sim: '✕' },
-  desgaste_limite: { cls: 'red', lbl: 'Desgaste límite', sim: '■' },
-  desconocido: { cls: 'gray', lbl: 'Desconocido', sim: '–' },
+  nuevo: { cls: 'green', lbl: ESTADOS.bueno.texto, sim: '✓' },
+  poco_desgaste: { cls: 'blue', lbl: ESTADOS.poco.texto, sim: '▲' },
+  mayor_desgaste: { cls: 'orange', lbl: ESTADOS.mayor.texto, sim: '✕' },
+  desgaste_limite: { cls: 'red', lbl: ESTADOS.limite.texto, sim: '■' },
+  desconocido: { cls: 'gray', lbl: ESTADOS.sinDatos.texto, sim: '–' },
 };
 export const SIMBOLO_ESTADO_NEUMATICO = Object.fromEntries(Object.entries(ESTADO_NEUMATICO).map(([k, v]) => [k, v.sim]));
 // Estado de un neumático o vehículo: nuevo / poco_desgaste / mayor_desgaste / desgaste_limite / desconocido

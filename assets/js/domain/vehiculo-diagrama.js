@@ -174,13 +174,14 @@ export function colorDesgaste(mm, u) {
 }
 
 // Símbolo y texto de estado (nunca solo color). Las claves son niveles internos del diagrama; las etiquetas reflejan
-// las cinco categorías de producto definidas en docs/15 (apéndice T de docs/08).
+// las categorías de producto (docs/15, apéndice T de docs/08) con los nombres de estado-desgaste.js (no se importa de allí:
+// ese módulo depende de este y el ciclo rompería la constante; tests/unit/renombres-estados.test.mjs verifica que coinciden).
 export const NIVEL_INFO = {
-  ok: { simbolo: '✓', texto: 'Nuevo' },
+  ok: { simbolo: '✓', texto: 'Buen estado' },
   bajo: { simbolo: '▲', texto: 'Poco desgaste' },
   critico: { simbolo: '✕', texto: 'Mayor desgaste' },
   retiro: { simbolo: '■', texto: 'Desgaste límite' },
-  sin_datos: { simbolo: '–', texto: 'Desconocido' },
+  sin_datos: { simbolo: '–', texto: 'Sin datos' },
 };
 
 const lum = rgb => {

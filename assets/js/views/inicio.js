@@ -3,6 +3,7 @@
 // v_alertas y v_salud_dispositivos y la función ultimas_mediciones (security invoker: la RLS decide qué ve cada rol; la
 // sucursal elegida se aplica además aquí). Los dispositivos solo se gestionan desde administración.
 import { tipoLayout } from '../domain/distribucion.js';
+import { ESTADOS } from '../domain/estado-desgaste.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -45,7 +46,7 @@ function filaMini(v, filas, { destacadas = [], detalle, pos = '', dato = '', ext
   return html`<li class="inicio-fila inicio-fila-mini ${cls}">
     ${miniDe(filas, destacadas, v.vehiculo_id)}
     <div class="inicio-fila-txt"><span class="inicio-fila-nom">${nivel === 'limite' ? html`<span class="inicio-punto limite" aria-hidden="true"></span>` : ''}${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
-      ${detalle ? html`<span class="inicio-fila-causa">${nivel === 'limite' ? html`<span class="sr-only">Desgaste límite: </span>` : ''}${detalle}</span>` : ''}
+      ${detalle ? html`<span class="inicio-fila-causa">${nivel === 'limite' ? html`<span class="sr-only">${ESTADOS.limite.texto}: </span>` : ''}${detalle}</span>` : ''}
       ${pos ? html`<span class="inicio-fila-pos">${pos}</span>` : ''}${extra}</div>
     ${dato}${botonVer(v, destacadas.length ? destacadas[0] : null)}</li>`;
 }
@@ -73,15 +74,19 @@ function filaCliente(r) {
 const segmento = (cls, pct, etiqueta) => (pct > 0 ? html`<span class="inicio-seg ${cls}" style="width:${pct}%" title="${etiqueta}"></span>` : '');
 const cifra = (cls, n, etiqueta) => html`<li class="inicio-cifra"><span class="inicio-punto ${cls}" aria-hidden="true"></span><strong>${fmtNum(n)}</strong> ${etiqueta}</li>`;
 
+const bajo = e => e.texto.toLowerCase();
+
 function bloqueResumen(rs, ult) {
   const buenos = rs.nuevo + rs.poco_desgaste;
-  const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en buen estado` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en buen estado`;
+  // «en buen estado o con poco desgaste»: la suma lleva «con» antes del segundo nombre.
+  const buenoOPoco = `${ESTADOS.bueno.texto.toLowerCase()} o con ${ESTADOS.poco.texto.toLowerCase()}`;
+  const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en ${buenoOPoco}` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en ${buenoOPoco}`;
   return html`<section class="inicio-card" aria-labelledby="inicio-h-resumen">
     <div class="inicio-resumen-cab"><h3 id="inicio-h-resumen" class="inicio-h">${frase}</h3>
       ${ult ? html`<span class="inicio-meta">Última medición ${relDate(ult)}</span>` : ''}</div>
-    <div class="inicio-barra" role="img" aria-label="${`Nuevo ${rs.nuevo}, poco desgaste ${rs.poco_desgaste}, mayor desgaste ${rs.mayor_desgaste}, desgaste límite ${rs.desgaste_limite}, desconocido ${rs.desconocido}`}">
-      ${segmento('ok', rs.pct.nuevo, 'Nuevo')}${segmento('bajo', rs.pct.poco_desgaste, 'Poco desgaste')}${segmento('mayor', rs.pct.mayor_desgaste, 'Mayor desgaste')}${segmento('limite', rs.pct.desgaste_limite, 'Desgaste límite')}${segmento('neutral', rs.pct.desconocido, 'Desconocido')}</div>
-    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, 'nuevo')}${cifra('bajo', rs.poco_desgaste, 'poco desgaste')}${cifra('mayor', rs.mayor_desgaste, 'mayor desgaste')}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, rs.desgaste_limite === 1 ? 'desgaste límite' : 'desgaste límite')}${cifra('neutral', rs.desconocido, 'desconocido')}</ul>
+    <div class="inicio-barra" role="img" aria-label="${`${ESTADOS.bueno.texto} ${rs.nuevo}, ${bajo(ESTADOS.poco)} ${rs.poco_desgaste}, ${bajo(ESTADOS.mayor)} ${rs.mayor_desgaste}, ${bajo(ESTADOS.limite)} ${rs.desgaste_limite}, ${bajo(ESTADOS.sinDatos)} ${rs.desconocido}`}">
+      ${segmento('ok', rs.pct.nuevo, ESTADOS.bueno.texto)}${segmento('bajo', rs.pct.poco_desgaste, ESTADOS.poco.texto)}${segmento('mayor', rs.pct.mayor_desgaste, ESTADOS.mayor.texto)}${segmento('limite', rs.pct.desgaste_limite, ESTADOS.limite.texto)}${segmento('neutral', rs.pct.desconocido, ESTADOS.sinDatos.texto)}</div>
+    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, bajo(ESTADOS.bueno))}${cifra('bajo', rs.poco_desgaste, bajo(ESTADOS.poco))}${cifra('mayor', rs.mayor_desgaste, bajo(ESTADOS.mayor))}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, bajo(ESTADOS.limite))}${cifra('neutral', rs.desconocido, bajo(ESTADOS.sinDatos))}</ul>
   </section>`;
 }
 

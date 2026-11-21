@@ -23,14 +23,22 @@ function leyendaMediciones() {
 test('leyenda de Mediciones muestra las cinco categorías sin vocabulario viejo', () => {
   const block = leyendaMediciones();
   assert.ok(block, 'existe el bloque de leyenda');
-  assert.match(block, /Nuevo/);
+  assert.match(block, /Buen estado/);
   assert.match(block, /Poco desgaste/);
   assert.match(block, /Mayor desgaste/);
   assert.match(block, /Desgaste límite/);
-  assert.match(block, /Desconocido/);
+  assert.match(block, /Sin datos/);
   assert.doesNotMatch(block, /\bOK\b/);
   assert.doesNotMatch(block, /\bBajo\b/);
   assert.doesNotMatch(block, /\bCr[ií]tico\b/i);
+});
+
+test('Mediciones nombra la suma como «Buen estado o poco desgaste» y la rueda sin lecturas como «Sin datos»', () => {
+  assert.match(html, /tire-counter-l">Buen estado o poco desgaste</);
+  assert.doesNotMatch(html, /Buen estado \/ poco desgaste/);
+  const js = readFileSync(new URL('../../assets/js/views/mediciones.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(js, /\/ poco desgaste/);
+  assert.match(js, /neutral:\{cls:'',txt:ESTADOS\.sinDatos\.texto\}/);
 });
 
 test('zona del gráfico de Mediciones: 4,2 mm es mayor desgaste (naranja), 2,8 mm es desgaste límite (rojo)', () => {

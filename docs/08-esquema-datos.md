@@ -1061,11 +1061,11 @@ El panel y las vistas pasan a mostrar cinco categorías, calculadas a partir de 
 
 | Rango de `promedio` (mm) | Estado (`v_estado_neumaticos.estado`) | Etiqueta para el operario |
 |---|---|---|
-| `>= umbral_bajo_mm` | `nuevo` | Nuevo |
+| `>= umbral_bajo_mm` | `nuevo` | Buen estado (antes «Nuevo») |
 | `>= umbral_critico_mm` | `poco_desgaste` | Poco desgaste |
 | `>= umbral_retiro_mm` | `mayor_desgaste` | Mayor desgaste |
 | `< umbral_retiro_mm` | `desgaste_limite` | Desgaste límite |
-| sin promedio | `desconocido` | Desconocido |
+| sin promedio | `desconocido` | Sin datos (antes «Desconocido») |
 
 Valores por defecto: `umbral_bajo_mm = 8`, `umbral_critico_mm = 5`, `umbral_retiro_mm = 3`.
 
@@ -1100,7 +1100,7 @@ El dominio del panel (`assets/js/domain/umbrales.js`, `assets/js/domain/flota.js
 
 ## T.3 Panel
 
-- Inicio muestra cinco cifras y la barra segmentada en el orden: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido.
+- Inicio muestra cinco cifras y la barra segmentada en el orden: buen estado, poco desgaste, mayor desgaste, desgaste límite, sin datos (los valores de la base no cambian, solo el texto; ver docs/14 §3).
 - Flota filtra por los cinco estados y sus KPIs reflejan vehículos en desgaste límite, mayor desgaste, sin medir y alertas activas.
 - El diagrama del vehículo y los chips usan cuatro niveles visuales (`neutral`/`ok`/`warn`/`crit`) y el texto completo de cada categoría.
 - El selector de estados en Flota, los contadores de Mediciones y los textos de Alertas, Ficha y Empresa > Umbrales pasan a las nuevas etiquetas.

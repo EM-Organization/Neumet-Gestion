@@ -55,7 +55,7 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |
-| desgaste límite, mayor desgaste, poco desgaste, nuevo, desconocido | rojo, amarillo, verde |
+| **Vocabulario único de estado** (se toma de `domain/estado-desgaste.js`, nunca se duplica): Buen estado, Poco desgaste, Mayor desgaste, Desgaste límite, Sin datos; y la bandera independiente «Desgaste acelerado» (velocidad, no profundidad) | «Nuevo» ni «Desconocido» como estado, «Desgaste mayor al normal», rojo, amarillo, verde. «Buen estado o poco desgaste» nombra la suma de los dos primeros (no «en buen estado» a secas) |
 | Requieren atención | Urgentes, en problemas |
 | alerta de desgaste límite (única alerta); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar» |
 | Próximos cambios | Pronósticos, predicciones |
