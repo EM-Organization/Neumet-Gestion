@@ -55,4 +55,29 @@ window.cicloFlow = async function(w, d, sleep, fail, log){
   log.push('ciclo-flow: solo lectura, writes=' + fx.writes.length);
   $('[data-action="closeCicloVida"]').click(); await sleep(100);
   if($('#modal-ciclo').classList.contains('show')) fail('ciclo: modal no cerrado');
+  // Entrada desde el detalle: solo para el administrador de empresa. El equipo Neumet no la ve (el modal no es suyo para escribir).
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(400);
+  var db = $('#tbody-vehiculos [data-va="detalle"]');
+  if(db){ db.click(); await sleep(500); if($('#vd-cab [data-action="openCicloVida"]')) fail('ciclo: el equipo Neumet ve «Odómetro y ciclo de vida» en el detalle'); }
+  else fail('ciclo: sin botón de detalle en la lista de vehículos');
+};
+
+// Administrador de empresa (cliente sin sucursal): desde el detalle del vehículo, un clic abre el mismo modal de ciclo de vida.
+// Lo invoca harness.html con cliMode: await window.cicloEmpresaFlow(w, d, sleep, fail, log)
+window.cicloEmpresaFlow = async function(w, d, sleep, fail, log){
+  var $ = function(s){ return d.querySelector(s); };
+  $('.nav-item[data-view="vehiculos"]').click(); await sleep(500);
+  // Como cliente la lista es de filas (#veh-lista .veh-fila); el detalle se abre con un clic en la fila
+  var det = $('#veh-lista .veh-fila');
+  if(!det){ fail('ciclo-empresa: sin fila de vehículo en la lista'); return; }
+  det.click(); await sleep(500);
+  var entrada = $('#vd-cab [data-action="openCicloVida"]');
+  if(!entrada){ fail('ciclo-empresa: el administrador de empresa no ve «Odómetro y ciclo de vida» en el detalle'); return; }
+  entrada.click(); await sleep(500);
+  if(!$('#modal-ciclo').classList.contains('show')) { fail('ciclo-empresa: la entrada del detalle no abre el modal'); return; }
+  // Mismo modal que la lista: el kilometraje es editable para el cliente y el título nombra el vehículo abierto
+  if(!$('#ciclo-odo-input')) fail('ciclo-empresa: falta el formulario de kilometraje para el administrador de empresa');
+  if(!/Odómetro y ciclo de vida · /.test($('#ciclo-title').textContent)) fail('ciclo-empresa: título del modal: ' + $('#ciclo-title').textContent);
+  log.push('ciclo-empresa-flow: entrada desde el detalle abre el modal');
+  $('[data-action="closeCicloVida"]').click(); await sleep(100);
 };
