@@ -16,12 +16,12 @@ import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.
 import { DISTRIBUCIONES, OTRA_DISTRIBUCION, textoOpcion, textoRuedas } from '../domain/distribucion.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 
-let vehiculos=[], resumenes=new Map(), resumenesListos=false, estadoPendiente=false;
+let vehiculos=[], resumenes=new Map(), resumenesListos=false, estadoPendiente=false, cargaFallida=false;
 // Solo lectura para el equipo Neumet (docs/17 PR 9). El administrador de la empresa agrega vehículos desde aquí (RPC
 // vehiculo_crear; la base rechaza al resto) y los mueve entre sucursales en Sucursales (menú Empresa).
 
-// La lista de vehículos se muestra en cuanto llega; el estado de los neumáticos (consulta pesada) se agrega después.
-// Así la búsqueda por matrícula o número no espera ni depende de esa consulta.
+// Sin búsqueda, la lista espera el estado de los neumáticos (consulta pesada) para ordenar por urgencia.
+// Con búsqueda, pinta en cuanto llegan las filas: el estado se agrega cuando llega, sin reordenar.
 let cargaId=0;
 export async function loadVehiculos(){
   const mi=++cargaId;
@@ -35,8 +35,14 @@ export async function loadVehiculos(){
     return q;
   },{pageSize:PAGE_SIZE,max:50000});
   if(mi!==cargaId) return;
-  if(error){ setStatus(false); showToast(userError(error),true); setHtml(document.getElementById('veh-lista'), estadoError('','loadVehiculos')); return; }
-  vehiculos=rows;
+  // Llegar aquí implica carga vigente (la guarda de arriba). Un error deja de esperar el estado: si no, «Cargando…» quedaría pegado
+  // al buscar sin texto, porque una carga anterior (A) seguía con estadoPendiente=true.
+  if(error){
+    estadoPendiente=false; cargaFallida=true; setStatus(false); showToast(userError(error),true);
+    document.getElementById('veh-contador').textContent='';
+    setHtml(document.getElementById('veh-lista'), estadoError('','loadVehiculos')); return;
+  }
+  vehiculos=rows; cargaFallida=false;
   resumenes=new Map(); resumenesListos=false; estadoPendiente=isClienteMode();
   setStatus(true);
   const filterSel=document.getElementById('filter-cliente-veh');
@@ -67,8 +73,11 @@ function resumenTexto(g){
 function renderLista(){
   const lista=document.getElementById('veh-lista');
   const q=document.getElementById('search-vehiculos').value;
+  // Tras un error, buscar o borrar la búsqueda no debe pintar las filas de una carga anterior ni quitar el botón Reintentar.
+  if(cargaFallida){ document.getElementById('veh-contador').textContent=''; setHtml(lista, estadoError('','loadVehiculos')); return; }
   // El orden por urgencia depende del estado de los neumáticos: sin búsqueda no se pinta antes de tenerlo (evita el reordenamiento al llegar).
-  if(estadoPendiente&&!q.trim()){ setHtml(lista, html`<li>${estadoCarga()}</li>`); return; }
+  // Mientras espera, el contador dice «Cargando…» y no un total de una carga anterior.
+  if(estadoPendiente&&!q.trim()){ document.getElementById('veh-contador').textContent='Cargando…'; setHtml(lista, html`<li>${estadoCarga()}</li>`); return; }
   const activos=vehiculos.filter(v=>v.activo!==false);
   let res=buscarVehiculos(activos,q);
   // Sin búsqueda: los más urgentes primero.
