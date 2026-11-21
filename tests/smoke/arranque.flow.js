@@ -132,13 +132,18 @@ var arranqueEscenas = {
     if(!V(d.getElementById('app'))) fail('sinaccesocambio: el panel de B no se ve');
     if(V(d.getElementById('login-screen')) || V(d.getElementById('cargando-screen'))) fail('sinaccesocambio: quedan login o «Cargando» con la cuenta B');
     if(d.getElementById('user-role').textContent.trim() === '—') fail('sinaccesocambio: B sin rol en el encabezado');
-    log.push('DBG '+JSON.stringify({sa:d.getElementById('sin-acceso-screen').className,app:d.getElementById('app').className,role:d.getElementById('user-role').textContent,cg:d.getElementById('cargando-screen').className,calls:w.__perfil.calls}));
     log.push('escena sinaccesocambio perfiles='+w.__perfil.calls);
   },
   // Sin módulos ni supabase (la página solo tiene HTML y CSS): a los 10 s queda solo el aviso, también a 390 px.
   sinmodulos: async function(w, d, sleep, fail, log){
     var V = arranqueVisible;
+    // El aviso aparece por una animación CSS con retraso de 10 s. La animación avanza con los fotogramas, no con sleep(): con tiempo virtual
+    // un solo sleep(10500) fallaba a veces. Por eso el retraso se fija aparte (exacto) y luego se espera, con fotogramas, hasta 2 s más a que el aviso quede visible.
+    var av0 = d.getElementById('cargando-aviso');
+    if(!av0 || w.getComputedStyle(av0).animationDelay !== '10s') fail('sinmodulos: el aviso no aparece con retraso CSS de 10 s');
+    var avisoOk = function(){ var e = d.getElementById('cargando-aviso'); return V(e) && w.getComputedStyle(e).visibility === 'visible'; };
     await sleep(10500);
+    for(var t = 0; t < 40 && !avisoOk(); t++){ await new Promise(function(r){ w.requestAnimationFrame(function(){ r(); }); }); await sleep(50); }
     var av = d.getElementById('cargando-aviso');
     if(!V(av) || w.getComputedStyle(av).visibility !== 'visible') fail('sinmodulos: no aparece el aviso «No se pudo cargar» a los 10 s');
     // «Cargando…» se oculta con visibility (animable; sin display:none): invisible, fuera del foco y de lectores de pantalla.
