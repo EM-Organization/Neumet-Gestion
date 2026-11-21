@@ -54,7 +54,7 @@ function card(v, mostrarCliente) {
       ${v.n_desconocido ? html`<span class="flota-n">${v.n_desconocido} ${ESTADOS.sinDatos.texto.toLowerCase()}</span>` : ''}
     </div>
     <div class="flota-meta">
-      ${v.min_mm === null ? 'Sin mediciones' : html`Más gastado: ${nombrePosicion(v.peor_posicion).toLowerCase()}, ${fmtMm(v.min_mm)}`}
+      ${v.min_mm === null ? `${ESTADOS.sinDatos.texto} de medición` : html`Más gastado: ${nombrePosicion(v.peor_posicion).toLowerCase()}, ${fmtMm(v.min_mm)}`}
       ${v.n_sin_medir ? html` · ${v.n_sin_medir} sin medir` : ''}${v.n_irregular ? html` · ${v.n_irregular} con desgaste irregular` : ''}
       <br>Última medición: ${v.ultima_medicion_at ? relDate(v.ultima_medicion_at) : 'nunca'}
     </div>

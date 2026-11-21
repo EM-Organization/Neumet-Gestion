@@ -356,8 +356,8 @@
   .confirm-icon svg[hidden] { display:none; }
   .confirm-modal .modal-body { padding-top:14px; }
   .confirm-modal .modal-footer { padding-top:4px; }
-  .btn.danger { background:var(--err); color:white; border-color:var(--err); }
-  .btn.danger:hover:not(:disabled) { background:#a93226; border-color:#a93226; }
+  .btn.danger { background:var(--err); color:var(--n-blanco); border-color:var(--err); }
+  .btn.danger:hover:not(:disabled) { background:var(--err-on-white); border-color:var(--err-on-white); }
 
   /* FIELD SELECT */
   .field select { width:100%; background:var(--surface-secondary); border:1px solid var(--border-strong); border-radius:9px; padding:9px 12px; color:var(--text-primary); font-family:var(--font); font-size:14px; outline:none; transition:all .15s; cursor:pointer; }
@@ -556,7 +556,7 @@
 .vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] { margin-left: auto; }
 .vd-cab-titulo > .vd-cab-eliminar { margin-left: auto; border-color: var(--err); color: var(--err-on-white); }
 .vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] + .vd-cab-eliminar { margin-left: 12px; }
-.vd-cab-titulo > .vd-cab-eliminar:hover:not(:disabled) { background: rgba(179,54,42,0.08); }
+.vd-cab-titulo > .vd-cab-eliminar:hover:not(:disabled) { background: var(--err-tint); }
 .vd-cab-titulo > .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
 .vd-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
@@ -583,7 +583,7 @@
 .vd-chip.est-poco .vd-chip-sim, .vd-tag.est-poco .vd-chip-sim { color: var(--est-poco-sym); }
 .vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); }
 .vd-chip-rayas { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: repeating-linear-gradient(45deg, var(--est-sinDatos-fill) 0 5px, var(--est-hatch) 5px 6px); border: 1px dashed var(--est-sinDatos-stroke); }
-.vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: #fff; font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
+.vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: var(--n-blanco); font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
 /* Etiqueta de estado (panel y título): mismo estilo que el chip, alto 28, sin conteo ni rango. */
 .vd-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); font-size: 13px; font-weight: 600; color: var(--n-oscuro); background: var(--surface); }
 .vd-tag.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
@@ -623,8 +623,8 @@
 .vd-hatch-raya { stroke: var(--est-hatch); stroke-width: 1; }
 /* Insignia de «Desgaste acelerado»: círculo con aro blanco, metido 4 en el borde superior; se dibuja después de todas las ruedas. */
 .vd-bandera { pointer-events: none; }
-.vd-bandera circle { fill: var(--est-bandera); stroke: #fff; stroke-width: 2; }
-.vd-bandera text { fill: #fff; font-family: var(--font); font-size: 10px; font-weight: 800; text-anchor: middle; }
+.vd-bandera circle { fill: var(--est-bandera); stroke: var(--n-blanco); stroke-width: 2; }
+.vd-bandera text { fill: var(--n-blanco); font-family: var(--font); font-size: 10px; font-weight: 800; text-anchor: middle; }
 .vd-cerrar { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-secondary); font-size: 28px; line-height: 1; display: grid; place-items: center; cursor: pointer; transition: all .12s; flex-shrink: 0; }
 .vd-cerrar:hover { background: var(--surface-secondary); color: var(--text-primary); }
 .vd-etiqueta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); background: var(--surface-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
@@ -658,7 +658,7 @@
 .vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
 .vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }
 .vd-g-serie { fill: none; stroke: var(--n-oscuro); stroke-width: 2; stroke-linejoin: round; }
-.vd-g-punto { stroke: #fff; stroke-width: 2; }
+.vd-g-punto { stroke: var(--n-blanco); stroke-width: 2; }
 .vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
 .vd-datos-det { margin-top: 8px; font-size: 13px; }
 .vd-datos-scroll { max-width: 100%; overflow-x: auto; }

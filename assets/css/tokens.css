@@ -63,6 +63,7 @@
   --est-hatch: #C9C4A8;
   --est-bandera: #383424;      /* relleno de la insignia «Desgaste acelerado» */
   --err: #B3362A;              /* NeumetError: borde y relleno de lo destructivo */
+  --err-tint: #F7E3E0;         /* NeumetErrorTint: velo de lo destructivo (= --est-mayor-fill) */
   --err-on-white: #8E2419;     /* NeumetErrorOnWhite: texto destructivo sobre blanco */
   --vd-topbar: 52px;           /* alto de la barra superior fija (la tarjeta del esquema se ancla debajo) */
   /* TODO(neumet-web: NeumetGoldDeep, NeumetScrim): valores no incluidos en neumet-web-tokens.json; se usa el velo existente. */
