@@ -25,11 +25,11 @@
   /* Aviso de «Cargando» colgado: aparece solo con CSS (sin script: la CSP bloquea los inline y los módulos pueden no cargar). Con .falla (auth.js) aparece de inmediato. */
   .cargando-aviso { visibility: hidden; text-align: center; font-size: 14px; color: var(--text-primary); margin-top: -8px; padding-top: 12px; border-top: 1px solid var(--border); animation: avisoVisible 0s 10s forwards; }
   .cargando-aviso a { color: var(--accent-dark); font-weight: 600; text-decoration: underline; }
-  #cargando-screen.falla .cargando-aviso { animation: none; visibility: visible; }
+  #cargando-screen.falla .cargando-aviso { animation: none; visibility: visible; margin-top: 16px; } /* sin «Cargando…» encima, el -8px dejaba la línea pegada al logo */
   @keyframes avisoVisible { to { visibility: visible } }
-  /* Sin módulos, «Cargando…» desaparece a los 10 s junto con la aparición del aviso (no se ven a la vez). */
+  /* Sin módulos, «Cargando…» desaparece a los 10 s junto con la aparición del aviso (no se ven a la vez). Con visibility (animable) y no display:none; ocupa su sitio, así que el aviso se sube sobre él (.cargando-aviso). */
   #cargando-screen .login-sub { animation: cargandoOculto 0s 10s forwards; }
-  @keyframes cargandoOculto { to { display: none } }
+  @keyframes cargandoOculto { to { visibility: hidden } }
   .login-form .field { margin-bottom: 12px; }
   .login-form label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; letter-spacing: 0.01em; }
   .login-form input { width: 100%; background: var(--surface-secondary); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 13px; color: var(--text-primary); font-family: var(--font); font-size: 15px; outline: none; transition: all .15s; }
