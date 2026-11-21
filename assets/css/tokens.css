@@ -54,6 +54,19 @@
   --sidebar-hover:       rgba(255,255,255,0.06);
   --sidebar-active-bg:   rgba(213,197,138,0.15);
 
+  /* Estado de desgaste del detalle de vehículo (docs/22, neumet-web-tokens.json): un estado = relleno + trazo + símbolo.
+     «Desgaste límite» comparte el juego de «mayor». Los colores viven solo aquí; el SVG y el HTML los toman por clase. */
+  --est-bueno-fill: #E4EAD3;  --est-bueno-stroke: #4F6B26;  --est-bueno-sym: #4F6B26;
+  --est-poco-fill:  #F8E4B5;  --est-poco-stroke:  #B9791A;  --est-poco-sym:  #7A4E08;
+  --est-mayor-fill: #F7E3E0;  --est-mayor-stroke: #B3362A;  --est-mayor-sym: #8E2419;
+  --est-sinDatos-fill: #EBEBEB; --est-sinDatos-stroke: #857F66; --est-sinDatos-sym: #615A3F;
+  --est-hatch: #C9C4A8;
+  --est-bandera: #383424;      /* relleno de la insignia «Desgaste acelerado» */
+  --err: #B3362A;              /* NeumetError: borde y relleno de lo destructivo */
+  --err-on-white: #8E2419;     /* NeumetErrorOnWhite: texto destructivo sobre blanco */
+  --vd-topbar: 52px;           /* alto de la barra superior fija (la tarjeta del esquema se ancla debajo) */
+  /* TODO(neumet-web: NeumetGoldDeep, NeumetScrim): valores no incluidos en neumet-web-tokens.json; se usa el velo existente. */
+
   /* Tipografía — PROVISORIO: reemplazar por tipografía de marca (ver docs/06 §4) */
   --font:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono:    'JetBrains Mono', monospace;

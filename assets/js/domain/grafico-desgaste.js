@@ -1,6 +1,7 @@
 // Datos del gráfico de desgaste de un neumático (mm vs. tiempo) listos para dibujar en SVG (lógica pura).
-const MS_SEMANA = 7 * 86400000;
-export const MAX_SEMANAS_PROYECCION = 52;
+// Las bandas y el estado de cada punto salen de estado-desgaste.js: gráfico, chips y esquema no pueden discrepar.
+import { TOKENS } from './tokens-detalle.js';
+import { wearStatus, ESTADOS, ejeY, bandasGrafico, valorMostrado } from './estado-desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
@@ -12,51 +13,57 @@ export function mmMedicion(m) {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 }
 
-// Mediciones -> puntos { t (ms), fecha, mm } ordenados por fecha, sin las que no tienen dato o fecha válida.
+// Mediciones -> puntos { t (ms), fecha, mm (promedio), mm1, mm2, mm3 } ordenados por fecha, sin las que no tienen dato o fecha válida.
+// Se conservan las tres huellas para la tabla «Ver datos» y el tooltip; el gráfico dibuja el promedio.
 export function serieDesgaste(mediciones) {
   return (mediciones || [])
-    .map(m => ({ t: new Date(m.created_at).getTime(), fecha: m.created_at, mm: mmMedicion(m) }))
+    .map(m => ({ t: new Date(m.created_at).getTime(), fecha: m.created_at, mm: mmMedicion(m), mm1: num(m.mm1), mm2: num(m.mm2), mm3: num(m.mm3) }))
     .filter(p => Number.isFinite(p.t) && p.mm !== null)
     .sort((a, b) => a.t - b.t);
 }
 
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+// Fecha corta del eje: «20 nov»; con el año de dos cifras si el rango cruza un año.
+export function fechaEje(t, conAnio = false) {
+  const f = new Date(t);
+  return `${f.getDate()} ${MESES[f.getMonth()]}${conAnio ? ` ${String(f.getFullYear()).slice(2)}` : ''}`;
+}
+
+// Ancho aproximado por carácter de un rótulo de 12 px en seminegrita. Si el rótulo no cabe se oculta en vez de
+// recortarse: el chip del mismo estado ya lo nombra.
+const ANCHO_CHAR = 6.8;
+
 /**
- * Geometría del gráfico. u = { bajo, critico, retiro }; tasaMmSemana > 0 activa la proyección punteada desde el último
- * punto hasta el umbral de retiro (acotada a MAX_SEMANAS_PROYECCION). Devuelve null sin puntos.
+ * Geometría del gráfico en un SVG de `ancho` x `alto`. th = { buen, poco, mayor }. Las bandas ocupan todo el ancho del
+ * área de trazado; con una sola lectura el punto queda centrado y sin línea. Devuelve null sin puntos.
  */
-export function datosGrafico(puntos, u, tasaMmSemana, { ancho = 320, alto = 190 } = {}) {
+export function datosGrafico(puntos, th, { ancho = 320, alto = TOKENS.chart.heightPx } = {}) {
   if (!puntos || !puntos.length) return null;
-  const m = { l: 28, r: 62, t: 10, b: 22 };
-  const ultimo = puntos[puntos.length - 1];
-  const tasa = num(tasaMmSemana);
-  let proy = null;
-  if (tasa !== null && tasa > 0 && ultimo.mm > u.retiro) {
-    const semanas = (ultimo.mm - u.retiro) / tasa;
-    const s = Math.min(semanas, MAX_SEMANAS_PROYECCION);
-    proy = { t2: ultimo.t + s * MS_SEMANA, mm2: ultimo.mm - tasa * s, semanas, truncada: semanas > MAX_SEMANAS_PROYECCION };
-  }
-  const t0 = puntos[0].t;
-  const t1 = Math.max(ultimo.t, proy ? proy.t2 : ultimo.t, t0 + 86400000);
-  const mmMin = Math.max(0, Math.min(u.retiro, ...puntos.map(p => p.mm), proy ? proy.mm2 : Infinity) - 1);
-  const mmMax = Math.max(u.bajo, ...puntos.map(p => p.mm)) + 1;
-  const X = t => m.l + ((t - t0) / (t1 - t0)) * (ancho - m.l - m.r);
-  const Y = mm => m.t + (1 - (mm - mmMin) / (mmMax - mmMin)) * (alto - m.t - m.b);
-  const pts = puntos.map(p => ({ ...p, x: X(p.t), y: Y(p.mm) }));
-  const paso = mmMax - mmMin > 12 ? 4 : 2;
-  const ejeY = [];
-  for (let v = Math.ceil(mmMin / paso) * paso; v <= mmMax; v += paso) ejeY.push({ mm: v, y: Y(v) });
-  const ejeX = [{ x: X(t0), t: t0 }];
-  if (ultimo.t > t0) ejeX.push({ x: X(ultimo.t), t: ultimo.t });
-  const ult = pts[pts.length - 1];
+  const c = TOKENS.chart;
+  const m = { l: 30, r: 8, t: 10, b: 28 };
+  const x0 = m.l, x1 = ancho - m.r, y0 = m.t, y1 = alto - m.b;
+  const eje = ejeY(Math.max(...puntos.map(p => p.mm)), th);
+  const Y = mm => y0 + (1 - (mm - eje.min) / (eje.max - eje.min)) * (y1 - y0);
+  const t0 = puntos[0].t, tn = puntos[puntos.length - 1].t;
+  const unico = puntos.length === 1 || tn === t0;
+  const X = t => (unico ? (x0 + x1) / 2 : (x0 + c.plotInsetXPx) + ((t - t0) / (tn - t0)) * ((x1 - x0) - 2 * c.plotInsetXPx));
+  const pts = puntos.map((p, i) => {
+    const valor = valorMostrado(p.mm);
+    const estado = wearStatus(p.mm, th);
+    return { ...p, valor, estado, estilo: ESTADOS[estado].estilo, x: X(p.t), y: Y(valor), ultimo: i === puntos.length - 1 };
+  });
+  const bandas = bandasGrafico(th, eje.max).map(b => {
+    const yTop = Y(b.hasta), alto_ = Y(b.desde) - yTop;
+    const cabe = !!b.rotulo && alto_ >= c.bandLabelMinHeightPx && b.rotulo.length * ANCHO_CHAR <= (x1 - x0) - 2 * c.bandLabelInsetPx;
+    return { ...b, y: yTop, alto: alto_, rotuloVisible: cabe, rotuloX: x1 - c.bandLabelInsetPx, rotuloY: yTop + alto_ / 2 };
+  });
+  const conAnio = new Date(t0).getFullYear() !== new Date(tn).getFullYear();
+  const fechas = unico ? [{ x: X(t0), t: t0 }] : [{ x: X(t0), t: t0 }, { x: X(tn), t: tn }];
   return {
-    ancho, alto, margen: m, puntos: pts,
-    linea: pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' '),
-    umbrales: [
-      { clave: 'bajo', mm: u.bajo, y: Y(u.bajo), etiqueta: 'Nuevo' },
-      { clave: 'critico', mm: u.critico, y: Y(u.critico), etiqueta: 'Poco desgaste' },
-      { clave: 'retiro', mm: u.retiro, y: Y(u.retiro), etiqueta: 'Mayor desgaste' },
-    ],
-    proyeccion: proy ? { x1: ult.x, y1: ult.y, x2: X(proy.t2), y2: Y(proy.mm2), semanas: proy.semanas, truncada: proy.truncada, t2: proy.t2 } : null,
-    ejeY, ejeX,
+    ancho, alto, margen: m, area: { x0, x1, y0, y1 },
+    eje: { ...eje, marcas: eje.marcas.map(v => ({ mm: v, y: Y(v) })) },
+    bandas, puntos: pts, unico,
+    linea: unico ? null : pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' '),
+    ejeX: fechas.map(f => ({ ...f, texto: fechaEje(f.t, conAnio) })),
   };
 }

@@ -29,6 +29,9 @@ core/
   svg.js                svgEl(tag, attrs)
 domain/
   desgaste.js           PURO (sin DOM ni supabase): WEAR, wearStatus, avgMm, wearRate, daysUntil, analyzeTire, ...
+  estado-desgaste.js    PURO: `wearStatus` por valor mostrado (bueno/poco/mayor/limite/sinDatos), rangos, conteo de chips, eje y bandas del gráfico (docs/21)
+  tokens-detalle.js     PURO: medidas de la spec (docs/22) para el diagrama, la bandera y el gráfico del detalle; TODO-BREAKPOINTS
+  grafico-desgaste.js   PURO: serie, eje X y `datosGrafico` (puntos, bandas, línea) del detalle de vehículo
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas
   inicio.js             PURO: estadoInicio, proporciones, requierenAtencion, proximosCambios, resumen de dispositivos
   rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso); esAdminEmpresa() (regla única del

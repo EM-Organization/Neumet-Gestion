@@ -5,12 +5,10 @@ import { normalizarPatente, claveBusqueda, buscarVehiculos, coincidenciaExacta }
 import {
   layoutRuedas, geometriaDiagrama, ejeDePosicion, umbralesDe, nivelDesgaste, colorDesgaste, colorTexto, contraste, muestrasLeyenda, NIVEL_INFO,
 } from '../../assets/js/domain/vehiculo-diagrama.js';
-import { chip, SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
+import { SIMBOLO_ESTADO_NEUMATICO } from '../../assets/js/core/componentes.js';
 import { severidadLabel } from '../../assets/js/domain/flota.js';
-import { plural } from '../../assets/js/domain/formato.js';
-import { joinHtml } from '../../assets/js/core/html.js';
 import { mediana, referenciaTasas, evaluarDesgaste, MIN_MUESTRAS } from '../../assets/js/domain/desgaste-flota.js';
-import { serieDesgaste, datosGrafico, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
+import { serieDesgaste, mmMedicion } from '../../assets/js/domain/grafico-desgaste.js';
 
 describe('normalización de búsqueda', () => {
   test('normalizarPatente = public.normalizar_patente (mayúsculas, sin espacios, vacío -> null)', () => {
@@ -224,33 +222,6 @@ describe('escala de color', () => {
     assert.equal(NIVEL_INFO.retiro.simbolo, SIMBOLO_ESTADO_NEUMATICO.desgaste_limite, 'desgaste límite usa el mismo símbolo en diagrama y chips');
     assert.equal(NIVEL_INFO.sin_datos.simbolo, SIMBOLO_ESTADO_NEUMATICO.desconocido);
   });
-  test('resumen superior de la ficha usa los símbolos unificados, no el par viejo hardcodeado', async () => {
-    const { readFileSync } = await import('node:fs');
-    const src = readFileSync(new URL('../../assets/js/views/vehiculo-detalle.js', import.meta.url), 'utf8');
-    const body = src.slice(src.indexOf('function resumen()'), src.indexOf('function leyenda()', src.indexOf('function resumen()')));
-    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.desgaste_limite/, 'símbolo de desgaste límite en resumen');
-    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.mayor_desgaste/, 'símbolo de mayor desgaste en resumen');
-    assert.match(body, /SIMBOLO_ESTADO_NEUMATICO\.poco_desgaste/, 'símbolo de poco desgaste en resumen');
-    // Con el hardcode viejo aparecería ✕ para límite y ▲ para mayor; con la corrección es al revés.
-    assert.doesNotMatch(body, /chip\('red'[\s\S]*?'✕'/);
-    assert.doesNotMatch(body, /chip\('orange'[\s\S]*?'▲'/);
-  });
-  test('resumen de un vehículo con 4,0 mm (mayor) y 2,0 mm (límite) muestra ✕ mayor desgaste y ■ desgaste límite', () => {
-    // Simula la misma lógica que resumen() para contar estados y renderizar chips.
-    const limite = 1, mayorDesgaste = 1, poco = 0, desconocido = 0, mayor = 0;
-    const bloque = joinHtml([
-      chip('gray', plural(2, 'neumático', 'neumáticos'), '●'),
-      limite ? chip('red', plural(limite, 'desgaste límite', 'desgaste límite'), SIMBOLO_ESTADO_NEUMATICO.desgaste_limite) : '',
-      mayorDesgaste ? chip('orange', plural(mayorDesgaste, 'mayor desgaste', 'mayor desgaste'), SIMBOLO_ESTADO_NEUMATICO.mayor_desgaste) : '',
-      poco ? chip('blue', plural(poco, 'poco desgaste', 'poco desgaste'), SIMBOLO_ESTADO_NEUMATICO.poco_desgaste) : '',
-      desconocido ? chip('gray', `${desconocido} desconocido`, SIMBOLO_ESTADO_NEUMATICO.desconocido) : '',
-      mayor ? chip('orange', `${mayor} con desgaste mayor al normal`, '!') : '',
-    ]).toString();
-    assert.match(bloque, /✕[\s\S]*?mayor desgaste/);
-    assert.match(bloque, /■[\s\S]*?desgaste límite/);
-    assert.doesNotMatch(bloque, /▲[\s\S]*?mayor desgaste/);
-    assert.doesNotMatch(bloque, /✕[\s\S]*?desgaste límite/);
-  });
 });
 
 test('panel de alertas del detalle usa la severidad «Alta» del dominio, no «Crítica»', async () => {
@@ -312,33 +283,33 @@ describe('desgaste mayor al normal', () => {
 });
 
 describe('gráfico de desgaste', () => {
-  const u = { bajo: 8, critico: 5, retiro: 3 };
   const med = (dias, prom) => ({ created_at: new Date(Date.UTC(2026, 0, 1 + dias)).toISOString(), promedio: prom });
   test('serie ordenada por fecha y sin mediciones vacías', () => {
     const s = serieDesgaste([med(10, 9), med(0, 12), { created_at: 'x', promedio: 5 }, { created_at: med(5).created_at, mm1: null }]);
     assert.deepEqual(s.map(p => p.mm), [12, 9]);
   });
   test('mmMedicion cae al promedio de huellas', () => assert.equal(mmMedicion({ mm1: 10, mm2: 8, mm3: null }), 9));
-  test('sin puntos -> null', () => assert.equal(datosGrafico([], u, 0.5), null));
-  test('líneas de umbrales ordenadas (bajo arriba) y proyección hacia el retiro', () => {
-    const d = datosGrafico(serieDesgaste([med(0, 12), med(28, 10), med(56, 8)]), u, 1);
-    const y = Object.fromEntries(d.umbrales.map(x => [x.clave, x.y]));
-    assert.ok(y.bajo < y.critico && y.critico < y.retiro);
-    assert.ok(d.proyeccion);
-    assert.ok(Math.abs(d.proyeccion.y2 - y.retiro) < 0.01, 'la proyección termina en el umbral de retiro');
-    assert.equal(d.proyeccion.semanas, 5);
-    assert.ok(d.proyeccion.x2 > d.proyeccion.x1);
-    assert.ok(d.puntos.every(p => p.x >= 0 && p.x <= d.ancho && p.y >= 0 && p.y <= d.alto));
+});
+
+describe('detalle del vehículo: una sola fuente de estado (docs/21)', () => {
+  const leer = async ruta => (await import('node:fs')).readFileSync(new URL(ruta, import.meta.url), 'utf8');
+  test('la vista no lleva colores sueltos ni la escala continua vieja', async () => {
+    const src = await leer('../../assets/js/views/vehiculo-detalle.js');
+    assert.doesNotMatch(src, /#[0-9a-fA-F]{3,8}\b/, 'sin hex en la vista: los colores salen de variables CSS');
+    assert.doesNotMatch(src, /colorDesgaste|NIVEL_INFO|vd-leyenda|proyeccion/);
+    assert.match(src, /wearStatus/);
   });
-  test('sin tasa o ya bajo el retiro no hay proyección; un solo punto es válido', () => {
-    assert.equal(datosGrafico(serieDesgaste([med(0, 12), med(10, 11)]), u, null).proyeccion, null);
-    assert.equal(datosGrafico(serieDesgaste([med(0, 12), med(10, 2)]), u, 1).proyeccion, null);
-    const uno = datosGrafico(serieDesgaste([med(0, 12)]), u, 0.5);
-    assert.equal(uno.puntos.length, 1);
-    assert.ok(Number.isFinite(uno.puntos[0].x));
+  test('los chips filtran por una acción con aria-pressed y el total la limpia', async () => {
+    const src = await leer('../../assets/js/views/vehiculo-detalle.js');
+    assert.match(src, /data-action="detalleFiltro"/);
+    assert.match(src, /aria-pressed="\$\{filtro === clave\}"/);
+    assert.match(src, /data-args="\[null\]"/);
   });
-  test('proyección muy lejana se acota a 52 semanas', () => {
-    const d = datosGrafico(serieDesgaste([med(0, 12), med(7, 11.99)]), u, 0.01);
-    assert.equal(d.proyeccion.truncada, true);
+  test('los textos nuevos del detalle: Desgaste acelerado, Ver datos, Última medición (mm)', async () => {
+    const src = await leer('../../assets/js/views/vehiculo-detalle.js');
+    assert.match(src, /Última medición \(mm\)/);
+    assert.match(src, /Ver datos/);
+    assert.match(src, /Ocultar datos/);
+    assert.doesNotMatch(src, /Desgaste mayor al normal/);
   });
 });

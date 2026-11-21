@@ -32,6 +32,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    'detalle-filtro': async function(){ await abrirDetalle(); var c = $('#vd-resumen .vd-chip[data-filtro="mayor"]'); if(c) c.click(); else fail('escena '+name+': sin chip de filtro'); await sleep(300); },
     'detalle-calidad': async function(){ await abrirDetalle(); var sm = $('#vd-calidad summary'); if(sm) sm.click(); else fail('escena '+name+': sin indicador de calidad'); await sleep(300); var c = $('#vd-calidad'); if(c) c.scrollIntoView(); await sleep(200); },
     'detalle-rueda-calidad': async function(){ await abrirDetalle(); rueda3(); await sleep(800); var h = Array.prototype.filter.call(d.querySelectorAll('#vd-panel h4'), function(x){ return /Calidad/.test(x.textContent); })[0]; if(h) h.scrollIntoView(); else fail('escena '+name+': sin sección de calidad'); await sleep(300); },
     'calidad-lista': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); },
@@ -85,7 +86,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
   log.push('escena='+name+' nav='+(nv ? nv.dataset.view : '-')+' vista='+(vw ? vw.id : '-'));
   // Ninguna escena desborda a lo ancho (barra superior en 390 px incluida: selector de sucursal y buscador dentro del viewport).
   var de = d.documentElement;
-  if(de.scrollWidth > w.innerWidth + 1) fail('escena '+name+': desborde horizontal ('+de.scrollWidth+' > '+w.innerWidth+')');
+  if(de.scrollWidth > w.innerWidth + 1) { var of = Array.prototype.filter.call(d.querySelectorAll('.view.active *'), function(x){ return x.getBoundingClientRect().right > w.innerWidth + 1 && !x.closest('.vd-datos-scroll'); }).slice(0, 3).map(function(x){ var a=[],p=x; while(p && p!==d.body && a.length<6){ a.push(p.tagName+'.'+String(p.className && p.className.baseVal!==undefined ? p.className.baseVal : p.className).slice(0,18)+'='+Math.round(p.getBoundingClientRect().width)); p=p.parentElement; } var rc=x.getBoundingClientRect(); return a.join('<')+' @'+Math.round(rc.left)+','+Math.round(rc.right)+' :: '+x.tagName + (x.id ? '#'+x.id : '') + '.' + String(x.className && x.className.baseVal !== undefined ? x.className.baseVal : x.className).slice(0, 40); }).join(' '); fail('escena '+name+': desborde horizontal ('+de.scrollWidth+' > '+w.innerWidth+') '+of); }
   var tb = $('.topbar');
   if(tb) Array.prototype.forEach.call(tb.querySelectorAll('.sec-selector, .busq-barra, .breadcrumb'), function(e){ if(e.getClientRects().length && e.getBoundingClientRect().right > w.innerWidth + 1) fail('escena '+name+': la barra superior se sale por la derecha ('+(e.className||e.id)+')'); });
   var colgadas = {'view-vehiculo-detalle':'vehiculos','view-ficha':'clientes','view-calidad':'inicio','view-recauchutado':'stock'};

@@ -761,7 +761,6 @@
           <section class="vd-diagrama-card" aria-label="Diagrama de ruedas">
             <div id="vd-resumen" class="vd-resumen"></div>
             <div id="vd-diagrama" class="vd-diagrama"></div>
-            <div id="vd-leyenda" class="vd-leyenda"></div>
             <div id="vd-calidad" class="vd-calidad"></div>
           </section>
           <div class="vd-panel-backdrop" id="vd-backdrop" data-backdrop-close="detalleCerrarPanel"></div>
@@ -1262,11 +1261,10 @@
 </div>
 
 <!-- Modal Eliminar vehículo (administrador de empresa; RPC vehiculo_eliminar) -->
-<div class="modal-backdrop" id="modal-veh-eliminar" data-backdrop-close="vehiculo-eliminar-cerrar">
+<div class="modal-backdrop" id="modal-veh-eliminar" data-backdrop-close="vehiculo-eliminar-cerrar" data-modal-rol="alertdialog" data-foco-inicial="veh-elim-cancelar">
   <form class="modal" id="veh-elim-form" novalidate>
     <div class="modal-header">
-      <div class="modal-title" id="veh-elim-title">Eliminar vehículo</div>
-      <div class="modal-sub" id="veh-elim-sub"></div>
+      <div class="modal-title" id="veh-elim-title">¿Eliminar vehículo?</div>
     </div>
     <div class="modal-body">
       <p id="veh-elim-intro" class="field-hint" style="margin:0 0 12px"></p>
