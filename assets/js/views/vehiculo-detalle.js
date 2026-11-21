@@ -29,7 +29,7 @@ import { layoutRuedas, geometriaDiagrama, umbralesDe } from '../domain/vehiculo-
 import { referenciaTasas } from '../domain/desgaste-flota.js';
 import { serieDesgaste, datosGrafico } from '../domain/grafico-desgaste.js';
 import {
-  umbralesEstado, wearStatus, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstadosFilas, estadoVehiculo, banderaDeFila as banderaDe, fmtMedida,
+  umbralesEstado, wearStatus, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila as banderaDe, fmtMedida,
 } from '../domain/estado-desgaste.js';
 import { TOKENS } from '../domain/tokens-detalle.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -180,7 +180,7 @@ function resumen() {
 function coincideFiltro(fila) {
   if (filtro === null) return true;
   if (filtro === 'acelerado') return banderaDeFila(fila).mayorAlNormal;
-  return wearStatus(fila.promedio, datos.th) === filtro;
+  return estadoContable(fila, datos.th) === filtro; // el mismo estado contable que cuentan los chips
 }
 function aplicarFiltro() {
   document.querySelectorAll('#vd-resumen [data-filtro]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filtro === filtro)));

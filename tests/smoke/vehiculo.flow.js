@@ -337,6 +337,11 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(rAux.querySelector('.vd-mm').textContent !== '2,0' || !/desgaste límite/.test(rAux.getAttribute('aria-label'))) fail('detalle: el auxilio debe dibujarse con su estado real: '+rAux.getAttribute('aria-label'));
   if($('#vd-resumen [data-filtro="limite"]') || $('#vd-resumen [data-filtro="mayor"]')) fail('detalle: el auxilio cuenta como advertencia en los chips: '+$('#vd-resumen').textContent);
   if(!/3 neumáticos/.test($('#vd-resumen .vd-chip-total').textContent) || !/1 Buen estado/.test($('#vd-resumen [data-filtro="bueno"]').textContent) || !/2 Poco desgaste/.test($('#vd-resumen [data-filtro="poco"]').textContent)) fail('detalle: chips del auxilio: '+$('#vd-resumen').textContent.replace(/\s+/g,' '));
+  // R3: el auxilio irregular no lleva insignia ni cuenta en «Desgaste acelerado» (una sola regla para chip, insignia y filtro).
+  if($('#vd-diagrama .vd-bandera[data-pos="99"]') || $('#vd-resumen [data-filtro="acelerado"]')) fail('detalle: el auxilio lleva insignia o cuenta como acelerado');
+  $('#vd-resumen [data-filtro="poco"]').click(); await sleep(100);
+  if(all('#vd-diagrama .vd-rueda.dim').length !== 1) fail('detalle: el filtro «Poco desgaste» debe atenuar solo P1: P3 y el auxilio (que cuenta como poco) coinciden con el chip');
+  $('#vd-resumen .vd-chip-total').click(); await sleep(100);
   if(!/Poco desgaste/.test($('#vd-cab .vd-tag').textContent)) fail('detalle: la cabecera cuenta el auxilio como advertencia: '+$('#vd-cab .vd-tag').textContent);
 
   // Buscador global: matrícula, número de coche y número de quema abren el vehículo (la quema, el de su neumático montado)
