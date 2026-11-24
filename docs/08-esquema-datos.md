@@ -1234,3 +1234,39 @@ Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una ca
 ### X.3 Pruebas
 `tests/sql/t_102_vehiculo_cambiar_distribucion.sql`, unitarias (`distribucion`, `vehiculo-detalle`) y smoke `montar`.
 
+
+# Apéndice Y · Estado y alertas por la huella mínima (`20261126000000_huella_minima.sql`)
+
+Implementa RN-01 y RN-08 (G-01, P0-3): el estado de desgaste, las alertas y los conteos se deciden por `min(mm1, mm2, mm3)`. El promedio sigue expuesto, solo como dato informativo.
+
+### Y.1 Qué cambia
+- `v_estado_neumaticos`: columna nueva `minimo` (al final, para que `create or replace view` no rompa a `v_resumen_flota_cliente` ni a las consultas por nombre). `estado` se decide con `minimo`: `< umbral_retiro_mm` es `desgaste_limite`; `< umbral_critico_mm` es `mayor_desgaste`; `< umbral_bajo_mm` es `poco_desgaste`; si no, `nuevo`. `mm1`, `mm2`, `mm3` y `promedio` no cambian.
+- `alerta_sincronizar`: abre, mantiene, cierra y reabre con `minimo`. `mm_actual`, `mm_minimo` y `mm_apertura` guardan el mínimo, así que el mensaje de `v_alertas` («Desgaste límite: X mm») coincide con la decisión. La histéresis (`alerta_histeresis_mm`) se aplica sobre el mínimo.
+- La regla del auxilio (posición 99, Apéndice W) no cambia. Los umbrales siguen siendo los de `clientes`; no hay umbrales por eje.
+- Mapeo DAC `mm1..mm4` sin cambios. Front: `assets/js/domain/desgaste.js` (`huellaMinima`) es el espejo de `least()`.
+
+### Y.2 Contrato de nulos
+- `minimo` es `NULL` si falta cualquiera de `mm1`, `mm2` o `mm3`. `least()` ignora nulos y daría un mínimo falso, por eso la vista lo fuerza a `NULL`.
+- Sin una huella completa no hay estado: `estado = 'desconocido'` (sin datos) y no se abre ni se mantiene alerta. En la base, `mediciones.mm1..mm3` son `NOT NULL`, así que el caso real es «sin medición» (todas las huellas `NULL` por el `coalesce` de la vista).
+- En el front, `huellaMinima` devuelve `null` si falta una huella o no es un número. Un `0` medido es un valor, no un dato faltante. `Math.min(null, 4)` daría 0; por eso no se usa sin validar.
+
+### Y.3 Compatibilidad y despliegue
+- Sin backfill: no se reescriben mediciones, no se reevalúan clientes y no se tocan alertas existentes. La migración no tiene `update` masivo ni llamada a `alerta_sincronizar` en masa.
+- Riesgo: una alerta abierta antes de esta migración conserva su `mm_actual` (promedio) hasta su próxima sincronización. Esa sincronización ocurre con la siguiente medición de la cubierta, un cambio de umbral del cliente o la acción de sincronizar. Una cubierta con promedio por encima de 3 mm pero mínimo bajo 3 mm puede seguir sin alerta hasta entonces. Se recomienda reevaluar en el piloto, con el dueño, antes de cerrar la migración.
+- Cambio de contrato: `v_estado_neumaticos` pasa de 30 a 31 columnas (`minimo`). Las consultas por nombre no cambian; las que listan todas las columnas en orden, sí.
+- Permisos: sin cambios. `v_estado_neumaticos` sigue con `security_invoker` y `select` para `authenticated`; `alerta_sincronizar` sigue sin ejecución para `public`, `anon` y `authenticated`. No se endurece la RPC de rotación en esta ola (movimientos posteriores).
+- Aplicación: solo con el CLI, con dry-run previo. La migración es idempotente (`create or replace`, `revoke`).
+
+### Y.4 Presentación (panel)
+- Estado, chips, conteos, semáforo de vehículo, «Requieren atención», «Próximos cambios» (mm), mapa de la ficha, gráfico de evolución, tooltip, CSV de reportes, resumen impreso y leyenda de Mediciones usan el mínimo.
+- El promedio aparece con su rótulo «(informativo)» en la tabla de la ficha, en el tooltip del gráfico, en el CSV y en el reporte.
+- Bajo retiro (menos de 3 mm en una huella), la ficha del neumático no ofrece «Rotar» ni elegir destino: muestra «Retirar ya» y los botones «Retirar neumático» y «Cambiar neumático». Sigue siendo un clic por acción. Sin rotación a otro eje (RN-08).
+- Fuera de alcance de esta ola: la proyección de «semanas hasta el retiro» (tasa, G-04) sigue basada en el promedio; la serie «Últimas mediciones» de Inicio (`ultimas_mediciones`) sigue mostrando el valor de la visita; los colores por huella de la vista de Mediciones son por medición, no por estado. Se documentan como pendientes.
+
+### Y.5 Pruebas
+- SQL: `tests/sql/t_103_huella_minima.sql` (CA-01, CA-08, bordes de 3, 5, 6 y 8 mm, sin medición, histéresis sobre el mínimo). Se registra en `tests/sql/run.sh` y la migración se aplica dos veces. `t_55` y `t_88` se actualizan al nuevo número de columnas.
+- Unitarias: `tests/unit/huella-minima.test.mjs` (paridad con la tabla SQL, nulos, `Math.min(null, 4)`). Las fixtures que solo tenían `promedio` reciben las tres huellas iguales, de modo que su mínimo es el valor esperado.
+- Smoke: `flota`, `detalle`, `admin`, `cliente`. E2E y visuales según `docs/11`.
+
+### Y.6 Clics
+- Sin aumento. Retirar una cubierta bajo 3 mm: un clic en «Retirar neumático» (antes también). Rotar a otro eje ya no se ofrece bajo retiro: se quita un camino, no se agrega ninguno.
