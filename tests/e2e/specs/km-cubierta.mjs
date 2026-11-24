@@ -118,4 +118,35 @@ export function registrar(env) {
       env.sql(`delete from public.vehiculos where id = ${veh}`);
     }
   });
+
+  test('Km por cubierta: el auxilio (99) corta el tramo de km (CA-13) y lo muestra la API del rol global', async () => {
+    const cli = Number(env.sql(`select id from public.clientes where nombre = 'Demo Transportes'`));
+    const veh = Number(env.sql(`insert into public.vehiculos (cliente_id, nombre, patente, numero, odometro_km, odometro_actualizado_at)
+      values (${cli}, '992', 'E2EAUX1', '992', 190000, now()) returning id`).split('\n')[0]);
+    try {
+      env.sql(`insert into public.neumaticos (vehiculo_id, cliente_id, posicion, idneumatico, estado, marca, km_previos)
+        values (${veh}, ${cli}, 4, 'E2E-AUX-1', 'montado', 'Michelin', 0)`);
+      // CA-13: montaje en 3 a 100.000, rotación a 99 a 130.000, salida a 4 a 180.000 (odómetro actual 190.000).
+      env.sql(`insert into public.eventos_neumatico (cliente_id, vehiculo_id, neumatico_id, idneumatico, tipo, posicion_origen, posicion_destino, odometro_km, created_at)
+        select n.cliente_id, n.vehiculo_id, n.id, n.idneumatico, e.tipo, e.o, e.d, e.odo, now() - e.dias * interval '1 day'
+          from (values ('montaje', null::int, 3, 100000, 30), ('rotacion', 3, 99, 130000, 20), ('rotacion', 99, 4, 180000, 10)) e(tipo, o, d, odo, dias)
+          join public.neumaticos n on n.idneumatico = 'E2E-AUX-1'`);
+      const neumaticoId = Number(env.sql(`select id from public.neumaticos where idneumatico = 'E2E-AUX-1'`));
+      await flujo(env, 'km-api', 'global', async p => {
+        const r = await leerKm(p, `&neumatico_id=eq.${neumaticoId}`);
+        assert.equal(r.status, 200);
+        assert.equal(r.filas.length, 1, 'la cubierta del vehículo propio es visible para el perfil global');
+        const f = r.filas[0];
+        // Los 90.000 km entre la entrada a 99 y la salida no suman: 30.000 cerrados + 10.000 del tramo actual.
+        assert.equal(f.km_en_vehiculos, 30000, 'tramo cerrado 3 a 99 = 30.000');
+        assert.equal(f.km_tramo_actual, 10000, 'tramo actual 190.000 - 180.000');
+        assert.equal(f.km_totales, 40000, 'total = 30.000 + 10.000, no 100.000 ni 190.000');
+        assert.equal(f.km_confiable, true);
+      });
+    } finally {
+      env.sql(`delete from public.eventos_neumatico where vehiculo_id = ${veh}`);
+      env.sql(`delete from public.neumaticos where vehiculo_id = ${veh}`);
+      env.sql(`delete from public.vehiculos where id = ${veh}`);
+    }
+  });
 }
