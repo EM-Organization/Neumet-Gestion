@@ -28,7 +28,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!cliMode && !enlDisp) fail('inicio(admin): los dispositivos sin actividad no enlazan a Dispositivos');
   // Últimas mediciones (fixture de flota.fixture.js): 3 vehículos, comparativa solo con medición previa
   var um = all('#inicio-contenido #inicio-h-ultimas ~ ul > li');
-  if(um.length !== 3) fail('inicio('+rol+'): últimas mediciones: se esperaban 3 vehículos, hay '+um.length);
+  if(um.length !== 4) fail('inicio('+rol+'): últimas mediciones: se esperaban 4 vehículos, hay '+um.length);
   else {
     var t0 = um[0].textContent.replace(/\s+/g, ' ');
     if(!/Coche 101/.test(t0) || /Camión/.test(t0) || /Coche 101 · Coche/.test(t0) || !/AB123CD/.test(t0) || !/14\/6\/2026/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta nombre, matrícula, coche o fecha: '+t0);
@@ -36,6 +36,11 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     var sin = um[0].querySelectorAll('.um-sin');
     if(sin.length !== 1 || !/15,5 mm/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): el neumático sin medición previa debe mostrar solo los mm y "Sin previa"');
     if(/→/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): comparativa sin medición previa');
+    // RN-01 (regresión): sin fila en v_estado_neumaticos no hay huellas, así que el mini no pinta ninguna rueda por desgaste.
+    // El promedio de la visita (3,67) se muestra solo como dato informativo; no puede dar un mínimo ni un estado.
+    var t3 = um[3].textContent.replace(/\s+/g, ' ');
+    if(um[3].querySelectorAll('.mini-veh .mv-rueda[fill]').length) fail('inicio('+rol+'): visita sin huellas (v_estado vacío) pinta ruedas por desgaste (RN-01): '+t3);
+    if(!/3,6 mm \(informativo\)|3,7 mm \(informativo\)/.test(t3)) fail('inicio('+rol+'): el promedio de la visita debe rotularse como informativo: '+t3);
     var t2 = um[2].textContent.replace(/\s+/g, ' ');
     if(!/7,3 → 2,7 mm/.test(t2) || !/\u22124,6/.test(t2) || !um[2].querySelector('.um-dif.alto')) fail('inicio('+rol+'): desgaste alto no destacado: '+t2);
     if(!/9,0 → 9,2 mm/.test(t2) || !/\+0,2/.test(t2)) fail('inicio('+rol+'): diferencia positiva: '+t2);

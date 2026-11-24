@@ -126,13 +126,15 @@ const textoDif = dif => `${signo(dif)}${fmtNum(Math.abs(dif), 1)}`;
 function neumaticoMedido(n, id) {
   const c = n.comparativa;
   return html`<li class="um-neu"><span class="um-pos">${nombrePosicion(n.posicion, tipoDe(id))}</span>${c
-    ? html`<span class="um-mm">${fmtNum(c.antes, 1)} → ${fmtNum(c.ahora, 1)} mm</span><span class="um-dif ${c.nivel}">${c.nivel === 'alto' ? html`<span class="sr-only">Desgaste alto: </span>` : ''}${textoDif(c.dif)}</span>`
-    : html`<span class="um-mm">${fmtNum(n.mm, 1)} mm</span><span class="um-sin">Sin previa</span>`}</li>`;
+    ? html`<span class="um-mm">Promedio ${fmtNum(c.antes, 1)} → ${fmtNum(c.ahora, 1)} mm (informativo)</span><span class="um-dif ${c.nivel}">${c.nivel === 'alto' ? html`<span class="sr-only">Desgaste alto: </span>` : ''}${textoDif(c.dif)}</span>`
+    : html`<span class="um-mm">Promedio ${fmtNum(n.mm, 1)} mm (informativo)</span><span class="um-sin">Sin previa</span>`}</li>`;
 }
 
 function filaMedida(v, porVeh) {
-  // Colores del estado actual del vehículo; sin esas filas, los mm de esta visita.
-  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion, mm1: n.mm, mm2: n.mm, mm3: n.mm })); // sin fila: el valor de la visita es su huella mínima
+  // Colores del estado actual del vehículo (v_estado_neumaticos, con las tres huellas). Si el vehículo no tiene filas ahí,
+  // solo se conoce la posición: no hay huellas, así que no hay mínimo ni estado y el mini sale sin color (RN-01).
+  // El valor de la visita (ultimas_mediciones.mm_ahora) es un promedio: se muestra rotulado como informativo, nunca como huella.
+  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion }));
   const coche = v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : '';
   return html`<li class="um-fila">
     <div class="um-cab">${miniDe(filas, [], v.vehiculo_id)}
