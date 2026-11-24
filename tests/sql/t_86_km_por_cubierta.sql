@@ -130,7 +130,7 @@ update public.vehiculos set odometro_km = 5000 where id = 864;
 -- ---------------------------------------------------------------------------------------------
 select test.eq('D2: desmontaje con odómetro menor -> tramo sin dato, no confiable', test.km86('K86-D2'), '0|NULL|NULL|NULL|false');
 select test.eq('D2: marcado como anómalo', (select odometro_anomalo from public.v_km_cubierta where idneumatico = 'K86-D2'), true);
-select test.eq('D1: odómetro actual menor al del montaje -> tramo 0 y no confiable', test.km86('K86-D1'), '0|0|0|0|false');
+select test.eq('D1: odómetro actual menor al del montaje -> tramo actual Sin dato (NULL, no 0) y no confiable', test.km86('K86-D1'), '0|0|NULL|NULL|false');
 select test.eq('D1: marcado como anómalo', (select odometro_anomalo from public.v_km_cubierta where idneumatico = 'K86-D1'), true);
 select test.eq('A1 sin anomalías', (select odometro_anomalo from public.v_km_cubierta where idneumatico = 'K86-A1'), false);
 select test.become('authenticated', test.u_cli_a());
