@@ -7,7 +7,7 @@ import {
 } from '../../assets/js/domain/flota.js';
 
 const r = (vid, pos, estado, prom, extra = {}) => ({
-  cliente_id: 1, vehiculo_id: vid, vehiculo_nombre: 'V' + vid, patente: 'P' + vid, posicion: pos, estado, promedio: prom,
+  cliente_id: 1, vehiculo_id: vid, vehiculo_nombre: 'V' + vid, patente: 'P' + vid, posicion: pos, estado, mm1: prom, mm2: prom, mm3: prom, promedio: prom,
   sin_medir: false, desgaste_irregular: false, ultima_medicion_at: '2026-06-10T10:00:00Z', ...extra,
 });
 

@@ -1,11 +1,12 @@
 // Dominio: reportes exportables. Funciones PURAS (sin DOM, sin supabase) para testear con node:test.
-import { wearStatus, avgMm } from './desgaste.js';
+import { wearStatus, avgMm, huellaMinima } from './desgaste.js';
 import { estadoContable } from './auxilio.js';
 
 export const PAGE_SIZE = 1000;
 export const MAX_ROWS = 50000;
 export const BOM = '﻿';
-export const CSV_HEADER = ['fecha', 'vehiculo', 'patente', 'posicion', 'idneumatico', 'mm1', 'mm2', 'mm3', 'promedio', 'estado'];
+// `minimo` es la huella mínima (RN-01) y decide `estado`; `promedio` queda como dato informativo.
+export const CSV_HEADER = ['fecha', 'vehiculo', 'patente', 'posicion', 'idneumatico', 'mm1', 'mm2', 'mm3', 'minimo', 'promedio', 'estado'];
 
 // Texto que una hoja de cálculo interpretaría como fórmula: = + - @ tab CR (y LF, por prudencia).
 const FORMULA = /^[=+\-@\t\r\n]/;
@@ -40,9 +41,10 @@ export function rowAvg(r) {
 export function medicionesToCsvRows(rows) {
   return (rows || []).map(r => {
     const avg = rowAvg(r);
+    const min = huellaMinima(r);
     const v = r.vehiculos || {};
     return [iso(r.created_at), v.nombre ?? '', v.patente ?? '', num(r.posicion), r.idneumatico ?? '',
-      num(r.mm1), num(r.mm2), num(r.mm3), r2(avg), wearStatus(avg) ?? ''];
+      num(r.mm1), num(r.mm2), num(r.mm3), r2(min), r2(avg), wearStatus(min) ?? ''];
   });
 }
 
@@ -73,9 +75,10 @@ export function resumenFlota(rows) {
   const porVehiculo = new Map();
   const neumaticos = latestByTire(rows).map(r => {
     const avg = rowAvg(r);
+    const min = huellaMinima(r);
     return { vehiculo_id: r.vehiculo_id, nombre: r.vehiculos?.nombre ?? '', patente: r.vehiculos?.patente ?? '',
-      posicion: num(r.posicion), idneumatico: r.idneumatico ?? null, promedio: r2(avg),
-      estado: wearStatus(avg), created_at: r.created_at };
+      posicion: num(r.posicion), idneumatico: r.idneumatico ?? null, mm1: num(r.mm1), mm2: num(r.mm2), mm3: num(r.mm3),
+      minimo: r2(min), promedio: r2(avg), estado: wearStatus(min), created_at: r.created_at };
   }).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.posicion ?? 0) - (b.posicion ?? 0));
   neumaticos.forEach(n => {
     const key = estadoContable(n) ?? 'desconocido'; // el auxilio no cuenta como advertencia

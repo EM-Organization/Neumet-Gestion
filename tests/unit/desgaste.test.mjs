@@ -48,10 +48,16 @@ describe('avgMm / tireStatus', () => {
   test('todo null -> null', () => assert.equal(avgMm({ mm1: null, mm2: null, mm3: null }), null));
   test('fila sin campos -> null', () => assert.equal(avgMm({}), null));
   test('el 0 cuenta como medición (no es null)', () => close(avgMm({ mm1: 0, mm2: 6, mm3: null }), 3));
-  test('tireStatus combina promedio y umbral', () => {
+  // RN-01: el estado sale de la huella MÍNIMA. Con el promedio 6,0 (9, 6, 3) el mínimo 3 es mayor desgaste, no límite.
+  test('tireStatus usa la huella mínima, no el promedio', () => {
     assert.equal(tireStatus({ mm1: 8, mm2: 8, mm3: 8 }), 'nuevo');
-    assert.equal(tireStatus({ mm1: 5, mm2: 5, mm3: null }), 'poco_desgaste');
-    assert.equal(tireStatus({ mm1: 3, mm2: 3, mm3: null }), 'mayor_desgaste');
+    assert.equal(tireStatus({ mm1: 9, mm2: 6, mm3: 3 }), 'mayor_desgaste');
+    assert.equal(tireStatus({ mm1: 8.5, mm2: 8.5, mm3: 2.9 }), 'desgaste_limite'); // CA-08: promedio 6,6, mínimo 2,9
+    assert.equal(tireStatus({ mm1: 2.8, mm2: 4.0, mm3: 4.2 }), 'desgaste_limite'); // CA-01: promedio 3,67
+  });
+  test('tireStatus sin una huella: sin estado (no se fabrica con dos)', () => {
+    assert.equal(tireStatus({ mm1: 5, mm2: 5, mm3: null }), null);
+    assert.equal(tireStatus({ mm1: 3, mm2: 3, mm3: null }), null);
     assert.equal(tireStatus({ mm1: null, mm2: null, mm3: null }), null);
   });
 });

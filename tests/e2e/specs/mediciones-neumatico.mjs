@@ -13,7 +13,8 @@ import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 import { INICIO_LISTO, LEER_INICIO } from './inicio.mjs';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
-const fila = (env, id, pos) => json(env, `select posicion, idneumatico, estado, trunc(round(promedio, 2), 1)::text as mm, promedio, sin_medir, n_mediciones_90d, tasa_mm_semana
+// `mm` es la huella MÍNIMA (la que la rueda muestra y decide, RN-01); `promedio` queda como dato informativo.
+const fila = (env, id, pos) => json(env, `select posicion, idneumatico, estado, trunc(round(minimo, 2), 1)::text as mm, minimo, promedio, sin_medir, n_mediciones_90d, tasa_mm_semana
   from public.v_estado_neumaticos where vehiculo_id = ${id} and posicion = ${pos}`)[0];
 const limiteAlerta = (env, id, pos) => Number(env.sql(`select count(*) from public.v_alertas where vehiculo_id = ${id} and posicion = ${pos} and tipo = 'limite'`));
 const mmUi = mm => (mm === null ? '—' : mm.replace('.', ','));
@@ -38,7 +39,8 @@ const alertasUi = async (p, patente) => {
 
 async function seleccionarRueda(p, pos) {
   await p.click(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
-  await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-rotar-btn') && document.querySelector('#vd-rotar-btn').dataset.posicion === '${pos}'`, { que: `panel de la rueda ${pos}` });
+  // Bajo el límite de retiro (RN-08) no hay botón Rotar: el panel se reconoce por sus botones de la rueda (data-posicion).
+  await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-panel [data-posicion="${pos}"]')`, { que: `panel de la rueda ${pos}` });
 }
 
 const veh = (env, id) => json(env, `select nombre, tipo_ruedas from public.vehiculos where id = ${id}`)[0];

@@ -3,7 +3,7 @@ import { db } from '../core/supabase.js';
 import { html, setHtml } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { ACTIONS } from '../core/actions.js';
-import { UMBRALES, wearStatus } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus, huellaMinima } from '../domain/desgaste.js';
 import { ESTADOS, BUENO_O_POCO } from '../domain/estado-desgaste.js';
 import { med } from './mediciones-state.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -108,9 +108,10 @@ export async function generarReportePDF(){
       const n=neumMap[pos];
       const historial=medPorPos[pos]||[];
       const ultima=historial[0];
-      const avgMM=ultima?.promedio!=null?parseFloat(ultima.promedio):null;
-      const color=statusColor(avgMM);
-      const label=statusLabel(avgMM);
+      // RN-01: el estado y el número que se muestra son la huella mínima; el promedio no decide nada aquí.
+      const minMM=huellaMinima(ultima);
+      const color=statusColor(minMM);
+      const label=statusLabel(minMM);
 
       // Mini sparkline SVG con las últimas mediciones (promedio)
       const sparkVals=historial.slice().reverse().map(m=>m.promedio!=null?parseFloat(m.promedio):null).filter(v=>v!=null);
@@ -153,7 +154,7 @@ export async function generarReportePDF(){
           <span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;background:${color}18;color:${color};border:1px solid ${color}40">
             ${label}
           </span><br>
-          <span style="font-size:13px;font-weight:600;color:${color}">${fmtMM(avgMM)}</span>
+          <span style="font-size:13px;font-weight:600;color:${color}">${fmtMM(minMM)}</span>
         </td>
         <td style="text-align:center">${fmtDate(ultima?.created_at||null)}</td>
         <td style="text-align:center">${sparkSVG}</td>
@@ -164,7 +165,7 @@ export async function generarReportePDF(){
     // Resumen global
     const allLastMM=posiciones.map(pos=>{
       const m=medPorPos[pos]?.[0];
-      return m?.promedio!=null?parseFloat(m.promedio):null;
+      return huellaMinima(m);
     }).filter(v=>v!=null);
     const limite=allLastMM.filter(v=>wearStatus(v)==='desgaste_limite').length;
     const mayor=allLastMM.filter(v=>wearStatus(v)==='mayor_desgaste').length;

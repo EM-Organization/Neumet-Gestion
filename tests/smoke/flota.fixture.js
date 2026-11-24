@@ -3,7 +3,7 @@
 (function(){
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   function e(cid, vid, nom, pat, pos, estado, prom, extra){
-    return Object.assign({cliente_id:cid,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,estado:estado,promedio:prom,
+    return Object.assign({cliente_id:cid,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,estado:estado,mm1:prom,mm2:prom,mm3:prom,promedio:prom,
       sin_medir:false,desgaste_irregular:false,ultima_medicion_at:prom===null?null:D(2),dias_desde_medicion:prom===null?null:2,semanas_hasta_critico:null,tasa_mm_semana:null}, extra||{});
   }
   var estado = [

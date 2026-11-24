@@ -132,7 +132,7 @@ function neumaticoMedido(n, id) {
 
 function filaMedida(v, porVeh) {
   // Colores del estado actual del vehículo; sin esas filas, los mm de esta visita.
-  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion, promedio: n.mm }));
+  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion, mm1: n.mm, mm2: n.mm, mm3: n.mm })); // sin fila: el valor de la visita es su huella mínima
   const coche = v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : '';
   return html`<li class="um-fila">
     <div class="um-cab">${miniDe(filas, [], v.vehiculo_id)}
