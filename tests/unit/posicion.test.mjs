@@ -58,7 +58,7 @@ describe('resumenPosiciones', () => {
 describe('modeloMini', () => {
   const u = { umbral_bajo_mm: 8, umbral_critico_mm: 5, umbral_retiro_mm: 3 };
   const filas = [
-    { posicion: 1, promedio: 12, ...u }, { posicion: 2, promedio: 4, ...u }, { posicion: 3, promedio: 9, ...u },
+    { posicion: 1, mm1: 12, mm2: 12, mm3: 12, ...u }, { posicion: 2, mm1: 4, mm2: 4, mm3: 4, ...u }, { posicion: 3, mm1: 9, mm2: 9, mm3: 9, ...u },
   ];
   test('dibuja el chasis completo del tipo; ruedas sin dato en gris (fill null)', () => {
     const m = modeloMini(filas);
@@ -67,7 +67,7 @@ describe('modeloMini', () => {
     assert.equal(m.ruedas.find(r => r.posicion === 7).nivel, 'sin_datos');
   });
   test('rueda ausente (sin fila) se distingue de «sin datos» (fila sin medición)', () => {
-    const m = modeloMini([{ posicion: 1, promedio: 10 }, { posicion: 2, promedio: null }]);
+    const m = modeloMini([{ posicion: 1, mm1: 10, mm2: 10, mm3: 10 }, { posicion: 2, mm1: null, mm2: null, mm3: null }]);
     const r = n => m.ruedas.find(x => x.posicion === n);
     assert.equal(r(2).ausente, false); assert.equal(r(2).nivel, 'sin_datos');
     assert.equal(r(1).ausente, false);
@@ -75,8 +75,8 @@ describe('modeloMini', () => {
     assert.equal(modeloMini([], { destacadas: [4] }).ruedas.find(x => x.posicion === 4).ausente, false);
   });
   test('el tipo de ruedas define el chasis dibujado', () => {
-    assert.equal(modeloMini([{ posicion: 1, promedio: 9 }], { tipo: 16 }).ruedas.length, 16);
-    assert.equal(modeloMini([{ posicion: 1, promedio: 9 }], { tipo: 10 }).ruedas.length, 10);
+    assert.equal(modeloMini([{ posicion: 1, mm1: 9, mm2: 9, mm3: 9 }], { tipo: 16 }).ruedas.length, 16);
+    assert.equal(modeloMini([{ posicion: 1, mm1: 9, mm2: 9, mm3: 9 }], { tipo: 10 }).ruedas.length, 10);
   });
   test('color igual al del detalle de vehículo (misma escala y umbrales)', () => {
     const m = modeloMini(filas);
@@ -84,7 +84,7 @@ describe('modeloMini', () => {
     assert.equal(m.ruedas.find(r => r.posicion === 2).nivel, 'critico');
   });
   test('usa umbrales por defecto si la fila no los trae', () => {
-    const m = modeloMini([{ posicion: 1, promedio: 6 }]);
+    const m = modeloMini([{ posicion: 1, mm1: 6, mm2: 6, mm3: 6 }]);
     assert.equal(m.ruedas.find(r => r.posicion === 1).fill, colorDesgaste(6, UMBRALES_DEFECTO).hex);
   });
   test('resalta solo las posiciones pedidas y lo dice en el aria', () => {
@@ -99,7 +99,7 @@ describe('modeloMini', () => {
     assert.ok(r && r.destacada && r.fill === null);
   });
   test('tipo 16 por posiciones altas; auxilio fuera del chasis; recorte válido', () => {
-    const m = modeloMini([{ posicion: 12, promedio: 9 }, { posicion: 99, promedio: 9 }], { destacadas: [99] });
+    const m = modeloMini([{ posicion: 12, mm1: 9, mm2: 9, mm3: 9 }, { posicion: 99, mm1: 9, mm2: 9, mm3: 9 }], { destacadas: [99] });
     assert.equal(m.ruedas.length, 17);
     assert.ok(m.ruedas.find(r => r.posicion === 99).destacada);
     assert.ok(m.ancho > 0 && m.alto > 0 && Number.isFinite(m.x0));
@@ -107,7 +107,7 @@ describe('modeloMini', () => {
   });
   test('entradas vacías o con filas inválidas no fallan', () => {
     assert.equal(modeloMini(null).ruedas.length, 10);
-    assert.equal(modeloMini([null, { posicion: 'x' }, { posicion: 1, promedio: null }]).ruedas.find(r => r.posicion === 1).fill, null);
+    assert.equal(modeloMini([null, { posicion: 'x' }, { posicion: 1, mm1: null, mm2: null, mm3: null }]).ruedas.find(r => r.posicion === 1).fill, null);
   });
 });
 

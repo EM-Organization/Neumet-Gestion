@@ -8,7 +8,7 @@ import { resumenDesdeFilas } from '../../assets/js/domain/seccional.js';
 import { resumenFlota } from '../../assets/js/domain/reportes.js';
 
 const f = (pos, estado, prom, extra = {}) => ({
-  cliente_id: 1, vehiculo_id: 7, vehiculo_nombre: 'V7', patente: 'P7', posicion: pos, estado, promedio: prom,
+  cliente_id: 1, vehiculo_id: 7, vehiculo_nombre: 'V7', patente: 'P7', posicion: pos, estado, mm1: prom, mm2: prom, mm3: prom, promedio: prom,
   sin_medir: false, desgaste_irregular: false, ultima_medicion_at: '2026-06-10T10:00:00Z', semanas_hasta_retiro: null, ...extra,
 });
 

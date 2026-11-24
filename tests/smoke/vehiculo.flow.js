@@ -212,11 +212,22 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(ch.querySelectorAll('circle').length !== 10) fail('detalle: el grafico deberia tener 10 puntos');
     if(ch.querySelectorAll('.vd-g-banda').length < 3) fail('detalle: faltan las bandas de estado del grafico');
     var tipPunto = ch.querySelector('circle title').textContent;
-    if(!/Interna \d+,\d · Centro \d+,\d · Externa \d+,\d · Promedio \d+,\d mm · (Buen estado|Poco desgaste|Mayor desgaste|Desgaste límite)$/.test(tipPunto)) fail('detalle: el tooltip del punto debe traer fecha, interna, centro, externa, promedio y estado: '+tipPunto);
+    if(!/Interna \d+,\d · Centro \d+,\d · Externa \d+,\d · Mínimo \d+,\d mm \(decide el estado\) · Promedio \d+,\d mm \(informativo\) · (Buen estado|Poco desgaste|Mayor desgaste|Desgaste límite)$/.test(tipPunto)) fail('detalle: el tooltip del punto debe traer fecha, interna, centro, externa, mínimo (que decide), promedio (informativo) y estado: '+tipPunto);
     if(ch.querySelectorAll('.vd-g-proy,.vd-g-umbral').length) fail('detalle: el grafico no lleva proyeccion ni lineas de umbral');
     if(ch.getAttribute('role') !== 'img' || !/^Evolución del desgaste de /.test(ch.getAttribute('aria-label') || '')) fail('detalle: el grafico necesita role img y aria-label');
     var vd = $('#vd-chart-wrap details.vd-datos-det'); if(!vd || vd.querySelectorAll('tbody tr').length !== 10) fail('detalle: falta la tabla Ver datos con 10 filas');
   }
+
+  // RN-08: la rueda 4 mide 2,5 mm (bajo el límite de retiro). No se ofrece rotar a otro eje; se muestra el retiro.
+  var r4s = $('#vd-diagrama .vd-rueda[data-pos="4"]');
+  r4s.dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
+  if($('#vd-rotar-destino') || $('#vd-panel [data-action="neumatico-rotar-pos"]')) fail('detalle RN-08: bajo retiro no debe ofrecerse rotar a otro eje');
+  if(!/Retirar ya/.test($('#vd-panel').textContent)) fail('detalle RN-08: bajo retiro falta el aviso «Retirar ya»');
+  if(!$('#vd-panel [data-action="neumatico-retirar"]')) fail('detalle RN-08: bajo retiro falta el botón Retirar neumático');
+  // Móvil (390 px): el encabezado visible de la última columna es «Prom.»; «Promedio» queda como nombre accesible.
+  var thProm = $('#vd-panel .vd-mm-tabla thead th:last-child');
+  if(!thProm || thProm.textContent.trim() !== 'Prom.' || thProm.getAttribute('aria-label') !== 'Promedio') fail('detalle: el encabezado de promedio debe ser «Prom.» visible y «Promedio» accesible: '+(thProm && thProm.textContent));
+  $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
 
   // Contrato con el taller: botones presentes con data-*; handlers REALES de cambio-neumatico.js (no un stub)
   var rpcs = function(n){ return w.__cicloFx.rpcs.filter(function(r){ return r.name === n; }); };

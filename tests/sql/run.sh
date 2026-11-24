@@ -200,6 +200,10 @@ echo "== migración cambiar distribución (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125600000_vehiculo_cambiar_distribucion.sql"
 echo "== migración cambiar distribución (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261125600000_vehiculo_cambiar_distribucion.sql"
+echo "== migración huella mínima (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126000000_huella_minima.sql"
+echo "== migración huella mínima (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126000000_huella_minima.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

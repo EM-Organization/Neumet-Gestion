@@ -35,6 +35,7 @@ export const TIPO_LABEL = {
 
 import { esAuxilio, estadoContable } from './auxilio.js';
 import { ESTADOS, textoEstadoBase } from './estado-desgaste.js';
+import { huellaMinima } from './desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 export const estadoRank = e => (e in ESTADO_RANK ? ESTADO_RANK[e] : ESTADO_RANK.desconocido);
@@ -78,7 +79,7 @@ export function agruparVehiculos(rows) {
     else v.n_desconocido++;
     if (r.sin_medir) v.n_sin_medir++;
     if (r.desgaste_irregular) v.n_irregular++;
-    const mm = num(r.promedio);
+    const mm = huellaMinima(r); // RN-01: la peor posición se elige por la huella mínima
     if (mm !== null && !esAuxilio(r) && (v.min_mm === null || mm < v.min_mm)) { v.min_mm = mm; v.peor_posicion = r.posicion; }
     if (r.ultima_medicion_at && (!v.ultima_medicion_at || r.ultima_medicion_at > v.ultima_medicion_at)) v.ultima_medicion_at = r.ultima_medicion_at;
   }

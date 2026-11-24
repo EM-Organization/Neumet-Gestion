@@ -100,7 +100,8 @@ describe('chips', () => {
 });
 
 describe('auxilio y bandera (regla PR 140)', () => {
-  const f = (posicion, promedio, extra) => ({ posicion, promedio, ...extra });
+  // Fila de v_estado_neumaticos con las tres huellas iguales (su mínimo es el valor dado).
+  const f = (posicion, promedio, extra) => ({ posicion, mm1: promedio, mm2: promedio, mm3: promedio, promedio, ...extra });
   const filas = [f(1, 10), f(2, 9), f(3, 12), f(99, 2.0)];
   test('estadoContable: el auxilio en mayor/límite cuenta como poco; el resto, su estado real', () => {
     assert.equal(estadoContable(f(99, 2.0), th), 'poco');
@@ -201,12 +202,12 @@ describe('datosGrafico', () => {
     const d = datosGrafico(serieDesgaste([{ created_at: '2026-11-20T15:00:00Z', mm1: 8.2, mm2: 7.97, mm3: 7.7, promedio: 7.97 }]), th, { ancho: 400 });
     const t = tooltipPunto(d.puntos[0]);
     assert.match(t, /^20\/11\/2026|^\d{1,2}[/ -]/);
-    assert.match(t, /Interna 8,2 · Centro 7,9 · Externa 7,7 · Promedio 7,9 mm · Poco desgaste$/);
+    assert.match(t, /Interna 8,2 · Centro 7,9 · Externa 7,7 · Mínimo 7,7 mm \(decide el estado\) · Promedio 7,9 mm \(informativo\) · Poco desgaste$/);
   });
   test('serieDesgaste conserva las tres huellas y descarta mediciones sin dato', () => {
     const s = serieDesgaste([{ created_at: '2026-11-20T10:00:00Z', mm1: 5, mm2: 6, mm3: 7 }, { created_at: '2026-11-21T10:00:00Z' }]);
     assert.equal(s.length, 1);
-    assert.deepEqual([s[0].mm1, s[0].mm2, s[0].mm3, s[0].mm], [5, 6, 7, 6]);
+    assert.deepEqual([s[0].mm1, s[0].mm2, s[0].mm3, s[0].mm], [5, 6, 7, 5]); // el punto del gráfico es la huella mínima
   });
   test('fecha del eje: «20 nov» y año si cruza', () => {
     const t = new Date(2026, 10, 20).getTime();

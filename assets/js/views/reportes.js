@@ -201,7 +201,7 @@ function buildDoc(rows, truncated) {
   const porVeh = joinHtml(r.vehiculos.map(v => html`<tr><td>${etiquetaCoche(v.nombre)}</td><td>${v.patente || '—'}</td><td>${v.neumaticos}</td><td>${v.nuevo}</td><td>${v.pocoDesgaste}</td><td>${v.mayorDesgaste}</td><td>${v.limite}</td><td>${v.desconocido}</td></tr>`));
   const detalle = joinHtml(r.neumaticos.map(t => html`<tr>
     <td>${etiquetaCoche(t.nombre)}</td><td>${t.patente || '—'}</td><td>Pos. ${t.posicion ?? '—'}</td><td>${t.idneumatico ?? '—'}</td>
-    <td style="font-weight:700;color:${COLOR[t.estado]}">${LABEL[t.estado]}</td><td>${fmtMm(t.promedio)}</td><td>${fmtDate(t.created_at)}</td></tr>`));
+    <td style="font-weight:700;color:${COLOR[t.estado]}">${LABEL[t.estado]}</td><td>${fmtMm(t.minimo)}</td><td>${fmtMm(t.promedio)}</td><td>${fmtDate(t.created_at)}</td></tr>`));
   return html`<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"/><title>Reporte NEUMET · ${titulo}</title>
 <style>
@@ -228,7 +228,7 @@ ${truncated ? html`<div class="warn">Datos incompletos: se alcanzó el tope de $
 <div class="kpis">${kpi('total', r.neumaticos.length, 'Neumáticos')}${kpi('nuevo', r.nuevo, `${ESTADOS.bueno.texto} (≥8mm)`)}${kpi('poco', r.pocoDesgaste, `${ESTADOS.poco.texto} (5–7.9mm)`)}${kpi('mayor', r.mayorDesgaste, `${ESTADOS.mayor.texto} (3–4.9mm)`)}${kpi('limite', r.limite, `${ESTADOS.limite.texto} (<3mm)`)}</div>
 ${n.vehiculo ? '' : html`<h3>Resumen por vehículo</h3><table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Neumáticos</th><th>${ESTADOS.bueno.texto}</th><th>${ESTADOS.poco.texto}</th><th>${ESTADOS.mayor.texto}</th><th>${ESTADOS.limite.texto}</th><th>${ESTADOS.sinDatos.texto}</th></tr></thead><tbody>${porVeh}</tbody></table>`}
 <h3>Estado por neumático</h3>
-<table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Promedio</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
+<table><thead><tr><th>Vehículo</th><th>Matrícula</th><th>Posición</th><th>ID neumático</th><th>Estado</th><th>Mínimo (decide el estado)</th><th>Promedio (informativo)</th><th>Última medición</th></tr></thead><tbody>${detalle}</tbody></table>
 <div class="footer">NEUMET · Sistema de gestión de neumáticos</div>
 </body></html>`;
 }

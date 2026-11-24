@@ -3,7 +3,7 @@
 (function(){
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   function e(cid, vid, nom, pat, pos, estado, prom, extra){
-    return Object.assign({cliente_id:cid,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,estado:estado,promedio:prom,
+    return Object.assign({cliente_id:cid,vehiculo_id:vid,vehiculo_nombre:nom,patente:pat,posicion:pos,estado:estado,mm1:prom,mm2:prom,mm3:prom,promedio:prom,
       sin_medir:false,desgaste_irregular:false,ultima_medicion_at:prom===null?null:D(2),dias_desde_medicion:prom===null?null:2,semanas_hasta_critico:null,tasa_mm_semana:null}, extra||{});
   }
   var estado = [
@@ -51,7 +51,9 @@
   var ultimas = [
     u(10,'101','AB123CD','101',1,1,12.6,13.0), u(10,'101','AB123CD','101',1,2,11.8,12.1), u(10,'101','AB123CD','101',1,3,15.5,null),
     u(12,'Unidad <Crítica>','CR0001','112',2,1,2.9,3.4), u(12,'Unidad <Crítica>','CR0001','112',2,2,2.8,5.2),
-    u(11,'102','XY987ZZ','102',4,1,2.7,7.3), u(11,'102','XY987ZZ','102',4,2,9.2,9.0)
+    u(11,'102','XY987ZZ','102',4,1,2.7,7.3), u(11,'102','XY987ZZ','102',4,2,9.2,9.0),
+    // RN-01 (regresión): el vehículo 15 no tiene filas en v_estado_neumaticos (ninguna huella); su visita trae promedio 3,67.
+    u(15,'205','SAB-1234','205',9,1,3.67,null)
   ];
   fx.rpcs = [];
   var base = window.supabase.createClient;

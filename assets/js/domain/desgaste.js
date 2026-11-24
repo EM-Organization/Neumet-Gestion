@@ -20,11 +20,19 @@ export function wearStatus(avg) {
   return 'nuevo';
 }
 
-// Promedio de mm1/mm2/mm3 ignorando nulls; null si no hay ninguno.
+// Promedio de mm1/mm2/mm3 ignorando nulls; null si no hay ninguno. Solo es dato informativo (RN-01).
 export function avgMm(m) { const v = [m.mm1, m.mm2, m.mm3].filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
 
-// Estado de una fila de medición.
-export function tireStatus(m) { return wearStatus(avgMm(m)); }
+// Huella MÍNIMA de una medición: min(mm1, mm2, mm3) (RN-01). Decide estado, alertas y conteos; espejo de least() en SQL.
+// NULL si falta cualquiera de las tres: Math.min(null, 4) daría 0 y least() de SQL ignora nulos; ninguno debe fabricar un mínimo.
+export function huellaMinima(m) {
+  if (!m) return null;
+  const v = [m.mm1, m.mm2, m.mm3].map(x => (x === null || x === undefined || x === '' ? NaN : Number(x)));
+  return v.every(Number.isFinite) ? Math.min(...v) : null;
+}
+
+// Estado de una fila de medición, por la huella mínima (RN-01).
+export function tireStatus(m) { return wearStatus(huellaMinima(m)); }
 
 // Clase visual de un promedio: 'neutral' (sin datos) | 'ok' (nuevo/poco desgaste) | 'warn' (mayor desgaste) | 'crit' (desgaste límite).
 // Solo cuatro niveles visuales: el operario distingue las categorías por el texto del chip, no solo por color (docs/14 §5).
