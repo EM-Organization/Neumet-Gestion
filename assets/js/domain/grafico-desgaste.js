@@ -3,22 +3,21 @@
 import { TOKENS } from './tokens-detalle.js';
 import { fmtFecha } from './formato.js';
 import { wearStatus, ESTADOS, ejeY, bandasGrafico, fmtMedida } from './estado-desgaste.js';
+import { huellaMinima, avgMm } from './desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
-// Promedio de mm1..mm3 de una medición (usa `promedio` si viene; si no, el de las huellas presentes).
+// Valor de la serie del gráfico: la HUELLA MÍNIMA (RN-01), que decide bandas y estado. NULL si falta una huella:
+// no se dibuja un punto con un mínimo inventado. El promedio no decide nada aquí (ver tooltipPunto).
 export function mmMedicion(m) {
-  const p = num(m.promedio);
-  if (p !== null) return p;
-  const v = [m.mm1, m.mm2, m.mm3].map(num).filter(x => x !== null);
-  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  return huellaMinima(m);
 }
 
-// Mediciones -> puntos { t (ms), fecha, mm (promedio), mm1, mm2, mm3 } ordenados por fecha, sin las que no tienen dato o fecha válida.
-// Se conservan las tres huellas para la tabla «Ver datos» y el tooltip; el gráfico dibuja el promedio.
+// Mediciones -> puntos { t (ms), fecha, mm (huella mínima), promedio (informativo), mm1, mm2, mm3 } ordenados por fecha,
+// sin las que no tienen huella mínima o fecha válida. El gráfico dibuja el mínimo; el promedio solo va en el tooltip.
 export function serieDesgaste(mediciones) {
   return (mediciones || [])
-    .map(m => ({ t: new Date(m.created_at).getTime(), fecha: m.created_at, mm: mmMedicion(m), mm1: num(m.mm1), mm2: num(m.mm2), mm3: num(m.mm3) }))
+    .map(m => ({ t: new Date(m.created_at).getTime(), fecha: m.created_at, mm: mmMedicion(m), promedio: avgMm(m), mm1: num(m.mm1), mm2: num(m.mm2), mm3: num(m.mm3) }))
     .filter(p => Number.isFinite(p.t) && p.mm !== null)
     .sort((a, b) => a.t - b.t);
 }
@@ -86,8 +85,8 @@ export function datosGrafico(puntos, th, { ancho = 320, alto = TOKENS.chart.heig
   };
 }
 
-// Tooltip de un punto del gráfico (docs/21 §5.4): fecha, las tres huellas, promedio y estado; todo con el mismo formato
-// de mm (truncado a 1 decimal). Una huella sin dato se muestra «—».
+// Tooltip de un punto del gráfico (docs/21 §5.4): fecha, las tres huellas, el mínimo (el que decide el estado), el promedio
+// rotulado como informativo y el estado; todo con el mismo formato de mm (truncado a 1 decimal). Una huella sin dato: «—».
 export function tooltipPunto(p) {
-  return `${fmtFecha(p.fecha)} · Interna ${fmtMedida(p.mm1)} · Centro ${fmtMedida(p.mm2)} · Externa ${fmtMedida(p.mm3)} · Promedio ${fmtMedida(p.valor)} mm · ${ESTADOS[p.estado].texto}`;
+  return `${fmtFecha(p.fecha)} · Interna ${fmtMedida(p.mm1)} · Centro ${fmtMedida(p.mm2)} · Externa ${fmtMedida(p.mm3)} · Mínimo ${fmtMedida(p.valor)} mm (decide el estado) · Promedio ${fmtMedida(p.promedio)} mm (informativo) · ${ESTADOS[p.estado].texto}`;
 }

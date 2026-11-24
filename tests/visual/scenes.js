@@ -32,6 +32,8 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'vehiculos-busqueda': async function(){ nav('vehiculos'); await sleep(600); escribir('7'); await sleep(300); },
     'detalle': async function(){ await abrirDetalle(); },
     'detalle-rueda': async function(){ await abrirDetalle(); rueda3(); await sleep(900); },
+    // RN-08: rueda bajo el límite de retiro (2,5 mm en P4): sin «Rotar», con «Retirar ya» y el retiro.
+    'detalle-rueda-retiro': async function(){ await abrirDetalle(); var r = $('#vd-diagrama .vd-rueda[data-pos="4"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 4'); await sleep(900); },
     'detalle-filtro': async function(){ await abrirDetalle(); var c = $('#vd-resumen .vd-chip[data-filtro="mayor"]'); if(c) c.click(); else fail('escena '+name+': sin chip de filtro'); await sleep(300); },
     'detalle-calidad': async function(){ await abrirDetalle(); var sm = $('#vd-calidad summary'); if(sm) sm.click(); else fail('escena '+name+': sin indicador de calidad'); await sleep(300); var c = $('#vd-calidad'); if(c) c.scrollIntoView(); await sleep(200); },
     'detalle-rueda-calidad': async function(){ await abrirDetalle(); rueda3(); await sleep(800); var h = Array.prototype.filter.call(d.querySelectorAll('#vd-panel h4'), function(x){ return /Calidad/.test(x.textContent); })[0]; if(h) h.scrollIntoView(); else fail('escena '+name+': sin sección de calidad'); await sleep(300); },

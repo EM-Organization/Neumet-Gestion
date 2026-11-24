@@ -2,11 +2,12 @@
 import { svgEl } from '../core/svg.js';
 import { BRAND } from '../core/brand.js';
 import { ACTIONS } from '../core/actions.js';
-import { avgMm, wearClass, countByStatus } from '../domain/desgaste.js';
+import { huellaMinima, wearClass, countByStatus } from '../domain/desgaste.js';
 import { MED_CFG } from '../domain/camion.js';
 import { med } from './mediciones-state.js';
 
-export function mLast(pos){ const h=med.tireData[pos]; return(!h||!h.length)?null:avgMm(h[h.length-1]); }
+// Valor que colorea la rueda: la huella mínima de su última medición (RN-01).
+export function mLast(pos){ const h=med.tireData[pos]; return(!h||!h.length)?null:huellaMinima(h[h.length-1]); }
 function medDrawTire(svg, cx, cy, pos, TW, TH, isSingle, isAbove){
   const col=mTireColor(pos), isSel=med.selPos===pos, a=mLast(pos);
   const g=svgEl('g',{cursor:'pointer'});

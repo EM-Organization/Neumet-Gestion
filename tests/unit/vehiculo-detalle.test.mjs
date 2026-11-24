@@ -283,12 +283,16 @@ describe('desgaste mayor al normal', () => {
 });
 
 describe('gráfico de desgaste', () => {
-  const med = (dias, prom) => ({ created_at: new Date(Date.UTC(2026, 0, 1 + dias)).toISOString(), promedio: prom });
+  const med = (dias, prom) => ({ created_at: new Date(Date.UTC(2026, 0, 1 + dias)).toISOString(), mm1: prom, mm2: prom, mm3: prom, promedio: prom });
   test('serie ordenada por fecha y sin mediciones vacías', () => {
     const s = serieDesgaste([med(10, 9), med(0, 12), { created_at: 'x', promedio: 5 }, { created_at: med(5).created_at, mm1: null }]);
     assert.deepEqual(s.map(p => p.mm), [12, 9]);
   });
-  test('mmMedicion cae al promedio de huellas', () => assert.equal(mmMedicion({ mm1: 10, mm2: 8, mm3: null }), 9));
+  // RN-01: la serie es la huella mínima; sin una huella no hay punto (no se inventa un mínimo con dos).
+  test('mmMedicion es la huella mínima; sin una huella, null', () => {
+    assert.equal(mmMedicion({ mm1: 10, mm2: 8, mm3: 9 }), 8);
+    assert.equal(mmMedicion({ mm1: 10, mm2: 8, mm3: null }), null);
+  });
 });
 
 describe('detalle del vehículo: una sola fuente de estado (docs/21)', () => {

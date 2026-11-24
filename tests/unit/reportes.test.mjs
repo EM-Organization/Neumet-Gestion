@@ -5,7 +5,7 @@ import {
   BOM, csvCell, buildCsv, medicionesCsv, medicionesToCsvRows, safeFilename, resumenFlota, rangoFechas, fetchAll, CSV_HEADER
 } from '../../assets/js/domain/reportes.js';
 
-const m = (vid, pos, prom, day = 1, extra = {}) => ({ vehiculo_id: vid, posicion: pos, promedio: prom, created_at: `2026-01-${String(day).padStart(2, '0')}T10:00:00Z`, vehiculos: { nombre: 'V' + vid, patente: 'P' + vid }, ...extra });
+const m = (vid, pos, prom, day = 1, extra = {}) => ({ vehiculo_id: vid, posicion: pos, mm1: prom, mm2: prom, mm3: prom, promedio: prom, created_at: `2026-01-${String(day).padStart(2, '0')}T10:00:00Z`, vehiculos: { nombre: 'V' + vid, patente: 'P' + vid }, ...extra });
 
 describe('csvCell (RFC 4180)', () => {
   test('texto simple sin comillas', () => assert.equal(csvCell('hola'), 'hola'));
@@ -46,12 +46,16 @@ describe('buildCsv / medicionesCsv', () => {
   test('null -> sin filas', () => assert.deepEqual(medicionesToCsvRows(null), []));
   test('fila: fecha ISO, números con punto, estado', () => {
     const [row] = medicionesToCsvRows([m(1, 2, 7.25, 3, { mm1: 8, mm2: '7.5', mm3: null, idneumatico: 'N-1' })]);
-    assert.deepEqual(row, ['2026-01-03T10:00:00.000Z', 'V1', 'P1', 2, 'N-1', 8, 7.5, null, 7.25, 'poco_desgaste']);
+    // Sin mm3 no hay huella mínima: la columna minimo queda vacía y el estado no se fabrica (RN-01); el promedio sigue.
+    assert.deepEqual(row, ['2026-01-03T10:00:00.000Z', 'V1', 'P1', 2, 'N-1', 8, 7.5, null, null, 7.25, '']);
   });
-  test('sin promedio se calcula de mm1..mm3; sin datos -> estado vacío', () => {
-    assert.equal(medicionesToCsvRows([{ mm1: 9, mm2: 9, mm3: 6, created_at: '2026-01-01T00:00:00Z' }])[0][8], 8);
+  test('sin promedio se calcula de mm1..mm3; el estado sale del mínimo; sin datos -> estado vacío', () => {
+    const [r1] = medicionesToCsvRows([{ mm1: 9, mm2: 9, mm3: 6, created_at: '2026-01-01T00:00:00Z' }]);
+    assert.equal(r1[8], 6, 'minimo');
+    assert.equal(r1[9], 8, 'promedio (informativo)');
+    assert.equal(r1[10], 'poco_desgaste', 'mínimo 6 mm: entre 5 y 8 es poco desgaste, aunque el promedio sea 8');
     const r = medicionesToCsvRows([{ created_at: 'basura' }])[0];
-    assert.equal(r[0], ''); assert.equal(r[9], '');
+    assert.equal(r[0], ''); assert.equal(r[10], '');
   });
 });
 

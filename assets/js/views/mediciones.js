@@ -8,7 +8,7 @@ import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/a
 import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
-import { UMBRALES, wearStatus, avgMm, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus, huellaMinima, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { fmtNum } from '../domain/formato.js';
 import { ESTADOS, BUENO_O_POCO } from '../domain/estado-desgaste.js';
@@ -204,7 +204,7 @@ export function medSelectTire(pos){
     setHtml(tbody, html`<tr><td colspan="6" style="color:var(--text-tertiary);text-align:center;padding:16px;font-size:12px">Sin registros</td></tr>`);
   } else {
     setHtml(tbody, joinHtml(hist.slice().reverse().map((r,i)=>{
-      const pa=r.promedio!=null?parseFloat(r.promedio):avgMm(r);
+      const pa=huellaMinima(r); // RN-01: el color de la fila sale de la huella mínima
       const rc=pa==null?'var(--text-tertiary)':colorDeStatus(wearStatus(pa));
       const fecha=r.created_at?new Date(r.created_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
       const badge=i===0?html`<span style="background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px">Actual</span>`:'';
@@ -225,13 +225,14 @@ function medDrawChart(hist){
   const svgEl=document.getElementById('med-chart-svg');
   const W=svgEl.parentElement.clientWidth||400;
   svgEl.setAttribute('width',W); svgEl.replaceChildren();
-  const avgs=hist.map(r=>r.promedio!=null?parseFloat(r.promedio):avgMm(r)).filter(x=>x!=null);
-  if(avgs.length<2){
+  // Serie del gráfico: la HUELLA MÍNIMA (RN-01). El promedio no se dibuja aquí.
+  const minimos=hist.map(r=>huellaMinima(r)).filter(x=>x!=null);
+  if(minimos.length<2){
     const t=svgEl('text',{x:W/2,y:55,'text-anchor':'middle','font-size':'12','font-family':"'Inter',sans-serif",fill:BRAND.textSecondary}); t.textContent='Insuficientes datos para el gráfico'; svgEl.appendChild(t); return;
   }
   const H=120,pL=32,pR=12,pT=10,pB=24,cW=W-pL-pR,cH=H-pT-pB;
-  const minV=Math.max(0,Math.min(...avgs)-2), maxV=Math.min(12,Math.max(...avgs)+2);
-  const xS=i=>pL+(i/(avgs.length-1))*cW, yS=v=>pT+cH-((v-minV)/(maxV-minV))*cH;
+  const minV=Math.max(0,Math.min(...minimos)-2), maxV=Math.min(12,Math.max(...minimos)+2);
+  const xS=i=>pL+(i/(minimos.length-1))*cW, yS=v=>pT+cH-((v-minV)/(maxV-minV))*cH;
 
   // Background
   svgEl.appendChild(svgEl('rect',{x:pL,y:pT,width:cW,height:cH,fill:'#fafafa',rx:4,stroke:'rgba(0,0,0,0.06)','stroke-width':'0.5'}));
@@ -257,17 +258,17 @@ function medDrawChart(hist){
   });
 
   // Area fill
-  const lastCol=colorDeStatus(wearStatus(avgs[avgs.length-1]));
-  const aPath=`M${xS(0)},${yS(avgs[0])}`+avgs.slice(1).map((v,i)=>`L${xS(i+1)},${yS(v)}`).join('')+`L${xS(avgs.length-1)},${pT+cH}L${pL},${pT+cH}Z`;
+  const lastCol=colorDeStatus(wearStatus(minimos[minimos.length-1]));
+  const aPath=`M${xS(0)},${yS(minimos[0])}`+minimos.slice(1).map((v,i)=>`L${xS(i+1)},${yS(v)}`).join('')+`L${xS(minimos.length-1)},${pT+cH}L${pL},${pT+cH}Z`;
   svgEl.appendChild(svgEl('path',{d:aPath,fill:lastCol+'14',stroke:'none'}));
 
   // Line
-  const lPath=`M${xS(0)},${yS(avgs[0])}`+avgs.slice(1).map((v,i)=>`L${xS(i+1)},${yS(v)}`).join('');
+  const lPath=`M${xS(0)},${yS(minimos[0])}`+minimos.slice(1).map((v,i)=>`L${xS(i+1)},${yS(v)}`).join('');
   svgEl.appendChild(svgEl('path',{d:lPath,fill:'none',stroke:lastCol,'stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'}));
 
   // Dots
-  avgs.forEach((v,i)=>{
-    const x2=xS(i), y2=yS(v), isLast=i===avgs.length-1;
+  minimos.forEach((v,i)=>{
+    const x2=xS(i), y2=yS(v), isLast=i===minimos.length-1;
     const dc=colorDeStatus(wearStatus(v));
     svgEl.appendChild(svgEl('circle',{cx:x2,cy:y2,r:isLast?4:2.5,fill:isLast?dc:'#fff',stroke:dc,'stroke-width':isLast?0:1.5}));
     if(isLast){ const vl=svgEl('text',{x:x2+6,y:y2-4,'font-size':'10','font-family':"'Inter',sans-serif",'font-weight':'500',fill:dc}); vl.textContent=v.toFixed(1)+'mm'; svgEl.appendChild(vl); }
@@ -276,7 +277,7 @@ function medDrawChart(hist){
       const rl=hist[hist.length-1-i]; // reversed order
       const actHist=hist[i];
       const xl=svgEl('text',{x:x2,y:pT+cH+14,'text-anchor':'middle','font-size':'9','font-family':"'Inter',sans-serif",fill:BRAND.textSecondary});
-      xl.textContent=isLast?'Hoy':`-${avgs.length-1-i}`;
+      xl.textContent=isLast?'Hoy':`-${minimos.length-1-i}`;
       svgEl.appendChild(xl);
     }
   });

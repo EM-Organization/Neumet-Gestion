@@ -3,6 +3,7 @@
 import { referenciaTasas, evaluarDesgaste } from './desgaste-flota.js';
 import { esAuxilio, estadoContable } from './auxilio.js';
 import { BANDERA } from './estado-desgaste.js';
+import { huellaMinima } from './desgaste.js';
 
 export const SEMANAS_ATENCION = 4;   // "cruza el límite en ~N semanas" entra en Requieren atención (igual que la alerta de la base)
 export const SEMANAS_PROXIMOS = 12;  // horizonte de Próximos cambios
@@ -91,7 +92,7 @@ export function requierenAtencion(rows, { max = MAX_ATENCION } = {}) {
   for (const [id, filas] of porVeh) {
     const c = causaDe(filas, ref);
     if (!c) continue;
-    const mm = filas.map(f => num(f.promedio)).filter(x => x !== null);
+    const mm = filas.map(huellaMinima).filter(x => x !== null); // RN-01: el mínimo de la flota de la lista
     lista.push({
       vehiculo_id: id, cliente_id: filas[0].cliente_id, nombre: filas[0].vehiculo_nombre || '', patente: filas[0].patente || '',
       ...c, min_mm: mm.length ? Math.min(...mm) : null,
@@ -111,7 +112,7 @@ export function proximosCambios(rows, { max = MAX_PROXIMOS, semanas = SEMANAS_PR
     .filter(f => !esAuxilio(f) && (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= semanas)
     .map(f => ({
       vehiculo_id: f.vehiculo_id, nombre: f.vehiculo_nombre || '', patente: f.patente || '', posicion: f.posicion,
-      semanas: num(f.semanas_hasta_retiro), mm: num(f.promedio),
+      semanas: num(f.semanas_hasta_retiro), mm: huellaMinima(f),
     }))
     .sort((a, b) => a.semanas - b.semanas || String(a.nombre).localeCompare(String(b.nombre), 'es') || a.posicion - b.posicion);
   return { items: lista.slice(0, max), total: lista.length };

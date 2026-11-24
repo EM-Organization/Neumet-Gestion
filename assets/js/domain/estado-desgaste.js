@@ -9,15 +9,16 @@ import { fmtNum, plural } from './formato.js';
 import { TOKENS } from './tokens-detalle.js';
 import { esAuxilio } from './auxilio.js';
 import { evaluarDesgaste } from './desgaste-flota.js';
+import { huellaMinima } from './desgaste.js';
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
 // { bajo, critico, retiro } (umbralesDe) -> { buen, poco, mayor }.
 export const umbralesEstado = u => ({ buen: u.bajo, poco: u.critico, mayor: u.retiro });
 
-// Decisión del dueño (2026-11-21, TODO-STATUS-MEASURE): el estado se decide con el valor CRUDO (promedio con 2 decimales,
-// igual que la base y las alertas: 7,97 con umbral 8 es «poco desgaste») y el número se MUESTRA TRUNCADO a un decimal
-// (7,97 -> «7,9»), de modo que lo que se ve coincide con lo que se decide. Este es el único formato de mm del detalle.
+// RN-01 (versión de negocio del 24/11/2026; la reunión fue el 23/11, reemplaza TODO-STATUS-MEASURE del 21/11): el estado se decide con la HUELLA MÍNIMA
+// min(mm1, mm2, mm3), igual que la base (v_estado_neumaticos.estado). El promedio solo se muestra, como dato informativo.
+// El número se MUESTRA TRUNCADO a un decimal (7,97 -> «7,9»), de modo que lo que se ve coincide con lo que se decide.
 export function truncar1(v) {
   const n = num(v);
   if (n === null) return null;
@@ -63,7 +64,7 @@ export const textoEstadoBase = e => ESTADOS[estadoDeBase(e)].texto;
 // límite cuenta como «poco desgaste» en chips y semáforo del vehículo; sigue sumando en el total y se dibuja con su estado
 // real. TODO(neumet-web: TODO-AUX-IN-STATUS): la spec lo cuenta como uno más; se mantiene la regla del producto.
 export function estadoContable(fila, th) {
-  const id = wearStatus(fila && fila.promedio, th);
+  const id = wearStatus(huellaMinima(fila), th); // RN-01: por la huella mínima, nunca por el promedio
   return esAuxilio(fila) && (id === 'mayor' || id === 'limite') ? 'poco' : id;
 }
 

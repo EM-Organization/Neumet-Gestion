@@ -15,7 +15,8 @@ const estadoUi = estadoBase => ESTADOS[estadoDeBase(estadoBase)];
 
 // Rueda esperada según la base: posición -> {mm, nivel}
 function ruedasEsperadas(env, vehiculoId) {
-  const filas = json(env, `select e.posicion, trunc(round(e.promedio, 2), 1)::text as mm, e.promedio, e.estado
+  // RN-01: la rueda muestra y colorea la huella MÍNIMA de la base (no el promedio).
+  const filas = json(env, `select e.posicion, trunc(round(e.minimo, 2), 1)::text as mm, e.minimo, e.estado
     from public.v_estado_neumaticos e where e.vehiculo_id = ${vehiculoId}`);
   const aux = json(env, `select 1 from public.neumaticos where vehiculo_id = ${vehiculoId} and posicion = 99 and estado = 'montado'`).length > 0;
   const porPos = new Map(filas.map(f => [f.posicion, f]));
@@ -23,7 +24,7 @@ function ruedasEsperadas(env, vehiculoId) {
   return pos.map(p => {
     const f = porPos.get(p);
     if (!f) return { pos: p, mm: null, nivel: 'vacia' }; // posición sin neumático montado: rueda punteada «vacía»
-    if (f.promedio === null) return { pos: p, mm: null, nivel: 'desconocido' };
+    if (f.minimo === null) return { pos: p, mm: null, nivel: 'desconocido' };
     return { pos: p, mm: f.mm.replace('.', ','), nivel: f.estado };
   });
 }
@@ -108,7 +109,10 @@ export function registrar(env) {
       assert.match(panel, /\bP5\b/);
       assert.doesNotMatch(panel, /Posición 5/);
       assert.match(panel, /Desgaste límite/);
-      assert.ok(await p.eval(`!!document.querySelector('#vd-panel [data-action="neumatico-cambiar"]') && !!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]')`));
+      // RN-08: bajo el límite de retiro la interfaz no ofrece rotar a otro eje; ofrece el retiro (un clic).
+      assert.ok(await p.eval(`!!document.querySelector('#vd-panel [data-action="neumatico-cambiar"]') && !!document.querySelector('#vd-panel [data-action="neumatico-retirar"]')`));
+      assert.ok(await p.eval(`!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]') && !document.querySelector('#vd-rotar-destino')`), 'bajo retiro no hay rotación');
+      assert.match(panel, /Retirar ya/);
     });
   });
 

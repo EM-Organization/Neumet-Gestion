@@ -7,6 +7,7 @@
 //   resto, rueda dual    «Eje 2 derecha exterior» / «Eje 2 derecha interior» (interior = la más cercana al chasis)
 //   posición 99          «Auxilio»
 import { layoutRuedas, geometriaDiagrama, colorDesgaste, umbralesDe, nivelDesgaste, POS_AUXILIO } from './vehiculo-diagrama.js';
+import { huellaMinima } from './desgaste.js';
 
 const posValida = p => p !== null && p !== undefined && p !== '' && Number.isInteger(Number(p)) && Number(p) >= 1 && Number(p) <= POS_AUXILIO;
 
@@ -60,7 +61,7 @@ export function resumenPosiciones(posiciones, tipo) {
 
 /**
  * Modelo del mini vehículo de un vehículo.
- *  - filas: filas de v_estado_neumaticos (o { posicion, promedio, umbral_* }) de ESE vehículo.
+ *  - filas: filas de v_estado_neumaticos (o { posicion, mm1, mm2, mm3, umbral_* }) de ESE vehículo. El color sale de la huella mínima (RN-01).
  *  - destacadas: posiciones a resaltar.
  * Devuelve { ancho, alto, x0, chasis, ruedas: [{ posicion, x, y, ancho, alto, fill, nivel, destacada, ausente }], aria }.
  *  - ausente: la posición no figura en `filas` (el vehículo no tiene esa rueda registrada).
@@ -77,7 +78,7 @@ export function modeloMini(filas, { destacadas = [], tipo } = {}) {
   const porPos = new Map(lista.map(f => [Number(f.posicion), f]));
   const ruedas = [...g.ruedas, ...g.auxilios].map(r => {
     const f = porPos.get(r.posicion);
-    const mm = f ? f.promedio : null;
+    const mm = huellaMinima(f); // RN-01: el color de la rueda sale de la huella mínima
     return {
       posicion: r.posicion, x: r.x, y: r.y, ancho: r.ancho, alto: r.alto,
       // ausente = el vehículo no tiene esa rueda con datos ni señalada (se dibuja el hueco del chasis); distinto de «sin datos».

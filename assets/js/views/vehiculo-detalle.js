@@ -27,6 +27,7 @@ import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js
 import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import { layoutRuedas, geometriaDiagrama, umbralesDe } from '../domain/vehiculo-diagrama.js';
 import { referenciaTasas } from '../domain/desgaste-flota.js';
+import { huellaMinima } from '../domain/desgaste.js';
 import { serieDesgaste, datosGrafico, tooltipPunto } from '../domain/grafico-desgaste.js';
 import {
   umbralesEstado, wearStatus, ESTADOS, BANDERA, ORDEN_ESTADOS, rangoEstado, etiquetaChip, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila as banderaDe, fmtMedida,
@@ -106,10 +107,10 @@ export function abrirDetalle(id, pos = null, origenForzado = null, esUrl = false
   switchView('vehiculo-detalle'); // el menú resalta Vehículos (registerView con menu)
 }
 
-// Estado y bandera de un neumático. El estado sale de wearStatus con el valor mostrado y los umbrales del cliente;
+// Estado y bandera de un neumático. El estado sale de wearStatus con la HUELLA MÍNIMA (RN-01) y los umbrales del cliente;
 // la bandera, de evaluarDesgaste (desgaste irregular o tasa alta frente a la flota). No se calculan en ningún otro lugar.
 function estadoDeFila(f) {
-  const mm = f ? f.promedio : null;
+  const mm = huellaMinima(f);
   const id = wearStatus(mm, datos.th);
   return { mm: nulo(mm) ? null : Number(mm), id, ...ESTADOS[id] };
 }
@@ -296,19 +297,22 @@ function frase(nombre, semanas, yaPaso) {
 }
 
 function seccionMedicion(fila) {
-  if (!fila || nulo(fila.promedio)) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones.</p>`;
-  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Promedio</th></tr></thead>
-    <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(fila.promedio)}</td></tr></tbody></table>
+  if (!fila || nulo(huellaMinima(fila))) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones completas (faltan huellas).</p>`;
+  // Encabezados cortos: a 390 px la palabra «Promedio» se parte («PROMEDI» / «O»). El texto visible es «Prom.»; el nombre
+  // accesible sigue siendo «Promedio» (aria-label), y la nota de abajo explica que es informativo.
+  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Mínimo</th><th scope="col" title="Promedio" aria-label="Promedio">Prom.</th></tr></thead>
+    <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(huellaMinima(fila))}</td><td>${fmtMedida(fila.promedio)}</td></tr></tbody></table>
+    <p class="vd-p-nota">El mínimo decide el estado; el promedio es informativo.</p>
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
 
 function seccionTasa(fila, u, razonMostrada) {
-  if (!fila || nulo(fila.promedio)) return '';
+  if (!fila || nulo(huellaMinima(fila))) return '';
   const tasa = fila.tasa_mm_semana;
   if (nulo(tasa)) return html`<p class="vd-p-nota">Mediciones insuficientes para calcular la velocidad de desgaste (se necesitan dos fechas distintas en los últimos 90 días).</p>`;
   if (Number(tasa) <= 0) return html`<p class="vd-p-texto">El desgaste no avanza en las últimas mediciones (${fmtNum(tasa, 2)} mm por semana).</p>`;
-  // El «ya se alcanzó» sale del mismo estado que el resto de la pantalla (wearStatus), no de otra comparación.
-  const est = wearStatus(fila.promedio, datos.th);
+  // El «ya se alcanzó» sale del mismo estado que el resto de la pantalla (wearStatus por huella mínima), no de otra comparación.
+  const est = wearStatus(huellaMinima(fila), datos.th);
   const yaCritico = est === 'mayor' || est === 'limite', yaRetiro = est === 'limite';
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
     <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
@@ -392,17 +396,20 @@ function seccionEventos(pos, fila) {
   return html`<ul class="vd-eventos">${ev.map(e => html`<li><strong>${fmtFecha(e.created_at)}</strong> · ${TIPO_LABEL[e.tipo] || e.tipo}${!nulo(e.odometro_km) ? html` · ${fmtNum(e.odometro_km)} km` : ''}${e.notas ? html` · ${e.notas}` : ''}</li>`)}</ul>`;
 }
 
-function acciones(pos) {
+// RN-08: bajo el límite de retiro (menos de 3 mm en una huella) la cubierta se retira ya y NO se rota a otro eje.
+// Por eso no se ofrece «Rotar» ni se muestra el destino; el retiro sigue en un clic, como antes.
+function acciones(pos, bajoRetiro = false) {
   if (!puedeOperar()) return '';
   const args = JSON.stringify([vehiculoId, pos]);
   const cambiar = html`<button type="button" class="btn primary" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
+  const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
+  if (bajoRetiro) return html`<div class="vd-pie"><p class="vd-p-razon"><strong>Retirar ya.</strong> Bajo el límite de retiro no se rota a otro eje (RN-08).</p><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
   // Rotar: el usuario elige la posición de destino; el botón lleva data-args='[vehiculoId, posA, posB]' (se actualiza al elegir).
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
     <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, tipoLayout(datos.veh))}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
-  const retirar = html`<button type="button" class="btn" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}${retirar}</div>${rotar}</div>`;
 }
 
@@ -446,7 +453,7 @@ function renderPanel() {
     ${seccionCalidad(pos)}
     <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
     </div>
-    ${acciones(pos)}`);
+    ${acciones(pos, estadoDeFila(fila).id === 'limite')}`);
   cargarGrafico(pos);
 }
 

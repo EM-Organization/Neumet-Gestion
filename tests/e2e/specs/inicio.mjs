@@ -48,9 +48,10 @@ export function ultimasEsperadas(env, rol) {
 
 const f1 = n => Number(n).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 export function textoNeumatico(f) {
-  if (f.antes === null) return { pos: nombrePosicion(f.posicion), mm: `${f1(f.ahora)} mm`, dif: 'Sin previa', destacado: false };
+  // El valor de la visita es un promedio (ultimas_mediciones.mm_ahora): se rotula como informativo (RN-01).
+  if (f.antes === null) return { pos: nombrePosicion(f.posicion), mm: `Promedio ${f1(f.ahora)} mm (informativo)`, dif: 'Sin previa', destacado: false };
   const dif = Math.round((f.ahora - f.antes) * 100) / 100;
-  return { pos: nombrePosicion(f.posicion), mm: `${f1(f.antes)} → ${f1(f.ahora)} mm`, dif: `${dif > 0 ? '+' : dif < 0 ? '\u2212' : ''}${f1(Math.abs(dif))}`, destacado: dif <= 0 && -dif > 1 };
+  return { pos: nombrePosicion(f.posicion), mm: `Promedio ${f1(f.antes)} → ${f1(f.ahora)} mm (informativo)`, dif: `${dif > 0 ? '+' : dif < 0 ? '\u2212' : ''}${f1(Math.abs(dif))}`, destacado: dif <= 0 && -dif > 1 };
 }
 
 export const INICIO_LISTO = `document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 5`;

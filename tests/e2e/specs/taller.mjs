@@ -44,7 +44,8 @@ async function rotarPorUI(p, posA, posB, avisoEsperado) {
 export function registrar(env) {
   // ---- Rotar: cada rol permitido, sobre un camión de su alcance --------------------------------------------------
   for (const [rol, patente, a, b, intercambio] of [
-    ['global', 'DEMO010', 5, 1, true], ['salto', 'DEMO011', 1, 2, true], ['montevideo', 'DEMO002', 1, 4, true],
+    // DEMO010: la rueda 5 está bajo el límite de retiro (RN-08), no se rota por la interfaz; se rota 1 con 2.
+    ['global', 'DEMO010', 1, 2, true], ['salto', 'DEMO011', 1, 2, true], ['montevideo', 'DEMO002', 1, 4, true],
     ['global', 'DEMO003', 1, 9, false] // P9 está libre en el camión de 6 neumáticos: mueve sin intercambiar
   ]) {
     test(`Taller (${rol}): rotar la posición ${a} con la ${b} de ${patente} por la interfaz queda en la base`, async () => {
@@ -84,16 +85,19 @@ export function registrar(env) {
   });
 
   test('Taller (global): tras rotar, el historial muestra la rotación y el desgaste límite sigue al neumático a su nueva posición', async () => {
-    // Las mediciones son del NEUMÁTICO: el desgaste límite de DEMO010 estaba en P5 y la rotación 5<->1 lo llevó a P1.
+    // RN-08: el desgaste límite de DEMO010 está en P5 y NO se rota: la rotación 1<->2 no lo mueve y su panel no ofrece rotar.
     const id = vehId(env, 'DEMO010');
     const limite = json(env, `select posicion from public.v_estado_neumaticos where vehiculo_id = ${id} and estado = 'desgaste_limite'`);
-    assert.deepEqual(limite, [{ posicion: 1 }]);
+    assert.deepEqual(limite, [{ posicion: 5 }]);
     await flujo(env, 'historial-tras-rotar', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO010');
       await seleccionarRueda(p, 1);
       assert.match(await texto(p, '#vd-panel'), /Rotación/);
-      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /desgaste límite/);
-      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /desgaste límite/);
+      assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /desgaste límite/);
+      assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /desgaste límite/);
+      await p.click('#vd-diagrama .vd-rueda[data-pos="5"]');
+      await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto')`);
+      assert.ok(await p.eval(`!document.querySelector('#vd-panel [data-action="neumatico-rotar-pos"]')`), 'P5 bajo retiro: sin rotar');
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-rueda').length`), 10);
     });
   });

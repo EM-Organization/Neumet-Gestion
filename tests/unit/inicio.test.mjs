@@ -8,7 +8,7 @@ import {
 // Fila de v_estado_neumaticos con los campos que usa Inicio.
 const fila = (vid, pos, estado, extra = {}) => ({
   cliente_id: 1, vehiculo_id: vid, vehiculo_nombre: `Camión ${vid}`, patente: `P${vid}`, posicion: pos, estado,
-  promedio: estado === 'desconocido' ? null : 10, sin_medir: false, desgaste_irregular: false, dias_desde_medicion: 2,
+  mm1: estado === 'desconocido' ? null : 10, mm2: estado === 'desconocido' ? null : 10, mm3: estado === 'desconocido' ? null : 10, promedio: estado === 'desconocido' ? null : 10, sin_medir: false, desgaste_irregular: false, dias_desde_medicion: 2,
   semanas_hasta_critico: null, semanas_hasta_retiro: null, tasa_mm_semana: null, ultima_medicion_at: '2026-06-10T10:00:00Z', ...extra,
 });
 
@@ -73,8 +73,8 @@ test('requierenAtencion: orden por urgencia y una frase de causa por vehículo',
   const rows = [
     fila(1, 1, 'nuevo', { sin_medir: true, dias_desde_medicion: 19 }),                       // sin medir
     fila(2, 1, 'nuevo', { semanas_hasta_retiro: 2.4 }),                                      // cruza pronto
-    fila(3, 1, 'desgaste_limite', { promedio: 3 }), fila(3, 2, 'desgaste_limite', { promedio: 4 }),        // 2 límite
-    fila(4, 1, 'desgaste_limite', { promedio: 2 }),                                                // 1 límite
+    fila(3, 1, 'desgaste_limite', { mm1: 3, mm2: 3, mm3: 3 }), fila(3, 2, 'desgaste_limite', { mm1: 4, mm2: 4, mm3: 4 }),        // 2 límite
+    fila(4, 1, 'desgaste_limite', { mm1: 2, mm2: 2, mm3: 2 }),                                                // 1 límite
     fila(5, 1, 'mayor_desgaste'),                                                                    // mayor desgaste
     fila(6, 1, 'nuevo', { desgaste_irregular: true }),                                        // desgaste acelerado
     fila(7, 1, 'nuevo'),
