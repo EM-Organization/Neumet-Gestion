@@ -224,6 +224,9 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if($('#vd-rotar-destino') || $('#vd-panel [data-action="neumatico-rotar-pos"]')) fail('detalle RN-08: bajo retiro no debe ofrecerse rotar a otro eje');
   if(!/Retirar ya/.test($('#vd-panel').textContent)) fail('detalle RN-08: bajo retiro falta el aviso «Retirar ya»');
   if(!$('#vd-panel [data-action="neumatico-retirar"]')) fail('detalle RN-08: bajo retiro falta el botón Retirar neumático');
+  // Móvil (390 px): el encabezado visible de la última columna es «Prom.»; «Promedio» queda como nombre accesible.
+  var thProm = $('#vd-panel .vd-mm-tabla thead th:last-child');
+  if(!thProm || thProm.textContent.trim() !== 'Prom.' || thProm.getAttribute('aria-label') !== 'Promedio') fail('detalle: el encabezado de promedio debe ser «Prom.» visible y «Promedio» accesible: '+(thProm && thProm.textContent));
   $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
 
   // Contrato con el taller: botones presentes con data-*; handlers REALES de cambio-neumatico.js (no un stub)

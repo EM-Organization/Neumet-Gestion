@@ -298,8 +298,9 @@ function frase(nombre, semanas, yaPaso) {
 
 function seccionMedicion(fila) {
   if (!fila || nulo(huellaMinima(fila))) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones completas (faltan huellas).</p>`;
-  // Encabezados cortos (a 390 px no caben rótulos largos); la regla RN-01 va en la nota de abajo, no en el encabezado.
-  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Mínimo</th><th scope="col">Promedio</th></tr></thead>
+  // Encabezados cortos: a 390 px la palabra «Promedio» se parte («PROMEDI» / «O»). El texto visible es «Prom.»; el nombre
+  // accesible sigue siendo «Promedio» (aria-label), y la nota de abajo explica que es informativo.
+  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Mínimo</th><th scope="col" title="Promedio" aria-label="Promedio">Prom.</th></tr></thead>
     <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(huellaMinima(fila))}</td><td>${fmtMedida(fila.promedio)}</td></tr></tbody></table>
     <p class="vd-p-nota">El mínimo decide el estado; el promedio es informativo.</p>
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
