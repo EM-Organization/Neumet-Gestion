@@ -16,7 +16,7 @@ const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(
 // { bajo, critico, retiro } (umbralesDe) -> { buen, poco, mayor }.
 export const umbralesEstado = u => ({ buen: u.bajo, poco: u.critico, mayor: u.retiro });
 
-// RN-01 (spec del 23/11/2026, reemplaza TODO-STATUS-MEASURE del 21/11): el estado se decide con la HUELLA MÍNIMA
+// RN-01 (versión de negocio del 24/11/2026; la reunión fue el 23/11, reemplaza TODO-STATUS-MEASURE del 21/11): el estado se decide con la HUELLA MÍNIMA
 // min(mm1, mm2, mm3), igual que la base (v_estado_neumaticos.estado). El promedio solo se muestra, como dato informativo.
 // El número se MUESTRA TRUNCADO a un decimal (7,97 -> «7,9»), de modo que lo que se ve coincide con lo que se decide.
 export function truncar1(v) {

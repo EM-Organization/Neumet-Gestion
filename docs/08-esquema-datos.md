@@ -1261,12 +1261,14 @@ Implementa RN-01 y RN-08 (G-01, P0-3): el estado de desgaste, las alertas y los 
 - Estado, chips, conteos, semáforo de vehículo, «Requieren atención», «Próximos cambios» (mm), mapa de la ficha, gráfico de evolución, tooltip, CSV de reportes, resumen impreso y leyenda de Mediciones usan el mínimo.
 - El promedio aparece con su rótulo «(informativo)» en la tabla de la ficha, en el tooltip del gráfico, en el CSV y en el reporte.
 - Bajo retiro (menos de 3 mm en una huella), la ficha del neumático no ofrece «Rotar» ni elegir destino: muestra «Retirar ya» y los botones «Retirar neumático» y «Cambiar neumático». Sigue siendo un clic por acción. Sin rotación a otro eje (RN-08).
-- Fuera de alcance de esta ola: la proyección de «semanas hasta el retiro» (tasa, G-04) sigue basada en el promedio; la serie «Últimas mediciones» de Inicio (`ultimas_mediciones`) sigue mostrando el valor de la visita; los colores por huella de la vista de Mediciones son por medición, no por estado. Se documentan como pendientes.
+- Inicio, «Últimas mediciones» (`ultimas_mediciones`): la RPC devuelve el promedio de la visita (`mm_ahora`, `mm_antes`); no trae las tres huellas. El mini vehículo de esa fila sale de `v_estado_neumaticos` (con huellas). Si el vehículo no tiene filas ahí, el fallback solo conoce la posición: sin huellas no hay mínimo ni estado, el mini sale sin color (Sin datos) y el promedio de la visita se muestra rotulado «(informativo)». Ese promedio nunca alimenta `huellaMinima` ni el estado (RN-01).
+- Tabla de la ficha («Última medición»): encabezados «Mínimo» y «Promedio» (cortos para móvil); la nota «El mínimo decide el estado; el promedio es informativo» va debajo de la tabla.
+- Fuera de alcance de esta ola: la proyección de «semanas hasta el retiro» (tasa, G-04) sigue basada en el promedio; el indicador «Desgaste alto» de «Últimas mediciones» compara promedios entre visitas (la RPC no trae el mínimo); los colores por huella de la vista de Mediciones son por medición, no por estado. Se documentan como pendientes.
 
 ### Y.5 Pruebas
 - SQL: `tests/sql/t_103_huella_minima.sql` (CA-01, CA-08, bordes de 3, 5, 6 y 8 mm, sin medición, histéresis sobre el mínimo). Se registra en `tests/sql/run.sh` y la migración se aplica dos veces. `t_55` y `t_88` se actualizan al nuevo número de columnas.
 - Unitarias: `tests/unit/huella-minima.test.mjs` (paridad con la tabla SQL, nulos, `Math.min(null, 4)`). Las fixtures que solo tenían `promedio` reciben las tres huellas iguales, de modo que su mínimo es el valor esperado.
-- Smoke: `flota`, `detalle`, `admin`, `cliente`. E2E y visuales según `docs/11`.
+- Smoke: `flota`, `detalle`, `admin`, `cliente`. Regresión RN-01 en Inicio: la visita del vehículo 15 (fixture `flota`, sin filas en `v_estado_neumaticos`, promedio 3,67) no pinta ruedas por desgaste y su promedio sale «(informativo)». Mutación de RN-08 (restaurar «Rotar» bajo retiro): el smoke `detalle` falla. E2E y visuales según `docs/11`.
 
 ### Y.6 Clics
 - Sin aumento. Retirar una cubierta bajo 3 mm: un clic en «Retirar neumático» (antes también). Rotar a otro eje ya no se ofrece bajo retiro: se quita un camino, no se agrega ninguno.
