@@ -1272,3 +1272,49 @@ Implementa RN-01 y RN-08 (G-01, P0-3): el estado de desgaste, las alertas y los 
 
 ### Y.6 Clics
 - Sin aumento. Retirar una cubierta bajo 3 mm: un clic en «Retirar neumático» (antes también). Rotar a otro eje ya no se ofrece bajo retiro: se quita un camino, no se agrega ninguno.
+
+# Apéndice Z · Auxilio (posición 99): corte de tramos de km y frecuencia (`20261126010000_auxilio_tramos_km.sql`)
+
+Implementa RN-13 y G-13 (sección 4.5 del spec de reglas de negocio): la rueda de auxilio (posición 99) no rueda, así que no suma km, y no figura como sin medir. Sustituye la regla de la rotación del apéndice H.1 («no abre ni cierra tramos»): desde esta migración las rotaciones que entran a la 99 o salen de ella sí cortan y abren tramos.
+
+### Z.1 Regla
+- Un tramo se corta al **entrar a la 99** (rotación de ruta a 99, o desmontaje o baja desde ruta) y se abre otro al **salir a una posición de ruta** (1 a 98: rotación desde 99, o montaje en ruta).
+- Rotación entre dos posiciones de ruta: no corta ni abre. Montaje directo en la 99: no abre tramo. Desmontaje o baja desde la 99: no cierra tramo ni crea km.
+- Se decide por la posición de **cada evento** (`posicion_origen` y `posicion_destino`) y su odómetro, no por el vehículo actual. En un intercambio de `neumatico_rotar`, cada cubierta recibe su evento: la que sale de ruta a la 99 cierra su tramo, la que entra desde la 99 abre el suyo.
+- La 99 no tiene tramo abierto: su tramo actual es 0 km (no rueda, y no es un dato faltante).
+
+### Z.2 Firma y contrato
+- `km_tramos_cubierta(p_neumatico bigint)`: misma firma y columnas (`cerrados`, `cerrados_con_dato`, `km_cerrados`, `montajes_sin_cierre`, `ultimo_montaje`, `ult_odo`, `ult_veh`, `decreciente`). `ultimo_montaje` significa ahora «el último tramo está abierto». `SECURITY DEFINER`, `search_path = ''`, `execute` solo para `authenticated`. Mismo criterio de visibilidad por rol.
+- `v_km_cubierta`: mismas columnas, tipos y orden; `security_invoker = true`; `select` solo para `authenticated`. `v_costo_cubierta` y `cpk` leen de esta vista sin cambios de firma.
+- `v_estado_neumaticos`: mismas columnas que `20261126000000`. Solo cambia `sin_medir`, que es `false` en la posición 99.
+- Sin permisos nuevos ni escrituras nuevas. Un solo auxilio por vehículo: se conserva el índice `neumaticos_un_auxilio_por_vehiculo`.
+
+### Z.3 Nulos y confiabilidad
+- Un tramo sin odómetro en algún extremo, con odómetro decreciente, o sin cierre es **sin dato**: no suma, deja `km_confiable = false` y cuenta en `tramos_sin_dato`. Si todos los tramos son sin dato, `km_en_vehiculos` y `km_totales` son NULL (nunca 0).
+- Cuando hay tramos con y sin dato, `km_totales` suma lo conocido y `km_confiable` queda en `false`. Este contrato no cambia (lo fija el caso C5 de `t_86`).
+- `km_tramo_actual` de una cubierta en ruta sin odómetro (o con odómetro del vehículo menor al del último montaje) es NULL. Se quitó `greatest(..., 0)`: un odómetro decreciente ya no se muestra como 0 km, sino como sin dato con `odometro_anomalo = true`. El caso D1 de `t_86` se actualizó a NULL por eso.
+- `km_tramo_actual` de una cubierta en la 99 es 0 y no depende del odómetro del vehículo.
+
+### Z.4 Sin backfill
+- No hay `update` masivo, no se reescriben eventos, mediciones ni alertas, no se llama a `alerta_sincronizar` en masa y no se reevalúan clientes. Es un cambio de lectura: los km se recalculan al consultar.
+- Riesgo sobre datos históricos: una rotación de ruta a la 99 o desde la 99 registrada **sin odómetro** (eventos anteriores a RN-12) ahora corta o abre un tramo sin dato. Esas cubiertas pasan a `km_confiable = false` y sus totales quedan parciales o NULL. Es lo correcto (no se inventa precisión), pero el panel mostrará más «Sin dato» hasta que se registre el odómetro. No se corrige en esta migración.
+- Riesgo sobre eventos históricos con rotaciones a 99 con odómetro: los km de esas cubiertas bajan respecto de lo mostrado hasta hoy (ya no cuentan el tiempo en el auxilio). Es la corrección buscada, pero cambia cifras ya visibles.
+
+### Z.5 Frecuencia (`sin_medir`)
+- `v_estado_neumaticos.sin_medir` es `false` para la posición 99: no se considera vencido a los 31 días, ni sin ninguna medición. `dias_desde_medicion` se sigue mostrando. No se fijó un plazo propio para el auxilio (no se inventa un plazo de 90 días). Un plazo propio queda como decisión pendiente.
+- `alerta_sincronizar` no usa `sin_medir`, así que no cambia ninguna alerta.
+- `cubiertas_sin_medir(dias?)`, citada en el apéndice de reglas, no existe en las migraciones: no hay que cambiarla aquí.
+
+### Z.6 Pruebas
+- SQL: `tests/sql/t_104_auxilio_tramos_km.sql`. Cubre CA-13 exacto (50.000 con dos tramos de 30.000 y 20.000, sin conteo durante el auxilio y tramo actual en ruta de 10.000), montaje directo y desmontaje en 99 (0 km), segundo auxilio rechazado (RPC con 55000 e índice con 23505), frecuencia (31 días: auxilio no vencido, ruta vencida), odómetro ausente en entrada y salida, rotación con intercambio en ambos sentidos (RPC) y matriz de roles (admin, global, sucursal, otra empresa, api, sin perfil, anon). `t_86` se actualizó en D1 (tramo sin dato, no 0).
+- Migración aplicada dos veces en `tests/sql/run.sh`.
+- E2E: `tests/e2e/specs/km-cubierta.mjs`, caso del auxilio (CA-13) leído por la API del rol global.
+- Regresión: la prueba falla con la implementación anterior (CA-13 devuelve 100.000 en vez de 50.000) y con dos mutaciones controladas (rotación a 99 que no cierra; `sin_medir` sin excepción del auxilio). Las mutaciones se restauraron con verificación de checksum.
+
+### Z.7 Migración sin aplicar
+- `20261126010000_auxilio_tramos_km.sql` **no está aplicada en producción**. Su aplicación es un paso aparte con `supabase db push --dry-run` y luego el CLI, después de la compuerta de calidad.
+- Depende de `20261126000000_huella_minima.sql`, que ya es la última de `main`.
+
+### Z.8 Clics
+- Sin cambio. No se modifica la interfaz: el panel muestra los mismos campos (`km_totales`, `km_tramo_actual`, `km_confiable`) con los valores que devuelve la base.
+- Fuera de alcance en esta ola: `v_costo_vida` (`costo_vida_items`, apéndice W/recauchutado) calcula sus propios tramos por vida sin rotaciones. Con CA-13 su `km_recorridos` seguiría contando el tiempo en la 99 (100.000 en vez de 50.000) y su CPK por vida quedaría distinto del de `v_costo_cubierta`. Es un hueco abierto que requiere su propia corrección.

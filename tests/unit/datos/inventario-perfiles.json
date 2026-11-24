@@ -543,5 +543,10 @@
   "archivo": "supabase/migrations/20261124000000_vehiculo_eliminar.sql",
   "linea": 374,
   "texto": "select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261126010000_auxilio_tramos_km.sql",
+  "linea": 72,
+  "texto": "from public.perfiles p where p.user_id = auth.uid();"
  }
 ]

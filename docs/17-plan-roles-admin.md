@@ -71,6 +71,7 @@ Quitar acceso solo es seguro si **todas** las rutas de autorización lo respetan
 | `alerta_configurar` | `20261118500000_alerta_critica.sql:480` | Escritura de umbrales |
 | `neumatico_autorizar_vehiculo` (recreada) | `20261124000000_vehiculo_eliminar.sql:56` y `:65` | Mismo cuerpo, con `v.deleted_at is null`: un vehículo eliminado se trata como inexistente. Sin ruta nueva; `vehiculo_eliminar` autoriza con `admin_empresa_cliente_id()` |
 | `km_tramos_cubierta`, `costo_cubierta_items`, `costo_vida_items` (recreadas) | `20261124000000_vehiculo_eliminar.sql:160`, `:258`, `:374` | Mismo cuerpo que en sus migraciones originales (misma lectura de `perfiles`, ya revisada), con un descarte previo de los neumáticos de un vehículo eliminado. Sin ruta nueva |
+| `km_tramos_cubierta` (recreada, auxilio y tramos de km) | `20261126010000_auxilio_tramos_km.sql:72` | Mismo cuerpo de autorización que en `20261124000000` (lee el perfil del llamante para decidir qué cubierta ve: admin, cliente de su vehículo o de su stock). Cambia solo la regla de tramos (corte en la posición 99). Sin ruta nueva |
 | `is_admin()`, `current_cliente_id()` y `current_sucursal_id()` | `20261106000000_init_schema.sql:305` y `:319`; `20261107020000_seccionales.sql:99` | Base de casi todas las políticas RLS |
 | `cuentas_api_listar` | `20261107010000_cuentas_api.sql:25` | Solo lista los perfiles `api` de un cliente; autoriza con `is_admin()`, no con `perfiles` |
 | Trigger de auditoría `audit_row` | `20261106000000_init_schema.sql:356` | Solo rotula el rol del actor; no autoriza |
