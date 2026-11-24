@@ -248,8 +248,19 @@ reset role;
 -- ---------------------------------------------------------------------------------------------
 -- H. CPK por vida (costo_vida_items, v_costo_vida): el mismo corte de tramos que v_km_cubierta (CA-13)
 -- ---------------------------------------------------------------------------------------------
+-- Cohorte aislada: fecha_compra fija (v_costo_vida.fecha_alta) y costo solo en K104-A. Con desde = hasta = 2020-01-01
+-- cpk_por_grupo solo ve esta cubierta; la fila debe ser la única (n_neumaticos = 1) y tener 50.000 km.
+update public.neumaticos set fecha_compra = date '2020-01-01' where idneumatico = 'K104-A';
 insert into public.costos_neumatico (cliente_id, neumatico_id, concepto, monto)
   select 1, n.id, 'otro', 1000 from public.neumaticos n where n.idneumatico = 'K104-A';
+select test.eq('H: cpk_por_grupo(vida), cohorte CA-13: una fila, 1 cubierta, UYU, 50.000 km y CPK 0,0200',
+  (select string_agg(clave || '|' || n_neumaticos || '|' || moneda || '|' || km_recorridos || '|' || round(cpk, 4), ';')
+     from public.cpk_por_grupo('vida', date '2020-01-01', date '2020-01-01', 1)),
+  'Banda original|1|UYU|50000|0.0200');
+select test.eq('H: cpk_por_grupo(banda), cohorte CA-13: la banda original con 50.000 km y CPK 0,0200',
+  (select string_agg(clave || '|' || n_neumaticos || '|' || moneda || '|' || km_recorridos || '|' || round(cpk, 4), ';')
+     from public.cpk_por_grupo('banda', date '2020-01-01', date '2020-01-01', 1)),
+  'Banda original|1|UYU|50000|0.0200');
 select test.eq('H: costo_vida_items (CA-13): 50.000 km en la vida 0, no 100.000',
   (select km_recorridos from public.costo_vida_items((select id from public.neumaticos where idneumatico = 'K104-A')) where vida = 0),
   50000::bigint);

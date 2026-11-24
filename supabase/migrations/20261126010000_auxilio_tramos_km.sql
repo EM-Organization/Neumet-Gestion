@@ -575,4 +575,3 @@ end
 $$;
 revoke all on function public.costo_vida_items(bigint) from public, anon;
 grant execute on function public.costo_vida_items(bigint) to authenticated;
-
