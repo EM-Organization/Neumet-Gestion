@@ -245,4 +245,33 @@ select test.become('anon', null);
 select test.denied('anon no lee la vista', $$select count(*) from public.v_km_cubierta$$);
 reset role;
 
+-- ---------------------------------------------------------------------------------------------
+-- H. CPK por vida (costo_vida_items, v_costo_vida): el mismo corte de tramos que v_km_cubierta (CA-13)
+-- ---------------------------------------------------------------------------------------------
+insert into public.costos_neumatico (cliente_id, neumatico_id, concepto, monto)
+  select 1, n.id, 'otro', 1000 from public.neumaticos n where n.idneumatico = 'K104-A';
+select test.eq('H: costo_vida_items (CA-13): 50.000 km en la vida 0, no 100.000',
+  (select km_recorridos from public.costo_vida_items((select id from public.neumaticos where idneumatico = 'K104-A')) where vida = 0),
+  50000::bigint);
+select test.eq('H: costo_vida_items (CA-13): dos tramos con dato (30.000 y 20.000) y ninguno sin dato',
+  (select tramos_con_dato || '|' || tramos_sin_dato from public.costo_vida_items((select id from public.neumaticos where idneumatico = 'K104-A')) where vida = 0),
+  '2|0');
+select test.eq('H: v_costo_vida (CA-13): 50.000 km, confiable, sin tramo abierto',
+  (select km_recorridos || '|' || km_confiable from public.v_costo_vida where idneumatico = 'K104-A'), '50000|true');
+select test.eq('H: CPK de la vida 0 = 1.000 / 50.000 km',
+  (select round(cpk, 4) from public.v_costo_vida where idneumatico = 'K104-A'), 0.0200::numeric);
+select test.eq('H: coherente con v_km_cubierta: la suma de km por vida = km en vehículos',
+  (select sum(km_recorridos)::bigint from public.v_costo_vida where idneumatico = 'K104-A'),
+  (select km_en_vehiculos from public.v_km_cubierta where idneumatico = 'K104-A'));
+select test.eq('H: coherente con v_costo_cubierta: mismos km recorridos de la cubierta',
+  (select km_recorridos from public.v_costo_cubierta where idneumatico = 'K104-A'), 50000::bigint);
+select test.eq('H: CPK por cubierta (v_costo_cubierta) = el mismo costo y km de la vida',
+  (select round(cpk, 4) from public.v_costo_cubierta where idneumatico = 'K104-A'), 0.0200::numeric);
+select test.eq('H: entrada a 99 sin odómetro (E1): tramo sin dato, el km con dato sale y el sin dato no suma',
+  (select km_recorridos || '|' || tramos_con_dato || '|' || tramos_sin_dato
+     from public.costo_vida_items((select id from public.neumaticos where idneumatico = 'K104-E1')) where vida = 0), '1000|1|1');
+select test.eq('H: entrada a 99 sin odómetro y único tramo (E2): total NULL, no 0',
+  (select km_recorridos is null and tramos_sin_dato = 1
+     from public.costo_vida_items((select id from public.neumaticos where idneumatico = 'K104-E2')) where vida = 0), true);
+
 rollback;

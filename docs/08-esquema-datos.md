@@ -1315,6 +1315,11 @@ Implementa RN-13 y G-13 (sección 4.5 del spec de reglas de negocio): la rueda d
 - `20261126010000_auxilio_tramos_km.sql` **no está aplicada en producción**. Su aplicación es un paso aparte con `supabase db push --dry-run` y luego el CLI, después de la compuerta de calidad.
 - Depende de `20261126000000_huella_minima.sql`, que ya es la última de `main`.
 
-### Z.8 Clics
-- Sin cambio. No se modifica la interfaz: el panel muestra los mismos campos (`km_totales`, `km_tramo_actual`, `km_confiable`) con los valores que devuelve la base.
-- Fuera de alcance en esta ola: `v_costo_vida` (`costo_vida_items`, apéndice W/recauchutado) calcula sus propios tramos por vida sin rotaciones. Con CA-13 su `km_recorridos` seguiría contando el tiempo en la 99 (100.000 en vez de 50.000) y su CPK por vida quedaría distinto del de `v_costo_cubierta`. Es un hueco abierto que requiere su propia corrección.
+### Z.8 Clics y CPK por vida
+- Sin cambio de clics. No se modifica la interfaz: el panel muestra los mismos campos (`km_totales`, `km_tramo_actual`, `km_confiable`) con los valores que devuelve la base.
+- CPK por vida (`costo_vida_items`, `v_costo_vida`, `cpk_por_grupo('vida' | 'banda')`): la migración también redefine `costo_vida_items` con el mismo corte de tramos que `km_tramos_cubierta`. Firma, columnas, tipos, permisos y la comprobación de precios (`precios_visibles()`) no cambian; los costos y la asignación de vidas por reencauche no cambian.
+  - Regla: un tramo se abre en la vida en que se montó (montaje en ruta, o salida de la 99 a ruta) y se cierra al desmontar, dar de baja o entrar a la 99. Montaje directo en la 99 y desmontaje desde la 99 no abren ni cierran tramo. Rotaciones entre rutas no cortan. La 99 no suma km ni queda con un tramo abierto.
+  - Nulos: un borde sin odómetro, un odómetro decreciente o un abre sin cierre (salvo el tramo en curso de una cubierta montada en ruta) es «sin dato»: no suma y cuenta en `tramos_sin_dato`. Nunca 0 ni una estimación.
+  - Coherencia: para una cubierta, la suma de `km_recorridos` por vida es `km_en_vehiculos` de `v_km_cubierta` y los km de `v_costo_cubierta` (con `km_previos` en 0). Con CA-13, 50.000 km y CPK 1.000 / 50.000 = 0,02 en las tres vistas.
+  - Prueba: `tests/sql/t_104_auxilio_tramos_km.sql`, sección H (`costo_vida_items`, `v_costo_vida`, `v_costo_cubierta`, CPK, E1 y E2). Falla con la versión que solo cambiaba `v_km_cubierta` (obtenido 100.000 en la vida 0) y pasa con la redefinición. Mutación controlada (quitar en `costo_vida_items` el cierre al entrar a la 99): H da 20.000 y falla; restaurada con checksum.
+  - Sin backfill: es una lectura. Los CPK por vida de cubiertas con rotaciones a la 99 bajan por lo que se dejó de contar en el auxilio. Es la corrección buscada, pero cambia cifras ya visibles.

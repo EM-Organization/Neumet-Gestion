@@ -19,6 +19,9 @@
 --  2. v_km_cubierta: km_tramo_actual = 0 en la 99 (no rueda); sin greatest(); odometro_anomalo cubre el tramo actual.
 --  3. v_estado_neumaticos: solo sin_medir. La posición 99 no figura como sin medir (sin plazo propio; no se inventa un
 --     plazo de 90 días). dias_desde_medicion sigue mostrándose. El resto de la vista es el de 20261126000000.
+--  4. costo_vida_items: el CPK por vida usa el mismo corte de tramos que km_tramos_cubierta (CA-13 da 50.000 km, no
+--     100.000). Firma, columnas y permisos sin cambios: v_costo_vida y cpk_por_grupo siguen leyendo de ella. Costos y
+--     vidas (reencauche) sin cambios.
 -- Un solo auxilio por vehículo: se conserva el índice neumaticos_un_auxilio_por_vehiculo (init_schema).
 -- =============================================================================
 
@@ -381,3 +384,195 @@ from b;
 
 revoke all on public.v_estado_neumaticos from public, anon;
 grant select on public.v_estado_neumaticos to authenticated;
+-- -----------------------------------------------------------------------------
+-- 4. costo_vida_items(p_neumatico): CPK por vida con el corte de tramos de la 99 (RN-13, CA-13)
+-- -----------------------------------------------------------------------------
+-- Misma firma, columnas y tipos que en 20261124000000 (la vista v_costo_vida y cpk_por_grupo dependen de ellas).
+-- Cambia solo cómo se reparten los km por vida: la secuencia de tramos es la de km_tramos_cubierta (sección 1):
+--   abre = montaje en ruta o salida de la 99 a ruta; cierra = desmontaje o baja desde ruta o entrada a la 99.
+-- El tramo es de la vida en que se abrió. Un cierre sin abre previo, un abre sin cierre o un odómetro ausente o
+-- decreciente es «sin dato» (no suma y cuenta en tramos_sin_dato); nunca 0 ni una estimación (sin greatest()).
+-- Montaje directo en la 99 y desmontaje desde la 99 no abren ni cierran tramo. Costos y vidas (reencauche): sin cambios.
+-- Sin backfill: es una lectura; no escribe nada.
+create or replace function public.costo_vida_items(p_neumatico bigint)
+returns table (
+  vida                   smallint,
+  vida_actual            smallint,
+  banda_marca            text,
+  banda_modelo           text,
+  profundidad_inicial_mm numeric,
+  fecha_inicio           date,
+  n_items                integer,
+  n_monedas              integer,
+  moneda                 text,
+  total                  numeric,
+  km_recorridos          bigint,
+  tramos_con_dato        integer,
+  tramos_sin_dato        integer
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+rows 2
+as $$
+declare
+  v_precio numeric;
+  v_vida   smallint;
+  v_estado text;
+  v_pos    smallint;
+  v_veh    bigint;
+  v_odo    integer;
+  v_nre    integer;
+  v_base   integer;
+  v_rol    text;
+  v_cli    bigint;
+begin
+  if coalesce(current_setting('role', true), 'none') in ('authenticated', 'anon') then
+    -- Un neumático dado de baja con un vehículo eliminado no se lee por esta vía (ni para el equipo Neumet).
+    perform 1 from public.neumaticos n
+      join public.vehiculos v on v.id = n.vehiculo_id
+     where n.id = p_neumatico and v.deleted_at is not null;
+    if found then
+      return;
+    end if;
+    if not public.precios_visibles() then
+      return;
+    end if;
+    select p.rol, p.cliente_id into v_rol, v_cli from public.perfiles p where p.user_id = auth.uid();
+    if v_rol is distinct from 'admin' then
+      perform 1 from public.neumaticos n
+        left join public.vehiculos v on v.id = n.vehiculo_id
+       where n.id = p_neumatico
+         and ((v.id is not null and v.cliente_id = v_cli) or (n.vehiculo_id is null and n.cliente_id = v_cli));
+      if not found then
+        return;
+      end if;
+    end if;
+  end if;
+
+
+  select n.precio_unidad, n.vida, n.estado, n.posicion, n.vehiculo_id, v.odometro_km
+    into v_precio, v_vida, v_estado, v_pos, v_veh, v_odo
+    from public.neumaticos n
+    left join public.vehiculos v on v.id = n.vehiculo_id
+   where n.id = p_neumatico;
+  if not found then
+    return;
+  end if;
+  select count(*)::int into v_nre from public.eventos_neumatico e where e.neumatico_id = p_neumatico and e.tipo = 'reencauche';
+  v_base := greatest(v_vida - v_nre, 0);
+
+  return query
+  with ev as (
+    select e.id, e.created_at, e.tipo, e.vehiculo_id, e.odometro_km, e.costo, e.posicion_origen, e.posicion_destino,
+           least(v_base + (count(*) filter (where e.tipo = 'reencauche') over (order by e.created_at, e.id))::int, 3)::smallint as vida_ev
+      from public.eventos_neumatico e
+     where e.neumatico_id = p_neumatico
+  ),
+  mk as (
+    -- Marcas de tramo, con la misma regla de posiciones que km_tramos_cubierta.
+    select m.id, m.created_at, m.vida_ev, m.vehiculo_id, m.odometro_km, m.accion,
+           lag(m.accion)       over w as prev_accion,
+           lag(m.vehiculo_id)  over w as prev_veh,
+           lag(m.odometro_km)  over w as prev_odo,
+           lag(m.vida_ev)      over w as prev_vida,
+           lead(m.accion)      over w as sig_accion
+      from (
+        select s.*,
+          case
+            when s.tipo = 'montaje' and coalesce(s.posicion_destino, 0) <> 99 then 'abre'
+            when s.tipo in ('desmontaje', 'baja') and coalesce(s.posicion_origen, 0) <> 99 then 'cierra'
+            when s.tipo = 'rotacion' and coalesce(s.posicion_origen, 0) <> 99 and s.posicion_destino = 99 then 'cierra'
+            when s.tipo = 'rotacion' and s.posicion_origen = 99 and coalesce(s.posicion_destino, 0) <> 99 then 'abre'
+            else null
+          end as accion
+          from ev s
+         where s.vehiculo_id is not null and s.tipo in ('montaje', 'desmontaje', 'baja', 'rotacion')
+      ) m
+     where m.accion is not null
+    window w as (order by m.created_at, m.id)
+  ),
+  tr as (
+    -- Cierre: cierra el tramo que abrió la marca anterior (en la vida de ese abre) o es un cierre suelto (sin dato).
+    select (case when m.prev_accion = 'abre' then m.prev_vida else m.vida_ev end) as vida,
+           (m.prev_accion = 'abre' and m.prev_veh = m.vehiculo_id and m.odometro_km is not null
+             and m.prev_odo is not null and m.odometro_km >= m.prev_odo)            as conocido,
+           (m.odometro_km - m.prev_odo)                                             as km
+      from mk m
+     where m.accion = 'cierra'
+    union all
+    -- Abre sin cierre después: sin dato, salvo el tramo en curso de una cubierta montada en ruta (odómetros ok).
+    select m.vida_ev,
+           (m.sig_accion is null and v_estado = 'montado' and v_pos is distinct from 99 and v_veh = m.vehiculo_id
+             and m.odometro_km is not null and v_odo is not null and v_odo >= m.odometro_km),
+           (v_odo - m.odometro_km)
+      from mk m
+     where m.accion = 'abre' and m.sig_accion is distinct from 'cierra'
+  ),
+  kv as (
+    select t.vida,
+           coalesce(sum(t.km) filter (where t.conocido), 0)::bigint as km,
+           (count(*) filter (where t.conocido))::int as con,
+           (count(*) filter (where not t.conocido))::int as sin
+      from tr t
+     group by t.vida
+  ),
+  it as (
+    select i.vida, i.concepto, i.moneda, sum(i.monto) as monto
+      from (
+        select m.vida, m.concepto, m.moneda, m.monto
+          from public.costos_neumatico m
+         where m.neumatico_id = p_neumatico
+        union all
+        select x.vida_ev, case x.tipo when 'reparacion' then 'reparacion' when 'reencauche' then 'recauchutado'
+                                      else 'otro' end, 'UYU', x.costo
+          from ev x
+         where x.costo is not null and x.tipo <> 'montaje'
+        union all
+        select v_base::smallint, 'compra', 'UYU', v_precio
+         where v_precio is not null
+           and not exists (select 1 from public.costos_neumatico m
+                            where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+        union all
+        select v_base::smallint, 'compra', 'UYU', max(x.costo)
+          from ev x
+         where v_precio is null and x.tipo = 'montaje' and x.costo is not null
+           and not exists (select 1 from public.costos_neumatico m
+                            where m.neumatico_id = p_neumatico and m.concepto = 'compra')
+        having max(x.costo) is not null
+      ) i
+     group by i.vida, i.concepto, i.moneda
+  ),
+  cv as (
+    select g.vida,
+           count(*)::int as n_items,
+           count(distinct g.moneda)::int as n_monedas,
+           min(g.moneda) as moneda,
+           sum(g.monto) as total
+      from it g
+     group by g.vida
+  )
+  select gs.vida::smallint,
+         v_vida,
+         nv.banda_marca,
+         nv.banda_modelo,
+         nv.profundidad_inicial_mm,
+         nv.fecha,
+         coalesce(cv.n_items, 0),
+         coalesce(cv.n_monedas, 0),
+         cv.moneda,
+         cv.total,
+         case when coalesce(kv.con, 0) = 0 and coalesce(kv.sin, 0) > 0 then null else coalesce(kv.km, 0) end,
+         coalesce(kv.con, 0),
+         coalesce(kv.sin, 0)
+    from generate_series(v_base, v_vida) gs(vida)
+    left join cv on cv.vida = gs.vida
+    left join kv on kv.vida = gs.vida
+    left join public.neumatico_vidas nv on nv.neumatico_id = p_neumatico and nv.vida = gs.vida
+   order by gs.vida;
+end
+$$;
+revoke all on function public.costo_vida_items(bigint) from public, anon;
+grant execute on function public.costo_vida_items(bigint) to authenticated;
+
