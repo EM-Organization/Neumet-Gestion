@@ -123,7 +123,7 @@ reset role;
 -- -----------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
 select (public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Desgaste', 5000, null,
-   '{"marca":"Nuevo","modelo":"Z","precio":900}'::jsonb)->>'idneumatico_nuevo') as nuevo_idn \gset
+   '{"marca":"Nuevo","modelo":"Z","precio":900}'::jsonb, p_motivo_codigo => 'desgaste')->>'idneumatico_nuevo') as nuevo_idn \gset
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('tras el cambio P1 es desconocido', test.est(11, 1::smallint), 'desconocido');
@@ -174,7 +174,7 @@ rollback to s0;
 
 -- 2b. Cambio donde el viejo va a 'almacenado' y el nuevo se mide solo por posición (sin idneumatico)
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_cambiar(11::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N2"}'::jsonb);
+select public.neumatico_cambiar(11::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N2"}'::jsonb, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba');
 reset role;
 select test.eq('P2 (cambio, viejo almacenado) desconocido', (select test.est(11, 2::smallint)), 'desconocido');
 select test.eq('el neumático almacenado conserva sus mediciones fuera del estado',
@@ -186,7 +186,7 @@ rollback to s0;
 
 -- 2c. P3 tenía solo una medición histórica: tras el cambio el nuevo NO la hereda
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_cambiar(11::bigint, 3::smallint, 'reparacion', null, null, null, '{"marca":"N3"}'::jsonb);
+select public.neumatico_cambiar(11::bigint, 3::smallint, 'reparacion', null, null, null, '{"marca":"N3"}'::jsonb, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba');
 select test.eq('P3 tras cambio: la medición histórica del viejo no se hereda (evento posterior)', test.est(11, 3::smallint), 'desconocido');
 reset role;
 rollback to s0;
@@ -199,7 +199,7 @@ select test.eq('V12 antes: P1 nuevo 9.0 (A), P2 poco_desgaste 6.5 (B)',
   test.est(12, 1::smallint) || test.prom(12, 1::smallint) || '|' || test.est(12, 2::smallint) || test.prom(12, 2::smallint), 'nuevo9.00|poco_desgaste6.50');
 select test.eq('V12 antes: tasas A 1.000 y B 0.500',
   (select string_agg(tasa_mm_semana::text, ',' order by posicion) from public.v_estado_neumaticos where vehiculo_id=12 and posicion in (1,2)), '1.000,0.500');
-select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, 100);
+select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, 100, p_motivo_codigo => 'diferencia_huellas');
 select test.eq('V12 tras rotar: P1 ahora es B (poco_desgaste 6.5)',
   test.idn(12, 1::smallint) || '|' || test.est(12, 1::smallint) || '|' || test.prom(12, 1::smallint), 'N-12-B|poco_desgaste|6.50');
 select test.eq('V12 tras rotar: P2 ahora es A (nuevo 9.0)',
@@ -219,10 +219,10 @@ select test.eq('V12 eventos de rotación coherentes (A 1>2, B 2>1)',
 select test.eq('V12 v_ultima_medicion por posición actual',
   (select string_agg(posicion || ':' || idneumatico, ',' order by posicion) from public.v_ultima_medicion where vehiculo_id=12 and posicion in (1,2)), '1:N-12-B,2:N-12-A');
 -- Rotar de vuelta restablece
-select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, null);
+select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, null, p_motivo_codigo => 'diferencia_huellas');
 select test.eq('V12 rotar de vuelta: P1 vuelve a A', test.idn(12, 1::smallint) || test.prom(12, 1::smallint), 'N-12-A9.00');
 -- Mover a una posición libre: la medición viaja
-select public.neumatico_rotar(12::bigint, 2::smallint, 7::smallint, null);
+select public.neumatico_rotar(12::bigint, 2::smallint, 7::smallint, null, p_motivo_codigo => 'diferencia_huellas');
 select test.eq('V12 movido a posición libre P7: B con 6.5 y P2 deja de existir',
   test.idn(12, 7::smallint) || test.prom(12, 7::smallint) || '|' || (select count(*) from public.v_estado_neumaticos where vehiculo_id=12 and posicion=2), 'N-12-B6.50|0');
 reset role;
@@ -232,7 +232,7 @@ rollback to s0;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('V13 antes: P1 6.0 (histórica), P3 6.5 (neumático sin idneumatico)',
   test.prom(13, 1::smallint) || '|' || test.prom(13, 3::smallint), '6.00|6.50');
-select public.neumatico_rotar(13::bigint, 1::smallint, 3::smallint, null);
+select public.neumatico_rotar(13::bigint, 1::smallint, 3::smallint, null, p_motivo_codigo => 'diferencia_huellas');
 select test.eq('V13 tras rotar: el histórico sin idneumatico queda huérfano (posición cambió después de medir): desconocido en ambas',
   test.est(13, 1::smallint) || '|' || test.est(13, 3::smallint), 'desconocido|desconocido');
 reset role;
@@ -293,7 +293,7 @@ select test.eq('sucursal: v_alertas solo su vehículo', (select count(*) from pu
 select test.eq('sucursal: v_ultima_medicion solo su vehículo', (select count(*) from public.v_ultima_medicion where vehiculo_id is distinct from 11), 0::bigint);
 select test.eq('sucursal no ve V12 (otra sucursal)', (select count(*) from public.v_mediciones_neumatico where vehiculo_id = 12), 0::bigint);
 -- El sucursal cambia SU neumático: ve el resultado, y no se filtra nada de otros
-select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Corte', null, null, '{"marca":"S"}'::jsonb);
+select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'Corte', null, null, '{"marca":"S"}'::jsonb, p_motivo_codigo => 'desgaste');
 select test.eq('sucursal tras cambiar: P1 desconocido', test.est(11, 1::smallint), 'desconocido');
 reset role;
 rollback to s0;
@@ -329,7 +329,7 @@ select test.eq('API: V11 devuelve los 4 neumáticos montados con la medición de
   (select string_agg((e->>'posicion') || ':' || coalesce(e->>'mm1', 'null'), ',' order by (e->>'posicion')::int)
      from jsonb_array_elements(public.api_obtener_montaje(1, 'TT1100', null)->'data') e), '1:4.20,2:9.00,3:7.00,4:null');
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb) is not null as _x \gset
+select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb, p_motivo_codigo => 'desgaste') is not null as _x \gset
 reset role;
 select test.eq('API tras el cambio: P1 es el neumático nuevo sin medición (no hereda 4.2) y el viejo no se ofrece',
   (select string_agg((e->>'posicion') || ':' || coalesce(e->>'mm1', 'null'), ',' order by (e->>'posicion')::int)
@@ -352,7 +352,7 @@ select test.eq('API guardar: el aparcado (posición de estacionamiento) se recha
 select test.eq('API: otro cliente no ve el vehículo', public.api_obtener_montaje(2, 'TT1100', null)->>'encontrado', 'false');
 -- Rotación en la API
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, null);
+select public.neumatico_rotar(12::bigint, 1::smallint, 2::smallint, null, p_motivo_codigo => 'diferencia_huellas');
 reset role;
 select test.eq('API tras rotar V12: los mm acompañan al neumático (P1=B 6.5, P2=A 9)',
   (select string_agg((e->>'idneumatico') || '=' || (e->>'mm1'), ',' order by (e->>'posicion')::int)
@@ -405,7 +405,7 @@ reset role;
 -- El resumen de flota hereda: tras cambiar un mayor_desgaste el contador baja
 select test.become('authenticated', test.u_cli_a());
 select n_mayor_desgaste as md_antes, n_sin_datos as sd_antes from public.v_resumen_flota_cliente where cliente_id = 1 \gset
-select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb) is not null as _y \gset
+select public.neumatico_cambiar(11::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"Nueva"}'::jsonb, p_motivo_codigo => 'desgaste') is not null as _y \gset
 select test.eq('resumen: un mayor_desgaste menos tras el cambio',
   (select n_mayor_desgaste from public.v_resumen_flota_cliente where cliente_id = 1), :md_antes - 1);
 select test.eq('resumen: un desconocido más tras el cambio',

@@ -37,7 +37,7 @@ savepoint s0;
 -- ---------------------------------------------------------------------------------------------
 select test.become('anon', null);
 select test.denied('anon no monta', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"X"}')$$);
-select test.denied('anon no desmonta', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'baja', 'x')$$);
+select test.denied('anon no desmonta', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_admin());
 select test.denied('el helper de autorización no es invocable', $$select * from public.neumatico_autorizar_vehiculo(871::bigint)$$);
@@ -58,7 +58,7 @@ begin
     perform test.become('authenticated', r.uid);
     perform test.denied(r.rol || ': no monta (nuevo)', format('select public.neumatico_montar(%s::bigint, 1::smallint, null, ''{"marca":"X"}'')', r.veh));
     perform test.denied(r.rol || ': no monta (cubierta)', format('select public.neumatico_montar(%s::bigint, 2::smallint, %s)', r.veh, (select id from pg_temp._c where k = 'S87-A1')));
-    perform test.denied(r.rol || ': no desmonta', format('select public.neumatico_desmontar(%s::bigint, 1::smallint, ''baja'', ''x'')', r.veh));
+    perform test.denied(r.rol || ': no desmonta', format('select public.neumatico_desmontar(%s::bigint, 1::smallint, ''baja'', ''x'', p_motivo_codigo => ''desgaste'')', r.veh));
     reset role;
   end loop;
 end
@@ -234,18 +234,18 @@ reset role;
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3, idneumatico, created_at)
   values (871, 1, 6, 12, 12, 12, 'CB-87-a', now() - interval '1 day');
 select test.become('authenticated', test.u_cli_a());
-select test.denied('posición vacía', $$select public.neumatico_desmontar(871::bigint, 7::smallint, 'baja', 'x')$$, 'P0002');
-select test.denied('destino inválido', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'reencauche', 'x')$$, '22023');
-select test.denied('baja sin motivo', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'baja')$$, '22023');
-select test.denied('baja con motivo en blanco', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'baja', '  ')$$, '22023');
-select test.denied('motivo demasiado largo', format('select public.neumatico_desmontar(871::bigint, 6::smallint, ''baja'', ''%s'')', repeat('m', 201)), '22023');
-select test.denied('odómetro menor', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', null, 1099)$$, '23514');
-select test.denied('sucursal de otro cliente', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', null, null, 873::bigint)$$);
-select test.denied('sucursal con reparación', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'reparacion', null, null, 871::bigint)$$, '22023');
-select test.denied('posición fuera de rango', $$select public.neumatico_desmontar(871::bigint, 100::smallint, 'baja', 'x')$$, '23514');
+select test.denied('posición vacía', $$select public.neumatico_desmontar(871::bigint, 7::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$, 'P0002');
+select test.denied('destino inválido', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'reencauche', 'x', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '22023');
+select test.denied('baja sin código de motivo', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'baja', p_motivo_codigo => null)$$, '22023');
+select test.denied('baja con código en blanco', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'baja', '  ', p_motivo_codigo => ' ')$$, '22023');
+select test.denied('motivo demasiado largo (texto nuevo de 301)', format('select public.neumatico_desmontar(871::bigint, 6::smallint, ''baja'', null, p_motivo_codigo => ''otro'', p_motivo_texto => ''%s'')', repeat('m', 301)), '22023');
+select test.denied('odómetro menor', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', null, 1099, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '23514');
+select test.denied('sucursal de otro cliente', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', null, null, 873::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$);
+select test.denied('sucursal con reparación', $$select public.neumatico_desmontar(871::bigint, 6::smallint, 'reparacion', null, null, 871::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '22023');
+select test.denied('posición fuera de rango', $$select public.neumatico_desmontar(871::bigint, 100::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$, '23514');
 -- A stock en una sucursal
 select test.eq('desmontar a stock en Sur87',
-  (public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', 'montaje equivocado', 1200, 872::bigint)->>'en_stock'), 'true');
+  (public.neumatico_desmontar(871::bigint, 6::smallint, 'almacenado', 'montaje equivocado', 1200, 872::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'en_stock'), 'true');
 reset role;
 select test.eq('misma fila: sin vehículo ni posición, almacenado, sucursal, quema, condición e idneumatico conservados',
   (select (vehiculo_id is null) || '|' || (posicion is null) || '|' || estado || '|' || sucursal_id || '|' || numero_quema || '|' || condicion || '|' || idneumatico || '|' || auxilio
@@ -268,10 +268,10 @@ rollback to s0;
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"SinQ"}');
 select public.neumatico_montar(871::bigint, 2::smallint, null, '{"marca":"Q2","numero_quema":"NQ-DUP"}');
-select test.denied('sin quema: no vuelve al stock', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado')$$, '22023');
-select test.denied('quema indicada ya registrada', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, null, 'nq-dup')$$, '23505');
-select test.denied('quema indicada demasiado larga', format('select public.neumatico_desmontar(871::bigint, 1::smallint, ''almacenado'', null, null, null, ''%s'')', repeat('q', 41)), '22023');
-select test.eq('con quema indicada vuelve al stock sin sucursal', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, null, ' NQ-NUEVA ')->>'numero_quema'), 'NQ-NUEVA');
+select test.denied('sin quema: no vuelve al stock', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '22023');
+select test.denied('quema indicada ya registrada', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, null, 'nq-dup', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '23505');
+select test.denied('quema indicada demasiado larga', format('select public.neumatico_desmontar(871::bigint, 1::smallint, ''almacenado'', null, null, null, ''%s'', p_motivo_codigo => ''otro'', p_motivo_texto => ''Motivo de prueba'')', repeat('q', 41)), '22023');
+select test.eq('con quema indicada vuelve al stock sin sucursal', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, null, ' NQ-NUEVA ', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'numero_quema'), 'NQ-NUEVA');
 reset role;
 select test.eq('queda en stock con la quema indicada', (select estado || '|' || (sucursal_id is null) || '|' || (vehiculo_id is null) from public.neumaticos where numero_quema = 'NQ-NUEVA'), 'almacenado|true|true');
 rollback to s0;
@@ -281,9 +281,9 @@ select test.become('authenticated', test.u_cli_a());
 select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"RepX"}');
 select public.neumatico_montar(871::bigint, 2::smallint, null, '{"marca":"BajaX"}');
 select public.neumatico_montar(871::bigint, 99::smallint, null, '{"marca":"AuxX"}');
-select test.eq('reparación: aparcado en 98', (public.neumatico_desmontar(871::bigint, 1::smallint, 'reparacion', 'pinchazo')->>'posicion_aparcado'), '98');
-select test.eq('baja con motivo: aparcado en 97', (public.neumatico_desmontar(871::bigint, 2::smallint, 'baja', 'montaje equivocado', 1300)->>'posicion_aparcado'), '97');
-select test.eq('auxilio a baja', (public.neumatico_desmontar(871::bigint, 99::smallint, 'baja', 'dañado')->>'destino'), 'baja');
+select test.eq('reparación: aparcado en 98', (public.neumatico_desmontar(871::bigint, 1::smallint, 'reparacion', 'pinchazo', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'posicion_aparcado'), '98');
+select test.eq('baja con motivo: aparcado en 97', (public.neumatico_desmontar(871::bigint, 2::smallint, 'baja', 'montaje equivocado', 1300, p_motivo_codigo => 'otro', p_motivo_texto => 'montaje equivocado')->>'posicion_aparcado'), '97');
+select test.eq('auxilio a baja', (public.neumatico_desmontar(871::bigint, 99::smallint, 'baja', 'dañado', p_motivo_codigo => 'desgaste')->>'destino'), 'baja');
 reset role;
 select test.eq('reparación: estado y condición',
   (select estado || '|' || condicion || '|' || posicion || '|' || auxilio from public.neumaticos where marca = 'RepX'), 'reparacion|reparado|98|false');
@@ -297,7 +297,7 @@ select test.eq('no quedan neumáticos montados', (select count(*) from public.ne
 -- Las posiciones esperadas quedaron libres: se vuelve a montar
 select test.become('authenticated', test.u_cli_a());
 select test.eq('la posición 1 vuelve a quedar libre', (public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"N"}')->>'posicion'), '1');
-select test.denied('un neumático dado de baja ya no está montado en su posición aparcada', $$select public.neumatico_desmontar(871::bigint, 97::smallint, 'baja', 'x')$$, 'P0002');
+select test.denied('un neumático dado de baja ya no está montado en su posición aparcada', $$select public.neumatico_desmontar(871::bigint, 97::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$, 'P0002');
 reset role;
 rollback to s0;
 
@@ -308,19 +308,19 @@ select public.neumatico_montar(871::bigint, 2::smallint, null, '{"marca":"X"}');
 select public.neumatico_montar(871::bigint, 3::smallint, null, '{"marca":"X"}');
 reset role;
 select test.become('authenticated', test.u_s87());
-select test.denied('sucursal propia no devuelve al stock', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado')$$);
-select test.eq('sucursal propia retira a reparación', (public.neumatico_desmontar(871::bigint, 2::smallint, 'reparacion')->>'destino'), 'reparacion');
-select test.eq('sucursal propia da de baja con motivo', (public.neumatico_desmontar(871::bigint, 3::smallint, 'baja', 'desgaste')->>'destino'), 'baja');
+select test.denied('sucursal propia no devuelve al stock', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$);
+select test.eq('sucursal propia retira a reparación', (public.neumatico_desmontar(871::bigint, 2::smallint, 'reparacion', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'destino'), 'reparacion');
+select test.eq('sucursal propia da de baja con motivo', (public.neumatico_desmontar(871::bigint, 3::smallint, 'baja', 'desgaste', p_motivo_codigo => 'desgaste')->>'destino'), 'baja');
 reset role;
 select test.eq('el neumático con quema sigue montado tras el rechazo', (select estado from public.neumaticos where numero_quema = 'NQ-S1'), 'montado');
 select test.become('authenticated', test.u_cli_b());
-select test.denied('otro cliente no desmonta', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'baja', 'x')$$);
+select test.denied('otro cliente no desmonta', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_admin());
-select test.denied('admin no desmonta (C2)', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint)$$, '42501');
+select test.denied('admin no desmonta (C2)', $$select public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '42501');
 reset role;
 select test.become('authenticated', test.u_cli_a());
-select test.eq('global desmonta a stock', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint)->>'en_stock'), 'true');
+select test.eq('global desmonta a stock', (public.neumatico_desmontar(871::bigint, 1::smallint, 'almacenado', null, null, 872::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'en_stock'), 'true');
 reset role;
 rollback to s0;
 

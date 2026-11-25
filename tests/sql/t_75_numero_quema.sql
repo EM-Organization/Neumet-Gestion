@@ -52,7 +52,7 @@ rollback to s0;
 -- Cliente global (C2: el admin ya no opera): cambio con quema y km previos desde el stock
 select test.become('authenticated', test.u_cli_a());
 select test.eq('global: cambio con quema y km previos',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte', 1200, 751, null, ' Q-7 ', 35000)->>'numero_quema'), 'Q-7');
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte', 1200, 751, null, ' Q-7 ', 35000, p_motivo_codigo => 'desgaste')->>'numero_quema'), 'Q-7');
 select test.eq('nuevo neumático guarda quema recortada y km previos',
   (select numero_quema||'|'||km_previos||'|'||estado from public.neumaticos where vehiculo_id = 1 and posicion = 1), 'Q-7|35000|montado');
 select test.eq('el evento de montaje deja constancia de la quema y los km previos',
@@ -64,10 +64,10 @@ rollback to s0;
 -- Compatibilidad: llamadas con la firma anterior (7 argumentos, por posición y por nombre)
 select test.become('authenticated', test.u_cli_a());
 select test.eq('firma anterior posicional: quema nula y 0 km previos',
-  (public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, '{"marca":"N"}'::jsonb)->>'km_previos')::int, 0);
+  (public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, '{"marca":"N"}'::jsonb, p_motivo_codigo => 'desgaste')->>'km_previos')::int, 0);
 select test.eq('firma anterior por nombre',
   (public.neumatico_cambiar(p_vehiculo_id => 1::bigint, p_posicion => 3::smallint, p_destino_viejo => 'baja',
-     p_motivo => 'x', p_nuevo => '{"marca":"N"}'::jsonb)->>'posicion')::int, 3);
+     p_motivo => 'x', p_nuevo => '{"marca":"N"}'::jsonb, p_motivo_codigo => 'desgaste')->>'posicion')::int, 3);
 select test.eq('sin quema informada: columna nula',
   (select count(*) from public.neumaticos where vehiculo_id = 1 and posicion in (2, 3) and numero_quema is null), 2::bigint);
 select test.eq('queda una sola sobrecarga de neumatico_cambiar',
@@ -79,57 +79,57 @@ rollback to s0;
 -- Neumático nuevo: 0 km es válido y el odómetro del vehículo es un dato aparte
 select test.become('authenticated', test.u_cli_a());
 select test.eq('0 km previos y sin odómetro: válido',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-1', 0)->>'km_previos')::int, 0);
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-1', 0, p_motivo_codigo => 'desgaste')->>'km_previos')::int, 0);
 select test.eq('sin odómetro, el del vehículo no cambia', (select odometro_km from public.vehiculos where id = 1), 1000);
 select test.eq('km previos 80000 con odómetro del vehículo mayor',
-  (public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', 1500, null, '{"marca":"N"}', 'Q-2', 80000)->>'odometro_km')::int, 1500);
+  (public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', 1500, null, '{"marca":"N"}', 'Q-2', 80000, p_motivo_codigo => 'desgaste')->>'odometro_km')::int, 1500);
 select test.eq('los km previos no tocan el odómetro del vehículo', (select odometro_km from public.vehiculos where id = 1), 1500);
 select test.denied('odómetro del vehículo menor al actual',
-  $$select public.neumatico_cambiar(1::bigint,3::smallint,'baja','x',10,null,'{"marca":"N"}')$$, '23514');
+  $$select public.neumatico_cambiar(1::bigint,3::smallint,'baja','x',10,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$, '23514');
 select test.eq('el rechazo no cambió nada',
   (select count(*) from public.neumaticos where vehiculo_id = 1 and posicion = 3 and idneumatico = 'T-1-3'), 1::bigint);
 select test.eq('odómetro igual al actual es válido',
-  (public.neumatico_cambiar(1::bigint, 3::smallint, 'baja', 'x', 1500, null, '{"marca":"N"}')->>'odometro_km')::int, 1500);
-select test.denied('km previos negativo', $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}','Q-4',-5)$$, '23514');
-select test.denied('km previos enorme', $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}','Q-4',1000000000)$$, '23514');
+  (public.neumatico_cambiar(1::bigint, 3::smallint, 'baja', 'x', 1500, null, '{"marca":"N"}', p_motivo_codigo => 'desgaste')->>'odometro_km')::int, 1500);
+select test.denied('km previos negativo', $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}','Q-4',-5, p_motivo_codigo => 'desgaste')$$, '23514');
+select test.denied('km previos enorme', $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}','Q-4',1000000000, p_motivo_codigo => 'desgaste')$$, '23514');
 select test.denied('quema de más de 40 caracteres',
-  $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}',repeat('Z', 41),0)$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint,4::smallint,'baja','x',null,null,'{"marca":"N"}',repeat('Z', 41),0, p_motivo_codigo => 'desgaste')$$, '22023');
 select test.eq('km previos nulo se toma como 0',
-  (public.neumatico_cambiar(1::bigint, 4::smallint, 'baja', 'x', null, null, '{"marca":"N"}', null, null)->>'km_previos')::int, 0);
+  (public.neumatico_cambiar(1::bigint, 4::smallint, 'baja', 'x', null, null, '{"marca":"N"}', null, null, p_motivo_codigo => 'desgaste')->>'km_previos')::int, 0);
 reset role;
 rollback to s0;
 
 -- Unicidad desde la RPC
 select test.become('authenticated', test.u_cli_a());
 select test.eq('primera quema registrada',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-DUP', 0)->>'numero_quema'), 'Q-DUP');
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-DUP', 0, p_motivo_codigo => 'desgaste')->>'numero_quema'), 'Q-DUP');
 select test.denied('quema repetida en el mismo cliente (otra caja y espacios)',
-  $$select public.neumatico_cambiar(1::bigint,2::smallint,'baja','x',null,null,'{"marca":"N"}',' q-dup ',0)$$, '23505');
+  $$select public.neumatico_cambiar(1::bigint,2::smallint,'baja','x',null,null,'{"marca":"N"}',' q-dup ',0, p_motivo_codigo => 'desgaste')$$, '23505');
 select test.denied('quema repetida en otro vehículo del mismo cliente',
-  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-DUP',0)$$, '23505');
+  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-DUP',0, p_motivo_codigo => 'desgaste')$$, '23505');
 select test.eq('el rechazo no consumió el neumático viejo',
   (select estado from public.neumaticos where idneumatico = 'T-1-2'), 'montado');
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.denied('global: quema repetida en otro vehículo del mismo cliente',
-  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-DUP',0)$$, '23505');
+  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-DUP',0, p_motivo_codigo => 'desgaste')$$, '23505');
 reset role;
 select test.become('authenticated', test.u_cli_b());
 select test.denied('otro cliente no usa el vehículo ajeno',
-  $$select public.neumatico_cambiar(1::bigint,5::smallint,'baja','x',null,null,'{"marca":"N"}','Q-B',0)$$);
+  $$select public.neumatico_cambiar(1::bigint,5::smallint,'baja','x',null,null,'{"marca":"N"}','Q-B',0, p_motivo_codigo => 'desgaste')$$);
 reset role;
 rollback to s0;
 
 -- Sucursales: dentro de su vehículo sí; stock no; el vehículo de otra sucursal no
 select test.become('authenticated', test.u_q75a());
 select test.eq('sucursal A registra quema en su vehículo',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-SA', 12000)->>'numero_quema'), 'Q-SA');
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', 'Q-SA', 12000, p_motivo_codigo => 'desgaste')->>'numero_quema'), 'Q-SA');
 select test.eq('sucursal A ve la quema de su neumático',
   (select numero_quema from public.neumaticos where vehiculo_id = 1 and posicion = 1), 'Q-SA');
 select test.denied('sucursal A no cambia en la sucursal B',
-  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-X',0)$$);
+  $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-X',0, p_motivo_codigo => 'desgaste')$$);
 select test.denied('sucursal A no usa el stock aunque informe quema',
-  $$select public.neumatico_cambiar(1::bigint,2::smallint,'baja','x',null,751,null,'Q-Y',0)$$);
+  $$select public.neumatico_cambiar(1::bigint,2::smallint,'baja','x',null,751,null,'Q-Y',0, p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_q75b());
 select test.eq('sucursal B no ve la quema de la sucursal A',
@@ -145,11 +145,11 @@ select test.eq('otro cliente no ve ninguna quema ajena', (select count(*) from p
 reset role;
 select test.become('anon', null);
 select test.denied('anon no ejecuta neumatico_cambiar',
-  $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-Z',0)$$);
+  $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-Z',0, p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_api());
 select test.denied('rol api no ejecuta neumatico_cambiar',
-  $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-Z',0)$$);
+  $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}','Q-Z',0, p_motivo_codigo => 'desgaste')$$);
 reset role;
 rollback to s0;
 

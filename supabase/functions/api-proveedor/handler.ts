@@ -2,7 +2,8 @@
 // todo lo externo entra por `Deps` (ver types.ts) para poder probarlo con dobles.
 import { leerDistribucion } from './distribuciones.ts';
 import { aColumnasBd, aLecturaApi, CAMPOS_API, type LecturaApi } from './mapping.ts';
-import type { Deps, GuardarArgs, ItemRpc, LogEntrada } from './types.ts';
+import { leerOdometro } from './odometro.ts';
+import { type Deps, ErrorRpc, type GuardarArgs, type ItemRpc, type LogEntrada } from './types.ts';
 
 export const MAX_BODY_BYTES = 64 * 1024;
 export const MAX_LOGIN_BYTES = 4 * 1024;
@@ -54,6 +55,27 @@ function respuesta(body: unknown, status: number, requestId: string, extra: Reco
 async function sha256Hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Lo que identifica el contenido de un guardado para la idempotencia. Distribución y odómetro entran solo si vienen:
+ * sin ellos el hash es el de siempre (una request en vuelo durante el despliegue no cambia de identidad) y con ellos,
+ * reutilizar una clave con otro valor es un conflicto (409). Son de tipos distintos (texto y número), no colisionan.
+ */
+function contenidoDelHash(
+  clienteId: number,
+  patente: string,
+  normalizados: unknown[],
+  distribucion: string | null,
+  odometro: number | null,
+): unknown[] {
+  return [
+    clienteId,
+    patente,
+    normalizados,
+    ...(distribucion !== null ? [distribucion] : []),
+    ...(odometro !== null ? [odometro] : []),
+  ];
 }
 
 /** uuid determinista derivado de un texto (para limitar por IP en la misma tabla). */
@@ -247,7 +269,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       const body = await leerCuerpo(req, MAX_BODY_BYTES) as Record<string, unknown>;
       const res = endpoint === 'obtener_montaje'
         ? await obtener(body, c, clienteId, log)
-        : await guardar(body, req, c, clienteId, cuenta, log);
+        : await guardar(body, req, c, clienteId, cuenta, perfil.odometro_obligatorio_api === true, log);
       return await cerrar(res.response, res.motivo);
     } catch (e) {
       if (e instanceof HttpError) {
@@ -312,6 +334,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     c: Contexto,
     clienteId: number,
     cuenta: string,
+    odometroObligatorio: boolean,
     log: {
       vehiculo_id: number | null;
       payload_resumen: Record<string, unknown>;
@@ -332,6 +355,13 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     const dist = leerDistribucion(b.distribucion);
     if (!dist.ok) throw new HttpError(400, 'distribucion');
     const distribucion = dist.valor;
+    // RN-12: un valor inválido es error del cliente (400) siempre. Ausente solo se rechaza si el cliente exige el
+    // odómetro (422, sin llamar a la RPC). La RPC lo defiende también (22023): ver la llamada más abajo.
+    // Un odómetro menor que el del vehículo no es error aquí: la base lo guarda como sospechoso.
+    const od = leerOdometro(b.odometro_km);
+    if (!od.ok) throw new HttpError(400, 'odometro');
+    if (od.valor === null && odometroObligatorio) throw new HttpError(422, 'odometro');
+    const odometro = od.valor;
 
     const vistas = new Set<number>();
     const items: ItemRpc[] = [];
@@ -380,13 +410,8 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
 
     // Hash independiente del orden de los montajes.
     normalizados.sort((a, z) => (a as number[])[0] - (z as number[])[0]);
-    // La distribución entra al hash solo si viene: sin ella el hash es el de siempre (una request en vuelo durante
-    // el despliegue no cambia de identidad) y con ella, reutilizar una clave con otra distribución es un conflicto (409).
-    const hash = await sha256Hex(
-      JSON.stringify(
-        distribucion === null ? [clienteId, patente, normalizados] : [clienteId, patente, normalizados, distribucion],
-      ),
-    );
+    const contenido = contenidoDelHash(clienteId, patente, normalizados, distribucion, odometro);
+    const hash = await sha256Hex(JSON.stringify(contenido));
     const args: GuardarArgs = {
       cliente_id: clienteId,
       cuenta,
@@ -396,6 +421,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       clave: idem !== null ? 'k:' + idem : 'h:' + hash,
       hash,
       distribucion,
+      odometro_km: odometro,
     };
     log.payload_resumen = {
       n_montajes: items.length,
@@ -403,7 +429,14 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       ...(distribucion !== null ? { distribucion } : {}),
     };
 
-    const r = await c.deps.db.guardar(args);
+    // El flag puede cambiar entre la lectura del perfil y esta llamada: la RPC lo vuelve a exigir (22023 por el
+    // odómetro). Es el mismo 422 que el de arriba, no un fallo interno.
+    const r = await c.deps.db.guardar(args).catch((e: unknown) => {
+      if (e instanceof ErrorRpc && e.sqlstate === '22023' && e.detalle.includes('odometro')) {
+        throw new HttpError(422, 'odometro');
+      }
+      throw e;
+    });
     if (r.estado === 'conflicto') {
       return {
         response: respuesta({ code: 409, message: 'Idempotency-Key reutilizada con otro contenido' }, 409, c.requestId),

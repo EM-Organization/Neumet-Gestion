@@ -54,6 +54,17 @@ Paso operativo **posterior** a aplicar la migración; no va en ella. Estado al 2
 4. Verificar: `select * from cron.job where jobname = 'uso-cerrar-mes'` y, tras la primera ejecución, `cron.job_run_details`.
 Si `pg_cron` no se habilita, el cierre se invoca con una Edge Function programada que llame a la RPC con la clave de servicio (docs/17 §8).
 
+### 3.2.2 Activar el odómetro obligatorio (migración `20261126020000`, apéndice AA de docs/08)
+Los dos flags empiezan en `false` y la migración no cambia ninguno. Los cambia solo el equipo de datos, por SQL con el rol del proyecto; el panel no los escribe (`authenticated` solo lee las columnas). Activar uno es una decisión por cliente y se hace solo después de desplegar lo que lo exige.
+
+**Hard reload tras desplegar**: después de desplegar el panel, hacer recarga forzada (Cmd+Shift+R / Ctrl+F5) o abrirlo en ventana privada, y recién entonces activar un flag. Un módulo viejo en caché manda la rotación sin motivo y la base la rechaza con `22023` (sección 7).
+
+1. Medir antes cuántos vehículos activos no tienen lectura de odómetro: `select count(*) from public.vehiculos where cliente_id = <id> and activo and odometro_km is null;`. Con el flag activo, esos vehículos piden la lectura en cada movimiento, así que conviene cargarla antes.
+2. Flag del panel (`odometro_obligatorio`): requiere el panel de los commits C1 y C2 fusionado y desplegado. Activar con `update public.clientes set odometro_obligatorio = true where id = <id>;`.
+3. Flag de la API del calibre (`odometro_obligatorio_api`): requiere desplegada la función `api-proveedor` que lee este flag (commit B). Activar con `update public.clientes set odometro_obligatorio_api = true where id = <id>;`.
+4. Verificar con un movimiento sin odómetro sobre un vehículo del cliente: debe rechazarse (aviso en el panel o 422 en la API). Un rechazo no escribe nada.
+5. Para volver atrás, poner el flag en `false`. Vuelve a aceptar movimientos sin odómetro y no reescribe datos.
+
 ### 3.3 Desplegar funciones
 Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario`, `reponer-acceso-usuario` y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
 

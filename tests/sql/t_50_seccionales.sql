@@ -78,7 +78,7 @@ select test.denied('sucursal MVD no mueve vehículos', $$update public.vehiculos
 select test.eq('sucursal MVD: sigue en su sucursal', (select sucursal_id from public.perfiles), 101::bigint);
 select test.denied('sucursal MVD no inserta vehículos', $$insert into public.vehiculos (cliente_id, nombre, sucursal_id) values (1,'x',101)$$);
 select test.denied('sucursal MVD no inserta sucursales', $$insert into public.sucursales (cliente_id, nombre) values (1,'Otra')$$);
-select test.denied('sucursal MVD no rota vehículos de otra sucursal', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
+select test.denied('sucursal MVD no rota vehículos de otra sucursal', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas')$$);
 reset role;
 
 -- Sucursal B (Salto): ve lo suyo y nada de Montevideo

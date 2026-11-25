@@ -22,6 +22,8 @@ import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { severidadLabel } from '../domain/flota.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
+import { etiquetaMotivo } from '../domain/motivos.js';
+import { cargarMotivosCliente } from '../core/motivos.js';
 import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
 import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
@@ -393,7 +395,7 @@ function eventosDe(pos, fila) {
 function seccionEventos(pos, fila) {
   const ev = eventosDe(pos, fila);
   if (!ev.length) return html`<p class="vd-p-nota">Sin eventos registrados para este neumático.</p>`;
-  return html`<ul class="vd-eventos">${ev.map(e => html`<li><strong>${fmtFecha(e.created_at)}</strong> · ${TIPO_LABEL[e.tipo] || e.tipo}${!nulo(e.odometro_km) ? html` · ${fmtNum(e.odometro_km)} km` : ''}${e.notas ? html` · ${e.notas}` : ''}</li>`)}</ul>`;
+  return html`<ul class="vd-eventos">${ev.map(e => html`<li><strong>${fmtFecha(e.created_at)}</strong> · ${TIPO_LABEL[e.tipo] || e.tipo}${!nulo(e.odometro_km) ? html` · ${fmtNum(e.odometro_km)} km` : ''}${e.motivo_codigo ? html` · Motivo: ${etiquetaMotivo(datos.catalogoMotivos, e.motivo_codigo, e.motivo_texto)}` : ''}${e.notas ? html` · ${e.notas}` : ''}</li>`)}</ul>`;
 }
 
 // RN-08: bajo el límite de retiro (menos de 3 mm en una huella) la cubierta se retira ya y NO se rota a otro eje.
@@ -404,7 +406,7 @@ function acciones(pos, bajoRetiro = false) {
   const cambiar = html`<button type="button" class="btn primary" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
   const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   if (bajoRetiro) return html`<div class="vd-pie"><p class="vd-p-razon"><strong>Retirar ya.</strong> Bajo el límite de retiro no se rota a otro eje (RN-08).</p><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
-  // Rotar: el usuario elige la posición de destino; el botón lleva data-args='[vehiculoId, posA, posB]' (se actualiza al elegir).
+  // Rotar abre el diálogo (motivo y odómetro). El botón lleva data-args='[vehiculoId, posA, posB]', que se actualiza al elegir el destino.
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
@@ -588,7 +590,7 @@ export async function load() {
     db.from('vehiculos').select(SEL_VEHICULO).eq('id', vehiculoId).maybeSingle(),
     fetchAll((from, to) => db.from('v_estado_neumaticos').select('*').order('vehiculo_id').order('posicion').range(from, to), { pageSize: PAGE_SIZE, max: MAX_FILAS }),
     db.from('v_alertas').select('*').eq('vehiculo_id', vehiculoId).order('severidad', { ascending: false }),
-    db.from('eventos_neumatico').select('id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_at')
+    db.from('eventos_neumatico').select('id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_at,motivo_codigo,motivo_texto')
       .eq('vehiculo_id', vehiculoId).order('created_at', { ascending: false }).limit(100),
     db.from('neumaticos').select('id,posicion,estado,numero_quema,km_previos').eq('vehiculo_id', vehiculoId),
     // Km por cubierta (previos + tramos montados, incluidos los de otros vehículos). Si falla, el panel omite los km.
@@ -606,6 +608,9 @@ export async function load() {
     setHtml($('vd-cab'), estadoVacio('Vehículo no encontrado', 'Puede que ya no exista o que falte acceso.', { label: `Volver a ${etiquetaVista(origen)}`, action: 'irA', args: [origen], primaria: true }));
     return;
   }
+  // El historial muestra el motivo con su etiqueta. Si el catálogo no carga, se ve el código (la base no cambia).
+  const motivos = await cargarMotivosCliente(v.data.cliente_id);
+  if (miCarga !== tokenCarga) return;
   const filas = (est.rows || []).filter(f => String(f.vehiculo_id) === String(vehiculoId));
   const ref = referenciaTasas(filtrarFilas(est.rows || []));
   const posiciones = filas.map(f => f.posicion);
@@ -614,7 +619,7 @@ export async function load() {
   const u = umbralesDe(filas[0]); // los umbrales son del cliente (umbral_bajo / critico / retiro_mm), nunca números fijos
   datos = {
     obs, calPorPos: agruparPorNeumatico(obs, filas).porPosicion, tipos: new Map([[v.data.id, tipoLayout(v.data)]]),
-    veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref,
+    veh: v.data, filas, alertas: al.data || [], eventos: ev.error ? [] : (ev.data || []), ref, catalogoMotivos: motivos ? motivos.catalogo : [],
     neumPorId: new Map((nm.error ? [] : (nm.data || [])).map(n => [n.id, n])),
     km: indexarKm(kc.error ? [] : kc.data),
     costo: indexarCostos(cc.error ? [] : cc.data),

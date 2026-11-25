@@ -32,7 +32,7 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   $('#cambio-confirmar').click(); await sleep(200);
   if(cambios().length !== base) fail('cambio: baja sin motivo llegó a la RPC');
   if(!$('#cambio-error').textContent) fail('cambio: sin mensaje de validación');
-  $('#cambio-motivo').value = 'Desgaste';
+  $('#cambio-motivo').value = 'desgaste';
 
   // Error de la RPC: mensaje comprensible, el modal sigue abierto, ningún éxito
   var ce = w.console.error; w.console.error = function(){};
@@ -75,7 +75,7 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   var cs = cambios();
   if(cs.length !== base + 3) { fail('cambio: no se llamó a la RPC en el éxito'); btn.remove(); return; }
   var a = cs[cs.length - 1].args;
-  if(a.p_vehiculo_id !== 10 || a.p_posicion !== 1 || a.p_destino_viejo !== 'baja' || a.p_motivo !== 'Desgaste' ||
+  if(a.p_vehiculo_id !== 10 || a.p_posicion !== 1 || a.p_destino_viejo !== 'baja' || a.p_motivo !== null || a.p_motivo_codigo !== 'desgaste' || a.p_motivo_texto !== null ||
      a.p_odometro_km !== 1200 || a.p_numero_quema !== 'Q-55' || a.p_km_previos !== 35000 || a.p_stock_id !== null || !a.p_nuevo || a.p_nuevo.marca !== 'Pirelli <b>' || a.p_nuevo.modelo !== 'FR85') fail('cambio: args de la RPC: ' + JSON.stringify(a));
   if(modal.classList.contains('show')) fail('cambio: el modal no se cerró tras el éxito');
   if($('#toast-msg').textContent.indexOf('Cambio registrado') === -1) fail('cambio: falta el aviso de éxito');
@@ -97,7 +97,7 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
     if($('#cambio-quema-km-wrap').style.display !== 'none') fail('cambio: con cubierta del stock no deben verse quema ni km');
     if($('#cambio-actual').innerHTML.indexOf('<Multi>') !== -1) fail('cambio: HTML sin escapar');
     $('#cambio-cubierta').value = '32'; $('#cambio-cubierta').dispatchEvent(new w.Event('change', {bubbles: true}));
-    $('#cambio-motivo').value = 'Desgaste';
+    $('#cambio-motivo').value = 'desgaste';
     if($('#cambio-resumen').textContent.indexOf('cubierta S-002 del stock') === -1) fail('cambio: resumen con la cubierta: ' + $('#cambio-resumen').textContent);
     $('#cambio-confirmar').click(); await sleep(400);
     var ca = cambios()[cambios().length - 1].args;
@@ -123,7 +123,7 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   // Enter (envío del formulario) y doble clic: un solo cambio. Enter mantenido (e.repeat) se ignora.
   btn.click(); await sleep(600);
   d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); await sleep(100);
-  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'Desgaste';
+  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'desgaste';
   var rep = new w.KeyboardEvent('keydown', {key: 'Enter', repeat: true, bubbles: true, cancelable: true});
   $('#cambio-marca').dispatchEvent(rep);
   if(!rep.defaultPrevented) fail('cambio: Enter mantenido debe ignorarse');
@@ -138,7 +138,7 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   btn.setAttribute('data-posicion', '1');
   btn.click(); await sleep(600);
   d.querySelector('input[name="cambio-origen"][value="nuevo"]').click(); await sleep(100);
-  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'Desgaste';
+  $('#cambio-marca').value = 'Pirelli'; $('#cambio-motivo').value = 'desgaste';
   var antesV = cambios().length; fx.rpcDelay = 500;
   $('#cambio-form').requestSubmit(); await sleep(50);
   var btn2 = d.createElement('button');

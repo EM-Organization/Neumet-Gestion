@@ -135,15 +135,16 @@ export function registrar(env) {
       await p.click('#ret-confirmar');
       await toast(p, /Neumático retirado: Delantera izquierda/);
       await p.esperar(`!!document.querySelector('#vd-diagrama .vd-vacia[data-pos="1"]') && !document.querySelector('#vd-panel').classList.contains('abierto')`, { que: 'P1 vacía y panel cerrado' });
-      // P2 (cubierta nueva): baja con motivo obligatorio
+      // P2 (cubierta nueva): baja con motivo del catálogo; «otro» pide el texto
       await p.click('#vd-diagrama .vd-rueda[data-pos="2"]');
       await p.esperar(`!!document.querySelector('#vd-panel [data-action="neumatico-retirar"]')`, { que: 'panel de P2' });
       await p.click('#vd-panel [data-action="neumatico-retirar"]');
       await p.esperar(`document.querySelector('#modal-retirar').classList.contains('show')`, { que: 'modal de retirar P2' });
       await p.eval(`document.querySelector('input[name="ret-destino"][value="baja"]').click()`);
+      await elegir(p, '#ret-motivo', 'otro');
       await p.click('#ret-confirmar');
-      await p.esperar(`/Falta el motivo de la baja/.test(document.querySelector('#ret-error').textContent)`, { que: 'motivo obligatorio' });
-      await p.escribir('#ret-motivo', 'Montaje equivocado');
+      await p.esperar(`/Escribir el motivo/.test(document.querySelector('#ret-error').textContent)`, { que: 'texto del motivo «otro»' });
+      await p.escribir('#ret-motivo-texto', 'Montaje equivocado');
       await p.click('#ret-confirmar');
       await toast(p, /Neumático retirado: Delantera derecha/);
       await p.esperar(`!!document.querySelector('#vd-diagrama .vd-vacia[data-pos="2"]')`, { que: 'P2 vacía' });
@@ -201,7 +202,7 @@ export function registrar(env) {
         const r = await Promise.all([
           rpc(p, 'neumatico_montar', { p_vehiculo_id: mia, p_posicion: 1, p_cubierta_id: cub }),
           rpc(p, 'neumatico_montar', { p_vehiculo_id: ajena, p_posicion: 1, p_nuevo: { marca: 'Hack' } }),
-          rpc(p, 'neumatico_desmontar', { p_vehiculo_id: ajena, p_posicion: 1, p_destino: 'baja', p_motivo: 'x' }),
+          rpc(p, 'neumatico_desmontar', { p_vehiculo_id: ajena, p_posicion: 1, p_destino: 'baja', p_motivo_codigo: 'desgaste' }),
         ]);
         for (const x of r) assert.equal(x.error && x.error.code, '42501', JSON.stringify(x));
       }, { http: RECHAZO });
@@ -248,8 +249,8 @@ export function registrar(env) {
       const r = await Promise.all([
         rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 5, p_nuevo: { marca: 'Hack' } }),
         rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 6, p_cubierta_id: cubDemo }),
-        rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 3, p_destino: 'baja', p_motivo: 'x' }),
-        rpc(p, 'neumatico_desmontar', { p_vehiculo_id: 99999999, p_posicion: 3, p_destino: 'baja', p_motivo: 'x' }),
+        rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 3, p_destino: 'baja', p_motivo_codigo: 'desgaste' }),
+        rpc(p, 'neumatico_desmontar', { p_vehiculo_id: 99999999, p_posicion: 3, p_destino: 'baja', p_motivo_codigo: 'desgaste' }),
       ]);
       for (const x of r) assert.equal(x.error && x.error.code, '42501', JSON.stringify(x));
       // En su propio vehículo: la cubierta de Demo no existe para ella y su quema 'S-001' ya está en su stock
@@ -300,7 +301,7 @@ export function registrar(env) {
     await flujo(env, 'admin', 'admin', async p => {
       const m = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 16, p_nuevo: { marca: 'Adm' } });
       assert.equal(m.error && m.error.code, '42501', 'el equipo Neumet ya no monta (C2)');
-      const d = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 16, p_destino: 'reparacion' });
+      const d = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 16, p_destino: 'reparacion', p_motivo_codigo: 'desgaste' });
       assert.equal(d.error && d.error.code, '42501');
     }, { http: RECHAZO });
     assert.deepEqual(montados(env, vid), []);
@@ -313,9 +314,49 @@ export function registrar(env) {
       assert.equal(fuera.error && fuera.error.code, '23514');
       const ocupada = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: 16, p_nuevo: { marca: 'X' } });
       assert.equal(ocupada.error && ocupada.error.code, '55000');
-      const out = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 99, p_destino: 'reparacion' });
+      const out = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 99, p_destino: 'reparacion', p_motivo_codigo: 'desgaste' });
       assert.equal(out.error, null);
     }, { http: RECHAZO });
     assert.deepEqual(montados(env, vid).map(x => [x.posicion, x.estado, x.auxilio]), [[16, 'montado', false], [98, 'reparacion', false]]);
+  });
+
+  test('Retirar (global): el motivo sale del catálogo, «otro» exige texto, el p_motivo libre no sirve y el flag exige odómetro', async () => {
+    const vid = nuevoVehiculo(env, 'E2EM009', { tipo: 10, odometro: '1000' });
+    await flujo(env, 'global-motivos', 'global', async p => {
+      for (const pos of [1, 2]) {
+        const m = await rpc(p, 'neumatico_montar', { p_vehiculo_id: vid, p_posicion: pos, p_nuevo: { marca: 'Mot' } });
+        assert.equal(m.error, null, JSON.stringify(m));
+      }
+      // Sin motivo, o con el p_motivo libre de antes: la base exige el motivo del catálogo (RN-14)
+      const sin = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 1, p_destino: 'baja' });
+      assert.equal(sin.error && sin.error.code, '22023');
+      assert.match(sin.error.message, /indicar el motivo del movimiento/);
+      const libre = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 1, p_destino: 'baja', p_motivo: 'Texto libre' });
+      assert.equal(libre.error && libre.error.code, '22023');
+      // Un código de otro tipo (rotación) no sirve para retirar
+      const cruzado = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 1, p_destino: 'baja', p_motivo_codigo: 'swap_20000' });
+      assert.match(cruzado.error.message, /motivo inválido para este movimiento/);
+      // «otro» sin texto
+      const otro = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 1, p_destino: 'baja', p_motivo_codigo: 'otro' });
+      assert.match(otro.error.message, /indicar el texto del motivo/);
+      const ok = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 1, p_destino: 'baja', p_motivo_codigo: 'desgaste' });
+      assert.equal(ok.error, null, JSON.stringify(ok));
+    }, { http: RECHAZO });
+    assert.deepEqual(json(env, `select motivo_codigo, motivo_texto from public.eventos_neumatico where vehiculo_id = ${vid} and tipo = 'baja'`), [{ motivo_codigo: 'desgaste', motivo_texto: null }]);
+    // Con el flag del cliente, el odómetro es obligatorio y no puede ser menor al actual (RN-12)
+    env.sql(`update public.clientes set odometro_obligatorio = true where id = ${DEMO}`);
+    try {
+      await flujo(env, 'global-odometro', 'global', async p => {
+        const sinLectura = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 2, p_destino: 'baja', p_motivo_codigo: 'desgaste' });
+        assert.equal(sinLectura.error && sinLectura.error.code, '22023');
+        assert.match(sinLectura.error.message, /odometro obligatorio/);
+        const menor = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 2, p_destino: 'baja', p_motivo_codigo: 'desgaste', p_odometro_km: 900 });
+        assert.equal(menor.error && menor.error.code, '23514');
+        const ok = await rpc(p, 'neumatico_desmontar', { p_vehiculo_id: vid, p_posicion: 2, p_destino: 'baja', p_motivo_codigo: 'desgaste', p_odometro_km: 1200 });
+        assert.equal(ok.error, null, JSON.stringify(ok));
+      }, { http: RECHAZO });
+    } finally {
+      env.sql(`update public.clientes set odometro_obligatorio = false where id = ${DEMO}`);
+    }
   });
 }

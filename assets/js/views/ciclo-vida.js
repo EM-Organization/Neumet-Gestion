@@ -15,6 +15,8 @@ import { COLUMNAS_KM, resumenKm, indexarKm } from '../domain/km-cubierta.js';
 import { COLUMNAS_COSTO, resumenCosto, indexarCostos } from '../domain/costos.js';
 import { abrirRegistroCosto, puedeVerCostos, puedeRegistrarCosto } from './costos.js';
 import { TIPO_LABEL, validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, ordenarEventos } from '../domain/ciclo-vida.js';
+import { etiquetaMotivo } from '../domain/motivos.js';
+import { cargarMotivosCliente } from '../core/motivos.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, modeloMini } from '../domain/posicion.js';
 import { miniVehiculo } from '../core/componentes.js';
@@ -22,8 +24,8 @@ import { traerCostos } from '../core/precios.js';
 import { conValor, textoCosto } from '../domain/precios.js';
 
 // Columnas de eventos_neumatico sin costo (la base no lo entrega por select: se pide con traerCostos, solo admin y perfil global).
-const EVENTO_COLS='id,cliente_id,vehiculo_id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_by,created_at,sucursal_origen_id,sucursal_destino_id';
-let vehId=null, desdeDetalle=false, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), costoCub=new Map(), filtroNeum='';
+const EVENTO_COLS='id,cliente_id,vehiculo_id,neumatico_id,idneumatico,tipo,posicion_origen,posicion_destino,odometro_km,notas,created_by,created_at,sucursal_origen_id,sucursal_destino_id,motivo_codigo,motivo_texto';
+let vehId=null, desdeDetalle=false, veh=null, neums=[], eventos=[], estadoFilas=[], kmCub=new Map(), costoCub=new Map(), filtroNeum='', catalogoMotivos=[];
 const $=id=>document.getElementById(id);
 const fmtKm=n=>n==null?'—':fmtNum(n)+' km';
 const fmtFecha=fmtFechaHora;
@@ -46,6 +48,9 @@ async function cargar(){
   ]);
   const err=rv.error||rn.error||re.error;
   if(err){ showToast(userError(err),true); return false; }
+  // Si el catálogo no carga, la línea de tiempo muestra el código del motivo en lugar de la etiqueta.
+  const motivos=rv.data?await cargarMotivosCliente(rv.data.cliente_id):null;
+  catalogoMotivos=motivos?motivos.catalogo:[];
   const base=getVehiculos().find(x=>x.id===vehId)||{};
   veh={...base,...(rv.data||{})};
   neums=rn.data||[]; eventos=conValor(re.data,rc.costos,'costo'); estadoFilas=rs.error?[]:(rs.data||[]); kmCub=indexarKm(rk.error?[]:rk.data); costoCub=indexarCostos(rcc.error?[]:rcc.data);
@@ -120,6 +125,7 @@ function renderTimeline(){
     return html`<div class="ciclo-ev ciclo-ev-${safeCls(e.tipo)}">
       <div class="ciclo-ev-head"><strong>${TIPO_LABEL[e.tipo]||e.tipo}</strong> <span class="ciclo-sub">${pos}${n?' · '+(n.marca||''):(e.idneumatico?' · '+e.idneumatico:'')}</span></div>
       <div class="ciclo-sub">${fmtFecha(e.created_at)}${e.odometro_km!=null?' · '+fmtKm(e.odometro_km):''}${textoCosto(e.costo)}</div>
+      ${e.motivo_codigo?html`<div class="ciclo-sub">Motivo: ${etiquetaMotivo(catalogoMotivos,e.motivo_codigo,e.motivo_texto)}</div>`:''}
       ${e.notas?html`<div class="ciclo-ev-notas">${e.notas}</div>`:''}</div>`;
   })):html`<div class="ciclo-sub">Sin eventos registrados.</div>`);
 }

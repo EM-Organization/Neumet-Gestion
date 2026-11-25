@@ -143,7 +143,7 @@ reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.denied('G: no se corrige el odómetro de un vehículo eliminado', $$select public.vehiculo_corregir_odometro(9901, 0)$$, '42501');
 select test.denied('G: no se retira un neumático de un vehículo eliminado',
-  $$select public.neumatico_desmontar(9902, 1::smallint, 'baja', 'x')$$, '42501');
+  $$select public.neumatico_desmontar(9902, 1::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$, '42501');
 select test.denied('G: no se mueve de sucursal', $$select public.vehiculo_mover_sucursal(9901, 991)$$, '42501');
 reset role;
 

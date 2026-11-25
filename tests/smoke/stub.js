@@ -83,7 +83,14 @@
     {id:2,cliente_id:1,neumatico_id:932,idneumatico:'CB-1-0002',numero_quema:'S-002',marca:'Pirelli',modelo:null,vida_origen:1,vida_nueva:null,proveedor:'Recauchutadora Norte',estado:'enviado',fecha_envio:'2026-11-02',fecha_cierre:null,motivo:null},
     {id:1,cliente_id:1,neumatico_id:933,idneumatico:'CB-1-0003',numero_quema:'S-010',marca:'Bridgestone',modelo:'R150',vida_origen:0,vida_nueva:1,proveedor:'Recauchutadora Sur',estado:'recibido',fecha_envio:'2026-09-01',fecha_cierre:'2026-09-20',motivo:null}
   ];
-  var T = {recauchutados:reca,eventos_neumatico:evs,v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc};
+  // Catálogo de motivos (base, cliente_id nulo): las mismas filas que siembra la migración 20261126020000.
+  var mot = [
+    ['baja','desgaste','Desgaste',1],['baja','danio','Daño',2],['baja','venta','Venta',3],['baja','chatarra','Chatarra',4],['baja','devolucion_proveedor','Devolución al proveedor',5],['baja','otro','Otro',9],
+    ['rotacion','swap_20000','Swap a 20.000 km',1],['rotacion','diferencia_huellas','Diferencia entre huellas',2],['rotacion','paso_direccional_a_traccion','Direccional pasa a tracción o eje loco',3],['rotacion','paso_a_eje_loco','Paso a eje loco',4],['rotacion','otro','Otro',9],
+    ['cambio','desgaste','Desgaste',1],['cambio','danio','Daño o pinchazo',2],['cambio','desgaste_irregular','Desgaste irregular',3],['cambio','otro','Otro',9],
+    ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9]
+  ].map(function(r){ return {tipo:r[0],codigo:r[1],etiqueta:r[2],orden:r[3],activo:true,cliente_id:null}; });
+  var T = {recauchutados:reca,eventos_neumatico:evs,v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc,motivos_movimiento:mot};
 
   function Q(table){
     var rows=(T[table]||[]).slice(), head=false, single=false, rng=null;

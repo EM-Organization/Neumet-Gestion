@@ -26,7 +26,7 @@ savepoint s0;
 
 -- Permisos de ejecución
 select test.become('anon', null);
-select test.denied('anon no ejecuta neumatico_cambiar', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M"}')$$);
+select test.denied('anon no ejecuta neumatico_cambiar', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M"}', p_motivo_codigo => 'desgaste')$$);
 select test.denied('anon no ejecuta registrar_odometro', $$select public.vehiculo_registrar_odometro(1::bigint, 5)$$);
 reset role;
 select test.become('authenticated', test.u_admin());
@@ -36,13 +36,13 @@ rollback to s0;
 
 -- C2: el equipo Neumet (admin) ya no cambia neumáticos
 select test.become('authenticated', test.u_admin());
-select test.denied('admin: neumatico_cambiar denegado (C2)', $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', 2000, 701)$$);
+select test.denied('admin: neumatico_cambiar denegado (C2)', $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', 2000, 701, p_motivo_codigo => 'desgaste')$$);
 reset role;
 
 -- Cliente global: baja + stock
 select test.become('authenticated', test.u_cli_a());
 select test.eq('global: cambio con stock devuelve el nuevo',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte lateral', 2000, 701)->>'stock_restante')::int, 1);
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Corte lateral', 2000, 701, p_motivo_codigo => 'otro', p_motivo_texto => 'Corte lateral')->>'stock_restante')::int, 1);
 select test.eq('viejo en baja con motivo y fecha',
   (select estado || '|' || motivo_baja || '|' || (fecha_baja is not null) from public.neumaticos where idneumatico='T-1-1'), 'baja|Corte lateral|true');
 select test.eq('viejo fuera de la posición 1', (select posicion <> 1 from public.neumaticos where idneumatico='T-1-1'), true);
@@ -61,7 +61,7 @@ rollback to s0;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('cliente global: cambio con neumático ingresado',
   (public.neumatico_cambiar(1::bigint, 2::smallint, 'reencauche', null, 1000, null,
-     '{"marca":"Pirelli","modelo":"FR85","codigo":"AB-1","precio":1200,"vida":1}'::jsonb)->>'posicion')::int, 2);
+     '{"marca":"Pirelli","modelo":"FR85","codigo":"AB-1","precio":1200,"vida":1}'::jsonb, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'posicion')::int, 2);
 select test.eq('viejo: reencauche suma vida y queda almacenado',
   (select vida||'|'||estado from public.neumaticos where idneumatico='T-1-2'), '1|almacenado');
 select test.eq('nuevo: datos ingresados',
@@ -75,10 +75,10 @@ select test.denied('cliente no baja el odómetro', $$select public.vehiculo_regi
 select test.eq('cliente sube el odómetro', (public.vehiculo_registrar_odometro(1::bigint, 1500)->>'anterior')::int, 1000);
 -- reparación y almacenado
 select test.eq('reparacion: destino del viejo',
-  (public.neumatico_cambiar(1::bigint, 3::smallint, 'reparacion', 'Pinchazo', null, 701)->>'destino_viejo'), 'reparacion');
+  (public.neumatico_cambiar(1::bigint, 3::smallint, 'reparacion', 'Pinchazo', null, 701, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'destino_viejo'), 'reparacion');
 select test.eq('estado reparacion', (select estado from public.neumaticos where idneumatico='T-1-3'), 'reparacion');
 select test.eq('almacenado: destino del viejo',
-  (public.neumatico_cambiar(1::bigint, 4::smallint, 'almacenado', null, null, null, '{"marca":"Z"}')->>'destino_viejo'), 'almacenado');
+  (public.neumatico_cambiar(1::bigint, 4::smallint, 'almacenado', null, null, null, '{"marca":"Z"}', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'destino_viejo'), 'almacenado');
 -- el cliente no escribe tablas directamente
 select test.denied('cliente no inserta neumáticos directo', $$insert into public.neumaticos (vehiculo_id, cliente_id, posicion) values (1,1,50)$$);
 select test.denied('cliente no inserta eventos directo', $$insert into public.eventos_neumatico (cliente_id, vehiculo_id, tipo) values (1,1,'baja')$$);
@@ -86,71 +86,71 @@ select test.denied('cliente no actualiza vehículos directo (sin privilegio, C2)
 select test.eq('odómetro intacto', (select odometro_km from public.vehiculos where id=1), 1500);
 -- rotación abierta al mismo alcance
 select test.eq('cliente global rota en su vehículo',
-  (public.neumatico_rotar(1::bigint, 5::smallint, 6::smallint)->>'intercambio')::boolean, true);
-select test.denied('cliente global no rota el vehículo de otro cliente', $$select public.neumatico_rotar(3::bigint, 1::smallint, 2::smallint)$$);
+  (public.neumatico_rotar(1::bigint, 5::smallint, 6::smallint, p_motivo_codigo => 'diferencia_huellas')->>'intercambio')::boolean, true);
+select test.denied('cliente global no rota el vehículo de otro cliente', $$select public.neumatico_rotar(3::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas')$$);
 reset role;
 rollback to s0;
 
 -- Sucursal A: su vehículo sí; el de la sucursal B no; stock no
 select test.become('authenticated', test.u_s70a());
 select test.eq('sucursal A cambia en su vehículo',
-  (public.neumatico_cambiar(1::bigint, 5::smallint, 'baja', 'Desgaste', 1100, null, '{"marca":"N"}')->>'posicion')::int, 5);
-select test.denied('sucursal A no cambia en el vehículo de la sucursal B', $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+  (public.neumatico_cambiar(1::bigint, 5::smallint, 'baja', 'Desgaste', 1100, null, '{"marca":"N"}', p_motivo_codigo => 'desgaste')->>'posicion')::int, 5);
+select test.denied('sucursal A no cambia en el vehículo de la sucursal B', $$select public.neumatico_cambiar(2::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 select test.denied('sucursal A no registra odómetro de la sucursal B', $$select public.vehiculo_registrar_odometro(2::bigint, 9)$$);
-select test.denied('sucursal A no rota en la sucursal B', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint)$$);
-select test.denied('sucursal A no usa el stock (solo perfil global)', $$select public.neumatico_cambiar(1::bigint,6::smallint,'baja','x',null,701)$$);
+select test.denied('sucursal A no rota en la sucursal B', $$select public.neumatico_rotar(2::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas')$$);
+select test.denied('sucursal A no usa el stock (solo perfil global)', $$select public.neumatico_cambiar(1::bigint,6::smallint,'baja','x',null,701, p_motivo_codigo => 'desgaste')$$);
 select test.eq('sucursal A rota en su vehículo',
-  (public.neumatico_rotar(1::bigint, 7::smallint, 8::smallint)->>'intercambio')::boolean, true);
+  (public.neumatico_rotar(1::bigint, 7::smallint, 8::smallint, p_motivo_codigo => 'diferencia_huellas')->>'intercambio')::boolean, true);
 select test.eq('sucursal A registra odómetro propio', (public.vehiculo_registrar_odometro(1::bigint, 3000)->>'odometro_km')::int, 3000);
 reset role;
 select test.become('authenticated', test.u_s70b());
-select test.denied('sucursal B no cambia en el vehículo de la sucursal A', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('sucursal B no cambia en el vehículo de la sucursal A', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 select test.eq('sucursal B cambia en el suyo',
-  (public.neumatico_cambiar(2::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}')->>'posicion')::int, 1);
+  (public.neumatico_cambiar(2::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"N"}', p_motivo_codigo => 'desgaste')->>'posicion')::int, 1);
 reset role;
 rollback to s0;
 
 -- Otro cliente, api, sin perfil
 select test.become('authenticated', test.u_cli_b());
-select test.denied('cliente de otro cliente NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('cliente de otro cliente NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 select test.denied('cliente de otro cliente NO registra odómetro', $$select public.vehiculo_registrar_odometro(1::bigint, 99999)$$);
-select test.denied('vehículo inexistente = mismo rechazo', $$select public.neumatico_cambiar(999::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('vehículo inexistente = mismo rechazo', $$select public.neumatico_cambiar(999::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_cli_a());
-select test.denied('cliente A NO cambia en vehículo de cliente B', $$select public.neumatico_cambiar(3::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('cliente A NO cambia en vehículo de cliente B', $$select public.neumatico_cambiar(3::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_api());
-select test.denied('rol api NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('rol api NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_sinperfil());
-select test.denied('sin perfil NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}')$$);
+select test.denied('sin perfil NO cambia', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.eq('nada cambió tras los rechazos', (select count(*) from public.eventos_neumatico where tipo in ('baja','desmontaje') and created_by is not null), 0::bigint);
 rollback to s0;
 
 -- Validaciones y stock
 select test.become('authenticated', test.u_cli_a());
-select test.denied('stock de OTRO cliente rechazado', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,703)$$, 'P0002');
-select test.denied('stock inexistente', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,99999)$$, 'P0002');
-select test.denied('stock con cantidad 0 rechazado', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,702)$$, '55000');
-select test.denied('sin nuevo (ni stock ni ingresado)', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x')$$, '22023');
-select test.denied('stock y nuevo a la vez', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,701,'{"marca":"N"}')$$, '22023');
-select test.denied('baja sin motivo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','  ',null,701)$$, '22023');
-select test.denied('destino inválido', $$select public.neumatico_cambiar(1::bigint,1::smallint,'tirar','x',null,701)$$, '22023');
-select test.denied('posición vacía', $$select public.neumatico_cambiar(1::bigint,50::smallint,'baja','x',null,701)$$, 'P0002');
-select test.denied('posición con neumático en baja', $$select public.neumatico_cambiar(1::bigint,9::smallint,'baja','x',null,701)$$, '23514');
-select test.denied('odómetro negativo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',-1,701)$$, '23514');
-select test.denied('nuevo sin marca', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"modelo":"M"}')$$, '22023');
-select test.denied('precio negativo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":-5}')$$, '23514');
-select test.denied('precio no numérico', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":"abc"}')$$, '22023');
-select test.denied('vida fuera de rango', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","vida":4}')$$, '23514');
+select test.denied('stock de OTRO cliente rechazado', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,703, p_motivo_codigo => 'desgaste')$$, 'P0002');
+select test.denied('stock inexistente', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,99999, p_motivo_codigo => 'desgaste')$$, 'P0002');
+select test.denied('stock con cantidad 0 rechazado', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,702, p_motivo_codigo => 'desgaste')$$, '55000');
+select test.denied('sin nuevo (ni stock ni ingresado)', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x', p_motivo_codigo => 'desgaste')$$, '22023');
+select test.denied('stock y nuevo a la vez', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,701,'{"marca":"N"}', p_motivo_codigo => 'desgaste')$$, '22023');
+select test.denied('baja sin código de motivo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','  ',null,701, p_motivo_codigo => null)$$, '22023');
+select test.denied('destino inválido', $$select public.neumatico_cambiar(1::bigint,1::smallint,'tirar','x',null,701, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '22023');
+select test.denied('posición vacía', $$select public.neumatico_cambiar(1::bigint,50::smallint,'baja','x',null,701, p_motivo_codigo => 'desgaste')$$, 'P0002');
+select test.denied('posición con neumático en baja', $$select public.neumatico_cambiar(1::bigint,9::smallint,'baja','x',null,701, p_motivo_codigo => 'desgaste')$$, '23514');
+select test.denied('odómetro negativo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',-1,701, p_motivo_codigo => 'desgaste')$$, '23514');
+select test.denied('nuevo sin marca', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"modelo":"M"}', p_motivo_codigo => 'desgaste')$$, '22023');
+select test.denied('precio negativo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":-5}', p_motivo_codigo => 'desgaste')$$, '23514');
+select test.denied('precio no numérico', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":"abc"}', p_motivo_codigo => 'desgaste')$$, '22023');
+select test.denied('vida fuera de rango', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","vida":4}', p_motivo_codigo => 'desgaste')$$, '23514');
 select test.eq('ningún rechazo tocó el stock', (select cantidad from public.stock_neumaticos where id=701), 2);
 select test.eq('ningún rechazo tocó los neumáticos', (select count(*) from public.neumaticos where vehiculo_id=1 and estado='montado'), 8::bigint);
 reset role;
 -- vida máxima
 update public.neumaticos set vida = 3 where idneumatico = 'T-1-1';
 select test.become('authenticated', test.u_cli_a());
-select test.denied('reencauche con vida máxima', $$select public.neumatico_cambiar(1::bigint,1::smallint,'reencauche',null,null,701)$$, '23514');
+select test.denied('reencauche con vida máxima', $$select public.neumatico_cambiar(1::bigint,1::smallint,'reencauche',null,null,701, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '23514');
 reset role;
 rollback to s0;
 
@@ -160,7 +160,7 @@ begin raise exception 'fallo simulado' using errcode = 'P0001'; end $$;
 create trigger trg_falla_montaje before insert on public.eventos_neumatico
   for each row when (new.tipo = 'montaje') execute function pg_temp.falla_montaje();
 select test.become('authenticated', test.u_cli_a());
-select test.denied('fallo al registrar el montaje', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',1777,701)$$, 'P0001');
+select test.denied('fallo al registrar el montaje', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',1777,701, p_motivo_codigo => 'desgaste')$$, 'P0001');
 select test.eq('atomicidad: viejo intacto', (select estado||'|'||posicion from public.neumaticos where idneumatico='T-1-1'), 'montado|1');
 select test.eq('atomicidad: sin neumático nuevo', (select count(*) from public.neumaticos where vehiculo_id=1), 9::bigint);
 select test.eq('atomicidad: stock intacto', (select cantidad from public.stock_neumaticos where id=701), 2);

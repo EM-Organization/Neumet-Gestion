@@ -1,7 +1,10 @@
 openapi: 3.1.0
 info:
   title: NEUMET API de proveedor (app de medición)
-  version: 0.1.0-draft
+  version: 0.3.0-draft
+  x-cambios:
+    - "0.3.0-draft: si el flag del cliente cambia entre la lectura del perfil y el guardado, la base lo rechaza y la respuesta es 422 con motivo odometro, no un fallo interno. El cuerpo es el mismo {code, message}. El nombre del flag es interno y no forma parte del contrato."
+    - "0.2.0-draft: guardar_montaje_mm acepta odometro_km (RN-12). Opcional salvo que el cliente lo exija; ausente con exigencia responde 422. Sin el campo, el contrato de 0.1.0 sigue valiendo."
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -23,6 +26,12 @@ info:
     | `duplicado_distinto` | mm3 distinto de mm2. Corregir la app. |
     | `distribucion` | La distribución informada no es la del coche (o no cuadra con su tipo de ruedas). No se guarda ninguna posición de la request. Usar la que devuelve `obtener_montaje`. Estado global ok. |
     | `error` | Fallo inesperado en esa posición. Reintentar; si persiste, avisar con `X-Request-Id`. |
+    | `odometro` | (Nivel de request, no de posición.) `odometro_km` inválido (400) o ausente con el cliente obligado a informarlo (422). No se guarda nada. Enviar el odómetro del vehículo. |
+
+    ## Odómetro del vehículo (RN-12, opcional salvo que el cliente lo exija)
+
+    Campo `odometro_km` a nivel de request (no dentro de `montajes`). Entero de 0 a 2147483647. Ausente o `null`: no informado.
+    Un valor menor que el odómetro anterior del vehículo se guarda igual; la base lo marca como sospechoso y no baja el odómetro del vehículo. Detalle en docs/07, apéndice C.
 
     `obtener_montaje` de un coche existente sin neumáticos responde `code 200` y `data: []`.
 
@@ -96,8 +105,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
-        '400': { description: 'JSON inválido o fuera de límites (tamaño, nº de montajes)' }
+        '400': { description: 'JSON inválido, fuera de límites (tamaño, nº de montajes) o odometro_km inválido (decimal, negativo, texto o fuera de integer). Cuerpo {code: 400, message: "Solicitud inválida"}' }
         '401': { description: Token vencido o inválido }
+        '422': { description: 'El cliente exige el odómetro y la request no lo trae (también si el flag se activa durante la llamada). Cuerpo {code: 422, message: "Solicitud inválida"}. No se guarda nada; motivo interno odometro.' }
         '5XX': { description: Error de servidor }
 components:
   securitySchemes:
@@ -168,6 +178,14 @@ components:
           type: string
           enum: ['', '4x2', '6x2', '6x4', '8x2', '8x4']
           description: Opcional. Distribución de neumáticos del vehículo; ausente, null o vacío = no informada. Otro valor responde 400. Con un vehículo existente de otra distribución no se guarda nada (motivo interno `distribucion`).
+        odometro_km:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 2147483647
+          description: >-
+            Opcional. Odómetro del vehículo al momento de la inspección, en km enteros. Ausente o null = no informado.
+            Si el cliente exige el odómetro y falta, responde 422. Decimal, negativo, texto o fuera de rango, 400.
+            Con la misma Idempotency-Key y otro odómetro responde 409.
         montajes:
           type: array
           maxItems: 40

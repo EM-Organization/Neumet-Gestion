@@ -1,10 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarCambio, traducirErrorCambio, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
+import { validarCambio, traducirErrorCambio, traducirErrorRotacion, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
 
 const neum = { id: 5, vehiculo_id: 10, posicion: 3, marca: 'Michelin', modelo: 'X', estado: 'montado', vida: 0 };
 const stock = [{ id: 1, marca: 'Pirelli', modelo: 'FR', cantidad: 2 }, { id: 2, marca: 'Vacio', cantidad: 0 }];
-const base = { neum, destino: 'baja', motivo: 'Desgaste', origen: 'stock', stockId: '1', stock, odometro: '', odometroActual: 1000, kmPrevios: '0', numeroQuema: '' };
+// Catálogo como lo devuelve motivos_movimiento (base): baja y cambio con «otro»; rotación con su código propio.
+const CAT = [
+  { tipo: 'baja', codigo: 'desgaste', etiqueta: 'Desgaste', orden: 1, activo: true },
+  { tipo: 'baja', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'cambio', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+];
+const base = { neum, destino: 'baja', catalogo: CAT, motivoCodigo: 'desgaste', motivoTexto: null, origen: 'stock', stockId: '1', stock, odometro: '', odometroActual: 1000, kmPrevios: '0', numeroQuema: '' };
 
 test('stockDisponible descarta lotes sin unidades', () => {
   assert.deepEqual(stockDisponible(stock).map(s => s.id), [1]);
@@ -14,7 +21,7 @@ test('stockDisponible descarta lotes sin unidades', () => {
 test('validarCambio: del stock arma los parámetros de la RPC', () => {
   const r = validarCambio({ ...base, tipo: 10 });
   assert.equal(r.ok, true);
-  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: 'Desgaste',
+  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_motivo_texto: null,
     p_odometro_km: null, p_stock_id: 1, p_nuevo: null, p_numero_quema: null, p_km_previos: 0 });
   assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X/);
   assert.doesNotMatch(r.resumen, /\bP\d/);
@@ -32,8 +39,9 @@ test('validarCambio: rechazos', () => {
   assert.equal(validarCambio({ ...base, neum: null }).ok, false);
   assert.equal(validarCambio({ ...base, neum: { ...neum, estado: 'baja' } }).ok, false);
   assert.equal(validarCambio({ ...base, destino: 'tirar' }).ok, false);
-  assert.equal(validarCambio({ ...base, motivo: '  ' }).ok, false);               // baja exige motivo
-  assert.equal(validarCambio({ ...base, destino: 'reparacion', motivo: '' }).ok, true); // el resto no
+  assert.equal(validarCambio({ ...base, motivoCodigo: '' }).ok, false);             // baja exige motivo de la lista
+  assert.equal(validarCambio({ ...base, destino: 'reparacion', motivoCodigo: 'otro', motivoTexto: 'Pinchazo' }).ok, true);
+  assert.equal(validarCambio({ ...base, destino: 'reparacion', motivoCodigo: 'desgaste' }).ok, false, 'cambio solo admite «otro»');
   assert.equal(validarCambio({ ...base, destino: 'reencauche', neum: { ...neum, vida: 3 } }).ok, false);
   assert.equal(validarCambio({ ...base, stockId: '2' }).ok, false);               // lote sin unidades
   assert.equal(validarCambio({ ...base, stockId: '99' }).ok, false);
@@ -43,7 +51,9 @@ test('validarCambio: rechazos', () => {
   assert.equal(validarCambio({ ...base, odometro: '-1' }).ok, false);
   assert.equal(validarCambio({ ...base, odometro: '12.5' }).ok, false);
   assert.equal(validarCambio({ ...base, odometro: '999' }).ok, false);            // menor al actual (1000)
-  assert.equal(validarCambio({ ...base, motivo: 'x'.repeat(201) }).ok, false);
+  assert.equal(validarCambio({ ...base, motivoCodigo: 'otro', motivoTexto: 'x'.repeat(301) }).ok, false);
+  assert.equal(validarCambio({ ...base, motivoCodigo: 'otro', motivoTexto: null }).ok, false, '«otro» sin texto');
+  assert.equal(validarCambio({ ...base, motivoCodigo: 'swap_20000' }).ok, false, 'código de rotación no sirve para cambiar');
 });
 
 test('traducirErrorCambio: mensajes comprensibles', () => {
@@ -108,6 +118,8 @@ test('el odómetro del vehículo es opcional, independiente de los km previos y 
   assert.equal(validarCambio({ ...base, odometro: '0', odometroActual: null }).params.p_odometro_km, 0); // sin odómetro previo: 0 es válido
   assert.equal(validarCambio({ ...base, odometro: '0', odometroActual: 0 }).ok, true);
   assert.match(validarCambio({ ...base, odometro: '-3' }).error, /odómetro del vehículo/);
+  assert.match(validarCambio({ ...base, odometroObligatorio: true, odometro: '' }).error, /Indicar la lectura del odómetro/, 'RN-12 con el flag');
+  assert.equal(validarCambio({ ...base, odometroObligatorio: true, odometro: '1200' }).params.p_odometro_km, 1200);
 });
 
 test('número de quema: se recorta, vacío es null, máximo 40 y viaja a la RPC', () => {
@@ -139,7 +151,7 @@ const conCubierta = { ...base, origen: 'cubierta', cubiertaId: '41', cubiertas, 
 test('cubierta individual: envía p_cubierta_id y no la quema ni los km del formulario', () => {
   const r = validarCambio({ ...conCubierta, numeroQuema: 'IGNORADA', kmPrevios: '500' });
   assert.equal(r.ok, true);
-  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: 'Desgaste',
+  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 3, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_motivo_texto: null,
     p_odometro_km: null, p_stock_id: null, p_nuevo: null, p_numero_quema: null, p_km_previos: 0, p_cubierta_id: 41 });
   assert.match(r.resumen, /cubierta S-001 del stock/);
   assert.doesNotMatch(r.resumen, /IGNORADA|km previos/);
@@ -155,23 +167,23 @@ test('cubierta individual: rechaza la que no está disponible o no existe', () =
 test('los lotes y el ingreso manual siguen sin parámetros nuevos (compatibles)', () => {
   assert.equal('p_cubierta_id' in validarCambio(base).params, false);
   assert.equal('p_devolver_stock' in validarCambio(base).params, false);
-  assert.equal('p_devolver_stock' in validarCambio({ ...base, destino: 'almacenado', devolverStock: false }).params, false);
+  assert.equal('p_devolver_stock' in validarCambio({ ...base, destino: 'almacenado', motivoCodigo: 'otro', motivoTexto: 'x', devolverStock: false }).params, false);
 });
 
 test('almacenar con devolución al stock: sucursal indicada o sin sucursal', () => {
-  const a = validarCambio({ ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '2', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
+  const a = validarCambio({ ...base, destino: 'almacenado', motivoCodigo: 'otro', motivoTexto: 'Vuelve al stock', devolverStock: true, sucursalStock: '2', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
   assert.equal(a.ok, true);
   assert.equal(a.params.p_devolver_stock, true);
   assert.equal(a.params.p_sucursal_stock, 2);
   assert.equal('p_quema_viejo' in a.params, false);        // ya tiene quema
   assert.match(a.resumen, /vuelve al stock, Salto/);
-  const b = validarCambio({ ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
+  const b = validarCambio({ ...base, destino: 'almacenado', motivoCodigo: 'otro', motivoTexto: 'Vuelve al stock', devolverStock: true, sucursalStock: '', neum: { ...neum, numero_quema: 'Q-9' }, sucursales });
   assert.equal(b.params.p_sucursal_stock, null);
   assert.match(b.resumen, /vuelve al stock, Sin sucursal/);
 });
 
 test('almacenar sin quema propia exige indicarla; la envía recortada', () => {
-  const sin = { ...base, destino: 'almacenado', motivo: '', devolverStock: true, sucursalStock: '1', sucursales };
+  const sin = { ...base, destino: 'almacenado', motivoCodigo: 'otro', motivoTexto: 'Vuelve al stock', devolverStock: true, sucursalStock: '1', sucursales };
   assert.match(validarCambio(sin).error, /número de quema del neumático retirado/);
   assert.match(validarCambio({ ...sin, quemaViejo: '  ' }).error, /número de quema del neumático retirado/);
   assert.match(validarCambio({ ...sin, quemaViejo: 'Q'.repeat(41) }).error, /40/);
@@ -179,7 +191,7 @@ test('almacenar sin quema propia exige indicarla; la envía recortada', () => {
 });
 
 test('otros destinos no devuelven al stock aunque se pida', () => {
-  const r = validarCambio({ ...base, destino: 'reparacion', devolverStock: true, sucursalStock: '1' });
+  const r = validarCambio({ ...base, destino: 'reparacion', motivoCodigo: 'otro', motivoTexto: 'x', devolverStock: true, sucursalStock: '1' });
   assert.equal(r.ok, true);
   assert.equal('p_devolver_stock' in r.params, false);
 });
@@ -227,4 +239,20 @@ test('validarRotacion: los errores por neumático dado de baja nombran la posici
   const ns = [{ vehiculo_id: 10, posicion: 1, estado: 'baja' }, { vehiculo_id: 10, posicion: 2, estado: 'montado' }];
   assert.equal(validarRotacion(ns, 10, 1, 2, 10).error, 'El neumático de Delantera izquierda está dado de baja');
   assert.equal(validarRotacion(ns, 10, 2, 1, 10).error, 'Delantera izquierda está ocupada por un neumático dado de baja');
+});
+
+test('traducirErrorRotacion: mensajes del diálogo de rotar (RN-12, RN-14)', () => {
+  assert.equal(traducirErrorRotacion({ code: '42501', message: 'permission denied' }), 'Sin permiso para rotar neumáticos de este vehículo');
+  assert.equal(traducirErrorRotacion({ code: '22023', message: 'odometro obligatorio: indicar la lectura del odómetro del vehículo' }),
+    'Indicar la lectura del odómetro del vehículo');
+  assert.equal(traducirErrorRotacion({ code: '23514', message: 'el odómetro del vehículo no puede ser menor al actual (1200 km)' }),
+    'El odómetro del vehículo no puede ser menor al actual (1200 km)');
+  assert.match(traducirErrorRotacion({ code: '22023', message: 'indicar el texto del motivo «otro»' }), /Con «otro»/);
+  assert.match(traducirErrorRotacion({ code: '22023', message: 'motivo inválido para este movimiento' }), /Elegir un motivo/);
+  assert.equal(traducirErrorRotacion({ code: '23514', message: 'el neumático de la posición 3 está dado de baja' }),
+    'Ese neumático ya está dado de baja. Actualizar la pantalla');
+  assert.equal(traducirErrorRotacion({ code: 'P0002', message: 'no hay neumático en la posición 3 del vehículo 7' }),
+    'Ya no hay neumático en una de las posiciones. Actualizar la pantalla');
+  assert.equal(traducirErrorRotacion({ code: '53400', message: 'no hay posición libre para intercambiar' }),
+    'No se pudo registrar la rotación. No se guardó nada');
 });

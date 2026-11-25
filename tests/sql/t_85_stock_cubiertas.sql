@@ -243,32 +243,32 @@ rollback to s0;
 -- ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
 select test.denied('con lote y cubierta a la vez: elegir una sola fuente',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, 851::bigint, null, null, 0, (select id from pg_temp._c where k = 'S-A1'))$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, 851::bigint, null, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$, '22023');
 select test.denied('con cubierta y datos nuevos a la vez',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"M"}'::jsonb, null, 0, (select id from pg_temp._c where k = 'S-A1'))$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, '{"marca":"M"}'::jsonb, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$, '22023');
 select test.denied('con cubierta no se informa otra quema',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, 'OTRA', 0, (select id from pg_temp._c where k = 'S-A1'))$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, 'OTRA', 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$, '22023');
 select test.denied('cubierta de otro cliente',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-B1'))$$, 'P0002');
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-B1'), p_motivo_codigo => 'desgaste')$$, 'P0002');
 select test.denied('cubierta inexistente',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, 99999::bigint)$$, 'P0002');
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, 99999::bigint, p_motivo_codigo => 'desgaste')$$, 'P0002');
 reset role;
 select test.eq('los rechazos no tocaron la posición 1', (select idneumatico from public.neumaticos where vehiculo_id = 1 and posicion = 1), 'T-1-1');
 -- El perfil de sucursal no usa el stock
 select test.become('authenticated', test.u_s85());
 select test.denied('sucursal no monta cubiertas del stock',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'))$$);
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.become('authenticated', test.u_cli_b());
 select test.denied('otro cliente no monta en un vehículo ajeno',
-  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'))$$);
+  $$select public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$);
 reset role;
 select test.eq('la cubierta sigue en stock tras los rechazos', (select vehiculo_id is null from public.neumaticos where idneumatico = 'CB-t-a'), true);
 
 -- medición previa de otro neumático para comprobar que no se hereda
 select test.become('authenticated', test.u_cli_a());
 select test.eq('monta la cubierta en P1 (baja del viejo)',
-  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Desgaste', 2000, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'))->>'condicion_nuevo'), 'usado');
+  (public.neumatico_cambiar(1::bigint, 1::smallint, 'baja', 'Desgaste', 2000, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')->>'condicion_nuevo'), 'usado');
 reset role;
 select test.eq('misma fila: sale del stock y ocupa la posición (conserva id, idneumatico y quema)',
   (select id = (select id from pg_temp._c where k = 'S-A1') and idneumatico = 'CB-t-a' and numero_quema = 'S-A1' and vehiculo_id = 1 and posicion = 1
@@ -289,7 +289,7 @@ select test.eq('v_estado_neumaticos toma la medición de la cubierta', (select p
 -- Un montado ya no se puede volver a montar (la cubierta ya no está en el stock)
 select test.become('authenticated', test.u_cli_a());
 select test.denied('segundo montaje de la misma cubierta',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'))$$, 'P0002');
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, null, null, 0, (select id from pg_temp._c where k = 'S-A1'), p_motivo_codigo => 'desgaste')$$, 'P0002');
 select test.denied('no se elimina una cubierta montada', $$select public.stock_cubierta_eliminar((select id from pg_temp._c where k = 'S-A1'))$$, '55000');
 reset role;
 
@@ -301,23 +301,23 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, mm1, mm2, mm3,
   values (1, 1, 2, 9, 9, 9, 'T-1-2', now() - interval '2 days');
 select test.become('authenticated', test.u_cli_a());
 select test.denied('sin quema el neumático retirado no vuelve al stock',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint)$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '22023');
 select test.denied('la quema indicada ya existe en otro neumático',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'q-montada')$$, '23505');
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'q-montada', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '23505');
 select test.denied('sucursal de otro cliente como destino',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 403::bigint, 'Q-VIEJA')$$);
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 403::bigint, 'Q-VIEJA', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$);
 select test.denied('solo "almacenado" vuelve al stock',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA')$$, '22023');
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'baja', 'x', null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA', p_motivo_codigo => 'desgaste')$$, '22023');
 reset role;
 select test.eq('los rechazos no movieron nada (atómico)',
   (select vehiculo_id || '|' || posicion || '|' || estado from public.neumaticos where idneumatico = 'T-1-2'), '1|2|montado');
 select test.become('authenticated', test.u_s85());
 select test.denied('el perfil de sucursal no devuelve al stock',
-  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA')$$);
+  $$select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', null, null, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$);
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('devuelve al stock en Sur con quema nueva',
-  (select (r->>'neumatico_viejo_en_stock') from (select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', 'Rotación a otro coche', 2100, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA') r) q), 'true');
+  (select (r->>'neumatico_viejo_en_stock') from (select public.neumatico_cambiar(1::bigint, 2::smallint, 'almacenado', 'Rotación a otro coche', 2100, null, '{"marca":"N"}'::jsonb, null, 0, null, true, 402::bigint, 'Q-VIEJA', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba') r) q), 'true');
 select test.eq('el stock del cliente la lista con su quema y sucursal',
   (select numero_quema || '|' || sucursal_id || '|' || estado || '|' || condicion from public.neumaticos where vehiculo_id is null and idneumatico = 'T-1-2'), 'Q-VIEJA|402|almacenado|usado');
 reset role;
@@ -334,7 +334,7 @@ select test.become('authenticated', test.u_cli_a());
 select test.denied('no elimina una cubierta que tuvo uso', $$select public.stock_cubierta_eliminar((select id from public.neumaticos where idneumatico = 'T-1-2'))$$, '55000');
 -- Se vuelve a montar en otro vehículo (vehículo 2 es de otra sucursal; el global puede)
 select test.eq('se monta otra vez en el vehículo 2 (P2: neumático de esa posición pasa a almacenado)',
-  (public.neumatico_cambiar(2::bigint, 2::smallint, 'almacenado', null, 500, null, null, null, 0, (select id from public.neumaticos where idneumatico = 'T-1-2'))->>'cubierta_id')::bigint, (select id from public.neumaticos where idneumatico = 'T-1-2'));
+  (public.neumatico_cambiar(2::bigint, 2::smallint, 'almacenado', null, 500, null, null, null, 0, (select id from public.neumaticos where idneumatico = 'T-1-2'), p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'cubierta_id')::bigint, (select id from public.neumaticos where idneumatico = 'T-1-2'));
 reset role;
 select test.eq('la misma cubierta ahora está en el vehículo 2',
   (select vehiculo_id || '|' || posicion || '|' || estado || '|' || numero_quema || '|' || coalesce(sucursal_id::text, '-') from public.neumaticos where idneumatico = 'T-1-2'), '2|2|montado|Q-VIEJA|-');
@@ -393,18 +393,18 @@ rollback to s0;
 -- Lote antiguo: sigue disponible, descuenta y crea un neumático con condición usado
 select test.become('authenticated', test.u_cli_a());
 select test.eq('lote antiguo: cambio con p_stock_id',
-  (public.neumatico_cambiar(1::bigint, 3::smallint, 'reencauche', null, null, 851::bigint)->>'stock_restante')::int, 2);
+  (public.neumatico_cambiar(1::bigint, 3::smallint, 'reencauche', null, null, 851::bigint, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'stock_restante')::int, 2);
 select test.eq('lote antiguo: el neumático nuevo es usado y sin vida', (select condicion || '|' || vida from public.neumaticos where vehiculo_id = 1 and posicion = 3), 'usado|0');
 select test.eq('reencauche: el viejo queda recauchutado y aparcado en el vehículo (comportamiento anterior)',
   (select condicion || '|' || (vehiculo_id is not null) || '|' || estado || '|' || vida from public.neumaticos where idneumatico = 'T-1-3'), 'recauchutado|true|almacenado|1');
 select test.eq('almacenado sin devolver al stock: se aparca en el vehículo (comportamiento anterior)',
-  (public.neumatico_cambiar(1::bigint, 4::smallint, 'almacenado', null, null, null, '{"marca":"Z"}'::jsonb)->>'neumatico_viejo_en_stock'), 'false');
+  (public.neumatico_cambiar(1::bigint, 4::smallint, 'almacenado', null, null, null, '{"marca":"Z"}'::jsonb, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'neumatico_viejo_en_stock'), 'false');
 select test.eq('...y sigue con vehículo', (select vehiculo_id is not null from public.neumaticos where idneumatico = 'T-1-4'), true);
-select test.eq('reparación: condición reparado', (public.neumatico_cambiar(1::bigint, 5::smallint, 'reparacion', null, null, null, '{"marca":"Z"}'::jsonb)->>'destino_viejo'), 'reparacion');
+select test.eq('reparación: condición reparado', (public.neumatico_cambiar(1::bigint, 5::smallint, 'reparacion', null, null, null, '{"marca":"Z"}'::jsonb, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'destino_viejo'), 'reparacion');
 select test.eq('...queda reparado', (select condicion from public.neumaticos where idneumatico = 'T-1-5'), 'reparado');
 select test.eq('ingresado con vida 2 figura recauchutado',
-  (public.neumatico_cambiar(1::bigint, 6::smallint, 'baja', 'x', null, null, '{"marca":"R","vida":2}'::jsonb)->>'condicion_nuevo'), 'recauchutado');
-select test.denied('sin ninguna fuente de neumático nuevo', $$select public.neumatico_cambiar(1::bigint, 7::smallint, 'baja', 'x')$$, '22023');
+  (public.neumatico_cambiar(1::bigint, 6::smallint, 'baja', 'x', null, null, '{"marca":"R","vida":2}'::jsonb, p_motivo_codigo => 'desgaste')->>'condicion_nuevo'), 'recauchutado');
+select test.denied('sin ninguna fuente de neumático nuevo', $$select public.neumatico_cambiar(1::bigint, 7::smallint, 'baja', 'x', p_motivo_codigo => 'desgaste')$$, '22023');
 reset role;
 
 -- La API de proveedor y las vistas no ven las cubiertas sin montar

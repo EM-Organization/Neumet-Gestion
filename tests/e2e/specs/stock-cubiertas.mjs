@@ -151,9 +151,9 @@ export function registrar(env) {
       ]);
       for (const x of r) assert.equal(x.error && x.error.code, '42501', JSON.stringify(x));
       // Tampoco puede montar una cubierta de Demo ni en un vehículo de Demo
-      const m1 = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: vehMio, p_posicion: 1, p_destino_viejo: 'baja', p_motivo: 'x', p_cubierta_id: demo.id });
+      const m1 = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: vehMio, p_posicion: 1, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_cubierta_id: demo.id });
       assert.equal(m1.error && m1.error.code, 'P0002');
-      const m2 = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: Number(env.sql(`select id from public.vehiculos where patente = 'DEMO001'`)), p_posicion: 1, p_destino_viejo: 'baja', p_motivo: 'x', p_cubierta_id: mias[0].id });
+      const m2 = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: Number(env.sql(`select id from public.vehiculos where patente = 'DEMO001'`)), p_posicion: 1, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_cubierta_id: mias[0].id });
       assert.equal(m2.error && m2.error.code, '42501');
     }, { http: RECHAZO });
     assert.equal(foto(env), antes, 'la base no cambió');
@@ -445,7 +445,7 @@ export function registrar(env) {
   test('Taller (global): dos montajes simultáneos de la misma cubierta: uno confirma y el otro falla sin duplicar stock', async () => {
     const cub = unaCubierta(env, 'S-004');
     const v1 = Number(env.sql(`select id from public.vehiculos where patente = 'DEMO007'`)), v2 = Number(env.sql(`select id from public.vehiculos where patente = 'DEMO008'`));
-    const base = { p_posicion: 1, p_destino_viejo: 'baja', p_motivo: 'Concurrencia E2E', p_cubierta_id: cub.id };
+    const base = { p_posicion: 1, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_cubierta_id: cub.id };
     const nCub = Number(env.sql(`select count(*) from public.neumaticos where numero_quema = 'S-004' and cliente_id = ${DEMO}`));
     let r;
     await flujo(env, 'montaje-simultaneo', 'global', async p => {
