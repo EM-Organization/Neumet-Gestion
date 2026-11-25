@@ -15,7 +15,7 @@ Este documento dice qué regla aplica el sistema, con qué parámetros, en qué 
 
 | RN | Regla | Parámetros | Estado | CA |
 |---|---|---|---|---|
-| RN-01 | El desgaste, las alertas y las sugerencias usan la huella mínima de las tres mediciones. El promedio solo se muestra. | Huella mínima `min(mm1, mm2, mm3)`; umbrales de RN-02 | Parcial: estado y alertas por huella mínima en `main` (migración `20261126000000`, aplicación en producción sin confirmar). Faltan umbrales y leyenda, en la ola 2; CA-01 sin ola asignada | CA-01 |
+| RN-01 | El desgaste, las alertas y las sugerencias usan la huella mínima de las tres mediciones. El promedio solo se muestra. | Huella mínima `min(mm1, mm2, mm3)`; umbrales de RN-02 | Parcial: estado y alertas por huella mínima en `main` (migración `20261126000000`, aplicación en producción **[confirmar]**). Faltan umbrales y leyenda, en la ola 2; CA-01 sin ola asignada | CA-01 |
 | RN-02 | Retiro a 3 mm en todos los ejes. En dirección, aviso a 8 mm y límite a 6 mm para pasar la cubierta atrás (a tracción o al eje loco), ambos en amarillo (P-02). En tracción, de 15 a 3 mm, con rotación dentro del eje. | `direccion_aviso_mm` 8; `direccion_limite_mm` 6; `retiro_mm` 3; `traccion_inicial_mm` 15 (solo informativo) | Ola 2 | CA-02 |
 | RN-03 | Una direccional puede rotar a tracción o al eje loco sin aprobación ni aviso de posición. | Ninguno | Ola 1 | CA-03 |
 | RN-04 | El rendimiento (tasa, proyección, CPK, km por mm y km por vida) se mide por kilómetros con odómetro. El tiempo solo es respaldo rotulado cuando no hay odómetro. | Tasa en mm por 1.000 km | Ola 6 | CA-04 |
