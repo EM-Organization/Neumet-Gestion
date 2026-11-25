@@ -1346,11 +1346,11 @@ Implementa RN-12 (odómetro obligatorio, en transición) y RN-14 (motivo de cada
   - `rotacion` (5): `swap_20000` Swap a 20.000 km · `diferencia_huellas` Diferencia entre huellas · `paso_direccional_a_traccion` Direccional pasa a tracción o eje loco · `paso_a_eje_loco` Paso a eje loco · `otro` Otro.
   - `cambio` (4): `desgaste` Desgaste · `danio` Daño o pinchazo · `desgaste_irregular` Desgaste irregular · `otro` Otro. Propuesta pendiente de confirmar con negocio.
   - `desmontaje` (4): `desgaste` Desgaste · `danio` Daño o pinchazo · `traslado` Pasa a otro vehículo o al stock · `otro` Otro. Propuesta pendiente de confirmar con negocio.
-- `otro` exige texto (máx. 300) en todos los tipos. Los seeds usan `on conflict ... do update` para etiqueta y orden: volver a correr la migración cambia el texto, no borra filas ni cambia códigos.
+- `otro` exige texto (máx. 300) en todos los tipos, y es el único código que guarda texto: con otro código el trigger pone `motivo_texto` en NULL y el motivo queda con la etiqueta del catálogo. Los seeds usan `on conflict ... do update` para etiqueta y orden: volver a correr la migración cambia el texto, no borra filas ni cambia códigos.
 - RLS de lectura: la base la ve cualquier usuario con cliente (un usuario «sin perfil» no la ve); el personalizado, solo su cliente; el admin del equipo ve todo. No hay políticas de escritura: el catálogo se cambia con una migración.
 
 ### AA.4 Motivo por tipo de evento (propuesta)
-El trigger `eventos_motivo_validar` (`before insert or update of tipo, motivo_codigo, motivo_texto`) valida el código contra el catálogo **y** contra el tipo de evento, también en escrituras directas:
+El trigger `eventos_motivo_validar` (`before insert or update of tipo, motivo_codigo, motivo_texto`) valida el código contra el catálogo **y** contra el tipo de evento, también en escrituras directas, y pone `motivo_texto` en NULL si el código no es `otro`:
 
 | Evento (`eventos_neumatico.tipo`) | Tipos de catálogo que admite |
 |---|---|
@@ -1379,7 +1379,7 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 - Aplicar la migración no cambia la exigencia de ningún cliente: los dos flags siguen en `false` hasta que se activen (docs/11 §3.2.2).
 
 ### AA.8 Pruebas
-- SQL: `tests/sql/t_105_odometro_motivos.sql`. Cubre el catálogo y los flags (conteos y grants), la RLS por rol (global, sucursal, cliente, sin perfil, admin, anon), los flags en `false` y en `true` para montar, desmontar, cambiar, rotar y la API, el odómetro menor (`23514`), CA-14 por RPC (código inexistente, de otro tipo, «otro» sin texto, texto de 301, motivo inactivo, cambio a baja y a reparación), el trigger en escrituras directas y CA-03 (rotar 1 a 7 en 6×2 con motivo y odómetro).
+- SQL: `tests/sql/t_105_odometro_motivos.sql`. Cubre el catálogo y los flags (conteos y grants), la RLS por rol (global, sucursal, cliente, sin perfil, admin, anon), los flags en `false` y en `true` para montar, desmontar, cambiar, rotar y la API, el odómetro menor (`23514`), CA-14 por RPC (código inexistente, de otro tipo, «otro» sin texto, texto de 301, motivo inactivo, cambio a baja y a reparación), el trigger en escrituras directas (el texto solo con «otro», sección L) y CA-03 (rotar 1 a 7 en 6×2 con motivo y odómetro).
 - `t_90` y `t_96` pasan sin cambios. `t_96` recorre todas las columnas de `clientes` (las nuevas son legibles y no escribibles por `authenticated`) y `t_90` las de `eventos_neumatico`.
 - La migración corre dos veces en `tests/sql/run.sh` (idempotencia).
 
@@ -1387,10 +1387,10 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 - `20261126020000_odometro_motivos.sql` **no está aplicada en producción**. Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), que tampoco está aplicada: se aplican en ese orden, con `supabase db push --dry-run` y luego el CLI, tras la compuerta de calidad.
 
 ### AA.10 Interfaz: clics y pruebas (rotar y cambiar)
-- Rotar: antes, 2 acciones (elegir la posición y «Rotar»). Ahora, 4 (posición, «Rotar», motivo y Enter), más el odómetro tecleado cuando el cliente lo exige. El aumento lo pide RN-14 (motivo obligatorio) y RN-12 (odómetro). «Rotar» abre el diálogo con el odómetro enfocado; el motivo no viene elegido, para que el operario lo decida.
+- Rotar: antes, 2 acciones (elegir la posición y «Rotar»). Ahora, 4 (posición, «Rotar», motivo y Enter), más el odómetro tecleado cuando el cliente lo exige. El aumento lo pide RN-14 (motivo obligatorio) y RN-12 (odómetro). «Rotar» abre el diálogo con el motivo enfocado y sin elegir, para que el operario lo decida; al cancelar, el foco vuelve al botón «Rotar».
 - Cambiar: no suma clics. El motivo viene con «Desgaste» marcado.
 - E2E: `taller.mjs` confirma la rotación desde el diálogo (`tests/e2e/lib/rotacion.mjs`). `tests/e2e/specs/motivos-odometro.mjs` cubre dos casos: rotar con motivo y odómetro (con el odómetro obligatorio, sin lectura no se envía nada) y cambiar a baja con un motivo del catálogo. Un camión que la RLS oculta avisa «No hay neumático en …» y no llega a la RPC `neumatico_rotar` (prueba «Taller (salto)» de `taller.mjs`).
-- Smoke: `cambio.flow.js` en los modos de cliente y `vehiculo.flow.js` en `detalle`.
+- Smoke: `cambio.flow.js` en los modos de cliente y `vehiculo.flow.js` en `detalle` (el foco de Rotar: al abrir, en el motivo; al cancelar, vuelve al botón que lo abrió).
 - Unitarias: `tests/unit/motivos.test.mjs` y `tests/unit/cambio-neumatico.test.mjs`.
 - Escenas visuales (`tests/visual/scenes.js`): `confirmar-intercambio` elige el motivo y confirma en el diálogo; `rotar-dialogo` deja el diálogo abierto, sin confirmar.
 
