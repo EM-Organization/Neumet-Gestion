@@ -51,7 +51,7 @@
         var ms = q.maybeSingle;
         q.maybeSingle = function () {
           return ms.apply(q, arguments).then(function (o) {
-            return o && o.data ? { data: Object.assign({ umbral_bajo_mm: 8, umbral_critico_mm: 5, umbral_retiro_mm: 3, alerta_histeresis_mm: 0.5, dias_sin_medir_alerta: 30, irregularidad_mm: 2 }, o.data), error: o.error } : o;
+            return o && o.data ? { data: Object.assign({ umbral_bajo_mm: 8, umbral_critico_mm: 5, umbral_retiro_mm: 3, alerta_histeresis_mm: 0.5, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, swap_km: 20000 }, o.data), error: o.error } : o;
           });
         };
       }

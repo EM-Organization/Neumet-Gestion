@@ -16,7 +16,13 @@ export const CAMPOS_UMBRAL = [
   // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
   { key: 'alerta_histeresis_mm', lbl: 'Histéresis de alerta (mm)', ayuda: 'Margen sobre el umbral de retiro para resolver la alerta (0 a 3 mm)', mm: false, hist: true },
   { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para indicador', ayuda: 'Indicador «sin medir» pasado este plazo (solo en la vista de estado)', mm: false },
-  { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true }
+  { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true },
+  // Pasar atrás (cubiertas de dirección) va en mm, pero fuera de las reglas de los umbrales de desgaste: mm: false y dirMm: true
+  // (de 0 a 99,9; por qué el aviso no admite 0, ver validarUmbrales). Se mide en la huella mínima, como el resto (RN-01).
+  { key: 'direccion_aviso_mm', lbl: 'Pasar atrás desde (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos', mm: false, dirMm: true },
+  { key: 'direccion_limite_mm', lbl: 'Pasar atrás ya bajo (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos: pasarlas atrás', mm: false, dirMm: true },
+  // Swap: kilómetros de la primera rotación de una cubierta nueva (RN-05, 20.000 por defecto). Entero, no mm.
+  { key: 'swap_km', lbl: 'Swap a los (km)', ayuda: 'Primera rotación de una cubierta nueva', mm: false }
 ];
 
 const MM_MAX = 99.9; // numeric(3,1)
@@ -54,8 +60,22 @@ export function validarUmbrales(raw = {}) {
   if (!Number.isInteger(v.dias_sin_medir_alerta) || v.dias_sin_medir_alerta < 1 || v.dias_sin_medir_alerta > 3650) {
     return { ok: false, campo: 'dias_sin_medir_alerta', error: `${lblDe('dias_sin_medir_alerta')}: entero entre 1 y 3650` };
   }
+  // Pasar atrás: de 0 a 99,9 con un decimal. El aviso no admite 0 porque el límite, que debe quedar por debajo, no puede ser
+  // negativo; por eso en la práctica solo el límite puede valer 0.
+  for (const c of CAMPOS_UMBRAL.filter(c => c.dirMm)) {
+    const n = v[c.key];
+    if (n < 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser entre 0 y ${MM_MAX}` };
+    if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-9) return { ok: false, campo: c.key, error: `${c.lbl}: máximo un decimal` };
+  }
+  if (!Number.isInteger(v.swap_km) || v.swap_km < 1000 || v.swap_km > 200000) {
+    return { ok: false, campo: 'swap_km', error: `${lblDe('swap_km')}: entero entre 1000 y 200000` };
+  }
   if (!(v.umbral_retiro_mm < v.umbral_critico_mm && v.umbral_critico_mm < v.umbral_bajo_mm)) {
     return { ok: false, campo: 'umbral_critico_mm', error: `Los umbrales deben descender: ${ORDEN_NOMBRES}` };
+  }
+  // El límite (ya bajo) debe quedar por debajo del aviso (desde): si no, el segundo nivel no añade nada.
+  if (!(v.direccion_limite_mm < v.direccion_aviso_mm)) {
+    return { ok: false, campo: 'direccion_limite_mm', error: `${lblDe('direccion_limite_mm')}: debe ser menor que ${lblDe('direccion_aviso_mm')}` };
   }
   return { ok: true, valores: v };
 }

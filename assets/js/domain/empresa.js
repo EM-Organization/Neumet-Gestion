@@ -2,7 +2,7 @@
 // ni supabase. Contrato de las Edge Functions: supabase/functions/{quitar-acceso-usuario,reponer-acceso-usuario,
 // crear-usuario-seccional}/README.md. Tests: tests/unit/empresa.test.mjs
 import { mensajeErrorCrearUsuario } from './seccional.js';
-import { CAMPOS_UMBRAL, ORDEN_NOMBRES } from './umbrales.js';
+import { CAMPOS_UMBRAL } from './umbrales.js';
 
 export const ESTADO_VIGENTE = 'vigente';
 export const ESTADO_QUITADO = 'quitado';
@@ -134,7 +134,10 @@ const PARAM_UMBRAL = {
   umbral_bajo_mm: 'p_umbral_bajo_mm',
   umbral_retiro_mm: 'p_umbral_retiro_mm',
   dias_sin_medir_alerta: 'p_dias_sin_medir',
-  irregularidad_mm: 'p_irregularidad_mm'
+  irregularidad_mm: 'p_irregularidad_mm',
+  direccion_aviso_mm: 'p_direccion_aviso_mm',
+  direccion_limite_mm: 'p_direccion_limite_mm',
+  swap_km: 'p_swap_km'
 };
 export function argsAlertaConfigurar(clienteId, valores) {
   const a = { p_cliente_id: Number(clienteId) };
@@ -147,6 +150,7 @@ export function mensajeErrorConfigurar(err) {
   const code = err && err.code;
   const msg = String((err && err.message) || '').trim();
   if (code === '42501') return 'Sin permiso para editar los umbrales';
-  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : `Los umbrales no son válidos: deben descender de mayor a menor (${ORDEN_NOMBRES})`;
+  // 23514 también lo disparan pasar atrás y swap: sin detalle, el texto no puede hablar solo del orden de los umbrales.
+  if (code === '23514' || code === '22023') return msg ? `Los umbrales no son válidos: ${msg}` : 'Los umbrales no son válidos. Revisar los valores.';
   return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';
 }
