@@ -8,6 +8,11 @@ export interface PerfilApi {
    * Cualquier otra cosa (false, ausente) cierra: la cuenta se trata como sin perfil.
    */
   cliente_activo?: boolean;
+  /**
+   * Flag del cliente (`clientes.odometro_obligatorio`). Solo `false` relaja la exigencia del odómetro: ausente o
+   * cualquier otra cosa la exige (falla cerrado).
+   */
+  odometro_obligatorio?: boolean;
 }
 
 export interface ItemRpc {
@@ -29,6 +34,8 @@ export interface GuardarArgs {
   hash: string;
   /** Distribución informada por la app (código del catálogo) o null si no la informó. */
   distribucion: string | null;
+  /** Odómetro del vehículo al momento del registro (km enteros >= 0) o null si no se informó. */
+  odometro_km: number | null;
 }
 
 export interface GuardarRpc {

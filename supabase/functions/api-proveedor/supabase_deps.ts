@@ -80,7 +80,7 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
       async getPerfil(userId): Promise<PerfilApi | null> {
         const q = `${cfg.url}/rest/v1/perfiles?user_id=eq.${
           encodeURIComponent(userId)
-        }&select=rol,cliente_id,clientes(deleted_at)&limit=1`;
+        }&select=rol,cliente_id,clientes(deleted_at,odometro_obligatorio)&limit=1`;
         const r = await f(q, { headers: svc, signal: AbortSignal.timeout(8000) });
         if (!r.ok) {
           await r.body?.cancel();
@@ -92,9 +92,16 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
         // El embed devuelve un objeto (FK muchos-a-uno). Falla cerrado: sin objeto
         // (cliente inexistente o embed ausente) o con deleted_at no nulo, no está activo.
         const cli = fila.clientes;
-        const activo = cli !== null && typeof cli === 'object' && !Array.isArray(cli) && 'deleted_at' in cli &&
-          cli.deleted_at === null;
-        return { rol: fila.rol, cliente_id: fila.cliente_id, cliente_activo: activo };
+        const esObjeto = cli !== null && typeof cli === 'object' && !Array.isArray(cli);
+        const activo = esObjeto && 'deleted_at' in cli && cli.deleted_at === null;
+        // RN-12: solo un `false` explícito relaja la exigencia del odómetro; lo demás la mantiene (falla cerrado).
+        const odometroObligatorio = !(esObjeto && cli.odometro_obligatorio === false);
+        return {
+          rol: fila.rol,
+          cliente_id: fila.cliente_id,
+          cliente_activo: activo,
+          odometro_obligatorio: odometroObligatorio,
+        };
       },
       rateLimit: (cuenta, max) => rpc<boolean>('api_rate_limit_hit', { p_cuenta: cuenta, p_max: max }),
       obtener: (clienteId, matricula, numero) =>
@@ -114,6 +121,8 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
           p_hash: a.hash,
           // Solo si la app la informó: sin ella la llamada es idéntica a la de antes (no depende del orden de despliegue).
           ...(a.distribucion !== null ? { p_distribucion: a.distribucion } : {}),
+          // Igual que la distribución: sin odómetro la llamada es la de antes (no depende del orden de despliegue).
+          ...(a.odometro_km !== null ? { p_odometro_km: a.odometro_km } : {}),
         }),
       async log(e: LogEntrada) {
         const r = await f(`${cfg.url}/rest/v1/ingesta_log`, {
