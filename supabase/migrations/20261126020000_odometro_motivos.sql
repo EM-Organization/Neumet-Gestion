@@ -5,36 +5,43 @@
 -- Idempotente: el CI la aplica dos veces. No hace backfill ni UPDATE masivo, no reevalúa alertas y no activa ningún cliente.
 --
 -- Qué hace:
---  1. clientes.odometro_obligatorio (default false, transición de RN-12). Con true, montar, desmontar, cambiar, rotar y
---     api_guardar_montaje sin odómetro responden 22023. Con false, el request viejo sigue funcionando y el km queda
---     «Sin dato»: nunca se estima ni se guarda un cero. Se otorga solo lectura a authenticated (columna).
+--  1. Dos flags por cliente (default false, transición de RN-12). clientes.odometro_obligatorio exige el odómetro en
+--     montar, desmontar, cambiar y rotar (panel). clientes.odometro_obligatorio_api lo exige en api_guardar_montaje.
+--     Son independientes: activar uno no activa el otro. Con false, el request viejo sigue funcionando y el km queda
+--     «Sin dato»: nunca se estima ni se guarda un cero. Se otorgan solo lectura a authenticated (columnas).
 --  2. motivos_movimiento: catálogo por tipo (cliente_id null = base). Solo lectura para authenticated; no hay escritura
---     directa. Catálogo base SOLO con lo que respalda la spec (sección 4.1): baja y rotación. Para cambio y desmontaje
---     no hay taxonomía confirmada: solo «otro» (texto obligatorio). rotacion_disco y alineacion existen en el CHECK para
---     la ola siguiente, sin filas sembradas.
+--     directa. Catálogo base CERRADO por tipo: baja y rotación (spec, sección 4.1); cambio y desmontaje con cuatro códigos
+--     cada uno, «otro» incluido (exige texto), pendientes de confirmar con negocio. rotacion_disco y alineacion existen en
+--     el CHECK para la ola siguiente, sin filas sembradas.
 --  3. eventos_neumatico.motivo_codigo y motivo_texto (máx. 300). La historia anterior queda NULL: no se migran motivos ni
---     textos viejos. Un trigger valida el código contra el catálogo también en escrituras directas (no hay bypass por consola).
---  4. Motivos en rotar (tipo rotacion), cambiar y desmontar (tipo baja cuando el destino es baja; si no, cambio o
---     desmontaje, con solo «otro»). Montar standalone NO lleva motivo.
+--     textos viejos. Un trigger valida el código contra el catálogo y contra el tipo de evento también en escrituras
+--     directas (no hay bypass por consola).
+--  4. Motivos en rotar (catálogo rotacion), cambiar (baja si el destino es baja; si no, cambio) y desmontar (baja si el
+--     destino es baja; si no, desmontaje). Montar standalone NO lleva motivo.
 --  5. p_motivo_codigo y p_motivo_texto van al final de las firmas, con default null. Sin código válido: 22023.
 --     El p_motivo antiguo se acepta por compatibilidad de firma pero no decide nada: no es un atajo.
 --  6. neumatico_rotar rechaza un odómetro menor al del vehículo (la spec lo declara comportamiento vigente, pero el código no
 --     lo hacía) y sube vehiculos.odometro_km solo si el valor es mayor, como montar y desmontar.
---  7. api_guardar_montaje recibe p_odometro_km al final (default null): el Deno viejo sigue llamando sin él.
+--  7. api_guardar_montaje recibe p_odometro_km al final (default null): el Deno viejo sigue llamando sin él. Con el flag
+--     de la API, sin odómetro responde 22023; el handler lo traduce a 422 (motivo «odometro»).
 --
 -- Incompatibilidad documentada (docs/08 apéndice AA): una llamada antigua a rotar, cambiar o desmontar sin código
 -- responde 22023 aunque traiga p_motivo. El panel se actualiza en el mismo cambio.
 
 -- -----------------------------------------------------------------------------
--- 1. clientes.odometro_obligatorio
+-- 1. clientes.odometro_obligatorio (panel) y clientes.odometro_obligatorio_api (API)
 -- -----------------------------------------------------------------------------
+-- Dos flags: la transición del panel y la de la API no van atadas (el Deno viejo sigue sin el odómetro).
 alter table public.clientes
-  add column if not exists odometro_obligatorio boolean not null default false;
--- Privilegios por columna: se otorga a propósito (no es sensible; t_96 exige que toda columna nueva se otorgue así).
--- Solo lectura: el flag lo cambia el equipo de datos, nunca el panel.
-grant select (odometro_obligatorio) on public.clientes to authenticated;
+  add column if not exists odometro_obligatorio     boolean not null default false,
+  add column if not exists odometro_obligatorio_api boolean not null default false;
+-- Privilegios por columna: se otorgan a propósito (no son sensibles; t_96 exige que toda columna nueva se otorgue así).
+-- Solo lectura: los flags los cambia el equipo de datos, nunca el panel.
+grant select (odometro_obligatorio, odometro_obligatorio_api) on public.clientes to authenticated;
 comment on column public.clientes.odometro_obligatorio is
-  'RN-12: si es true, los movimientos y la API exigen el odómetro del vehículo (22023). Default false: transición. Solo lectura para authenticated.';
+  'RN-12: si es true, montar, desmontar, cambiar y rotar sin odómetro responden 22023. Default false: transición. Solo lectura para authenticated.';
+comment on column public.clientes.odometro_obligatorio_api is
+  'RN-12: si es true, api_guardar_montaje sin odómetro responde 22023. Default false: transición. Independiente de odometro_obligatorio. Solo lectura para authenticated.';
 
 -- -----------------------------------------------------------------------------
 -- 2. motivos_movimiento (catálogo) con RLS de lectura y sin escritura para authenticated
@@ -63,12 +70,19 @@ insert into public.motivos_movimiento (cliente_id, tipo, codigo, etiqueta, orden
   (null, 'baja', 'otro', 'Otro', 9),
   (null, 'rotacion', 'swap_20000', 'Swap a 20.000 km', 1),
   (null, 'rotacion', 'diferencia_huellas', 'Diferencia entre huellas', 2),
-  (null, 'rotacion', 'paso_direccional_a_traccion', 'Paso de direccional a tracción', 3),
+  (null, 'rotacion', 'paso_direccional_a_traccion', 'Direccional pasa a tracción o eje loco', 3),
   (null, 'rotacion', 'paso_a_eje_loco', 'Paso a eje loco', 4),
   (null, 'rotacion', 'otro', 'Otro', 9),
+  (null, 'cambio', 'desgaste', 'Desgaste', 1),
+  (null, 'cambio', 'danio', 'Daño o pinchazo', 2),
+  (null, 'cambio', 'desgaste_irregular', 'Desgaste irregular', 3),
   (null, 'cambio', 'otro', 'Otro', 9),
+  (null, 'desmontaje', 'desgaste', 'Desgaste', 1),
+  (null, 'desmontaje', 'danio', 'Daño o pinchazo', 2),
+  (null, 'desmontaje', 'traslado', 'Pasa a otro vehículo o al stock', 3),
   (null, 'desmontaje', 'otro', 'Otro', 9)
-on conflict (tipo, codigo) where cliente_id is null do nothing;
+-- do update: la etiqueta y el orden del seed son la fuente; un cambio de texto se aplica al volver a correr la migración.
+on conflict (tipo, codigo) where cliente_id is null do update set etiqueta = excluded.etiqueta, orden = excluded.orden;
 
 alter table public.motivos_movimiento enable row level security;
 revoke all on table public.motivos_movimiento from public, anon, authenticated;
@@ -99,18 +113,30 @@ comment on column public.eventos_neumatico.motivo_texto is
 grant select (motivo_codigo, motivo_texto) on public.eventos_neumatico to authenticated;
 
 -- Escrituras directas (admin, consola) también respetan el catálogo: la base es la autoridad.
+-- La correspondencia evento → tipo de catálogo es una propuesta (docs/08 apéndice AA): un evento que no figura aquí
+-- no admite motivo, y cada motivo vale solo con los tipos de catálogo que le corresponden a ese evento.
 create or replace function public.eventos_motivo_validar()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_tipos text[];
 begin
   if new.motivo_codigo is null then
     return new;
   end if;
+  v_tipos := case new.tipo
+    when 'rotacion'   then array['rotacion', 'rotacion_disco', 'alineacion']
+    when 'desmontaje' then array['desmontaje', 'cambio']
+    when 'baja'       then array['baja']
+    when 'reencauche' then array['cambio']
+    when 'montaje'    then array['cambio', 'baja']
+    else array[]::text[]
+  end;
   if not exists (select 1 from public.motivos_movimiento m
-                  where m.codigo = new.motivo_codigo and m.activo
+                  where m.tipo = any (v_tipos) and m.codigo = new.motivo_codigo and m.activo
                     and (m.cliente_id is null or m.cliente_id = new.cliente_id)) then
     raise exception 'motivo inválido para este movimiento' using errcode = '22023';
   end if;
@@ -124,7 +150,7 @@ revoke all on function public.eventos_motivo_validar() from public, anon, authen
 
 drop trigger if exists trg_eventos_motivo_validar on public.eventos_neumatico;
 create trigger trg_eventos_motivo_validar
-  before insert or update of motivo_codigo, motivo_texto on public.eventos_neumatico
+  before insert or update of tipo, motivo_codigo, motivo_texto on public.eventos_neumatico
   for each row execute function public.eventos_motivo_validar();
 
 -- -----------------------------------------------------------------------------
@@ -145,6 +171,22 @@ begin
 end
 $$;
 revoke all on function public.odometro_obligatorio_validar(bigint, integer) from public, anon, authenticated;
+
+-- Mismo control con el flag de la API. Es un helper aparte: activar uno no activa el otro (la API la usa el Deno viejo).
+create or replace function public.odometro_obligatorio_api_validar(p_cliente_id bigint, p_odometro_km integer)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_odometro_km is null and exists (select 1 from public.clientes c
+                                        where c.id = p_cliente_id and c.odometro_obligatorio_api) then
+    raise exception 'odometro obligatorio: indicar la lectura del odómetro del vehículo' using errcode = '22023';
+  end if;
+end
+$$;
+revoke all on function public.odometro_obligatorio_api_validar(bigint, integer) from public, anon, authenticated;
 
 -- Motivo de un movimiento (RN-14, CA-14). Devuelve el texto legible para el historial y el reporte de bajas:
 -- el texto libre si lo hay («otro»), o la etiqueta del catálogo.
@@ -1129,7 +1171,7 @@ begin
   if p_odometro_km is not null and p_odometro_km < 0 then
     raise exception 'odómetro negativo' using errcode = '23514';
   end if;
-  perform public.odometro_obligatorio_validar(p_cliente_id, p_odometro_km);
+  perform public.odometro_obligatorio_api_validar(p_cliente_id, p_odometro_km);
 
   select v.id, v.tipo_ruedas, v.distribucion into v_veh_id, v_veh_tipo, v_veh_dist
     from public.vehiculos v

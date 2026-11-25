@@ -260,7 +260,7 @@ Admin ve todo; un cliente solo lo suyo; el perfil `api` y usuarios sin perfil, 0
 
 - **Promedio**: `round((mm1+mm2+mm3)/3, 2)` (trigger existente).
 - **Semáforo** (con los umbrales del cliente del vehículo): `sin_datos` si no hay promedio; `critico` si `promedio < umbral_critico`; `bajo` si `promedio < umbral_bajo`; si no `ok`. Límites: 5.00 es `bajo`, 4.99 `critico`, 8.00 `ok`, 7.99 `bajo` (con 8/5).
-- **Desgaste irregular**: `max(mm1,mm2,mm3) - min(mm1,mm2,mm3) > irregularidad_mm` (estricto: 2.0 con umbral 2.0 no alerta). Ojo: `app.js` hoy usa `|mm1-mm3| >= 1.5`; las vistas usan las tres huellas y el umbral del cliente.
+- **Desgaste irregular**: `max(mm1,mm2,mm3) - min(mm1,mm2,mm3) > irregularidad_mm`, con `clientes.irregularidad_mm` (por defecto 2). Estricto: con umbral 2.0, una diferencia de 2.0 no alerta. Es la regla de la alerta de la base (`desgaste_irregular`) y la que usan las vistas de flota y de detalle del vehículo. Ojo: la lectura de una medición (`unevenWear` en `assets/js/domain/desgaste.js`, visible en `assets/js/views/mediciones.js`) todavía usa `|mm1-mm3| >= 1.5`; queda pendiente unificarla con esta regla.
 - **Tasa mm/semana** = `-regr_slope(promedio, epoch(created_at)) * 604800` sobre las mediciones de los **últimos 90 días** de cada **neumático** montado (apéndice D), con **tiempo transcurrido** (no fechas). Solo hay tasa con **al menos 3 mediciones y 14 días** entre la primera y la última de la ventana; si no, `null` («mediciones insuficientes»). La ventana se **reinicia** en el último evento de `reencauche`, `reparacion` o `montaje` del neumático (`eventos_neumatico.neumatico_id`; la rotación no reinicia) y una pendiente negativa da `null` (nunca hay tasa negativa). `n_mediciones_90d` cuenta las mediciones de los últimos 90 días sin reinicio. Desde `20261111000000_tasa_y_rendimiento.sql` la vista se calcula por neumático con sondas a `mediciones_idneumatico_idx` (y, solo para el histórico sin `idneumatico`, a `mediciones_veh_pos_fecha_idx`). Positivo = se está gastando. Un neumático nuevo no mezcla puntos del viejo y, tras rotar, la tasa acompaña al neumático. A diferencia de `mAnalysis` (primera vs última medición), no usa solo los extremos.
 - **Semanas hasta crítico / retiro** = `max(promedio - umbral, 0) / tasa` si `tasa > 0`, si no `null` (0 si ya está por debajo del umbral). El retiro por defecto es 3 mm, igual que el `LIMIT` de `mAnalysis`.
 - **Alertas** (`severidad`): `critico` (3); `bajo` (2); `cruza_critico_pronto` (2: estado ok o bajo con `semanas_hasta_critico <= 4`, `valor` = semanas); `desgaste_irregular` (2, `valor` = diferencia en mm); `sin_medir` (1: neumático montado sin ninguna medición, o última medición más vieja que `dias_sin_medir_alerta` días, `valor` = días o null).
@@ -1323,3 +1323,65 @@ Implementa RN-13 y G-13 (sección 4.5 del spec de reglas de negocio): la rueda d
   - Coherencia: para una cubierta, la suma de `km_recorridos` por vida es `km_en_vehiculos` de `v_km_cubierta` y los km de `v_costo_cubierta` (con `km_previos` en 0). Con CA-13, 50.000 km y CPK 1.000 / 50.000 = 0,02 en las tres vistas.
   - Prueba: `tests/sql/t_104_auxilio_tramos_km.sql`, sección H (`costo_vida_items`, `v_costo_vida`, `v_costo_cubierta`, CPK, E1 y E2) y `cpk_por_grupo('vida')` y `cpk_por_grupo('banda')` con una cohorte aislada: `fecha_compra` de la cubierta CA-13 en 2020-01-01 y `desde = hasta = 2020-01-01` en cliente 1. La fila esperada es una sola (`n_neumaticos = 1`, `moneda = UYU`, 50.000 km y CPK 0,0200 en la clave «Banda original»). Falla con la versión que solo cambiaba `v_km_cubierta` (obtenido 100.000 y CPK 0,0100 en `cpk_por_grupo('vida')`) y pasa con la redefinición. Mutación controlada (quitar en `costo_vida_items` el cierre al entrar a la 99): H da 20.000 y falla; restaurada con checksum.
   - Sin backfill: es una lectura. Los CPK por vida de cubiertas con rotaciones a la 99 bajan por lo que se dejó de contar en el auxilio. Es la corrección buscada, pero cambia cifras ya visibles.
+
+# Apéndice AA · Odómetro obligatorio por cliente y motivo de cada movimiento (`20261126020000_odometro_motivos.sql`)
+
+Implementa RN-12 (odómetro obligatorio, en transición) y RN-14 (motivo de cada movimiento), P0-1 y P0-5 de la hoja de ruta (docs/16). Esta migración es la parte de base de datos: el panel y la API se actualizan en la misma rama, en commits aparte, y el orden de despliegue está en AA.7.
+
+### AA.1 Regla
+- Con `clientes.odometro_obligatorio = true`, montar, desmontar, cambiar y rotar sin odómetro responden `22023` con el mensaje «odometro obligatorio: …». Con `clientes.odometro_obligatorio_api = true`, lo mismo para `api_guardar_montaje`. Los dos flags son independientes y valen `false` por defecto.
+- Con el flag en `false`, el km queda «Sin dato»: nunca se estima ni se guarda un cero.
+- Rotar, cambiar y retirar exigen un motivo del catálogo (`p_motivo_codigo`); sin código válido, `22023`. Montar standalone no lleva motivo.
+- `neumatico_rotar` rechaza un odómetro menor al del vehículo (`23514`) y, como montar y desmontar, sube `vehiculos.odometro_km` solo si el valor es mayor.
+
+### AA.2 Flags y ayudantes
+- `clientes.odometro_obligatorio` (panel) y `clientes.odometro_obligatorio_api` (API): `boolean not null default false`, con privilegio de columna `select` para `authenticated`. `authenticated` no escribe ninguno: los cambia el equipo por SQL (docs/11 §3.2.2).
+- `odometro_obligatorio_validar(bigint, integer)` (panel) y `odometro_obligatorio_api_validar(bigint, integer)` (API). Ambos `SECURITY DEFINER`, `search_path = ''`, sin ejecución para `public`, `anon` ni `authenticated`. El mensaje contiene «odometro» a propósito: el handler de la API lo traduce a 422 (docs/07).
+
+### AA.3 Catálogo `motivos_movimiento`
+- Columnas: `id`, `cliente_id` (null = base), `tipo`, `codigo`, `etiqueta`, `orden`, `activo`, `created_at`. `tipo` ∈ `rotacion`, `rotacion_disco`, `alineacion`, `cambio`, `desmontaje`, `baja`. Índices únicos parciales: `(tipo, codigo)` para la base y `(cliente_id, tipo, codigo)` para los propios.
+- `rotacion_disco` y `alineacion` están en el CHECK sin filas sembradas: son de la ola siguiente.
+- Catálogo base cerrado, sin códigos inventados:
+  - `baja` (6): `desgaste` Desgaste · `danio` Daño · `venta` Venta · `chatarra` Chatarra · `devolucion_proveedor` Devolución al proveedor · `otro` Otro.
+  - `rotacion` (5): `swap_20000` Swap a 20.000 km · `diferencia_huellas` Diferencia entre huellas · `paso_direccional_a_traccion` Direccional pasa a tracción o eje loco · `paso_a_eje_loco` Paso a eje loco · `otro` Otro.
+  - `cambio` (4): `desgaste` Desgaste · `danio` Daño o pinchazo · `desgaste_irregular` Desgaste irregular · `otro` Otro. Propuesta pendiente de confirmar con negocio.
+  - `desmontaje` (4): `desgaste` Desgaste · `danio` Daño o pinchazo · `traslado` Pasa a otro vehículo o al stock · `otro` Otro. Propuesta pendiente de confirmar con negocio.
+- `otro` exige texto (máx. 300) en todos los tipos. Los seeds usan `on conflict ... do update` para etiqueta y orden: volver a correr la migración cambia el texto, no borra filas ni cambia códigos.
+- RLS de lectura: la base la ve cualquier usuario con cliente (un usuario «sin perfil» no la ve); el personalizado, solo su cliente; el admin del equipo ve todo. No hay políticas de escritura: el catálogo se cambia con una migración.
+
+### AA.4 Motivo por tipo de evento (propuesta)
+El trigger `eventos_motivo_validar` (`before insert or update of tipo, motivo_codigo, motivo_texto`) valida el código contra el catálogo **y** contra el tipo de evento, también en escrituras directas:
+
+| Evento (`eventos_neumatico.tipo`) | Tipos de catálogo que admite |
+|---|---|
+| `rotacion` | `rotacion`, `rotacion_disco`, `alineacion` |
+| `desmontaje` | `desmontaje`, `cambio` |
+| `baja` | `baja` |
+| `reencauche` | `cambio` |
+| `montaje` | `cambio`, `baja` |
+| `reparacion` y el resto | ninguno: no admite motivo |
+
+Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con destino baja usan el tipo `baja`; con otro destino, desmontar usa `desmontaje` y cambiar usa `cambio`. El montaje del neumático nuevo en cambiar lleva el mismo motivo que el retiro. Confirmar con negocio antes de ampliarla.
+
+### AA.5 Firmas
+- `neumatico_montar`: sin motivo (montaje standalone).
+- `neumatico_desmontar` y `neumatico_cambiar`: agregan al final `p_motivo_codigo text default null` y `p_motivo_texto text default null`. `p_motivo` se conserva por compatibilidad de firma y no decide nada: el motivo es `p_motivo_codigo`.
+- `neumatico_rotar(p_vehiculo_id, p_pos_a, p_pos_b, p_odometro_km integer default null, p_motivo_codigo text default null, p_motivo_texto text default null)`.
+- `api_guardar_montaje`: agrega `p_odometro_km integer default null` al final. El Deno viejo sigue llamando sin él.
+
+### AA.6 Historia y nulos
+- Los eventos anteriores quedan con `motivo_codigo` y `motivo_texto` NULL: no se migran motivos ni textos. No hay `update` masivo, no se reevalúan alertas y no se activa ningún cliente.
+- Un `odometro_km` NULL en un evento es «Sin dato», no cero.
+
+### AA.7 Compatibilidad y despliegue
+- Incompatibilidad documentada: una llamada antigua a rotar, cambiar o desmontar sin `p_motivo_codigo` responde `22023`, aunque traiga `p_motivo`. Entre aplicar la migración y fusionar el panel, esas tres acciones fallan en producción. Por eso el orden es migración aplicada y verificada, luego fusión del front (docs/11 §3.1).
+- Montar sigue funcionando con el panel anterior, porque no lleva motivo y el flag de movimientos empieza en `false`.
+- Aplicar la migración no cambia la exigencia de ningún cliente: los dos flags siguen en `false` hasta que se activen (docs/11 §3.2.2).
+
+### AA.8 Pruebas
+- SQL: `tests/sql/t_105_odometro_motivos.sql`. Cubre el catálogo y los flags (conteos y grants), la RLS por rol (global, sucursal, cliente, sin perfil, admin, anon), los flags en `false` y en `true` para montar, desmontar, cambiar, rotar y la API, el odómetro menor (`23514`), CA-14 por RPC (código inexistente, de otro tipo, «otro» sin texto, texto de 301, motivo inactivo, cambio a baja y a reparación), el trigger en escrituras directas y CA-03 (rotar 1 a 7 en 6×2 con motivo y odómetro).
+- `t_90` y `t_96` pasan sin cambios. `t_96` recorre todas las columnas de `clientes` (las nuevas son legibles y no escribibles por `authenticated`) y `t_90` las de `eventos_neumatico`.
+- La migración corre dos veces en `tests/sql/run.sh` (idempotencia).
+
+### AA.9 Migración sin aplicar
+- `20261126020000_odometro_motivos.sql` **no está aplicada en producción**. Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), que tampoco está aplicada: se aplican en ese orden, con `supabase db push --dry-run` y luego el CLI, tras la compuerta de calidad.
