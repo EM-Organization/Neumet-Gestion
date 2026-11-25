@@ -20,6 +20,7 @@
 - Esquema SQL con RLS, roles y auditoría; API de proveedor (contrato, función, migración); vistas, odómetro, ciclo de vida y umbrales por cliente.
 - Panel en módulos ES con tests unitarios, smoke, visuales, SQL y E2E contra base real local.
 - Funcionalidades: Inicio con buscador y «Últimas mediciones», Vehículos y detalle con diagrama y gráfico, cambio de neumático, rotación, número de quema, km previos, Sucursales (crear, mover vehículos), Stock, Alertas, Reportes, Dispositivos (solo administrador), ficha de cliente con umbrales y cuentas de API, baja lógica de clientes.
+- Corte de tramos de km en la posición 99 (PR 156, migración `20261126010000`, aplicación en producción **[confirmar]**). RN-13 queda parcial: falta un solo auxilio por vehículo y su frecuencia propia, sin ola asignada ([23](23-reglas-negocio.md)).
 - Rol de eje y alias de bus en el panel (PR 157, solo JS, sin migración): `assets/js/domain/rol-eje.js` (nuevo; CA-31, parte JS) y alias de bus en `domain/distribucion.js`. El desparejo de `domain/desgaste.js` usa el umbral del cliente (`IRREGULARIDAD_MM_DEFECTO` = 2) y el criterio de la base (CA-06). Es la parte JS de la ola 1 de F8 (B2; ver la tabla de pendientes).
 - Cutover del frontend al proyecto vigente, incluido el formulario de contacto de la landing.
 - Stock individual de cubiertas (migración `20261113000000`): quema, condición, sucursal, traslados y devolución al stock desde el cambio de neumático; demo con las cubiertas `S-001` a `S-012`.
