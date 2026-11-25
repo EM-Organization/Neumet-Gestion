@@ -1,10 +1,11 @@
 // Lógica pura del cambio de neumático en el taller (sin DOM ni red): validación del formulario, armado de los
 // parámetros de la RPC neumatico_cambiar y traducción de sus errores. docs/08 apéndice (autorización de escritura).
 import { VIDA_MAX } from './ciclo-vida.js';
-import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo } from './quema.js';
+import { normalizarQuema, parseKmPrevios } from './quema.js';
 import { cubiertasMontables, nombreUbicacion } from './stock-cubiertas.js';
 import { nombrePosicion } from './posicion.js';
 import { fmtNum } from './formato.js';
+import { validarMotivo, validarOdometroObligatorio, tipoMotivoCambio, etiquetaMotivo, MAX_MOTIVO_TEXTO, TIPO_MOTIVO } from './motivos.js';
 
 // Nombre de la posición como lo ve el operario («Eje 2 izquierda interior»); nunca «P4» a secas. `tipo` = tipo_ruedas del vehículo.
 export const nombrePos = (posicion, tipo) => nombrePosicion(posicion, tipo) || `Posición ${Number(posicion)}`;
@@ -19,8 +20,7 @@ export const DESTINOS = [
   { id: 'almacenado', label: 'Almacenar', ayuda: 'Vuelve al stock para reutilizarlo.' }
 ];
 const DESTINO_IDS = DESTINOS.map(d => d.id);
-export const MOTIVO_POR_DEFECTO = 'Desgaste';
-const MAX_TXT = 60, MAX_MOTIVO = 200;
+const MAX_TXT = 60;
 
 export const etiquetaDestino = id => (DESTINOS.find(d => d.id === id) || {}).label || id;
 
@@ -30,7 +30,7 @@ export function stockDisponible(stock) {
 }
 export const etiquetaStock = s => `${[s.marca, s.modelo].filter(Boolean).join(' ') || 'Sin marca'} · ${s.cantidad} u.`;
 
-// f: {neum, destino, motivo, origen:'cubierta'|'stock'|'nuevo', cubiertaId, cubiertas:[...], stockId, stock:[...], marca,
+// f: {neum, destino, catalogo:[...], motivoCodigo, motivoTexto, odometroObligatorio, origen:'cubierta'|'stock'|'nuevo', cubiertaId, cubiertas:[...], stockId, stock:[...], marca,
 //     modelo, codigo, kmPrevios, numeroQuema, odometro, odometroActual, sucursales:[...],
 //     devolverStock, sucursalStock, quemaViejo}
 // origen 'cubierta' = cubierta individual del stock (conserva su quema y km); 'stock' = lote antiguo con cantidad.
@@ -47,9 +47,9 @@ export function validarCambio(f) {
   if (f.destino === 'reencauche' && (n.vida || 0) >= VIDA_MAX) {
     return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja` };
   }
-  const motivo = String(f.motivo == null ? '' : f.motivo).trim();
-  if (f.destino === 'baja' && !motivo) return { ok: false, error: 'Falta el motivo de la baja' };
-  if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo es demasiado largo (máx. ${MAX_MOTIVO})` };
+  // RN-14: el motivo sale del catálogo del tipo (baja o cambio). Sin texto libre salvo «otro».
+  const mot = validarMotivo(f.catalogo, tipoMotivoCambio(f.destino), f.motivoCodigo, f.motivoTexto);
+  if (!mot.ok) return mot;
 
   // La cubierta individual ya trae su quema y sus km: los campos del formulario (ocultos) no se validan.
   const esCubierta = f.origen === 'cubierta';
@@ -57,7 +57,8 @@ export function validarCambio(f) {
   if (!kp.ok) return { ok: false, error: kp.error };
   const q = esCubierta ? { ok: true, valor: null } : normalizarQuema(f.numeroQuema);
   if (!q.ok) return { ok: false, error: q.error };
-  const od = validarOdometroVehiculo(f.odometro, f.odometroActual);
+  // RN-12: con el flag del cliente en true el odómetro es obligatorio.
+  const od = validarOdometroObligatorio(f.odometro, f.odometroActual, !!f.odometroObligatorio);
   if (!od.ok) return { ok: false, error: od.error };
   const odo = od.valor;
 
@@ -86,9 +87,9 @@ export function validarCambio(f) {
     stockId = Number(s.id);
     nuevoTxt = `${[s.marca, s.modelo].filter(Boolean).join(' ')} (del stock)`;
   } else if (f.origen === 'nuevo') {
-    const marca = String(f.marca == null ? '' : f.marca).trim();
-    const modelo = String(f.modelo == null ? '' : f.modelo).trim();
-    const codigo = String(f.codigo == null ? '' : f.codigo).trim();
+    const marca = String(f.marca ?? '').trim();
+    const modelo = String(f.modelo ?? '').trim();
+    const codigo = String(f.codigo ?? '').trim();
     if (!marca) return { ok: false, error: 'Falta la marca del neumático nuevo' };
     if (marca.length > MAX_TXT || modelo.length > MAX_TXT || codigo.length > MAX_TXT) {
       return { ok: false, error: `Marca, modelo y código admiten hasta ${MAX_TXT} caracteres` };
@@ -106,7 +107,9 @@ export function validarCambio(f) {
     p_vehiculo_id: n.vehiculo_id,
     p_posicion: n.posicion,
     p_destino_viejo: f.destino,
-    p_motivo: motivo || null,
+    p_motivo: null,
+    p_motivo_codigo: mot.codigo,
+    p_motivo_texto: mot.texto,
     p_odometro_km: odo,
     p_stock_id: stockId,
     p_nuevo: nuevo,
@@ -122,7 +125,7 @@ export function validarCambio(f) {
   return {
     ok: true,
     params,
-    resumen: resumenCambio(n, f.destino, motivo, nuevoTxt, odo, {
+    resumen: resumenCambio(n, f.destino, etiquetaMotivo(f.catalogo, mot.codigo, mot.texto), nuevoTxt, odo, {
       tipo: f.tipo, quema: q.valor, kmPrevios: kmNuevo,
       stockDestino: devolver ? nombreUbicacion(sucursalStock, f.sucursales) : null,
     })
@@ -134,7 +137,7 @@ export function resumenCambio(n, destino, motivo, nuevoTxt, odo, extra = {}) {
   return `${nombrePos(n.posicion, extra.tipo)}: sale ${viejo} (${etiquetaDestino(destino).toLowerCase()}${motivo ? ': ' + motivo : ''}${extra.stockDestino ? ' · vuelve al stock, ' + extra.stockDestino : ''}) y entra ${nuevoTxt}`
     + (extra.quema ? ` · quema ${extra.quema}` : '')
     + (extra.kmPrevios > 0 ? ` · ${fmtNum(extra.kmPrevios)} km previos` : '')
-    + (odo != null ? ` · odómetro ${fmtNum(odo)} km` : '');
+    + (odo !== null ? ` · odómetro ${fmtNum(odo)} km` : '');
 }
 
 // Error de la RPC (PostgREST: {code, message}) -> mensaje comprensible para el gomero.
@@ -155,7 +158,8 @@ export function traducirErrorCambio(err) {
   }
   if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja';
-  if (msg.includes('motivo')) return 'Motivo obligatorio para la baja (máx. 200 caracteres)';
+  if (msg.includes('odometro obligatorio')) return 'Indicar la lectura del odómetro del vehículo';
+  if (msg.includes('motivo')) return `Elegir un motivo de la lista. Con «otro», escribirlo (máx. ${MAX_MOTIVO_TEXTO} caracteres)`;
   if (code === '23505' || msg.includes('número de quema ya')) return 'Ese número de quema ya está registrado en otro neumático';
   if (msg.includes('quema demasiado')) return 'El número de quema admite hasta 40 caracteres';
   if (msg.includes('km previos')) return 'Los km que ya traía el neumático deben ser un número entero mayor o igual a 0';
@@ -168,6 +172,22 @@ export function traducirErrorCambio(err) {
   if (msg.includes('posición libre')) return 'No hay lugar para guardar el neumático retirado en este vehículo';
   if (code === '22023' || code === '22004' || code === '23514') return 'Datos del formulario inválidos';
   return 'No se pudo registrar el cambio. No se guardó nada. Reintentar';
+}
+
+// Errores de neumatico_rotar. El odómetro y el motivo se validan en la base con los mismos mensajes que el cambio.
+export function traducirErrorRotacion(err) {
+  const code = err && err.code ? String(err.code) : '';
+  const msg = (err && err.message ? String(err.message) : '').toLowerCase();
+  if (code === '42501' || msg.includes('permission denied') || msg.includes('permiso denegado')) return 'Sin permiso para rotar neumáticos de este vehículo';
+  if (msg.includes('odometro obligatorio')) return 'Indicar la lectura del odómetro del vehículo';
+  if (msg.includes('odómetro del vehículo no puede ser menor')) {
+    const m = /\((\d+) km\)/.exec(String(err.message));
+    return m ? `El odómetro del vehículo no puede ser menor al actual (${m[1]} km)` : 'El odómetro del vehículo no puede ser menor al actual';
+  }
+  if (msg.includes('motivo')) return `Elegir un motivo de la lista. Con «otro», escribirlo (máx. ${MAX_MOTIVO_TEXTO} caracteres)`;
+  if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja. Actualizar la pantalla';
+  if (msg.includes('no hay neumático')) return 'Ya no hay neumático en una de las posiciones. Actualizar la pantalla';
+  return 'No se pudo registrar la rotación. No se guardó nada';
 }
 
 // Rotación desde un botón de posición: valida y detecta el intercambio.
@@ -191,4 +211,14 @@ export function validarRotacion(neumaticos, vehiculoId, posA, posB, tipo) {
 // `huboIntercambio` es lo que informó la RPC (la base manda: pudo cambiar entre la lectura y la rotación).
 export function avisoRotacion(a, b, tipo, huboIntercambio) {
   return huboIntercambio ? `${nombrePos(a, tipo)} ↔ ${nombrePos(b, tipo)}` : `neumático movido de ${nombrePos(a, tipo)} a ${nombrePos(b, tipo)}`;
+}
+
+// Odómetro y motivo de una rotación (diálogo «Rotar»). RN-12: obligatorio con el flag; RN-14: motivo de tipo «rotacion».
+// Devuelve {ok, params} con los argumentos p_odometro_km, p_motivo_codigo y p_motivo_texto de neumatico_rotar.
+export function validarDatosRotacion(f) {
+  const mot = validarMotivo(f.catalogo, TIPO_MOTIVO.rotar, f.motivoCodigo, f.motivoTexto);
+  if (!mot.ok) return mot;
+  const od = validarOdometroObligatorio(f.odometro, f.odometroActual, !!f.odometroObligatorio);
+  if (!od.ok) return { ok: false, error: od.error };
+  return { ok: true, params: { p_odometro_km: od.valor, p_motivo_codigo: mot.codigo, p_motivo_texto: mot.texto } };
 }

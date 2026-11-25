@@ -1013,8 +1013,11 @@
       <div id="cambio-actual" class="cambio-actual"></div>
       <fieldset class="cambio-grupo"><legend>Destino del neumático retirado</legend>
         <div id="cambio-destinos" class="cambio-opciones"></div></fieldset>
-      <div class="field"><label for="cambio-motivo">Motivo <span class="label-opt" id="cambio-motivo-opt">(opcional)</span></label>
-        <input id="cambio-motivo" type="text" maxlength="200" data-change="neumatico-cambiar-resumen" autocomplete="off"/></div>
+      <div class="field"><label for="cambio-motivo">Motivo <span class="label-opt">(obligatorio)</span></label>
+        <select id="cambio-motivo" data-change="neumatico-cambiar-resumen"></select></div>
+      <div class="field" id="cambio-motivo-texto-wrap"><label for="cambio-motivo-texto">Texto del motivo</label>
+        <input id="cambio-motivo-texto" type="text" maxlength="300" data-change="neumatico-cambiar-resumen" autocomplete="off"/>
+        <div class="field-hint">Con «otro», describir el motivo (máx. 300 caracteres).</div></div>
       <div id="cambio-retorno-wrap" class="cambio-retorno">
         <div class="field"><label for="cambio-retorno-suc">Sucursal donde queda en stock</label>
           <select id="cambio-retorno-suc" data-change="neumatico-cambiar-resumen"></select></div>
@@ -1044,7 +1047,7 @@
             <div class="field-hint">Dejar vacío si es nuevo o no se sabe.</div></div>
         </div>
       </fieldset>
-      <div class="field"><label for="cambio-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+      <div class="field"><label for="cambio-odo">Odómetro del vehículo <span class="label-opt" id="cambio-odo-opt">(opcional)</span></label>
         <input id="cambio-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-cambiar-resumen"/>
         <div class="field-hint" id="cambio-odo-hint">Lectura actual del vehículo, aparte de los km del neumático.</div></div>
       <div id="cambio-resumen" class="cambio-resumen" aria-live="polite"></div>
@@ -1053,6 +1056,32 @@
     <div class="modal-footer">
       <button type="button" class="btn ghost" data-action="neumatico-cambiar-cerrar">Cancelar</button>
       <button type="submit" class="btn primary" id="cambio-confirmar">Confirmar cambio</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal Rotar neumáticos (intercambio entre dos posiciones del vehículo; el motivo sale de la lista de rotación: RN-14) -->
+<div class="modal-backdrop" id="modal-rotar" data-backdrop-close="neumatico-rotar-cerrar">
+  <form class="modal cambio-modal" id="rotar-form" novalidate>
+    <div class="modal-header">
+      <div class="modal-title" id="rotar-title">Rotar neumáticos</div>
+      <div class="modal-sub" id="rotar-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="rotar-motivo">Motivo <span class="label-opt">(obligatorio)</span></label>
+        <select id="rotar-motivo" data-change="neumatico-rotar-resumen"></select></div>
+      <div class="field" id="rotar-motivo-texto-wrap"><label for="rotar-motivo-texto">Texto del motivo</label>
+        <input id="rotar-motivo-texto" type="text" maxlength="300" data-change="neumatico-rotar-resumen" autocomplete="off"/>
+        <div class="field-hint">Con «otro», describir el motivo (máx. 300 caracteres).</div></div>
+      <div class="field"><label for="rotar-odo">Odómetro del vehículo <span class="label-opt" id="rotar-odo-opt">(opcional)</span></label>
+        <input id="rotar-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-rotar-resumen"/>
+        <div class="field-hint" id="rotar-odo-hint"></div></div>
+      <div id="rotar-resumen" class="cambio-resumen" aria-live="polite"></div>
+      <div id="rotar-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn ghost" data-action="neumatico-rotar-cerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="rotar-confirmar">Rotar</button>
     </div>
   </form>
 </div>

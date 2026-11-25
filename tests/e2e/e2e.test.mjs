@@ -32,6 +32,7 @@ import { registrar as islas } from './specs/islas.mjs';
 import { registrar as usoIsla } from './specs/uso-isla.mjs';
 import { registrar as stockLotesSucursal } from './specs/stock-lotes-sucursal.mjs';
 import { registrar as eliminarVehiculo } from './specs/eliminar-vehiculo.mjs';
+import { registrar as motivosOdometro } from './specs/motivos-odometro.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -65,4 +66,5 @@ islas(env);
 usoIsla(env);
 stockLotesSucursal(env);
 eliminarVehiculo(env);
+motivosOdometro(env);
 contrato(env);

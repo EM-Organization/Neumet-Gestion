@@ -1,7 +1,7 @@
 // Cambio de neumático en el taller: el gomero (cliente global o de sucursal) o el admin registra, en una sola
 // pantalla, qué pasó con el neumático viejo y cuál entró. Toda la escritura pasa por la RPC atómica neumatico_cambiar
 // (la autorización se verifica en la base: otro cliente u otra sucursal reciben "permiso denegado").
-// Acciones: neumatico-cambiar (vehiculoId, posicion), neumatico-rotar-pos (vehiculoId, posA, posB).
+// Acciones: neumatico-cambiar (vehiculoId, posicion), neumatico-rotar-pos (vehiculoId, posA, posB: abre el diálogo de rotar).
 // Al terminar emite el evento DOM "neumet:neumatico-cambiado" y recarga la vista activa (flota/vehículo/inicio/alertas).
 import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
@@ -12,8 +12,11 @@ import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { reloadActiveView } from '../core/nav.js';
 import {
-  DESTINOS, MOTIVO_POR_DEFECTO, nombrePos, etiquetaVida, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion, avisoRotacion
+  DESTINOS, nombrePos, etiquetaVida, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion, avisoRotacion,
+  validarDatosRotacion, traducirErrorRotacion
 } from '../domain/cambio-neumatico.js';
+import { motivosDelTipo, tipoMotivoCambio, TIPO_MOTIVO, MOTIVO_OTRO } from '../domain/motivos.js';
+import { cargarMotivosCliente } from '../core/motivos.js';
 import { fmtNum } from '../domain/formato.js';
 import { cubiertasMontables, etiquetaCubierta, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
 
@@ -21,10 +24,13 @@ export const EVENTO_CAMBIO = 'neumet:neumatico-cambiado';
 const $ = id => document.getElementById(id);
 const val = id => { const el = $(id); return el ? el.value : ''; };
 const NEUM_COLS = 'id,vehiculo_id,cliente_id,posicion,marca,modelo,idneumatico,vida,estado,numero_quema';
+// RN-14: el motivo que viene marcado en un cambio o una baja. En la rotación no hay preselección: lo elige el operario.
+const MOTIVO_PREDETERMINADO = 'desgaste';
 
 let ctx = null; // {veh, neum, stock, cubiertas, sucursales, puedeStock}
 let ocupado = false;
 let rotando = false;
+let rotCtx = null; // diálogo «Rotar» abierto: {vehiculoId, posA, posB, veh, tipo, coche, intercambio, catalogo, odometroObligatorio}
 
 // Espera máxima de la base. Si vence NO se reintenta: la operación pudo haberse aplicado igual y repetirla duplicaría el cambio.
 // Se recarga el detalle para que el operario vea el estado real. Configurable para las pruebas.
@@ -51,7 +57,8 @@ function estado() {
   const dest = document.querySelector('input[name="cambio-destino"]:checked');
   const orig = document.querySelector('input[name="cambio-origen"]:checked');
   return {
-    neum: ctx && ctx.neum, destino: dest ? dest.value : '', motivo: val('cambio-motivo'),
+    neum: ctx && ctx.neum, destino: dest ? dest.value : '', motivoCodigo: val('cambio-motivo'), motivoTexto: val('cambio-motivo-texto'),
+    catalogo: ctx ? ctx.catalogo : [], odometroObligatorio: !!(ctx && ctx.odometroObligatorio),
     origen: orig ? orig.value : '', stockId: val('cambio-stock'), stock: ctx ? ctx.stock : [],
     marca: val('cambio-marca'), modelo: val('cambio-modelo'), odometro: val('cambio-odo'),
     numeroQuema: val('cambio-quema'), kmPrevios: val('cambio-km-previos'),
@@ -62,8 +69,32 @@ function estado() {
   };
 }
 
+// Lista de motivos del tipo (baja o cambio). Queda el anterior si sigue en la lista; si no, «desgaste» (RN-14).
+function pintarMotivos(tipo, anterior) {
+  const sel = $('cambio-motivo');
+  const lista = motivosDelTipo(ctx.catalogo, tipo);
+  const en = codigo => lista.some(m => m.codigo === codigo);
+  setHtml(sel, joinHtml([
+    html`<option value="">Elegir motivo</option>`,
+    lista.map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
+  ]));
+  sel.value = en(anterior) ? anterior : (en(MOTIVO_PREDETERMINADO) ? MOTIVO_PREDETERMINADO : '');
+  sel.dataset.tipo = tipo;
+}
+
+// La última lectura del vehículo es la referencia: la base no acepta una lectura menor (RN-12).
+function pistaOdometro(actual, obligatorio) {
+  const pref = obligatorio ? 'Obligatorio' : 'Opcional';
+  const hay = actual !== null && actual !== undefined;
+  return hay ? `${pref}. No puede ser menor al actual (${fmtNum(actual)} km).` : `${pref}. Lectura actual del vehículo.`;
+}
+
 function actualizar() {
-  const f = estado();
+  let f = estado();
+  // El catálogo depende del destino (baja usa el de baja; el resto, el de cambio): al cambiar de tipo se rearma la lista.
+  const tipo = tipoMotivoCambio(f.destino);
+  if ($('cambio-motivo').dataset.tipo !== tipo) { pintarMotivos(tipo, f.motivoCodigo); f = estado(); }
+  $('cambio-motivo-texto-wrap').style.display = f.motivoCodigo === MOTIVO_OTRO ? '' : 'none';
   $('cambio-cubierta-wrap').style.display = f.origen === 'cubierta' ? '' : 'none';
   $('cambio-stock-wrap').style.display = f.origen === 'stock' ? '' : 'none';
   $('cambio-nuevo-wrap').style.display = f.origen === 'nuevo' ? '' : 'none';
@@ -72,7 +103,6 @@ function actualizar() {
   const vuelve = f.destino === 'almacenado' && f.devolverStock;
   $('cambio-retorno-wrap').style.display = vuelve ? 'block' : 'none';
   $('cambio-quema-viejo-wrap').style.display = vuelve && ctx && ctx.neum && !ctx.neum.numero_quema ? '' : 'none';
-  $('cambio-motivo-opt').textContent = f.destino === 'baja' ? '(obligatorio)' : '(opcional)';
   const r = validarCambio(f);
   $('cambio-resumen').textContent = r.ok ? r.resumen : 'Completar los datos para ver el resumen';
   $('cambio-error').textContent = '';
@@ -97,11 +127,12 @@ function pintar() {
     sucursales.map(x => html`<option value="${x.id}">${x.nombre}</option>`)]));
   $('cambio-quema-viejo').value = '';
   setHtml($('cambio-stock'), joinHtml(stock.map(s => html`<option value="${s.id}">${etiquetaStock(s)}</option>`)));
-  $('cambio-motivo').value = MOTIVO_POR_DEFECTO;
+  pintarMotivos(tipoMotivoCambio(DESTINOS[0].id), MOTIVO_PREDETERMINADO); // el primer destino (baja) viene marcado
+  $('cambio-motivo-texto').value = '';
   $('cambio-marca').value = ''; $('cambio-modelo').value = ''; $('cambio-odo').value = '';
   $('cambio-quema').value = ''; $('cambio-km-previos').value = '0';
-  $('cambio-odo-hint').textContent = veh && veh.odometro_km != null
-    ? `Opcional. No puede ser menor al actual (${fmtNum(veh.odometro_km)} km).` : 'Opcional. Lectura actual del vehículo, aparte de los km del neumático.';
+  $('cambio-odo-opt').textContent = ctx.odometroObligatorio ? '(obligatorio)' : '(opcional)';
+  $('cambio-odo-hint').textContent = pistaOdometro(veh.odometro_km, ctx.odometroObligatorio);
   $('cambio-confirmar').disabled = false;
   actualizar();
 }
@@ -123,20 +154,23 @@ async function abrir(vehiculoId, posicion) {
   const veh = rv.data || { id: vehiculoId };
   // El stock es del cliente del vehículo; la RLS ya limita qué ve cada perfil (el de sucursal no ve ninguno).
   const puedeStock = esAdminEmpresa();
-  const [rs, rc, rsu] = await Promise.all([
+  const [rs, rc, rsu, rm] = await Promise.all([
     db.from('stock_neumaticos').select('id,marca,modelo,cantidad,precio_unidad').eq('cliente_id', neum.cliente_id).gte('cantidad', 1),
     puedeStock
       ? db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,vehiculo_id,estado')
         .is('vehiculo_id', null).eq('estado', 'almacenado').eq('cliente_id', neum.cliente_id).order('numero_quema')
       : Promise.resolve({ data: [] }),
-    puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', neum.cliente_id).order('nombre') : Promise.resolve({ data: [] })
+    puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', neum.cliente_id).order('nombre') : Promise.resolve({ data: [] }),
+    cargarMotivosCliente(neum.cliente_id)
   ]);
+  // Sin catálogo ni flag el diálogo no se abre: no se adivina si el odómetro es obligatorio.
+  if (!rm) { showToast('No se pudieron cargar los motivos. Reintentar', true); return; }
   const stock = rs.error ? [] : stockDisponible(rs.data);
   const cubiertas = rc.error ? [] : cubiertasMontables(rc.data);
   const sucursales = rsu.error ? [] : (rsu.data || []);
   // Un cambio pudo empezar mientras se cargaba este: no se reemplaza el contexto del que está en vuelo.
   if (ocupado) { showToast(AVISO_EN_CURSO, true); return; }
-  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, sucursales, puedeStock };
+  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, sucursales, puedeStock, catalogo: rm.catalogo, odometroObligatorio: rm.odometroObligatorio };
   pintar();
   $('modal-cambio').classList.add('show');
 }
@@ -179,45 +213,113 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   } finally { ocupado = false; }
 };
 
-// Rotación desde un botón de posición: reutiliza la RPC atómica neumatico_rotar. Es reversible (rotar de nuevo la deshace),
-// por eso no pide confirmación (docs/14 §5 r.5); el aviso nombra el intercambio. Una rotación a la vez (`rotando`).
+// Rotar entre dos posiciones (RN-12, RN-14). «Rotar» abre un diálogo con el motivo de la lista de rotación y el odómetro
+// (con la última lectura de referencia). La base vuelve a validar todo. Es reversible (rotar de nuevo la deshace): el aviso
+// nombra el intercambio. Una operación a la vez (`rotando`): cubre la carga del diálogo y el envío.
+function estadoRotar() {
+  return {
+    catalogo: rotCtx ? rotCtx.catalogo : [], motivoCodigo: val('rotar-motivo'), motivoTexto: val('rotar-motivo-texto'),
+    odometro: val('rotar-odo'), odometroActual: rotCtx ? (rotCtx.veh.odometro_km ?? null) : null,
+    odometroObligatorio: !!(rotCtx && rotCtx.odometroObligatorio)
+  };
+}
+
+function actualizarRotar() {
+  const f = estadoRotar();
+  $('rotar-motivo-texto-wrap').style.display = f.motivoCodigo === MOTIVO_OTRO ? '' : 'none';
+  const r = validarDatosRotacion(f);
+  $('rotar-resumen').textContent = r.ok ? avisoRotacion(rotCtx.posA, rotCtx.posB, rotCtx.tipo, !!rotCtx.intercambio) : 'Completar los datos para ver el resumen';
+  $('rotar-error').textContent = '';
+  return r;
+}
+
+function pintarRotar() {
+  const { catalogo, odometroObligatorio, veh } = rotCtx;
+  setHtml($('rotar-motivo'), joinHtml([
+    html`<option value="">Elegir motivo</option>`,
+    motivosDelTipo(catalogo, TIPO_MOTIVO.rotar).map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
+  ]));
+  // Sin preselección: el motivo de una rotación lo elige el operario (RN-14).
+  $('rotar-motivo').value = '';
+  $('rotar-motivo-texto').value = '';
+  $('rotar-odo').value = '';
+  $('rotar-sub').textContent = rotCtx.coche || 'Rotación entre posiciones del vehículo';
+  $('rotar-odo-opt').textContent = odometroObligatorio ? '(obligatorio)' : '(opcional)';
+  $('rotar-odo-hint').textContent = pistaOdometro(veh.odometro_km, odometroObligatorio);
+  $('rotar-confirmar').disabled = false;
+  actualizarRotar();
+}
+
 ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
   if (esAdmin()) return;
   if (rotando) { showToast('Esperar a que termine la rotación', true); return; }
   rotando = true;
-  const btn = document.getElementById('vd-rotar-btn');
+  const btn = $('vd-rotar-btn');
   if (btn) btn.disabled = true;
   try {
     const vid = Number(vehiculoId);
     const [rn, rv] = await Promise.all([
       db.from('neumaticos').select(NEUM_COLS).eq('vehiculo_id', vid),
-      db.from('vehiculos').select('id,nombre,tipo_ruedas,distribucion').eq('id', vid).maybeSingle()
+      db.from('vehiculos').select('id,nombre,cliente_id,odometro_km,tipo_ruedas,distribucion').eq('id', vid).maybeSingle()
     ]);
-    if (rn.error) { console.error(rn.error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }
-    const tipo = rv.data ? tipoLayout(rv.data) : null;
-    const coche = rv.data && rv.data.nombre ? etiquetaCoche(rv.data.nombre) : '';
+    if (rn.error || rv.error) { console.error(rn.error || rv.error); showToast('No se pudieron cargar los neumáticos. Reintentar', true); return; }
+    // Un vehículo que la RLS oculta llega sin datos: las posiciones se validan antes que el vehículo, así el aviso
+    // es «No hay neumático en …» (como antes del diálogo) y no se abre nada ni se llama a la base.
+    const veh = rv.data;
+    const tipo = veh ? tipoLayout(veh) : null;
     const r = validarRotacion(rn.data || [], vid, posA, posB, tipo);
     if (!r.ok) { showToast(r.error, true); return; }
-    const res = await conLimite(db.rpc('neumatico_rotar', { ...r.params, p_odometro_km: null }));
+    if (!veh) { showToast('No se encontró el vehículo. Actualizar la pantalla', true); return; }
+    const motivos = await cargarMotivosCliente(veh.cliente_id);
+    if (!motivos) { showToast('No se pudieron cargar los motivos. Reintentar', true); return; }
+    rotCtx = {
+      vehiculoId: vid, posA: r.params.p_pos_a, posB: r.params.p_pos_b, veh, tipo,
+      coche: veh.nombre ? etiquetaCoche(veh.nombre) : '', intercambio: r.intercambio,
+      catalogo: motivos.catalogo, odometroObligatorio: motivos.odometroObligatorio
+    };
+    pintarRotar();
+    $('modal-rotar').classList.add('show');
+    $('rotar-odo').focus();
+  } finally { rotando = false; if (btn && btn.isConnected) btn.disabled = false; }
+};
+
+// Envío desde el diálogo (Enter o clic en «Rotar»). La base manda: odómetro, motivo y posiciones se vuelven a validar allí.
+ACTIONS['neumatico-rotar-confirmar'] = async function () {
+  if (!rotCtx || rotando || esAdmin()) return;
+  const r = actualizarRotar();
+  if (!r.ok) { $('rotar-error').textContent = r.error; showToast(r.error, true); return; }
+  rotando = true; $('rotar-confirmar').disabled = true;
+  const mio = rotCtx; // la respuesta solo toca el diálogo de la rotación que la originó
+  const coche = mio.coche ? ` en ${mio.coche}` : '';
+  try {
+    const res = await conLimite(db.rpc('neumatico_rotar', { p_vehiculo_id: mio.vehiculoId, p_pos_a: mio.posA, p_pos_b: mio.posB, ...r.params }));
     if (res === TARDE) {
-      showToast(`No se pudo confirmar la rotación${coche ? ' en ' + coche : ''}. Revisar el vehículo antes de reintentar`, true);
+      if (rotCtx === mio) ACTIONS['neumatico-rotar-cerrar']();
+      showToast(`No se pudo confirmar la rotación${coche}. Revisar el vehículo antes de reintentar`, true);
       try { reloadActiveView(); } catch (e) { console.error(e); }
       return;
     }
-    if (res.error) {
-      console.error(res.error);
-      showToast(res.error.code === '42501' ? 'Sin permiso para rotar neumáticos de este vehículo' : 'No se pudo registrar la rotación. No se guardó nada', true);
-      return;
-    }
-    const hubo = res.data && typeof res.data.intercambio === 'boolean' ? res.data.intercambio : !!r.intercambio;
-    showToast(`Rotación registrada${coche ? ' en ' + coche : ''}: ${avisoRotacion(r.params.p_pos_a, r.params.p_pos_b, tipo, hubo)}`);
-    notificarCambio({ vehiculoId: vid, rotacion: [r.params.p_pos_a, r.params.p_pos_b] });
-  } finally { rotando = false; if (btn && btn.isConnected) btn.disabled = false; }
+    if (res.error) throw res.error;
+    if (rotCtx === mio) ACTIONS['neumatico-rotar-cerrar']();
+    const hubo = res.data && typeof res.data.intercambio === 'boolean' ? res.data.intercambio : !!mio.intercambio;
+    showToast(`Rotación registrada${coche}: ${avisoRotacion(mio.posA, mio.posB, mio.tipo, hubo)}`);
+    notificarCambio({ vehiculoId: mio.vehiculoId, rotacion: [mio.posA, mio.posB] });
+  } catch (e) {
+    console.error(e);
+    const msg = traducirErrorRotacion(e);
+    if (rotCtx === mio) $('rotar-error').textContent = msg;
+    showToast(msg, true);
+    if (rotCtx === mio) $('rotar-confirmar').disabled = false;
+  } finally { rotando = false; }
 };
+ACTIONS['neumatico-rotar-resumen'] = function () { if (rotCtx) actualizarRotar(); };
+ACTIONS['neumatico-rotar-cerrar'] = function () { $('modal-rotar').classList.remove('show'); rotCtx = null; };
 
 export function init() {
   // «Enter» en cualquier campo envía (docs/14 §5 r.3); el clic en «Confirmar cambio» llega también como submit.
   $('cambio-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS['neumatico-cambiar-confirmar'](); });
   // Enter mantenido (autorepetición): solo cuenta la primera pulsación.
   $('cambio-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
+  $('rotar-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS['neumatico-rotar-confirmar'](); });
+  $('rotar-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
 }

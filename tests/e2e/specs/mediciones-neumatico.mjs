@@ -11,6 +11,7 @@ import { json, cifrasInicio } from '../lib/verdad.mjs';
 import { nombrePos, avisoRotacion } from '../../../assets/js/domain/cambio-neumatico.js';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 import { INICIO_LISTO, LEER_INICIO } from './inicio.mjs';
+import { confirmarRotacionEnDialogo } from '../lib/rotacion.mjs';
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
 // `mm` es la huella MÍNIMA (la que la rueda muestra y decide, RN-01); `promedio` queda como dato informativo.
@@ -68,7 +69,7 @@ export function registrar(env) {
       await p.eval(`document.querySelector('input[name="cambio-origen"][value="nuevo"]').click()`);
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); };
-        set('#cambio-motivo', 'Desgaste E2E'); set('#cambio-marca', 'MarcaMed'); set('#cambio-modelo', 'Modelo M'); })()`);
+        set('#cambio-motivo', 'desgaste'); set('#cambio-marca', 'MarcaMed'); set('#cambio-modelo', 'Modelo M'); })()`);
       await p.click('#cambio-confirmar');
       await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + etiquetaCoche(veh(env, id).nombre) + ', ' + nombrePos(pos, veh(env, id).tipo_ruedas) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
       // El detalle se recarga: la rueda nueva figura desconocida (no hereda los mm del viejo)
@@ -137,7 +138,7 @@ export function registrar(env) {
       assert.notEqual(ra.fill, rb.fill, 'nuevo y poco desgaste tienen distinto color');
       await seleccionarRueda(p, a);
       await p.eval(`(() => { const s = document.querySelector('#vd-rotar-destino'); s.value = '${b}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-      await p.click('#vd-rotar-btn');
+      await confirmarRotacionEnDialogo(p);
       await p.esperar(`/Rotación registrada/.test(document.querySelector('#toast-msg').textContent)`, { que: 'rotación registrada' });
       // Rotar es reversible: sin confirmación, y el aviso nombra el vehículo y las dos posiciones
       assert.equal(await p.eval(`document.querySelector('#toast-msg').textContent`), `Rotación registrada en ${etiquetaCoche(veh(env, id).nombre)}: ${avisoRotacion(a, b, veh(env, id).tipo_ruedas, true)}`);

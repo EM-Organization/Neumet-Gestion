@@ -404,7 +404,7 @@ function acciones(pos, bajoRetiro = false) {
   const cambiar = html`<button type="button" class="btn primary" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
   const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   if (bajoRetiro) return html`<div class="vd-pie"><p class="vd-p-razon"><strong>Retirar ya.</strong> Bajo el límite de retiro no se rota a otro eje (RN-08).</p><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
-  // Rotar: el usuario elige la posición de destino; el botón lleva data-args='[vehiculoId, posA, posB]' (se actualiza al elegir).
+  // Rotar abre el diálogo (motivo y odómetro). El botón lleva data-args='[vehiculoId, posA, posB]', que se actualiza al elegir el destino.
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>

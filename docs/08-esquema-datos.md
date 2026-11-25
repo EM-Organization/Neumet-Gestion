@@ -1385,3 +1385,11 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 
 ### AA.9 Migración sin aplicar
 - `20261126020000_odometro_motivos.sql` **no está aplicada en producción**. Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), que tampoco está aplicada: se aplican en ese orden, con `supabase db push --dry-run` y luego el CLI, tras la compuerta de calidad.
+
+### AA.10 Interfaz: clics y pruebas (rotar y cambiar)
+- Rotar: antes, 2 acciones (elegir la posición y «Rotar»). Ahora, 4 (posición, «Rotar», motivo y Enter), más el odómetro tecleado cuando el cliente lo exige. El aumento lo pide RN-14 (motivo obligatorio) y RN-12 (odómetro). «Rotar» abre el diálogo con el odómetro enfocado; el motivo no viene elegido, para que el operario lo decida.
+- Cambiar: no suma clics. El motivo viene con «Desgaste» marcado.
+- E2E: `taller.mjs` confirma la rotación desde el diálogo (`tests/e2e/lib/rotacion.mjs`). `motivos-odometro.mjs` cubre dos casos: rotar con motivo y odómetro (con el odómetro obligatorio, sin lectura no se envía nada) y cambiar a baja con un motivo del catálogo. Un camión que la RLS oculta avisa «No hay neumático en …» y no llega a la RPC `neumatico_rotar` (prueba «Taller (salto)» de `taller.mjs`).
+- Smoke: `cambio.flow.js` en los modos de cliente y `vehiculo.flow.js` en `detalle`.
+- Unitarias: `tests/unit/motivos.test.mjs` y `tests/unit/cambio-neumatico.test.mjs`.
+- Escenas visuales (`tests/visual/scenes.js`): `confirmar-intercambio` elige el motivo y confirma en el diálogo; `rotar-dialogo` deja el diálogo abierto, sin confirmar.
