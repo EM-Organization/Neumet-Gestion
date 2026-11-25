@@ -1,6 +1,6 @@
 // Umbrales por cliente (columnas de `clientes`) y resumen de flota. Puro, sin DOM ni supabase.
 // En la BD existe el check umbral_retiro_mm < umbral_critico_mm < umbral_bajo_mm; aquí se valida igual para avisar antes
-// de enviar, y mensajeErrorUmbrales traduce el error que igualmente devuelva la BD. Tests: tests/unit/umbrales.test.mjs
+// de enviar. Tests: tests/unit/umbrales.test.mjs
 // Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
 // Los textos hablan de las categorías de producto; los nombres técnicos de las columnas no se muestran (docs/14).
 import { ESTADOS } from './estado-desgaste.js';
@@ -78,16 +78,6 @@ export function validarUmbrales(raw = {}) {
     return { ok: false, campo: 'direccion_limite_mm', error: `${lblDe('direccion_limite_mm')}: debe ser menor que ${lblDe('direccion_aviso_mm')}` };
   }
   return { ok: true, valores: v };
-}
-
-// Mensaje para un error devuelto por PostgREST/Postgres al guardar. 23514 = check_violation.
-export function mensajeErrorUmbrales(err) {
-  const msg = String(err?.message ?? err ?? '').trim();
-  if (err?.code === '23514' || /check constraint|violates check/i.test(msg)) {
-    return `Los umbrales no son válidos: deben descender de mayor a menor (${ORDEN_NOMBRES}). ${msg}`;
-  }
-  if (err?.code === '42501' || /permission denied|row-level security/i.test(msg)) return 'Sin permiso para editar los umbrales';
-  return msg ? `No se pudieron guardar los umbrales: ${msg}` : 'No se pudieron guardar los umbrales';
 }
 
 // Resumen de flota (fila de v_resumen_flota_cliente): totales y porcentajes sobre neumáticos con datos.
