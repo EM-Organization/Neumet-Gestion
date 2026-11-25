@@ -20,12 +20,18 @@ const LADOS = {
 
 const normPos = posiciones => [...new Set((posiciones || []).map(Number).filter(p => Number.isInteger(p) && p >= 1 && p <= 99))].sort((a, b) => a - b);
 
-// Eje (1 = delantero) al que pertenece una posición; 0 = auxilio. Mapeo estándar (tipo 16): 1-2 eje 1, 3-6 eje 2,
-// 7-10 eje 3, 11-14 eje 4, 15-16 eje 5; posiciones 17..98 forman ejes duales extra de a 4.
-export function ejeDePosicion(pos) {
+// Eje (1 = delantero) al que pertenece una posición; 0 = auxilio. Con una distribución del catálogo (p. ej. '8x2') el eje
+// sale del diagrama, que es lo que ve el operario: en un 8x2 la posición 9 es del eje 4. Sin tipo, o con 10/16, el mapeo
+// estándar (tipo 16): 1-2 eje 1, 3-6 eje 2, 7-10 eje 3, 11-14 eje 4, 15-16 eje 5; posiciones 17..98 forman ejes duales de a 4.
+export function ejeDePosicion(pos, tipo) {
   const p = Number(pos);
   if (!Number.isInteger(p) || p < 1) return null;
   if (p === POS_AUXILIO) return 0;
+  if (typeof tipo === 'string' && buscarDistribucion(tipo)) {
+    // Misma fuente que dibuja el diagrama (layoutRuedas), para que el eje de un dato coincida con el que se ve.
+    const r = layoutRuedas([], tipo).ruedas.find(x => x.posicion === p);
+    return r ? r.eje : null;
+  }
   if (p <= 2) return 1;
   if (p <= 14) return 2 + Math.floor((p - 3) / 4);
   if (p <= 16) return 5;
