@@ -234,7 +234,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   if (ops[0] !== 'Sin sucursal' || ops.length !== 3) fail('vehiculos: opciones de sucursal del alta: ' + ops.join('|'));
   // Distribución de neumáticos: sin preselección, el catálogo completo y «Otra distribución» al final
   var dops = Array.prototype.map.call(nv('distribucion').options, function(o){ return o.value + '=' + o.textContent; });
-  if (dops.join('|') !== '=Elegir distribución…|4x2=4x2 · 6 ruedas (simple, doble)|6x2=6x2 · 8 ruedas (simple, doble, simple)|6x4=6x4 · 10 ruedas (simple, doble, doble)|8x2=8x2 · 10 ruedas (simple, simple, doble, simple)|8x4=8x4 · 12 ruedas (simple, simple, doble, doble)|otra=Otra distribución') fail('vehiculos: opciones de distribución del alta: ' + dops.join('|'));
+  if (dops.join('|') !== '=Elegir distribución…|4x2=4x2 · 6 ruedas (simple, doble)|6x2=6x2 · 8 ruedas (simple, doble, simple) · bus convencional|6x4=6x4 · 10 ruedas (simple, doble, doble)|8x2=8x2 · 10 ruedas (simple, simple, doble, simple) · bus doble piso|8x4=8x4 · 12 ruedas (simple, simple, doble, doble)|otra=Otra distribución') fail('vehiculos: opciones de distribución del alta: ' + dops.join('|'));
   if (nv('distribucion').value !== '' || !nv('tipo-campo').hidden) fail('vehiculos: el alta debe abrir sin distribución elegida y sin pedir el tipo de ruedas');
   nv('numero').value = ' '; $('#veh-nuevo-guardar').click(); await sleep(100);
   if (nv('error').textContent.indexOf('número de coche') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: falta validación del número de coche');

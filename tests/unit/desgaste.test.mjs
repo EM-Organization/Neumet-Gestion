@@ -3,7 +3,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   UMBRALES, WEAR, LIFE_LIMIT_MM, wearStatus, avgMm, tireStatus, wearClass, countByStatus,
-  wearRate, daysUntil, dateUntil, unevenWear, analyzeTire
+  wearRate, daysUntil, dateUntil, unevenWear, analyzeTire, IRREGULARIDAD_MM_DEFECTO
 } from '../../assets/js/domain/desgaste.js';
 
 const DAY = 86400000;
@@ -126,19 +126,48 @@ describe('predicción a umbral', () => {
   });
 });
 
-describe('unevenWear', () => {
-  test('diferencia 1.5 exacta cuenta; 1.49 no', () => {
-    assert.deepEqual(unevenWear({ mm1: 8, mm3: 9.5 }), { diff: 1.5, side: 'interno' });
-    assert.equal(unevenWear({ mm1: 8, mm3: 9.49 }), null);
+describe('unevenWear (CA-06: umbral del cliente y criterio de la base)', () => {
+  test('el umbral por defecto es el de la base: 2,0 mm', () => {
+    assert.equal(IRREGULARIDAD_MM_DEFECTO, 2);
   });
-  test('lado: el lado más desgastado es el de menos mm: mm1 menor = interno; mm3 menor = externo', () => {
-    assert.equal(unevenWear({ mm1: 6, mm3: 9 }).side, 'interno');
-    assert.equal(unevenWear({ mm1: 9, mm3: 6 }).side, 'externo');
+  test('9 / 10 / 11 con umbral 2,0 no es desparejo: la diferencia tiene que superarlo', () => {
+    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, 2), null);
   });
-  test('faltan datos o fila nula -> null', () => {
-    assert.equal(unevenWear({ mm1: null, mm3: 6 }), null);
-    assert.equal(unevenWear({ mm1: 6, mm3: undefined }), null);
-    assert.equal(unevenWear(null), null);
+  test('9 / 10 / 11,1 sí es desparejo, con el lado interno (el más desgastado es mm1)', () => {
+    const r = unevenWear({ mm1: 9, mm2: 10, mm3: 11.1 }, 2);
+    close(r.diff, 2.1); assert.equal(r.side, 'interno');
+  });
+  test('4,03 / 3 / 2,03 no es desparejo: en coma flotante 4,03 − 2,03 da 2,0000000000000004 y no debe contar', () => {
+    assert.equal(unevenWear({ mm1: 4.03, mm2: 3, mm3: 2.03 }, 2), null);
+  });
+  test('sin umbral del cliente (no se pudo leer) usa el de la base', () => {
+    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, null), null);
+    close(unevenWear({ mm1: 9, mm2: 10, mm3: 11.1 }, null).diff, 2.1);
+  });
+  test('el umbral lo fija el cliente: 3 mm no alcanzan con 4 y sí con 2,5', () => {
+    assert.equal(unevenWear({ mm1: 6, mm2: 7, mm3: 9 }, 4), null);
+    assert.notEqual(unevenWear({ mm1: 6, mm2: 7, mm3: 9 }, 2.5), null);
+  });
+  test('1,5 mm ya no alcanza por defecto: el umbral fijo de 1,5 se quitó', () => {
+    assert.equal(unevenWear({ mm1: 8, mm2: 8, mm3: 9.5 }), null);
+  });
+  test('el desgaste en el centro también cuenta: diferencia entre la mayor y la menor de las tres', () => {
+    const r = unevenWear({ mm1: 9, mm2: 6, mm3: 9 }, 2);
+    assert.notEqual(r, null); close(r.diff, 3);
+  });
+  test('lado: el de menos mm entre interno (mm1) y externo (mm3)', () => {
+    assert.equal(unevenWear({ mm1: 6, mm2: 7, mm3: 9 }, 2).side, 'interno');
+    assert.equal(unevenWear({ mm1: 9, mm2: 7, mm3: 6 }, 2).side, 'externo');
+  });
+  test('sin interno o externo no hay lado que decir: null', () => {
+    assert.equal(unevenWear({ mm1: null, mm2: 7, mm3: 6 }, 2), null);
+    assert.equal(unevenWear({ mm1: 6, mm2: 7, mm3: undefined }, 2), null);
+    assert.equal(unevenWear(null, 2), null);
+  });
+  test('sin mm2 la diferencia sale de las presentes, como greatest()/least() de la base (que ignoran NULL)', () => {
+    const r = unevenWear({ mm1: 6, mm2: null, mm3: 9 }, 2);
+    close(r.diff, 3); assert.equal(r.side, 'interno');
+    assert.equal(unevenWear({ mm1: 9, mm2: null, mm3: 9 }, 2), null);
   });
 });
 
@@ -172,5 +201,12 @@ describe('analyzeTire', () => {
   test('último promedio null con tasa imposible', () => {
     const a = analyzeTire([row(9, 9, 9, 0), row(null, null, null, 7)]);
     assert.equal(a.lastAvg, null); assert.equal(a.mmPerWeek, undefined);
+  });
+  test('el aviso de desparejo sigue al umbral que se pasa (el del cliente)', () => {
+    assert.equal(analyzeTire([row(6, 7, 9)], 4).unevenWear, undefined);
+    assert.equal(analyzeTire([row(6, 7, 9)], 2).unevenWear, 3);
+  });
+  test('CA-06 en el análisis: 9 / 10 / 11 no avisa con el umbral de 2,0', () => {
+    assert.equal(analyzeTire([row(9, 10, 11)], 2).unevenWear, undefined);
   });
 });
