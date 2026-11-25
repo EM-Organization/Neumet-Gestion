@@ -98,7 +98,7 @@ select test.eq('A1: dos tramos con dato y ninguno sin dato',
 select test.eq('B1: tramo en curso desde el montaje', test.km86('K86-B1'), '0|0|1000|1000|true');
 -- Rotación real por la RPC: no abre tramo nuevo ni duplica km
 select test.become('authenticated', test.u_cli_a());
-select test.eq('rotación B1 <-> B2 (RPC)', (public.neumatico_rotar(863::bigint, 1::smallint, 2::smallint, 29500)->>'intercambio'), 'true');
+select test.eq('rotación B1 <-> B2 (RPC)', (public.neumatico_rotar(863::bigint, 1::smallint, 2::smallint, 30000, p_motivo_codigo => 'diferencia_huellas')->>'intercambio'), 'true');
 reset role;
 select test.eq('B1 tras rotar: mismo km, sin tramo nuevo', test.km86('K86-B1'), '0|0|1000|1000|true');
 select test.eq('B2 tras rotar: mismo km, sin tramo nuevo', test.km86('K86-B2'), '0|0|1000|1000|true');
@@ -155,13 +155,13 @@ select test.eq('el diagnóstico no borró eventos', (select count(*) from public
 select test.become('authenticated', test.u_cli_a());
 -- E1 sale de 866 a 1500 km y vuelve al stock; el nuevo neumático ocupa la posición
 select test.eq('E1 vuelve al stock',
-  (public.neumatico_cambiar(866::bigint, 1::smallint, 'almacenado', null, 1500, null, '{"marca":"Nueva"}'::jsonb, null, 0, null, true, 861::bigint, 'K86-E1Q')->>'neumatico_viejo_en_stock'), 'true');
+  (public.neumatico_cambiar(866::bigint, 1::smallint, 'almacenado', null, 1500, null, '{"marca":"Nueva"}'::jsonb, null, 0, null, true, 861::bigint, 'K86-E1Q', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')->>'neumatico_viejo_en_stock'), 'true');
 reset role;
 select test.eq('E1 en stock: 500 km del primer vehículo, sin tramo actual', test.km86('K86-E1'), '0|500|NULL|500|true');
 -- E1 se monta en 867 (odómetro 200) a 250 km
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(867::bigint, 1::smallint, 'baja', 'Desgaste', 250, null, null, null, 0,
-  (select id from public.neumaticos where idneumatico = 'K86-E1'));
+  (select id from public.neumaticos where idneumatico = 'K86-E1'), p_motivo_codigo => 'desgaste');
 reset role;
 select test.eq('E1 en otro vehículo: tramo previo cerrado + tramo nuevo desde 250 (sin comparar odómetros entre vehículos)',
   test.km86('K86-E1'), '0|500|0|500|true');
@@ -172,7 +172,7 @@ reset role;
 select test.eq('E1 tras avanzar el vehículo destino', test.km86('K86-E1'), '0|500|150|650|true');
 -- La RPC sigue rechazando un odómetro menor al actual
 select test.become('authenticated', test.u_cli_a());
-select test.denied('cambio con odómetro menor al actual', $$select public.neumatico_cambiar(867::bigint, 1::smallint, 'baja', 'x', 100, null, '{"marca":"Z"}'::jsonb)$$, '23514');
+select test.denied('cambio con odómetro menor al actual', $$select public.neumatico_cambiar(867::bigint, 1::smallint, 'baja', 'x', 100, null, '{"marca":"Z"}'::jsonb, p_motivo_codigo => 'desgaste')$$, '23514');
 reset role;
 select test.eq('el rechazo no dejó eventos ni cambió el tramo', test.km86('K86-E1'), '0|500|150|650|true');
 

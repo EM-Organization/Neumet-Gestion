@@ -183,7 +183,7 @@ select test.e104('K104-F1', 10409, 'montaje', null, 3, 1000, 1);
 select test.e104('K104-F2', 10409, 'montaje', null, 99, 1000, 2);
 select test.become('authenticated', test.u_cli_a());
 select test.eq('F: rotación 3 <-> 99 con intercambio (RPC)',
-  (public.neumatico_rotar(10409::bigint, 3::smallint, 99::smallint, 2000)->>'intercambio'), 'true');
+  (public.neumatico_rotar(10409::bigint, 3::smallint, 99::smallint, 2000, p_motivo_codigo => 'diferencia_huellas')->>'intercambio'), 'true');
 reset role;
 update public.vehiculos set odometro_km = 2500 where id = 10409;
 select test.eq('F1: pasó de ruta a 99: cierra su tramo (1.000) y queda sin tramo abierto',
@@ -194,7 +194,7 @@ select test.eq('F2: pasó de 99 a ruta: abre su tramo (2.000) y suma lo recorrid
 select test.eq('F2: tramo abierto desde la salida de 99', test.t104('K104-F2'), '0|0|0|0|true|2000|false');
 select test.become('authenticated', test.u_cli_a());
 select test.eq('F: segunda rotación con intercambio (RPC)',
-  (public.neumatico_rotar(10409::bigint, 3::smallint, 99::smallint, 3000)->>'intercambio'), 'true');
+  (public.neumatico_rotar(10409::bigint, 3::smallint, 99::smallint, 3000, p_motivo_codigo => 'diferencia_huellas')->>'intercambio'), 'true');
 reset role;
 update public.vehiculos set odometro_km = 3200 where id = 10409;
 select test.eq('F1: vuelve a ruta: 1.000 cerrados y tramo actual 200',

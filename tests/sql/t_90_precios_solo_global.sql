@@ -219,7 +219,7 @@ reset role;
 -- ---------------------------------------------------------------------------
 select test.become('authenticated', test.u_p90n());
 select test.eq('sucursal: neumatico_cambiar con un neumático ingresado (precio) sigue funcionando',
-  (public.neumatico_cambiar(901::bigint, 2::smallint, 'baja', 'Prueba', 5100, null, '{"marca":"Nueva","precio":99.5}'::jsonb) ->> 'stock_restante') is null, true);
+  (public.neumatico_cambiar(901::bigint, 2::smallint, 'baja', 'Prueba', 5100, null, '{"marca":"Nueva","precio":99.5}'::jsonb, p_motivo_codigo => 'desgaste') ->> 'stock_restante') is null, true);
 select test.denied('sucursal: sigue sin poder escribir neumaticos directo', $$insert into public.neumaticos (vehiculo_id, cliente_id, posicion, marca) values (901, 1, 50, 'X')$$);
 reset role;
 select test.eq('el cambio de la sucursal imputó el precio como costo del montaje (lectura como dueño)',
