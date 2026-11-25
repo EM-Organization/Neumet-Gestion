@@ -1,6 +1,6 @@
 # 18 · Rotación y reposición para vehículos pesados
 
-> **Estado: propuesta histórica (2026-11-13), superada en parte por la especificación de reglas de negocio del 24/11/2026.** Donde choquen, prevalece la especificación. El apartado 0 indica qué cambia y cuál es el backlog vigente (P0 y P1).
+> **Estado: propuesta histórica (2026-11-13), superada en parte por las reglas de negocio vigentes ([23](23-reglas-negocio.md)).** Donde choquen, prevalece [23](23-reglas-negocio.md). El apartado 0 indica qué cambia y cuál es el backlog vigente (P0 y P1).
 
 Investigación y propuesta de diseño de la fase F8 de [16](16-hoja-de-ruta.md): sugerencia de rotación y reposición de neumáticos para camiones y buses de pasajeros. Es un documento de propuesta: no cambia código, migraciones ni interfaz. Complementa y precisa la sección A de [15](15-rotacion-alertas-rendimiento.md), pensada para un caso más simple; la sección 2.2 dice qué decisiones de [15](15-rotacion-alertas-rendimiento.md) quedan reemplazadas y cuáles se conservan.
 
@@ -8,46 +8,46 @@ Fecha de consulta de todas las fuentes externas: 2026-11-13. Las afirmaciones so
 
 Principios que rigen el diseño ([16](16-hoja-de-ruta.md)): dato no medido es nulo, nunca cero; reglas interpretables, sin machine learning; el operario ve una acción simple, no una teoría.
 
-## 0. Estado y precedencia (actualizado el 24/11/2026)
+## 0. Estado y precedencia (actualizado el 25/11/2026)
 
-**Este documento es una propuesta histórica del 2026-11-13.** No es backlog aprobado ni diseño vigente. Las secciones 1 a 11 describen lo que se propuso entonces; para cualquier comportamiento, manda la especificación de reglas de negocio del 24/11/2026 (v1.0, `NEUMET_spec_reglas_negocio_devs.md`, fuera del repositorio; origen: reunión con Agencia Central del 23/11/2026). Donde la especificación y este documento choquen, **prevalece la especificación**. Se conserva el contexto histórico (fuentes, normas, análisis de datos) porque sigue siendo útil como referencia.
+**Este documento es una propuesta histórica del 2026-11-13.** No es backlog aprobado ni diseño vigente. Las secciones 1 a 11 describen lo que se propuso entonces; para cualquier comportamiento, manda [23 · Reglas de negocio](23-reglas-negocio.md) (RN-01 a RN-32 y decisiones del 25/11/2026). Donde ese documento y este choquen, **prevalece [23](23-reglas-negocio.md)**. Se conserva el contexto histórico (fuentes, normas, análisis de datos) porque sigue siendo útil como referencia.
 
-Ningún comportamiento descrito aquí está implementado en `main`. Lo que sigue en el repositorio hoy (por ejemplo, el cálculo de estado con el promedio) describe el código real, no la regla vigente.
+Lo que sigue describe la propuesta histórica. El estado de cada ítem está en el apartado 0.2 y en [10](10-tablero.md). En `main` ya están la huella mínima en la base (migración `20261126000000`, aplicación en producción **[confirmar]**), el corte de tramos de km del auxilio (PR 156, migración `20261126010000`, aplicación en producción **[confirmar]**) y el criterio de desparejo y el rol de eje en JS (PR 157).
 
 ### 0.1 Reglas que cambian (vigentes)
 
-| Tema | Propuesta histórica (13/11) | Regla vigente (spec 24/11) |
+| Tema | Propuesta histórica (13/11) | Regla vigente ([23](23-reglas-negocio.md)) |
 |---|---|---|
 | Retiro de direccionales (R3) | 5,0 mm en la huella más baja (`direccion_retiro_mm`) | No hay retiro propio de dirección. El retiro general es 3 mm en todos los ejes (RN-02). En dirección, **8 mm es aviso** para revisar la cubierta y pasarla atrás (a tracción o eje loco), y **6 mm es límite** para pasarla atrás. |
-| Colores de alerta | Rojo para retiro; amarillo para rotación y alineación | **Rojo solo para el retiro general** (huella mínima menor que 3 mm: cambiar). **Amarillo** para rotar, alinear y pasar atrás una direccional. Nota: la spec deja abierto (P-02) si el límite de 6 mm tiene un segundo nivel; esta versión del documento sigue el brief del 24/11 y no lo decide. |
+| Colores de alerta | Rojo para retiro; amarillo para rotación y alineación | **Rojo solo para el retiro general** (huella mínima menor que 3 mm: cambiar). **Amarillo** para rotar, alinear y pasar atrás una direccional. Nota: P-02 ([23](23-reglas-negocio.md) §4, resuelta el 25/11) fija dos niveles amarillos en dirección: «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm. |
 | Restricción de posición de direccionales (R7, `apto_otra_posicion`) | No pasar una direccional a otra posición sin aprobación | **Descartada para Agencia Central** (RN-03). Una direccional puede rotar a tracción o a eje loco sin aprobación ni aviso de fuera de posición. No hace falta `apto_otra_posicion`. |
 | Intervalo y disparadores por kilómetros (R10) | No usar kilómetros como disparador; recordatorio por tiempo | Todo el rendimiento se mide por kilómetros con odómetro (RN-04): tasa en mm por 1.000 km, proyección por km y CPK. El **swap se sugiere a los 20.000 km** en cubiertas de vida 0 (RN-05). El tiempo solo es respaldo rotulado cuando no hay odómetro. Sin odómetro, el dato es **«sin dato»**; no se estima ni se inventa (RN-12). |
 | Estado y alertas por desgaste (RN-01) | Umbrales sobre el promedio en la mayoría de las reglas | Estado, alertas y sugerencias se calculan con la **huella mínima** `min(mm1, mm2, mm3)`. El promedio solo se muestra como dato informativo. Si falta alguna huella, no hay mínimo y la posición queda **«sin dato»**, nunca cero. |
-| Rol de eje en buses (RN-31) | Dirección solo en el eje 1 (posiciones 1 y 2) | En doble piso las posiciones 1 a 4 son direccionales (eje delantero de 4 posiciones). El rol se deriva de la distribución (spec 4.2). La numeración queda por validar con Dylan (P-12). |
-| Retiro para recauchutar (R9, 4,8 mm) | Recauchutar a 4,8 mm (6/32) | La renovación se hace al llegar a 3 mm (RN-08; glosario de la spec). El valor de 4,8 mm no es vigente hasta que lo confirme el dueño. |
+| Rol de eje en buses (RN-31) | Dirección solo en el eje 1 (posiciones 1 y 2) | En doble piso las posiciones 1 a 4 son direccionales (eje delantero de 4 posiciones). El rol se deriva de la distribución del vehículo. La numeración es la del diagrama actual del panel (P-12 de [23](23-reglas-negocio.md) §4). |
+| Retiro para recauchutar (R9, 4,8 mm) | Recauchutar a 4,8 mm (6/32) | La renovación se hace al llegar a 3 mm (RN-08). El valor de 4,8 mm no es vigente hasta que lo confirme el dueño. |
 | Reposición (sección 5) y R0 a R11 | Propuesta de reglas y plan en siete PR | Propuesta histórica. No es backlog. Ver 0.3. |
 
-### 0.2 Backlog vigente (P0 y P1, según la spec 7.1)
+### 0.2 Backlog vigente (P0 y P1, con su estado)
 
-Todo lo que no figure aquí queda fuera del backlog vigente (ver 0.3). Ningún ítem está implementado ni tiene rama de código asociada.
+Todo lo que no figure aquí queda fuera del backlog vigente (ver 0.3). Los ítems sin estado indicado están pendientes; los demás indican qué ya está en `main`.
 
 **P0 · antes del piloto (bloqueante)**
 
-| # | Ítem | RN / G (spec) |
+| # | Ítem | RN / G |
 |---|---|---|
 | 1 | Odómetro manual en cada registro: API (con coordinación con DAC), RPC de movimiento y UI | RN-12 / G-12 |
-| 2 | Auxilio: corte de tramos de km en la posición 99, un solo auxilio por vehículo y frecuencia de medición propia | RN-13 / G-13 |
-| 3 | Estado y alertas por huella mínima (SQL y JS, con leyenda) | RN-01, RN-08 / G-01 |
-| 4 | Rol de eje y umbrales de dirección (aviso 8 mm y límite 6 mm) | RN-02, RN-31 / G-02, G-28 |
+| 2 | Auxilio: corte de tramos de km en la posición 99 (en `main` por PR 156, migración `20261126010000`; aplicación en producción **[confirmar]**); pendientes un solo auxilio por vehículo y su frecuencia de medición, sin ola asignada | RN-13 / G-13 |
+| 3 | Estado y alertas por huella mínima: en `main` (SQL, migración `20261126000000`, aplicación en producción **[confirmar]**; JS); la leyenda y los umbrales van en la ola 2 | RN-01, RN-08 / G-01 |
+| 4 | Rol de eje y umbrales de dirección (aviso 8 mm y límite 6 mm): rol de eje en JS (PR 157); SQL y umbrales, en la ola 2 | RN-02, RN-31 / G-02, G-28 |
 | 5 | Motivo obligatorio en todos los movimientos (catálogo base) | RN-14 / G-14 |
 | 6 | Moneda por defecto USD | RN-28 / G-25 |
 | 7 | Caída brusca de 5 mm como medición sospechosa | RN-09 / G-09 |
 | 8 | Recuadro de alertas fijo en Inicio y en el vehículo, rojo y amarillo, con texto y símbolo | RN-20 / G-19 |
-| 9 | Configuraciones de bus convencional y doble piso, mapeadas a 6x2 y 8x2 | RN-31 / G-28 |
+| 9 | Configuraciones de bus convencional y doble piso, mapeadas a 6x2 y 8x2 (parcial: JS en `main` por PR 157; SQL y el rol por distribución en 8x2 y 8x4, en la ola 2) | RN-31 / G-28 |
 
 **P1 · primer mes de piloto**
 
-| # | Ítem | RN / G (spec) |
+| # | Ítem | RN / G |
 |---|---|---|
 | 10 | Rotación en disco y registro de alineación | RN-15, RN-16 / G-15, G-16 |
 | 11 | Sugerencias amarillas: swap a 20.000 km, diferencia entre huellas, direccional en aviso, con cierre por rotación o alineación | RN-05, RN-06, RN-17 / G-05, G-06, G-16 |
@@ -56,15 +56,15 @@ Todo lo que no figure aquí queda fuera del backlog vigente (ver 0.3). Ningún �
 | 14 | Alta de cubiertas por lote, con DOT, medida, proveedor y factura | RN-29, RN-30 / G-26, G-27 |
 | 15 | Máximo de renovaciones por marca, como advertencia | RN-25 / G-23 |
 | 16 | Trabajos de la semana e inspecciones de ayer | RN-18, RN-19 / G-17, G-18 |
-| 17 | Unificar el criterio de desgaste desparejo entre JS (`UNEVEN_MM`) y SQL (`irregularidad_mm`) | RN-06 / spec 4.8 |
-| 18 | Actualizar este documento según la especificación (hecho en esta versión) | RN-02, RN-03, RN-04 / G-03, G-04 |
+| 17 | Unificar el criterio de desgaste desparejo entre JS (`IRREGULARIDAD_MM_DEFECTO`, `unevenWear`) y SQL (`irregularidad_mm`): **hecho (PR 157)**, con el criterio de la base. Queda por confirmar si el umbral es estricto (código) o incluye el 2 (RN-06) | RN-06 |
+| 18 | Actualizar este documento según [23](23-reglas-negocio.md) (hecho; última revisión 2026-11-25) | RN-02, RN-03, RN-04 / G-03, G-04 |
 
 P2 (después del piloto, fuera de este documento): `reporte_periodo` mensual y trimestral, agente LLM de solo lectura, ahorro por renovación, km por mm como alerta, WhatsApp o mail, bases de auxilio como sucursales, integración con Smartway.
 
 ### 0.3 Qué queda como historia
 
 - Sección 1 (resumen), 2 (qué soporta el modelo, salvo las filas marcadas en 0.1), 3 (datos que faltan), 4 (reglas R0 a R11), 5 (reposición), 6 (casos límite), 7 (flujo del operario), 8 (criterio de prueba), 9 (plan en PR), 10 (preguntas) y 11 (fuentes): **propuesta histórica**. Las fuentes de la sección 11 y el análisis normativo sí se conservan como referencia.
-- Las preguntas de la sección 10 se reemplazan por las preguntas abiertas de la spec (P-01 a P-12, sección 7.2). La pregunta 1 queda respondida (ver allí).
+- Las preguntas de la sección 10 se reemplazan por las preguntas abiertas de [23](23-reglas-negocio.md) §4 (P-01 a P-12, decididas el 25/11/2026 salvo el punto abierto de P-01 y P-02 en 8 mm). La pregunta 1 queda respondida (ver allí).
 - Los casos de la sección 8 que usan `direccion_retiro_mm` = 5,0 mm, `apto_otra_posicion` o R7 **no son vigentes**. Los casos de R10 basados en tiempo tampoco.
 - El plan de reposición (sección 5 y PR 7 de la sección 9) queda fuera del backlog vigente.
 
@@ -133,7 +133,7 @@ Donde [15](15-rotacion-alertas-rendimiento.md) sección A y este documento difie
 | Dual: rotar interna con externa | A.3 | R4 aclara que no cierra la diferencia de diámetro; busca un intercambio en el mismo eje y, si no existe, un cambio con stock | Reemplazada |
 | Salvaguarda de causa: la sugerencia lleva la frase «Revisar alineación y presión antes de rotar» | A.3, paso 7 | **Se conserva**: R1 pasa a ser aviso y marca, no bloqueo | Conservada |
 | Candidatas: solo con medición vigente (`sin_medir = false`) | A.3, paso 1 | R0 usa el mismo criterio que la vista | Conservada |
-| Pasar una direccional a tracción: no se recomienda | A.4 | R7, con el dato `apto_otra_posicion` | **Descartada 24/11/2026** (spec RN-03): una direccional puede pasar a tracción o eje loco sin aprobación |
+| Pasar una direccional a tracción: no se recomienda | A.4 | R7, con el dato `apto_otra_posicion` | **Descartada 24/11/2026** ([23](23-reglas-negocio.md), RN-03): una direccional puede pasar a tracción o eje loco sin aprobación |
 | Medida del neumático y no mezclar medidas | A.4, TODO | Sección 3 | Conservada |
 | Proyección a 4 semanas (sugerencia preventiva) | A.4, TODO | No se usa; el desempate por tasa queda fuera de F8 | Sigue pendiente |
 
@@ -174,7 +174,7 @@ Mientras C2 no esté aplicada, el admin conserva el PATCH directo sobre `vehicul
 
 ## 4. Reglas propuestas (histórico, no vigente salvo lo que indica el apartado 0)
 
-> Las reglas R0 a R11 son la propuesta del 2026-11-13. Las que chocan con la especificación del 24/11/2026 (R3, R7, R9 en su umbral de 4,8 mm, R10) están marcadas en su encabezado. Ver 0.1.
+> Las reglas R0 a R11 son la propuesta del 2026-11-13. Las que chocan con las reglas vigentes de [23](23-reglas-negocio.md) (R3, R7, R9 en su umbral de 4,8 mm, R10) están marcadas en su encabezado. Ver 0.1.
 
 Convenciones: las profundidades son promedios por posición (`promedio`) salvo que la regla diga lo contrario; «diferencia» es un valor absoluto en milímetros y se compara en décimas de milímetro enteras para evitar errores de coma flotante; los parámetros viven por cliente, con rango permitido. Las reglas de umbral comparan con «mayor o igual» (o «menor o igual» en los retiros): el umbral es el primer valor que dispara la sugerencia. **Excepciones declaradas:** R1 usa «supera» (estrictamente mayor, igual que `desgaste_irregular` de la vista, `supabase/migrations/20261116000000_calidad_datos.sql:593-595`) y R8.1 usa «menos de» (a 2,0 mm exactos del retiro no se suprime la rotación); T60 y T08 las fijan. Los textos están en el estilo de [14](14-guia-de-textos.md): infinitivo, sin emojis, con la regla aplicada en una frase y nombres de posición («Delantera izquierda», «Eje 3 derecha interior») en lugar de «P1, P2»; las huellas se llaman «interna», «central» y «externa». Los números de posición («P1») solo aparecen en la tabla de pruebas. Las fuentes se numeran en la sección 11.
 
@@ -212,11 +212,11 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 ### R1 · Revisar la causa del desgaste irregular (aviso, no bloqueo)
 
 - **Condición por neumático con las tres huellas medidas:**
-  - Asimetría: la diferencia entre `mm1` (interna) y `mm3` (externa) supera `irregularidad_mm` (2 mm por defecto, el mismo umbral de `desgaste_irregular` de la vista): causa probable de alineación o mecánica.
+  - Asimetría: la diferencia entre la mayor y la menor de las tres huellas supera `irregularidad_mm` (2 mm por defecto, el mismo umbral de `desgaste_irregular` de la vista): causa probable de alineación o mecánica.
   - Centro gastado: `mm2` menor que el promedio de `mm1` y `mm3` por más de `rotacion_presion_dif_mm`: sobreinflado.
   - Bordes gastados: `mm2` mayor que ese promedio por más de `rotacion_presion_dif_mm`: subinflado o sobrecarga.
 - **Parámetro:** `rotacion_presion_dif_mm`, por defecto 2,0 mm (coherente con `irregularidad_mm`), rango 1,0 a 4,0.
-- **Texto:** «Revisar alineación del eje 1: Delantera izquierda tiene 3,1 mm de diferencia entre las huellas interna y externa.» / «Revisar presión de Eje 2 derecha interior: el centro está 2,4 mm más gastado que las huellas interna y externa.» / «Revisar presión de Eje 2 derecha interior: las huellas interna y externa están 2,6 mm más gastadas que el centro.»
+- **Texto:** «Revisar alineación del eje 1: Delantera izquierda tiene 3,1 mm de diferencia entre su huella más gastada y su huella menos gastada.» / «Revisar presión de Eje 2 derecha interior: el centro está 2,4 mm más gastado que las huellas interna y externa.» / «Revisar presión de Eje 2 derecha interior: las huellas interna y externa están 2,6 mm más gastadas que el centro.»
 - **Efecto:** es un **aviso** (no una tarjeta; clasificación de R11): se muestra mientras la condición se cumpla, con la etiqueta «Desgaste». **No bloquea ninguna rotación.** Si R2, R4, R5 o R6 sugieren mover ese neumático, la sugerencia sale marcada «Revisar la causa antes de rotar» (la frase de [15](15-rotacion-alertas-rendimiento.md) A.3, paso 7).
 - **Por qué no bloquea (cambio respecto de la versión anterior de este documento):** un bloqueo «hasta una medición nueva posterior a la corrección» no tiene salida: corregir la alineación o la presión no devuelve la banda gastada, así que la medición siguiente repite la asimetría y el bloqueo volvería a activarse para siempre. Las fuentes dicen lo contrario de esperar: Goodyear Reino Unido (fuente 7): «Once the wear differential is about 3mm, you need to turn the tyre» y «Once irregular wear sets in – even if whatever causes that wear has been corrected – the wear will continue, if the difference is more than 3-4mm» (la continuidad vale cuando la diferencia supera 3 a 4 mm); Michelin Reino Unido (fuente 1): en ciertos casos hay que combinar la rotación de posición con girar el neumático en la llanta. Por eso R1 avisa y deja decidir. Girar el neumático en la llanta no existe como operación del sistema y queda fuera de F8.
 - **Registro de la corrección:** no hace falta para F8. Si más adelante se quisiera medir si una corrección frenó el desgaste, haría falta un evento de corrección; el tipo `inspeccion` ya lo admite el `check` de `eventos_neumatico`, pero ninguna RPC lo escribe (sección 2); crearla sería un PR aparte, fuera de este plan.
@@ -233,7 +233,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 
 ### R3 · Retiro por posición
 
-> **Superada en dirección (spec 24/11/2026, RN-02 y RN-08).** El retiro general es 3 mm en todos los ejes; en dirección, 8 mm es aviso para revisar y pasar atrás, y 6 mm es límite para pasar atrás (amarillo). El retiro de 5,0 mm de este apartado no se usa. Lo que sigue es histórico.
+> **Superada en dirección ([23](23-reglas-negocio.md), RN-02 y RN-08).** El retiro general es 3 mm en todos los ejes; en dirección, 8 mm es aviso para revisar y pasar atrás, y 6 mm es límite para pasar atrás (amarillo). El retiro de 5,0 mm de este apartado no se usa. Lo que sigue es histórico.
 
 - **Condición:** la huella más baja (`minimo`) de una posición es menor o igual a su `umbral_descarte_pos`: `direccion_retiro_mm` en el eje 1 y `umbral_retiro_mm` (3,0 mm por defecto) en el resto. El retiro para recauchutar (a `max(recauchutar_mm, umbral_retiro_mm)`) no es de R3 sino de R9; en una posición con recauchutado posible, R9 dispara siempre que R3 dispara, y ambas se fusionan (R11, donde prevalece R9). Se compara contra la huella más baja y no contra el promedio: 49 CFR 393.75(b) exige en las ruedas delanteras el mínimo «at any point on a major tread groove», es decir en cualquier punto de una ranura principal (fuente 2; el (c), para el resto de las ruedas, dice «in a major tread groove», sin «en cualquier punto»), de modo que un neumático con una huella en 2,8 mm y promedio de 3,3 mm ya incumple 4/32 de pulgada. Las huellas de NEUMET son tres puntos de la banda; que cada uno caiga en una ranura principal depende del calibre y no está verificado. Dato nulo en cualquiera de las huellas: no se calcula, nunca cero (T38).
 - **Parámetros (histórico, no vigente):** `direccion_retiro_mm`, por defecto 5,0 mm, rango 3,2 a 8,0. El mínimo del rango es el piso legal de EE. UU. para ruedas delanteras (4/32 de pulgada, 3,2 mm; fuente 2). El valor por defecto es una práctica de flota (5 a 6/32 de pulgada, fuentes 3 y 4); no hay consenso de fabricantes. Fuera de dirección rige el `umbral_retiro_mm` que el cliente ya tiene; el piso legal de EE. UU. para el resto es 2/32 de pulgada (1,6 mm), por debajo de ese valor.
@@ -269,7 +269,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 
 ### R7 · No pasar una direccional a otra posición sin aprobación (DESCARTADA para Agencia Central)
 
-> **Descartada (spec 24/11/2026, RN-03).** Una direccional puede rotar a tracción o a eje loco sin aprobación del fabricante y sin aviso de fuera de posición. No hace falta el dato `apto_otra_posicion`. No implementar. Lo que sigue es histórico.
+> **Descartada ([23](23-reglas-negocio.md), RN-03).** Una direccional puede rotar a tracción o a eje loco sin aprobación del fabricante y sin aviso de fuera de posición. No hace falta el dato `apto_otra_posicion`. No implementar. Lo que sigue es histórico.
 
 - **Condición:** un neumático de dirección (eje 1) con fila en `neumaticos` (R7 no evalúa una posición sin neumático registrado: T66) llegó a `direccion_retiro_mm` (la misma condición de R3) y `apto_otra_posicion` no es verdadero. No hay un «umbral de reubicación» propio: la reubicación de una direccional a otro eje con 3 a 4 mm (práctica de Continental, fuente 7) queda fuera de la primera entrega y no tiene parámetro. La cubierta que lo reemplaza debe ser apta para dirección (sección 4).
 - **Efecto:** la sugerencia es siempre «Cambiar neumático»; nunca mover a tracción. Como su condición contiene la de R3, cuando R7 dispara también dispara R3 sobre la misma posición: no son dos tarjetas, se fusionan en una (R11, «Una tarjeta de retiro por posición») y R7 aporta la restricción de la acción (el neumático retirado no se ofrece para otra posición).
@@ -303,11 +303,11 @@ Como Toyo opina (resumen de búsqueda, fuente 13) que fuera de casos específico
 
 ### R10 · Intervalo por kilómetros o tiempo
 
-> **Parcialmente superada (spec 24/11/2026, RN-04, RN-05 y RN-12).** Los kilómetros sí son la base del rendimiento y de la proyección, y el swap a 20.000 km en vida 0 es vigente. El texto de recomendación que sigue, que descartaba los kilómetros, ya no aplica; ver la recomendación vigente abajo.
+> **Parcialmente superada ([23](23-reglas-negocio.md), RN-04, RN-05 y RN-12).** Los kilómetros sí son la base del rendimiento y de la proyección, y el swap a 20.000 km en vida 0 es vigente. El texto de recomendación que sigue, que descartaba los kilómetros, ya no aplica; ver la recomendación vigente abajo.
 
 - **Hallazgo:** no hay consenso. Michelin rota a media vida según la tasa de desgaste y no da intervalo en kilómetros (fuente 1); Goodyear menciona unas 125.000 millas para el tándem, cifra poco fiable; los intervalos comerciales van de 8.000 a 10.000 km (blog, fuente 15) y de 30.000 a 75.000 millas (resúmenes de búsqueda).
-- **Recomendación vigente (spec 24/11/2026):** el rendimiento y la proyección se miden por kilómetros con odómetro (tasa en mm por 1.000 km y km hasta el retiro); el swap se sugiere a los 20.000 km en cubiertas de vida 0. Si no hay odómetro, el dato es «sin dato» y no se inventa; el tiempo solo se usa como respaldo rotulado.
-- **Recomendación histórica (superada):** no usar los kilómetros como disparador. El disparador era la diferencia de desgaste (R2, R5, R6). Como recordatorio secundario, `rotacion_recordatorio_dias` (nulo por defecto, rango 30 a 365): si el vehículo lleva más de ese plazo sin una rotación (días desde el último evento `rotacion` de cualquiera de sus posiciones o, si nunca se rotó, desde el primer montaje; medir no reinicia la cuenta, T29; un vehículo sin evento `montaje` no tiene fecha de inicio: caso a definir, decisión de negocio pendiente), emitir el aviso (etiqueta «Desgaste», sin tarjeta) «Revisar rotación del vehículo: 120 días sin rotar». (Histórico: la spec exige km con odómetro para todo rendimiento; el criterio de `km_confiable` sigue siendo referencia de implementación.)
+- **Recomendación vigente ([23](23-reglas-negocio.md)):** el rendimiento y la proyección se miden por kilómetros con odómetro (tasa en mm por 1.000 km y km hasta el retiro); el swap se sugiere a los 20.000 km en cubiertas de vida 0. Si no hay odómetro, el dato es «sin dato» y no se inventa; el tiempo solo se usa como respaldo rotulado.
+- **Recomendación histórica (superada):** no usar los kilómetros como disparador. El disparador era la diferencia de desgaste (R2, R5, R6). Como recordatorio secundario, `rotacion_recordatorio_dias` (nulo por defecto, rango 30 a 365): si el vehículo lleva más de ese plazo sin una rotación (días desde el último evento `rotacion` de cualquiera de sus posiciones o, si nunca se rotó, desde el primer montaje; medir no reinicia la cuenta, T29; un vehículo sin evento `montaje` no tiene fecha de inicio: caso a definir, decisión de negocio pendiente), emitir el aviso (etiqueta «Desgaste», sin tarjeta) «Revisar rotación del vehículo: 120 días sin rotar». (Histórico: [23](23-reglas-negocio.md) exige km con odómetro para todo rendimiento (RN-04); el criterio de `km_confiable` sigue siendo referencia de implementación.)
 - **Buses de pasajeros:** el disparador es el mismo; sube la frecuencia de medición: School Bus Fleet (fuente 9) describe revisión diaria de neumáticos y presión semanal, profundidad mensual. El parámetro `dias_sin_medir_alerta` ya cubre la frecuencia de medición.
 - **Confianza:** alta en que no hay consenso; baja en cualquier cifra.
 
@@ -362,7 +362,7 @@ Alcance: sugerir cuántas cubiertas comprar por medida y rol de eje. Es una suge
 | Neumático dado de baja | Excluido; la base ya rechaza el intercambio |
 | Posición vacía | Una rotación hacia posición vacía mueve el neumático; se ofrece solo si la regla lo justifica, no por defecto |
 | Stock insuficiente | La sugerencia de cambio se emite con la marca de texto «Sin stock apto; ver reposición» (R11; no es un aviso) |
-| Sin odómetro (spec 24/11, RN-04 y RN-12) | El rendimiento y la proyección por km quedan **«sin dato»**; no se inventan ni se estiman. Solo el respaldo por tiempo, rotulado como tal |
+| Sin odómetro ([23](23-reglas-negocio.md), RN-04 y RN-12) | El rendimiento y la proyección por km quedan **«sin dato»**; no se inventan ni se estiman. Solo el respaldo por tiempo, rotulado como tal |
 | Eje sin rol configurado | Se emiten R0, R1, R2, R3 y R7 (eje 1 siempre dirección), R4 (duales), R8, R9 (eje 1 y retiro para recauchutar) y R3 en las demás posiciones; no se emiten R5 ni R6 |
 | Eje 1 con rol distinto de dirección en los datos | El dominio lo trata igual como dirección (R3 con `direccion_retiro_mm`, cubierta apta para dirección, R9); la base lo rechaza con un `check` (sección 3) |
 | Vehículo sin servicio (bus o camión) registrado | Se trata como bus: la sugerencia de retiro por recauchutado en dirección se emite (R9) y ningún recauchutado es apto para dirección |
@@ -397,7 +397,7 @@ Pautas:
 
 ## 8. Criterio de prueba (histórico, no vigente salvo lo que indica el apartado 0)
 
-> Los casos que usan `direccion_retiro_mm` = 5,0 mm, `apto_otra_posicion` o R7 no son vigentes. Los casos de R10 basados en tiempo tampoco. Los criterios de la spec están en su sección 6 (CA-01 a CA-32).
+> Los casos que usan `direccion_retiro_mm` = 5,0 mm, `apto_otra_posicion` o R7 no son vigentes. Los casos de R10 basados en tiempo tampoco. Los criterios de aceptación están en [23](23-reglas-negocio.md) (CA-01 a CA-32).
 
 La función pura (propuesta: `recomendarRotacion(vehiculo, filas, opciones)` en `assets/js/domain/rotacion.js`, sin DOM ni supabase) devuelve una lista de sugerencias `{regla, tipo, posiciones, texto}` (con `tipo` `retiro`, `rotacion` o `medir`; son las tarjetas y las que cuentan para R11) y una lista aparte de avisos `{regla, etiqueta, posiciones, texto}`, ambas según la clasificación única de R11 (los avisos no suprimen nada ni cuentan para el tope de tarjetas). Una segunda función pura, `esAptaDireccion(cubierta, vehiculo, opciones)`, implementa la definición de la sección 4. Cada fila de la tabla siguiente se convierte en un test unitario en `tests/unit/rotacion.test.mjs`. Los valores usan los parámetros por defecto y neumáticos con igual `marca`, `modelo`, `vida` y `medida` nula salvo que la entrada diga otra cosa. Las posiciones: P1 Delantera izquierda, P2 Delantera derecha, P3 a P6 del eje 2, P7 y P8 eje 3 izquierdo, P9 y P10 eje 3 derecho. «Uniforme» significa las tres huellas iguales. Los casos T01 a T34 son los de la primera versión, ajustados; T35 a T72 son nuevos. En la ronda 5 se agregó T70 y cambiaron T25, T51 y T52; en la ronda 6 se agregó T71 (y en la ronda 7 T72, la parte de reposición que estaba en T71) y se precisó el orden de las tarjetas en T58 y T63. En la ronda 4 cambiaron T11, T13, T21, T34, T35, T36, T59 y T66 (una sola tarjeta de retiro por posición, R11) y se agregaron T68 y T69. T02, T08, T10, T27 y T44 cambiaron en la ronda 2; T27 y T44 se precisaron en la ronda 3 (posición medida). T02 usaba P2 en 6,5 mm, a 1,5 mm del retiro de dirección, donde R8.1 suprime la rotación (ese caso es ahora T53); T02 usa 7,5 mm en P2 para que la rotación se emita.
 
@@ -547,7 +547,7 @@ Cada PR de este plan actualiza en el mismo PR el apéndice de [08](08-esquema-da
 
 Solo de lógica de negocio; lo técnico queda resuelto arriba, con el valor conservador que se usa mientras no haya respuesta.
 
-1. **Política de retiro de direccionales** (respondida en la spec del 24/11/2026: aviso a 8 mm, límite a 6 mm, retiro general a 3 mm; el valor de 5,0 mm de abajo queda superado): ¿a cuántos milímetros se retiran hoy en los camiones y en los buses? El valor por defecto propuesto es 5,0 mm medidos en la huella más baja, con piso de 3,2 mm.
+1. **Política de retiro de direccionales** (respondida en [23](23-reglas-negocio.md), RN-02 y RN-08: aviso a 8 mm, límite a 6 mm, retiro general a 3 mm; el valor de 5,0 mm de abajo queda superado): ¿a cuántos milímetros se retiran hoy en los camiones y en los buses? El valor por defecto propuesto es 5,0 mm medidos en la huella más baja, con piso de 3,2 mm.
 2. **País o norma aplicable:** ¿en qué país operan los clientes con flota pesada y qué profundidad mínima legal exige la inspección? Los pisos legales verificados son de EE. UU.; México y Brasil se encontraron solo en resúmenes y Chile y Argentina no tienen un valor oficial hallado para pesados.
 3. **Recauchutado:** ¿los clientes recauchutan, en qué posiciones lo permiten (fuera de dirección) y cuántas vidas de carcasa admiten?
 4. **Intervalos actuales:** ¿cada cuánto rotan hoy y quién lo decide (taller propio o externo)? Sirve para fijar el recordatorio y para medir si la sugerencia mejora algo.
