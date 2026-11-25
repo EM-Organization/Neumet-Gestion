@@ -2,7 +2,7 @@
 -- Migración 20261126020000_odometro_motivos.sql. Todo en una transacción que se revierte.
 -- A: catálogo y privilegios. B: RLS del catálogo por rol. C: flags false (compatibilidad). D0: cada flag gobierna solo lo suyo.
 -- D: flags true (exigido). E: rotación decreciente. F: CA-14 por RPC. G: trigger de escrituras directas (el tipo de evento
--- y el tipo de motivo deben corresponder). H: montaje standalone. I: CA-03 (rotar de la 1 a la 7 en un 6x2).
+-- y el tipo de motivo deben corresponder). H: montaje standalone. I: CA-03 (rotar de la 1 a la 7 en un 6x2). L: texto del motivo solo con «otro».
 begin;
 
 -- Identidades: usuario global del cliente 1, usuario de la sucursal 1051 del cliente 1, usuario del cliente 2.
@@ -427,6 +427,29 @@ select test.become('authenticated', test.u_g105());
 select test.eq('K: el cliente lee odometro_obligatorio del panel con su JWT',
   (select odometro_obligatorio from public.clientes where id = 1), true);
 reset role;
+
+-- ---------------------------------------------------------------------------
+-- L. Texto del motivo solo con «otro» (CA-14): con otro código el texto se descarta y lo que queda es la etiqueta del catálogo
+-- ---------------------------------------------------------------------------
+insert into public.vehiculos (id, cliente_id, nombre, patente, tipo_ruedas, activo, odometro_km) values
+  (105006, 1, 'O105 L', 'O105L1', 10, true, 100000);
+select test.n105('M105-L1', 105006, 1);
+select test.eq('L: el validador con un código distinto de «otro» devuelve la etiqueta, aunque llegue texto',
+  public.motivo_movimiento_validar(1::bigint, 'baja', 'danio', 'Texto libre'), 'Daño');
+select test.become('authenticated', test.u_g105());
+select test.eq('L: desmontar a baja con «danio» y texto responde ok',
+  (public.neumatico_desmontar(105006, 1::smallint, 'baja', null, 100000, null, null, 'danio', 'Texto libre')->>'destino'), 'baja');
+reset role;
+select test.eq('L: motivo_baja es la etiqueta del catálogo («Daño»), no el texto libre',
+  (select motivo_baja from public.neumaticos where idneumatico = 'M105-L1'), 'Daño');
+select test.eq('L: el evento con «danio» no guarda el texto (queda null)',
+  (select coalesce(motivo_texto, 'NULL') from public.eventos_neumatico
+    where vehiculo_id = 105006 and motivo_codigo = 'danio' order by id desc limit 1), 'NULL');
+select test.eq('L: escritura directa con «desgaste» y texto: el insert pasa',
+  split_part(test.err105($$insert into public.eventos_neumatico (cliente_id, vehiculo_id, idneumatico, tipo, motivo_codigo, motivo_texto) values (1, 105006, 'M105-L1', 'desmontaje', 'desgaste', 'Texto libre')$$), '|', 1), 'sin error');
+select test.eq('L: escritura directa con «desgaste» y texto: el evento queda con texto null',
+  (select coalesce(motivo_texto, 'NULL') from public.eventos_neumatico
+    where vehiculo_id = 105006 and motivo_codigo = 'desgaste' order by id desc limit 1), 'NULL');
 
 update public.clientes set odometro_obligatorio = false, odometro_obligatorio_api = false where id = 1;
 

@@ -124,6 +124,11 @@ as $$
 declare
   v_tipos text[];
 begin
+  -- El texto libre solo vale con «otro». Se descarta antes del retorno de código nulo, y con «is distinct from»
+  -- (que sí casa con nulo, a diferencia de «<>») para que ningún evento guarde un texto sin uso.
+  if new.motivo_codigo is distinct from 'otro' then
+    new.motivo_texto := null;
+  end if;
   if new.motivo_codigo is null then
     return new;
   end if;
@@ -219,7 +224,8 @@ begin
   if v_cod = 'otro' and v_txt is null then
     raise exception 'indicar el texto del motivo «otro»' using errcode = '22023';
   end if;
-  return coalesce(v_txt, v_etiq);
+  -- Solo «otro» usa el texto libre: con otro código el texto no sustituye a la etiqueta del catálogo (motivo_baja, historial).
+  return case when v_cod = 'otro' then v_txt else v_etiq end;
 end
 $$;
 revoke all on function public.motivo_movimiento_validar(bigint, text, text, text) from public, anon, authenticated;
