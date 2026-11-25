@@ -278,8 +278,9 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
       catalogo: motivos.catalogo, odometroObligatorio: motivos.odometroObligatorio
     };
     pintarRotar();
+    // El foco inicial lo pone modal-a11y (data-foco-inicial="rotar-motivo" en index.html). Enfocar aquí un campo lo dejaría
+    // como «previo» y, al cerrar, el foco no volvería al botón Rotar que abrió el diálogo.
     $('modal-rotar').classList.add('show');
-    $('rotar-odo').focus();
   } finally { rotando = false; if (btn && btn.isConnected) btn.disabled = false; }
 };
 

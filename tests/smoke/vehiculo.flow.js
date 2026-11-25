@@ -251,9 +251,16 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     var evRot = 0, cuentaEv = function(){ evRot++; }; d.addEventListener('neumet:neumatico-cambiado', cuentaEv);
     sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true}));
     if(br.dataset.args !== '[10,3,1]') fail('detalle: data-args de Rotar incorrectos: '+br.dataset.args);
-    br.click(); br.click(); await sleep(500);   // doble clic: un solo diálogo
+    br.focus(); br.click(); br.click(); await sleep(500);   // doble clic: un solo diálogo (con el ratón, Chrome enfoca el botón)
     if($('#modal-confirm').classList.contains('show')) fail('detalle: rotar no debe pedir confirmación (el motivo va en el diálogo de rotar)');
     if(!$('#modal-rotar').classList.contains('show')) fail('detalle: Rotar debe abrir el diálogo de motivo y odómetro');
+    // Foco (modal-a11y): al abrir, el foco va al motivo; al cancelar, vuelve al botón Rotar que abrió el diálogo.
+    var nombreFoco = function(el){ return el ? (el.id || el.getAttribute('data-action') || el.tagName) : 'ninguno'; };
+    if(d.activeElement !== $('#rotar-motivo')) fail('detalle: al abrir Rotar el foco debe ir a «Motivo»: '+nombreFoco(d.activeElement));
+    $('#modal-rotar [data-action="neumatico-rotar-cerrar"]').click(); await sleep(100);
+    if(!d.activeElement || d.activeElement.getAttribute('data-action') !== 'neumatico-rotar-pos') fail('detalle: al cancelar Rotar el foco debe volver al botón Rotar: '+nombreFoco(d.activeElement));
+    br.click(); await esperarRotar();   // reabre el diálogo para seguir el recorrido
+    if(!$('#modal-rotar').classList.contains('show')) fail('detalle: Rotar debe reabrir el diálogo tras cancelar');
     if(rpcs('neumatico_rotar').length) fail('detalle: abrir el diálogo de rotar no debe llamar a la RPC');
     // Motivo obligatorio: sin motivo no sale la RPC y el diálogo muestra la guía
     $('#rotar-form').requestSubmit(); await sleep(150);
