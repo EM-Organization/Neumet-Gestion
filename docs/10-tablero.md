@@ -79,7 +79,7 @@
 4. Asistente LLM: proveedor y clave, pendiente del dueño (ola 7 de F8; diseño en `docs/24`, sin crear).
 
 ### Desarrollo
-- Ola 1 de F8, B1 pendiente: activar `odometro_obligatorio` para Agencia Central tras verificar el panel (director). Coordinar con DAC el campo `odometro_km` y luego `odometro_obligatorio_api`.
+- Ola 1 de F8, B1 pendiente: crear `odometro_obligatorio` (no existe en el código aún) y activarlo para Agencia Central tras verificar el panel (director). Coordinar con DAC el campo `odometro_km` y luego crear `odometro_obligatorio_api`.
 - Nota de moneda de los datos ya cargados: no se convierten; su revisión queda pendiente (USD por defecto para clientes nuevos y Agencia Central; [23](23-reglas-negocio.md) §4).
 - Ola 2 de F8: `ejeDePosicion` por distribución en 8x2 y 8x4 (exponer `distribucion` en `v_estado_neumaticos`). El desparejo del panel lee el flag de la base cuando faltan `mm1` o `mm3`.
 - Pulido UI de Mediciones: el estado vacío en escritorio junta «Elegir un vehículo» con «Después, elegir…». Pendiente.
