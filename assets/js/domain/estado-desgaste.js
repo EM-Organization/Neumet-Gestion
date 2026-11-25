@@ -152,3 +152,30 @@ export function bandasGrafico(th, max) {
     { id: 'bueno', estilo: 'bueno', desde: th.buen, hasta: max, rotulo: rotulo('bueno') },
   ];
 }
+
+// Dirección (RN-02, P-02): «Pasar atrás» a `direccion_aviso_mm` o menos; «Pasar atrás ya» bajo `direccion_limite_mm`. Los
+// umbrales son de cada empresa: sin ellos la fila no lleva etiqueta. Decide por la huella mínima (RN-01), igual que el
+// estado. No se mira el rol del eje: main todavía no lo expone.
+export function etiquetaDireccion(fila) {
+  const aviso = num(fila && fila.direccion_aviso_mm), limite = num(fila && fila.direccion_limite_mm);
+  const mm = huellaMinima(fila);
+  if (aviso === null || limite === null || mm === null) return null;
+  if (mm < limite) return 'Pasar atrás ya';
+  if (mm <= aviso) return 'Pasar atrás';
+  return null;
+}
+
+// Leyenda del panel: cómo se decide el estado y, si hay filas de dirección, sus umbrales con coma decimal. Si las filas traen
+// umbrales distintos (varias empresas), no se nombra una cifra que no vale para todas.
+const LEYENDA_ESTADO = 'Estado por la huella mínima de las tres.';
+export function leyendaDireccion(filas) {
+  const pares = new Map();
+  for (const f of filas || []) {
+    const aviso = num(f && f.direccion_aviso_mm), limite = num(f && f.direccion_limite_mm);
+    if (aviso !== null && limite !== null) pares.set(`${aviso}|${limite}`, { aviso, limite });
+  }
+  if (pares.size === 0) return LEYENDA_ESTADO;
+  if (pares.size > 1) return `${LEYENDA_ESTADO} En dirección: Pasar atrás y Pasar atrás ya según los umbrales de cada empresa.`;
+  const [{ aviso, limite }] = pares.values();
+  return `${LEYENDA_ESTADO} En dirección: Pasar atrás con ${fmtUmbral(aviso)} mm o menos; Pasar atrás ya bajo ${fmtUmbral(limite)} mm.`;
+}

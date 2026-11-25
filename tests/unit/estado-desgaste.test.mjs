@@ -3,6 +3,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   wearStatus, umbralesEstado, truncar1, fmtMedida, contarEstados, contarEstadosFilas, estadoVehiculo, estadoContable, banderaDeFila, rangoEstado, rangoLargo, ejeY, bandasGrafico, estadoDeBase, ESTADOS, etiquetaChip,
+  etiquetaDireccion, leyendaDireccion,
 } from '../../assets/js/domain/estado-desgaste.js';
 import { datosGrafico, serieDesgaste, fechaEje, tooltipPunto } from '../../assets/js/domain/grafico-desgaste.js';
 import { TOKENS } from '../../assets/js/domain/tokens-detalle.js';
@@ -233,5 +234,45 @@ describe('datosGrafico', () => {
       }
     }
     assert.ok(movidos > 0, 'al menos un caso obligó a mover el rótulo a la izquierda (si no, la prueba no ejercita la colisión)');
+  });
+});
+
+describe('dirección (RN-02, P-02)', () => {
+  const d = (mm, aviso = 8, limite = 6) => ({ mm1: mm, mm2: mm, mm3: mm, direccion_aviso_mm: aviso, direccion_limite_mm: limite });
+  test('«Pasar atrás» a 8 mm o menos; «Pasar atrás ya» bajo 6 mm; por encima de 8, sin etiqueta', () => {
+    assert.equal(etiquetaDireccion(d(8.0)), 'Pasar atrás');
+    assert.equal(etiquetaDireccion(d(6.0)), 'Pasar atrás');
+    assert.equal(etiquetaDireccion(d(8.1)), null);
+    assert.equal(etiquetaDireccion(d(5.9)), 'Pasar atrás ya');
+  });
+  test('decide por la huella mínima, no por el promedio', () => {
+    assert.equal(etiquetaDireccion({ mm1: 9, mm2: 9, mm3: 5.9, direccion_aviso_mm: 8, direccion_limite_mm: 6 }), 'Pasar atrás ya');
+  });
+  test('sin umbrales, sin medida completa o sin fila: sin etiqueta', () => {
+    assert.equal(etiquetaDireccion({ mm1: 5, mm2: 5, mm3: 5 }), null);
+    assert.equal(etiquetaDireccion({ mm1: 5, mm2: null, mm3: 5, direccion_aviso_mm: 8, direccion_limite_mm: 6 }), null);
+    assert.equal(etiquetaDireccion({ mm1: 5, mm2: 5, mm3: 5, direccion_aviso_mm: null, direccion_limite_mm: 6 }), null);
+    assert.equal(etiquetaDireccion(null), null);
+  });
+  test('cada empresa con sus umbrales', () => {
+    assert.equal(etiquetaDireccion(d(7.5, 7.5, 5)), 'Pasar atrás');
+    assert.equal(etiquetaDireccion(d(7.6, 7.5, 5)), null);
+  });
+});
+
+describe('leyenda de dirección', () => {
+  test('sin filas de dirección, solo cómo se decide el estado', () => {
+    assert.equal(leyendaDireccion([]), 'Estado por la huella mínima de las tres.');
+    assert.equal(leyendaDireccion([{ mm1: 5, mm2: 5, mm3: 5 }]), 'Estado por la huella mínima de las tres.');
+  });
+  test('un par de umbrales: se nombran con coma decimal', () => {
+    assert.equal(leyendaDireccion([{ direccion_aviso_mm: 8, direccion_limite_mm: 6 }]),
+      'Estado por la huella mínima de las tres. En dirección: Pasar atrás con 8 mm o menos; Pasar atrás ya bajo 6 mm.');
+    assert.equal(leyendaDireccion([{ direccion_aviso_mm: 7.5, direccion_limite_mm: 5 }, { direccion_aviso_mm: 7.5, direccion_limite_mm: 5 }]),
+      'Estado por la huella mínima de las tres. En dirección: Pasar atrás con 7,5 mm o menos; Pasar atrás ya bajo 5 mm.');
+  });
+  test('varias empresas con umbrales distintos: sin cifras', () => {
+    assert.equal(leyendaDireccion([{ direccion_aviso_mm: 8, direccion_limite_mm: 6 }, { direccion_aviso_mm: 7.5, direccion_limite_mm: 5 }]),
+      'Estado por la huella mínima de las tres. En dirección: Pasar atrás y Pasar atrás ya según los umbrales de cada empresa.');
   });
 });

@@ -1,5 +1,6 @@
-// Dominio: alerta única «Desgaste límite» con estado (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
-// Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta).
+// Dominio: alertas con estado y su presentación (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
+// Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta; tipo; color; severidad).
+import { ESTADOS } from './estado-desgaste.js';
 
 export const ESTADO_ALERTA_LABEL = { abierta: 'Abierta', reconocida: 'Reconocida', silenciada: 'Silenciada' };
 // Color del chip de estado: el rojo es de lo crítico (el neumático), no del estado de gestión de la alerta. «Abierta» pide
@@ -30,6 +31,36 @@ export function filtrarPorEstadoAlerta(alertas, estado = '', ahora = Date.now())
 
 // Alertas que nadie atendió: abiertas y no silenciadas (las que Inicio destaca).
 export const sinReconocer = (alertas, ahora = Date.now()) => contarPorEstadoAlerta(alertas, ahora).abierta;
+
+// Presentación de cada tipo de v_alertas (columnas tipo y color). La alerta roja es `limite`: así lo fija alertas_tipo_ck en la base.
+// Rojo solo para lo crítico (neumático en desgaste límite); lo demás es amarillo y lleva ◆. Nunca ▲: ya significa «Poco
+// desgaste» y «N bajos» (docs/14 §3).
+export const SIMBOLO_REVISAR = '◆';
+export const PRESENTACION_ALERTA = Object.freeze({
+  limite: { etiqueta: ESTADOS.limite.texto, simbolo: ESTADOS.limite.simbolo, color: 'red', accion: 'Cambiar' },
+  direccion_aviso: { etiqueta: 'Pasar atrás', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  direccion_limite: { etiqueta: 'Pasar atrás ya', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  irregular: { etiqueta: 'Desgaste irregular', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  swap: { etiqueta: 'Swap a 20.000 km', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+});
+
+// Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo con el mensaje de la base.
+export function presentacionAlerta(a) {
+  if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) return PRESENTACION_ALERTA[a.tipo];
+  return { etiqueta: String((a && a.mensaje) || 'Revisar la alerta'), simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
+}
+
+// Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
+// «Cambiar» es el neumático en desgaste límite (tipo `limite` o color rojo de la base); el resto, «revisar».
+export function conteoRecuadro(alertas, ahora = Date.now()) {
+  const c = { cambiar: 0, revisar: 0 };
+  for (const a of alertas || []) {
+    if (!a || estadoAlerta(a, ahora) === 'silenciada') continue;
+    if (a.tipo === 'limite' || a.color === 'rojo') c.cambiar++; else c.revisar++;
+  }
+  return c;
+}
 
 export function hastaSilencio(dias = DIAS_SILENCIO, ahora = Date.now()) {
   return new Date(ahora + dias * 86400000).toISOString();
