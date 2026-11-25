@@ -260,7 +260,7 @@ Admin ve todo; un cliente solo lo suyo; el perfil `api` y usuarios sin perfil, 0
 
 - **Promedio**: `round((mm1+mm2+mm3)/3, 2)` (trigger existente).
 - **Semáforo** (con los umbrales del cliente del vehículo): `sin_datos` si no hay promedio; `critico` si `promedio < umbral_critico`; `bajo` si `promedio < umbral_bajo`; si no `ok`. Límites: 5.00 es `bajo`, 4.99 `critico`, 8.00 `ok`, 7.99 `bajo` (con 8/5).
-- **Desgaste irregular**: `max(mm1,mm2,mm3) - min(mm1,mm2,mm3) > irregularidad_mm`, con `clientes.irregularidad_mm` (por defecto 2). Estricto: con umbral 2.0, una diferencia de 2.0 no alerta. Es la regla de la alerta de la base (`desgaste_irregular`) y la que usan las vistas de flota y de detalle del vehículo. Ojo: la lectura de una medición (`unevenWear` en `assets/js/domain/desgaste.js`, visible en `assets/js/views/mediciones.js`) todavía usa `|mm1-mm3| >= 1.5`; queda pendiente unificarla con esta regla.
+- **Desgaste irregular**: `max(mm1,mm2,mm3) - min(mm1,mm2,mm3) > irregularidad_mm`, con `clientes.irregularidad_mm` (por defecto 2). Estricto: con umbral 2.0, una diferencia de 2.0 no alerta. Es la regla de la alerta de la base (`desgaste_irregular`) y la que usan las vistas de flota y de detalle del vehículo. La lectura de una medición (`unevenWear` en `assets/js/domain/desgaste.js`, visible en `assets/js/views/mediciones.js`) usa la misma regla y el umbral del cliente (CA-06).
 - **Tasa mm/semana** = `-regr_slope(promedio, epoch(created_at)) * 604800` sobre las mediciones de los **últimos 90 días** de cada **neumático** montado (apéndice D), con **tiempo transcurrido** (no fechas). Solo hay tasa con **al menos 3 mediciones y 14 días** entre la primera y la última de la ventana; si no, `null` («mediciones insuficientes»). La ventana se **reinicia** en el último evento de `reencauche`, `reparacion` o `montaje` del neumático (`eventos_neumatico.neumatico_id`; la rotación no reinicia) y una pendiente negativa da `null` (nunca hay tasa negativa). `n_mediciones_90d` cuenta las mediciones de los últimos 90 días sin reinicio. Desde `20261111000000_tasa_y_rendimiento.sql` la vista se calcula por neumático con sondas a `mediciones_idneumatico_idx` (y, solo para el histórico sin `idneumatico`, a `mediciones_veh_pos_fecha_idx`). Positivo = se está gastando. Un neumático nuevo no mezcla puntos del viejo y, tras rotar, la tasa acompaña al neumático. A diferencia de `mAnalysis` (primera vs última medición), no usa solo los extremos.
 - **Semanas hasta crítico / retiro** = `max(promedio - umbral, 0) / tasa` si `tasa > 0`, si no `null` (0 si ya está por debajo del umbral). El retiro por defecto es 3 mm, igual que el `LIMIT` de `mAnalysis`.
 - **Alertas** (`severidad`): `critico` (3); `bajo` (2); `cruza_critico_pronto` (2: estado ok o bajo con `semanas_hasta_critico <= 4`, `valor` = semanas); `desgaste_irregular` (2, `valor` = diferencia en mm); `sin_medir` (1: neumático montado sin ninguna medición, o última medición más vieja que `dias_sin_medir_alerta` días, `valor` = días o null).
@@ -531,7 +531,7 @@ Monta un neumático en una posición **libre**. Origen: una cubierta del stock (
 | Evento | `montaje` con `posicion_destino`, `odometro_km`, `costo`, `sucursal_origen_id` (cubierta del stock) y `notas` |
 | Concurrencia | El vehículo queda bloqueado: dos montajes simultáneos en la misma posición se serializan (uno confirma, el otro `55000`). La cubierta se bloquea `FOR UPDATE`: la misma cubierta en dos vehículos, uno confirma y el otro `P0002` |
 
-## G.2 `neumatico_desmontar(p_vehiculo_id, p_posicion, p_destino, p_motivo, p_odometro_km, p_sucursal_stock, p_quema)`
+## G.2 `neumatico_desmontar(p_vehiculo_id, p_posicion, p_destino, p_motivo, p_odometro_km, p_sucursal_stock, p_quema, p_motivo_codigo, p_motivo_texto)`
 
 Retira el neumático **montado** de una posición **sin poner otro** (corrige un montaje equivocado). Sin neumático montado ahí: `P0002`.
 
@@ -539,9 +539,9 @@ Retira el neumático **montado** de una posición **sin poner otro** (corrige un
 |---|---|
 | `almacenado` (stock) | Solo admin o perfil global. Misma fila sin vehículo ni posición, en la sucursal indicada (del mismo cliente o `null` = sin sucursal), conservando quema, condición y mediciones. Necesita quema (la propia o `p_quema`, `22023` si falta, `23505` si ya existe). Evento `desmontaje` con la sucursal de destino |
 | `reparacion` | Queda «aparcado» en el vehículo (posición libre de 98 hacia abajo, como en `neumatico_cambiar`) con estado `reparacion` y condición `reparado`. Evento `desmontaje` |
-| `baja` | Motivo obligatorio (hasta 200). Aparcado con estado `baja`, `fecha_baja` y `motivo_baja`. Evento `baja` |
+| `baja` | Motivo obligatorio del catálogo de baja, o `otro` con texto (hasta 300). Aparcado con estado `baja`, `fecha_baja` y `motivo_baja` (etiqueta del catálogo, o el texto con `otro`). Evento `baja` |
 
-El odómetro opcional sigue la misma regla. La sucursal y la quema solo se aceptan con destino stock.
+El odómetro lo exige el flag `clientes.odometro_obligatorio` (AA.1, RN-12). La sucursal y la quema solo se aceptan con destino stock. El motivo es obligatorio en los tres destinos (RN-14): `p_motivo_codigo` sale del catálogo `motivos_movimiento` (tipo `baja` si el destino es `baja`, `desmontaje` si no) y, con `otro`, `p_motivo_texto` (1 a 300). El `p_motivo` de texto libre de la versión anterior se conserva por compatibilidad y no sirve de atajo.
 
 ## G.3 API de proveedor
 
@@ -1389,7 +1389,18 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 ### AA.10 Interfaz: clics y pruebas (rotar y cambiar)
 - Rotar: antes, 2 acciones (elegir la posición y «Rotar»). Ahora, 4 (posición, «Rotar», motivo y Enter), más el odómetro tecleado cuando el cliente lo exige. El aumento lo pide RN-14 (motivo obligatorio) y RN-12 (odómetro). «Rotar» abre el diálogo con el odómetro enfocado; el motivo no viene elegido, para que el operario lo decida.
 - Cambiar: no suma clics. El motivo viene con «Desgaste» marcado.
-- E2E: `taller.mjs` confirma la rotación desde el diálogo (`tests/e2e/lib/rotacion.mjs`). `motivos-odometro.mjs` cubre dos casos: rotar con motivo y odómetro (con el odómetro obligatorio, sin lectura no se envía nada) y cambiar a baja con un motivo del catálogo. Un camión que la RLS oculta avisa «No hay neumático en …» y no llega a la RPC `neumatico_rotar` (prueba «Taller (salto)» de `taller.mjs`).
+- E2E: `taller.mjs` confirma la rotación desde el diálogo (`tests/e2e/lib/rotacion.mjs`). `tests/e2e/specs/motivos-odometro.mjs` cubre dos casos: rotar con motivo y odómetro (con el odómetro obligatorio, sin lectura no se envía nada) y cambiar a baja con un motivo del catálogo. Un camión que la RLS oculta avisa «No hay neumático en …» y no llega a la RPC `neumatico_rotar` (prueba «Taller (salto)» de `taller.mjs`).
 - Smoke: `cambio.flow.js` en los modos de cliente y `vehiculo.flow.js` en `detalle`.
 - Unitarias: `tests/unit/motivos.test.mjs` y `tests/unit/cambio-neumatico.test.mjs`.
 - Escenas visuales (`tests/visual/scenes.js`): `confirmar-intercambio` elige el motivo y confirma en el diálogo; `rotar-dialogo` deja el diálogo abierto, sin confirmar.
+
+### AA.11 Interfaz de retirar, montar e historial (C2)
+
+- Retirar (`#ret-motivo`): la lista es el catálogo del tipo del destino: `baja` para el destino baja, `desmontaje` para almacenar y reparación. «Desgaste» viene marcado si está en la lista. «Otro» muestra el campo de texto (máx. 300). Con «otro» sin texto, `domain/montaje.js` responde «Escribir el motivo» antes de llamar a la RPC. Si la base lo recibe igual, `traducirErrorRetiro` lo traduce a ese mismo texto.
+- Odómetro al retirar y al montar: rótulo «(obligatorio)» con el flag `odometro_obligatorio` del cliente, «(opcional)» sin él. La ayuda da la lectura actual del vehículo como referencia: «Obligatorio. No puede ser menor al actual (N km).»
+- Montar (`neumatico_montar`): sin motivo. El evento `montaje` que genera cambiar lleva el motivo del retiro (AA.4).
+- Historial (detalle del vehículo y ciclo de vida): cada evento con motivo muestra «Motivo: …» con `etiquetaMotivo`: la etiqueta del catálogo, el texto con `otro`, o el código si no está en el catálogo cargado.
+- Sin catálogo o sin flag (`cargarMotivosCliente` devuelve null), el diálogo no se abre y avisa con toast: «No se pudieron cargar los motivos. Reintentar» en retirar, «No se pudo abrir el formulario. Reintentar» en montar. No se adivina el flag.
+- Clics: retirar y cambiar no suman clics. El motivo viene marcado y el operario solo lo cambia si no aplica. Montar no tiene motivo.
+- Pruebas: smoke `montar`, `montar-sucursal`, `detalle`, `detalle-admin`, `cliente` y `secuser` (`cliente` y `secuser` corren además `cambioFlow`). E2E: `tests/e2e/specs/montar-neumaticos.mjs` (retirar con catálogo, «otro» con texto, `p_motivo` libre rechazado, odómetro obligatorio con el flag, restablecido en `finally`). Unitarias: `tests/unit/montaje.test.mjs`. Escenas visuales de rol cliente, en desktop y móvil: `retirar-neumatico`, `montar-neumatico`, `montar-nueva`, `montar-siguiente`, `detalle-rueda`, `cambio-neumatico`, `cambio-cubierta`, `cambio-almacenar`, `rotar-dialogo` y `confirmar-intercambio`.
+- Lectura de los flags: la API lee `odometro_obligatorio_api` con service_role (docs/07 §4.1), porque el rol `api` con su JWT no ve su fila de `clientes` por RLS. Lo cubre la sección K de `tests/sql/t_105_odometro_motivos.sql`.

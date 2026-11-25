@@ -1131,7 +1131,7 @@
           <select id="mont-vida" data-change="neumatico-montar-resumen">
             <option value="0">0 (banda original)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
       </div>
-      <div class="field"><label for="mont-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+      <div class="field"><label for="mont-odo">Odómetro del vehículo <span class="label-opt" id="mont-odo-opt">(opcional)</span></label>
         <input id="mont-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-montar-resumen"/>
         <div class="field-hint" id="mont-odo-hint"></div></div>
       <div id="mont-resumen" class="cambio-resumen" aria-live="polite"></div>
@@ -1195,8 +1195,10 @@
       <div id="ret-actual" class="cambio-actual"></div>
       <fieldset class="cambio-grupo"><legend>Destino del neumático</legend>
         <div id="ret-destinos" class="cambio-opciones"></div></fieldset>
-      <div class="field"><label for="ret-motivo">Motivo <span class="label-opt" id="ret-motivo-opt">(opcional)</span></label>
-        <input id="ret-motivo" type="text" maxlength="200" data-change="neumatico-retirar-resumen" autocomplete="off"/></div>
+      <div class="field"><label for="ret-motivo">Motivo <span class="label-opt" id="ret-motivo-opt">(obligatorio)</span></label>
+        <select id="ret-motivo" data-change="neumatico-retirar-resumen"></select></div>
+      <div class="field" id="ret-motivo-texto-wrap"><label for="ret-motivo-texto">Texto del motivo</label>
+        <input id="ret-motivo-texto" type="text" maxlength="300" data-change="neumatico-retirar-resumen" autocomplete="off"/></div>
       <div id="ret-stock-wrap" class="cambio-retorno">
         <div class="field"><label for="ret-suc">Sucursal donde queda en stock</label>
           <select id="ret-suc" data-change="neumatico-retirar-resumen"></select></div>
@@ -1204,7 +1206,7 @@
           <input id="ret-quema" type="text" maxlength="40" data-change="neumatico-retirar-resumen" autocomplete="off"/>
           <div class="field-hint">Obligatorio para guardar el neumático en el stock.</div></div>
       </div>
-      <div class="field"><label for="ret-odo">Odómetro del vehículo <span class="label-opt">(opcional)</span></label>
+      <div class="field"><label for="ret-odo">Odómetro del vehículo <span class="label-opt" id="ret-odo-opt">(opcional)</span></label>
         <input id="ret-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-retirar-resumen"/>
         <div class="field-hint" id="ret-odo-hint"></div></div>
       <div id="ret-resumen" class="cambio-resumen" aria-live="polite"></div>

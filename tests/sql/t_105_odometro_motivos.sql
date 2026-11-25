@@ -409,6 +409,25 @@ select test.eq('I: el neumático queda en la 7 y el evento guarda motivo y odóm
 select test.eq('I: el odómetro del vehículo 6x2 se queda en 100000',
   (select odometro_km from public.vehiculos where id = 105005), 100000);
 
+-- ---------------------------------------------------------------------------
+-- K. Quién lee cada flag (docs/07 §4.1). La API lee perfiles → clientes con service_role (supabase_deps.ts, getPerfil), que
+-- salta la RLS. El rol api con su propio JWT no ve su fila: current_cliente_id() solo devuelve cliente para el rol cliente.
+-- El panel lee odometro_obligatorio con el JWT de rol cliente.
+-- ---------------------------------------------------------------------------
+update public.clientes set odometro_obligatorio = true, odometro_obligatorio_api = true where id = 1;
+set role service_role;
+select test.eq('K: service_role (la función de la API) lee odometro_obligatorio_api del cliente 1',
+  (select odometro_obligatorio_api from public.clientes where id = 1), true);
+reset role;
+select test.become('authenticated', test.u_api());
+select test.eq('K: el rol api con su JWT no ve la fila del cliente: la RLS no le da cliente_id',
+  (select count(*) from public.clientes where id = 1), 0::bigint);
+reset role;
+select test.become('authenticated', test.u_g105());
+select test.eq('K: el cliente lee odometro_obligatorio del panel con su JWT',
+  (select odometro_obligatorio from public.clientes where id = 1), true);
+reset role;
+
 update public.clientes set odometro_obligatorio = false, odometro_obligatorio_api = false where id = 1;
 
 rollback;

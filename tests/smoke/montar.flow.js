@@ -156,13 +156,17 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(!/quema N-77/.test(txt('#ret-actual')) || !visible('#ret-stock-wrap') || visible('#ret-quema-wrap')) fail('montar: el neumático con quema vuelve al stock sin pedir quema: ' + txt('#ret-actual'));
   d.querySelector('input[name="ret-destino"][value="baja"]').click(); await sleep(100);
   if(visible('#ret-stock-wrap') || !/obligatorio/.test(txt('#ret-motivo-opt'))) fail('montar: la baja pide motivo y oculta el stock');
+  // El motivo viene marcado («Desgaste») y el texto aparece solo con «otro»
+  if($('#ret-motivo').value !== 'desgaste' || visible('#ret-motivo-texto-wrap')) fail('montar: la baja debe venir con «desgaste» y sin texto de motivo');
+  poner('#ret-motivo', 'otro');
+  if(!visible('#ret-motivo-texto-wrap')) fail('montar: «otro» debe mostrar el texto del motivo');
   $('#ret-confirmar').click(); await sleep(200);
-  if(rpcs('neumatico_desmontar').length || !/Falta el motivo/.test(txt('#ret-error'))) fail('montar: baja sin motivo no debe llegar a la RPC: ' + txt('#ret-error'));
-  poner('#ret-motivo', 'Montaje equivocado');
+  if(rpcs('neumatico_desmontar').length || !/Escribir el motivo/.test(txt('#ret-error'))) fail('montar: «otro» sin texto no debe llegar a la RPC: ' + txt('#ret-error'));
+  poner('#ret-motivo-texto', 'Montaje equivocado');
   $('#ret-confirmar').click();
   await esperar(function(){ return rpcs('neumatico_desmontar').length === 1; }, 'la RPC de retirar');
   var c = rpcs('neumatico_desmontar')[0].args;
-  if(JSON.stringify([c.p_vehiculo_id, c.p_posicion, c.p_destino, c.p_motivo]) !== '[13,4,"baja","Montaje equivocado"]') fail('montar: argumentos del retiro: ' + JSON.stringify(c));
+  if(JSON.stringify([c.p_vehiculo_id, c.p_posicion, c.p_destino, c.p_motivo_codigo, c.p_motivo_texto, c.p_motivo]) !== '[13,4,"baja","otro","Montaje equivocado",null]') fail('montar: argumentos del retiro: ' + JSON.stringify(c));
   await esperar(function(){ return $('#vd-diagrama .vd-vacia[data-pos="4"]'); }, 'P4 vacía tras retirar');
   if($('#modal-retirar').classList.contains('show')) fail('montar: el modal de retirar no se cerró');
   if($('#vd-panel').classList.contains('abierto')) fail('montar: el panel debe cerrarse al quedar la posición vacía');

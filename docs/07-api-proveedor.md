@@ -232,7 +232,7 @@ Estado: **implementado en el repositorio, no desplegado.** Antes de desplegar, l
 
 **Campo.** `guardar_montaje_mm` acepta `odometro_km` a **nivel de request** (no dentro de `montajes`; un campo dentro de un montaje se ignora). Entero de 0 a 2147483647 (el `integer` de Postgres). Ausente o `null` = no informado.
 
-**Flag por cliente.** `clientes.odometro_obligatorio_api` (boolean, default `false`), independiente del flag `odometro_obligatorio` que usa el panel. Se lee en cada request junto al perfil (`perfiles → clientes`). Solo `true` exige el odómetro; `false`, ausente o no booleano lo dejan opcional. La RPC `api_guardar_montaje` lee el mismo flag y lo vuelve a exigir al guardar, así que la base tiene la última palabra.
+**Flag por cliente.** `clientes.odometro_obligatorio_api` (boolean, default `false`), independiente del flag `odometro_obligatorio` que usa el panel. Se lee en cada request junto al perfil (`perfiles → clientes`). La función lo lee con `service_role`, que salta la RLS: el rol `api` con su propio JWT no ve su fila de `clientes` (ver docs/07 §4.1). Solo `true` exige el odómetro; `false`, ausente o no booleano lo dejan opcional. La RPC `api_guardar_montaje` lee el mismo flag y lo vuelve a exigir al guardar, así que la base tiene la última palabra.
 
 **Qué responde cada caso:**
 
