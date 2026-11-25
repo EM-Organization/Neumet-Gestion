@@ -101,7 +101,7 @@ Quitar acceso solo es seguro si **todas** las rutas de autorización lo respetan
 | `supabase/migrations/20261108000000_cambio_neumatico.sql:39`, `20261110010000_gestion_sucursales.sql:36`, `20261116000000_calidad_datos.sql:294`, `20261118500000_alerta_critica.sql:466` | una línea cada uno | declaración `v_perf public.perfiles%rowtype`; la lectura real es el `select * into v_perf` de la tabla de arriba (`:57`, `:53`, `:309`, `:480`) |
 | `assets/js/domain/rol.js` | `:16` | comentario del tipo de `perfil` |
 | `supabase/functions/api-proveedor/sql_test.ts` | `:105`, `:289`, `:291` | fixture y comprobación de que `api` no ve la tabla |
-| `supabase/functions/api-proveedor/testkit.ts` | `:42`, `:88`, `:171` | mapa de fixtures, su lectura y su exposición a las pruebas |
+| `supabase/functions/api-proveedor/testkit.ts` | `:61`, `:112`, `:270` | mapa de fixtures, su lectura y su exposición a las pruebas |
 | `supabase/functions/crear-cliente/` | `README.md:20`, `handler.ts:17` | documentación y comentario del contrato `isAdmin` |
 | `supabase/functions/crear-cuenta-api/` | `README.md:3`, `README.md:14`, `handler.ts:13`, `handler.ts:17`, `handler_test.ts:11`, `:22`, `:113`, `:137` | documentación, comentarios y pruebas con dependencias simuladas |
 | `supabase/functions/crear-usuario-seccional/quitado.ts` | `:25` | lee, con la clave de servicio y por `user_id`, si el usuario quitado sigue sin perfil, solo para elegir el mensaje del 409 (no autoriza nada) |

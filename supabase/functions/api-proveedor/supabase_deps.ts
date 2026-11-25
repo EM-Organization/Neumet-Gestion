@@ -1,7 +1,7 @@
 // Implementación de producción de `Deps` con fetch directo a Auth y PostgREST
 // (sin dependencias externas). Las RPC y tablas se usan con service_role; el
 // login usa la anon/publishable key.
-import type { Deps, GuardarArgs, GuardarRpc, LogEntrada, ObtenerRpc, PerfilApi } from './types.ts';
+import { type Deps, ErrorRpc, type GuardarArgs, type GuardarRpc, type LogEntrada, type ObtenerRpc, type PerfilApi } from './types.ts';
 
 export interface Config {
   url: string;
@@ -32,8 +32,8 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
       signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) {
-      await r.body?.cancel();
-      throw new Error(`rpc ${fn} ${r.status}`);
+      const cuerpo = await r.json().catch(() => null) as { code?: unknown; message?: unknown } | null;
+      throw new ErrorRpc(fn, r.status, cuerpo?.code, cuerpo?.message);
     }
     return await r.json() as T;
   }
@@ -80,7 +80,7 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
       async getPerfil(userId): Promise<PerfilApi | null> {
         const q = `${cfg.url}/rest/v1/perfiles?user_id=eq.${
           encodeURIComponent(userId)
-        }&select=rol,cliente_id,clientes(deleted_at,odometro_obligatorio)&limit=1`;
+        }&select=rol,cliente_id,clientes(deleted_at,odometro_obligatorio_api)&limit=1`;
         const r = await f(q, { headers: svc, signal: AbortSignal.timeout(8000) });
         if (!r.ok) {
           await r.body?.cancel();
@@ -94,13 +94,13 @@ export function crearDeps(cfg: Config, f: typeof fetch = fetch): Deps {
         const cli = fila.clientes;
         const esObjeto = cli !== null && typeof cli === 'object' && !Array.isArray(cli);
         const activo = esObjeto && 'deleted_at' in cli && cli.deleted_at === null;
-        // RN-12: solo un `false` explícito relaja la exigencia del odómetro; lo demás la mantiene (falla cerrado).
-        const odometroObligatorio = !(esObjeto && cli.odometro_obligatorio === false);
+        // RN-12: la API exige el odómetro solo si el cliente lo activa (columna boolean, default false): solo `true`.
+        const odometroObligatorio = esObjeto && cli.odometro_obligatorio_api === true;
         return {
           rol: fila.rol,
           cliente_id: fila.cliente_id,
           cliente_activo: activo,
-          odometro_obligatorio: odometroObligatorio,
+          odometro_obligatorio_api: odometroObligatorio,
         };
       },
       rateLimit: (cuenta, max) => rpc<boolean>('api_rate_limit_hit', { p_cuenta: cuenta, p_max: max }),

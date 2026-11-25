@@ -3,7 +3,7 @@
 import { leerDistribucion } from './distribuciones.ts';
 import { aColumnasBd, aLecturaApi, CAMPOS_API, type LecturaApi } from './mapping.ts';
 import { leerOdometro } from './odometro.ts';
-import type { Deps, GuardarArgs, ItemRpc, LogEntrada } from './types.ts';
+import { type Deps, ErrorRpc, type GuardarArgs, type ItemRpc, type LogEntrada } from './types.ts';
 
 export const MAX_BODY_BYTES = 64 * 1024;
 export const MAX_LOGIN_BYTES = 4 * 1024;
@@ -269,7 +269,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       const body = await leerCuerpo(req, MAX_BODY_BYTES) as Record<string, unknown>;
       const res = endpoint === 'obtener_montaje'
         ? await obtener(body, c, clienteId, log)
-        : await guardar(body, req, c, clienteId, cuenta, perfil.odometro_obligatorio !== false, log);
+        : await guardar(body, req, c, clienteId, cuenta, perfil.odometro_obligatorio_api === true, log);
       return await cerrar(res.response, res.motivo);
     } catch (e) {
       if (e instanceof HttpError) {
@@ -356,7 +356,7 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
     if (!dist.ok) throw new HttpError(400, 'distribucion');
     const distribucion = dist.valor;
     // RN-12: un valor inválido es error del cliente (400) siempre. Ausente solo se rechaza si el cliente exige el
-    // odómetro (422, sin llamar a la RPC: la RPC lo defiende con 22023 y el handler no debe llegar a ese error).
+    // odómetro (422, sin llamar a la RPC). La RPC lo defiende también (22023): ver la llamada más abajo.
     // Un odómetro menor que el del vehículo no es error aquí: la base lo guarda como sospechoso.
     const od = leerOdometro(b.odometro_km);
     if (!od.ok) throw new HttpError(400, 'odometro');
@@ -429,7 +429,14 @@ export function createHandler(deps: Deps, opciones: { newId?: () => string; ahor
       ...(distribucion !== null ? { distribucion } : {}),
     };
 
-    const r = await c.deps.db.guardar(args);
+    // El flag puede cambiar entre la lectura del perfil y esta llamada: la RPC lo vuelve a exigir (22023 por el
+    // odómetro). Es el mismo 422 que el de arriba, no un fallo interno.
+    const r = await c.deps.db.guardar(args).catch((e: unknown) => {
+      if (e instanceof ErrorRpc && e.sqlstate === '22023' && e.detalle.includes('odometro')) {
+        throw new HttpError(422, 'odometro');
+      }
+      throw e;
+    });
     if (r.estado === 'conflicto') {
       return {
         response: respuesta({ code: 409, message: 'Idempotency-Key reutilizada con otro contenido' }, 409, c.requestId),

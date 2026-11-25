@@ -1,8 +1,9 @@
 openapi: 3.1.0
 info:
   title: NEUMET API de proveedor (app de medición)
-  version: 0.2.0-draft
+  version: 0.3.0-draft
   x-cambios:
+    - "0.3.0-draft: si el flag del cliente cambia entre la lectura del perfil y el guardado, la base lo rechaza y la respuesta es 422 con motivo odometro, no un fallo interno. El cuerpo es el mismo {code, message}. El nombre del flag es interno y no forma parte del contrato."
     - "0.2.0-draft: guardar_montaje_mm acepta odometro_km (RN-12). Opcional salvo que el cliente lo exija; ausente con exigencia responde 422. Sin el campo, el contrato de 0.1.0 sigue valiendo."
   license:
     name: Proprietary
@@ -106,7 +107,7 @@ paths:
               schema: { $ref: '#/components/schemas/GuardarMontajeResponse' }
         '400': { description: 'JSON inválido, fuera de límites (tamaño, nº de montajes) o odometro_km inválido (decimal, negativo, texto o fuera de integer). Cuerpo {code: 400, message: "Solicitud inválida"}' }
         '401': { description: Token vencido o inválido }
-        '422': { description: 'El cliente exige el odómetro y la request no lo trae. Cuerpo {code: 422, message: "Solicitud inválida"}. No se guarda nada; motivo interno odometro.' }
+        '422': { description: 'El cliente exige el odómetro y la request no lo trae (también si el flag se activa durante la llamada). Cuerpo {code: 422, message: "Solicitud inválida"}. No se guarda nada; motivo interno odometro.' }
         '5XX': { description: Error de servidor }
 components:
   securitySchemes:

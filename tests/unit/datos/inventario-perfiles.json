@@ -31,17 +31,17 @@
  },
  {
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
-  "linea": 43,
+  "linea": 61,
   "texto": "const perfiles = new Map<string, PerfilApi>(["
  },
  {
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
-  "linea": 93,
+  "linea": 112,
   "texto": "getPerfil: (id) => Promise.resolve(perfiles.get(id) ?? null),"
  },
  {
   "archivo": "supabase/functions/api-proveedor/testkit.ts",
-  "linea": 251,
+  "linea": 270,
   "texto": "return { deps, handler, perfilDe: perfiles, vehiculos, neumaticos, mediciones, logs, llamadas, argsGuardar, estado };"
  },
  {

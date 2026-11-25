@@ -232,7 +232,7 @@ Estado: **implementado en el repositorio, no desplegado.** Antes de desplegar, l
 
 **Campo.** `guardar_montaje_mm` acepta `odometro_km` a **nivel de request** (no dentro de `montajes`; un campo dentro de un montaje se ignora). Entero de 0 a 2147483647 (el `integer` de Postgres). Ausente o `null` = no informado.
 
-**Flag por cliente.** `clientes.odometro_obligatorio`. Se lee en cada request junto al perfil (`perfiles → clientes`). Solo un `false` explícito relaja la exigencia; si el dato falta o no es booleano, se exige (falla cerrado).
+**Flag por cliente.** `clientes.odometro_obligatorio_api` (boolean, default `false`), independiente del flag `odometro_obligatorio` que usa el panel. Se lee en cada request junto al perfil (`perfiles → clientes`). Solo `true` exige el odómetro; `false`, ausente o no booleano lo dejan opcional. La RPC `api_guardar_montaje` lee el mismo flag y lo vuelve a exigir al guardar, así que la base tiene la última palabra.
 
 **Qué responde cada caso:**
 
@@ -242,6 +242,8 @@ Estado: **implementado en el repositorio, no desplegado.** Antes de desplegar, l
 | Entero válido (0 a 2147483647) | 200. Se guarda en cada medición del request | 200. Igual |
 | Decimal, negativo, texto (incluso `""`), booleano, objeto o fuera de integer | **400**, motivo `odometro` | **400**, motivo `odometro` |
 
+**Carrera con el flag.** Si el flag pasa a `true` entre la lectura del perfil y la llamada a la RPC, la base responde 22023 con el mensaje de odómetro y la API responde **422** con motivo `odometro`. La RPC valida antes de insertar, así que no se guarda nada. Cualquier otro 22023 sigue siendo fallo interno (500).
+
 **Forma de la respuesta de error** (la misma de todos los errores de entrada, sin datos del cliente):
 
 - 422: HTTP 422, cuerpo `{"code":422,"message":"Solicitud inválida"}`.
@@ -249,15 +251,15 @@ Estado: **implementado en el repositorio, no desplegado.** Antes de desplegar, l
 
 El motivo `odometro` no viaja en la respuesta; queda en `ingesta_log` con `status = 'rechazado'` y `http_code` 400 o 422. El valor del odómetro **no** se registra en el log.
 
-**Odómetro menor que el del vehículo.** Es válido para el handler: responde 200 y pasa el valor a la RPC. El contrato con la RPC `api_guardar_montaje` (migración del mismo cambio, no verificada desde este repo en el momento de escribir esto) es: guarda la medición con `odometro_km`; la regla de calidad existente la marca `sospechosa`; y solo sube `vehiculos.odometro_km` si el nuevo valor es mayor. La Edge Function **no** lee ni escribe `vehiculos` ni `mediciones` para esto.
+**Odómetro menor que el del vehículo.** Es válido para el handler: responde 200 y pasa el valor a la RPC. El contrato con la RPC `api_guardar_montaje` (migración `20261126020000`, sección 9; cubierto por `tests/sql/t_105_odometro_motivos.sql`, sección D) es: guarda la medición con `odometro_km`; la regla de calidad (`20261116000000_calidad_datos.sql`) la marca `sospechosa`; y solo sube `vehiculos.odometro_km` si el nuevo valor es mayor. La Edge Function **no** lee ni escribe `vehiculos` ni `mediciones` para esto.
 
 **Idempotencia.** El odómetro entra al hash solo cuando viene. Sin él, el hash es el de antes (una request de la app vieja, en vuelo durante el despliegue, conserva su identidad). Con la misma `Idempotency-Key` y otro odómetro, la respuesta es 409 (`idempotencia_conflicto`). Un replay con el mismo contenido repite la respuesta sin duplicar mediciones.
 
-**Compatibilidad con la app de DAC vigente.** Con el flag en `false` (o sin tocar), nada cambia: la app vieja no envía el campo y sigue funcionando. **No poner `odometro_obligatorio = true` para un cliente hasta que su app envíe el odómetro:** la app vieja recibiría 422 en cada guardado.
+**Compatibilidad con la app de DAC vigente.** Con el flag en `false` (o sin tocar), nada cambia: la app vieja no envía el campo y sigue funcionando. **No poner `odometro_obligatorio_api = true` para un cliente hasta que su app envíe el odómetro:** la app vieja recibiría 422 en cada guardado.
 
 **Cambio requerido del lado DAC (fuera de este repositorio, pendiente).** La app de medición debe pedir el odómetro **una vez por sesión de inspección**, antes de medir, y enviarlo como `odometro_km` en cada `guardar_montaje_mm`. Coordinar el contrato con DAC antes de activar el flag para su cliente. Hasta entonces, el flag queda en `false`.
 
-**Orden de despliegue (obligatorio).** 1) Aplicar la migración con el CLI. 2) Desplegar la función `api-proveedor`. Si la función sale antes que la columna `clientes.odometro_obligatorio`, la lectura de `perfiles` falla y responde 500 a **todas** las cuentas, también al login. Si sale antes que la función `api_guardar_montaje` con `p_odometro_km`, las requests con odómetro fallan con 500; las que no lo traen siguen funcionando.
+**Orden de despliegue (obligatorio).** 1) Aplicar la migración con el CLI. 2) Desplegar la función `api-proveedor`. Si la función sale antes que la columna `clientes.odometro_obligatorio_api`, la lectura de `perfiles` falla y responde 500 a **todas** las cuentas, también al login. Si sale antes que la función `api_guardar_montaje` con `p_odometro_km`, las requests con odómetro fallan con 500; las que no lo traen siguen funcionando.
 
 ---
 

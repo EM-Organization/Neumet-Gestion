@@ -60,10 +60,10 @@ export function crearEntorno() {
   ]);
   const perfiles = new Map<string, PerfilApi>([
     // Por defecto el cliente no exige odómetro (compatibilidad con la app vieja); las pruebas de RN-12 lo cambian.
-    [U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true, odometro_obligatorio: false }],
-    [U_OTRO, { rol: 'api', cliente_id: 2, cliente_activo: true, odometro_obligatorio: false }],
-    [U_ADMIN, { rol: 'admin', cliente_id: null, cliente_activo: true, odometro_obligatorio: false }],
-    [U_CLI, { rol: 'cliente', cliente_id: 1, cliente_activo: true, odometro_obligatorio: false }],
+    [U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_OTRO, { rol: 'api', cliente_id: 2, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_ADMIN, { rol: 'admin', cliente_id: null, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_CLI, { rol: 'cliente', cliente_id: 1, cliente_activo: true, odometro_obligatorio_api: false }],
   ]);
   const vehiculos: Veh[] = [
     { id: 10, cliente_id: 1, patente_norm: 'ABCD12', numero: '123' },

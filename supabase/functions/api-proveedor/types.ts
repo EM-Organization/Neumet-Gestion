@@ -9,10 +9,25 @@ export interface PerfilApi {
    */
   cliente_activo?: boolean;
   /**
-   * Flag del cliente (`clientes.odometro_obligatorio`). Solo `false` relaja la exigencia del odómetro: ausente o
-   * cualquier otra cosa la exige (falla cerrado).
+   * Flag de la API del cliente (`clientes.odometro_obligatorio_api`, default false; el panel tiene el suyo aparte).
+   * Solo `true` exige el odómetro en guardar_montaje_mm; ausente o `false` lo deja opcional.
    */
-  odometro_obligatorio?: boolean;
+  odometro_obligatorio_api?: boolean;
+}
+
+/**
+ * Error de una RPC de PostgREST. `sqlstate` es el código de la base (p. ej. 22023) y `detalle` su texto: solo el
+ * handler los mira para decidir la respuesta; nunca se devuelven al cliente de la API.
+ */
+export class ErrorRpc extends Error {
+  readonly sqlstate: string | null;
+  readonly detalle: string;
+  constructor(fn: string, status: number, sqlstate: unknown, detalle: unknown) {
+    super(`rpc ${fn} ${status}`);
+    this.name = 'ErrorRpc';
+    this.sqlstate = typeof sqlstate === 'string' ? sqlstate : null;
+    this.detalle = typeof detalle === 'string' ? detalle : '';
+  }
 }
 
 export interface ItemRpc {

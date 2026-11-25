@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertFalse } from 'jsr:@std/assert@1';
+import { ErrorRpc } from './types.ts';
 import {
   crearEntorno,
   post,
@@ -852,7 +853,7 @@ const exigido = (e: ReturnType<typeof crearEntorno>, cliente = 1) =>
     rol: 'api',
     cliente_id: cliente,
     cliente_activo: true,
-    odometro_obligatorio: true,
+    odometro_obligatorio_api: true,
   });
 const conOdo = (odo: unknown, patente?: string) => ({ ...montaje([lectura(1)], patente), odometro_km: odo });
 async function sha256(s: string): Promise<string> {
@@ -977,9 +978,38 @@ pruebaSinErrores('odómetro: la exigencia es por cliente; el 422 no revela datos
   assertFalse(JSON.stringify(e.logs).includes('ZZZZ99'));
 });
 
-pruebaSinErrores('odómetro: perfil sin el flag -> se exige (falla cerrado), igual que con flag true', async () => {
+pruebaSinErrores('odómetro: perfil sin el flag -> opcional (default false, igual que la columna)', async () => {
   const e = crearEntorno();
   e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true });
-  assertEquals((await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }))).status, 422);
-  assertEquals(e.llamadas.guardar, 0);
+  assertEquals((await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }))).status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.odometro_km, null);
+});
+
+pruebaSinErrores('odómetro: la RPC lo exige (22023) aunque el perfil no -> 422 motivo odometro, sin fallo interno', async () => {
+  const e = crearEntorno();
+  const antes = e.mediciones.length;
+  // Carrera: el flag se activó después de leer el perfil. La RPC lo vuelve a comprobar y el handler responde 422.
+  e.deps.db.guardar = () =>
+    Promise.reject(new ErrorRpc('api_guardar_montaje', 400, '22023', 'odometro obligatorio: indicar la lectura del odómetro del vehículo'));
+  const r = await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+  assertEquals(r.status, 422);
+  assertEquals(await j(r), { code: 422, message: 'Solicitud inválida' });
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.status, l.http_code], ['odometro', 'rechazado', 422]);
+  assertEquals(e.mediciones.length, antes);
+});
+
+Deno.test('odómetro: un 22023 de otra causa no es el odómetro: sigue siendo fallo interno (500)', async () => {
+  const e = crearEntorno();
+  e.deps.db.guardar = () =>
+    Promise.reject(new ErrorRpc('api_guardar_montaje', 400, '22023', 'motivo inválido para este movimiento'));
+  const original = console.error;
+  console.error = () => {}; // el 500 registra fallo_interno por consola: es el camino que se prueba
+  try {
+    const r = await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+    assertEquals(r.status, 500);
+    assertEquals(e.logs.at(-1)!.motivo, 'error_interno');
+  } finally {
+    console.error = original;
+  }
 });
