@@ -73,8 +73,12 @@ describe('pasar atrás y swap (direccion_aviso_mm, direccion_limite_mm, swap_km)
     assert.match(igual.error, /debe ser menor que Pasar atrás desde/);
     assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '5', direccion_limite_mm: '6' }).ok, false);
   });
-  test('pasar atrás va de 0 a 99,9 con un decimal; el límite puede ser 0 si el aviso es mayor', () => {
-    assert.equal(validarUmbrales({ ...OK, direccion_limite_mm: '0' }).ok, true);
+  test('pasar atrás es mayor que 0 y hasta 99,9 con un decimal, como el check de la base', () => {
+    const cero = validarUmbrales({ ...OK, direccion_limite_mm: '0' });
+    assert.equal(cero.ok, false); assert.equal(cero.campo, 'direccion_limite_mm'); assert.match(cero.error, /mayor que 0/);
+    assert.equal(validarUmbrales({ ...OK, direccion_limite_mm: '0,1' }).ok, true);
+    const aviso0 = validarUmbrales({ ...OK, direccion_aviso_mm: '0' });
+    assert.equal(aviso0.ok, false); assert.equal(aviso0.campo, 'direccion_aviso_mm');
     assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '99,9' }).ok, true);
     assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '100' }).ok, false);
     assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '-1' }).ok, false);
