@@ -196,7 +196,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
 
   // Cambiar la distribución (quien opera): tres clics (abrir, elegir, guardar), Enter envía una sola vez y el diagrama se redibuja.
   var bd = $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]');
-  if(!bd || bd.textContent.trim() !== 'Cambiar distribución') { fail('distribución: falta «Cambiar distribución» en la cabecera'); return; }
+  if(!bd || bd.textContent.trim() !== 'Distribución y servicio') { fail('distribución: falta «Distribución y servicio» en la cabecera'); return; }
   bd.click();
   if(!await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').options.length === 7; }, 'el diálogo de distribución')) return;
   if($('#veh-dist-distribucion').value !== '') fail('distribución: un vehículo sin distribución no debe traer una elegida: ' + $('#veh-dist-distribucion').value);
@@ -231,6 +231,22 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click();
   await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').value === '6x2'; }, 'la distribución actual preseleccionada');
   $('#veh-dist-form').querySelector('[data-action="vehiculo-cambiar-distribucion-cerrar"]').click(); await sleep(100);
+  // Servicio (camión o bus): el diálogo trae el de la base; cambiarlo llama a vehiculo_fijar_servicio, sin cambio no llama; un 42501 avisa y deja reintentar.
+  var abrirServicio = function(){ $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click(); return esperar(function(){ return $('#modal-veh-dist').classList.contains('show'); }, 'el diálogo de servicio'); };
+  var cerrado = function(){ return !$('#modal-veh-dist').classList.contains('show'); };
+  await abrirServicio(); if($('#veh-dist-servicio').value !== '') fail('servicio: un vehículo sin servicio debe mostrar «Sin definir»');
+  poner('#veh-dist-servicio', 'bus'); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === 1 && cerrado(); }, 'la RPC de servicio');
+  if(JSON.stringify(rpcs('vehiculo_fijar_servicio')[0].args) !== '{"p_vehiculo_id":13,"p_servicio":"bus"}') fail('servicio: argumentos: ' + JSON.stringify(rpcs('vehiculo_fijar_servicio')[0].args));
+  await abrirServicio(); if($('#veh-dist-servicio').value !== 'bus') fail('servicio: el diálogo debe traer «bus»');
+  $('#veh-dist-form').requestSubmit(); await sleep(300);
+  if(rpcs('vehiculo_fijar_servicio').length !== 1) fail('servicio: sin cambio no debe llamar a la RPC de servicio');
+  fx.servicioError = {code: '42501'}; await abrirServicio(); poner('#veh-dist-servicio', 'camion'); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return txt('#veh-dist-error') !== ''; }, 'el aviso del servicio');
+  if(txt('#veh-dist-error') !== 'Sin permiso para cambiar el servicio de este vehículo' || cerrado()) fail('servicio: rechazo 42501 mal presentado: ' + txt('#veh-dist-error'));
+  fx.servicioError = null; poner('#veh-dist-servicio', ''); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === 3 && cerrado(); }, 'el reintento del servicio');
+  if(JSON.stringify(rpcs('vehiculo_fijar_servicio')[2].args) !== '{"p_vehiculo_id":13,"p_servicio":null}') fail('servicio: «Sin definir» debe guardarse como null');
 
   // Eliminar el vehículo (administrador de empresa): el botón está en la cabecera y el diálogo ofrece stock o baja.
   var T = w.__vehFx.T;

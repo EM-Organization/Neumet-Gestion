@@ -5,9 +5,9 @@
 (function(){
   if(!/[?&]montar=1/.test(window.parent.location.search) || !window.__vehFx) return;
   var T = window.__vehFx.T;
-  var fx = window.__montarFx = { rpcs: [], rpcError: null };
+  var fx = window.__montarFx = { rpcs: [], rpcError: null, servicioError: null };
   var VID = 13;
-  T.vehiculos.push({id:VID,nombre:'301',patente:'VAC 301',numero:'301',tipo_ruedas:10,cliente_id:1,sucursal_id:null,activo:true,odometro_km:5000,odometro_actualizado_at:null,clientes:{nombre:'Transportes Alfa'}});
+  T.vehiculos.push({id:VID,nombre:'301',patente:'VAC 301',numero:'301',tipo_ruedas:10,cliente_id:1,sucursal_id:null,activo:true,odometro_km:5000,odometro_actualizado_at:null,servicio:null,clientes:{nombre:'Transportes Alfa'}});
   var plantilla = T.v_estado_neumaticos[0];
 
   function filaEstado(pos, n){
@@ -22,7 +22,7 @@
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), rpc = c.rpc;
     c.rpc = function(name, args){
-      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar' && name !== 'vehiculo_eliminar' && name !== 'vehiculo_cambiar_distribucion') return rpc.apply(c, arguments);
+      if(name !== 'neumatico_montar' && name !== 'neumatico_desmontar' && name !== 'vehiculo_eliminar' && name !== 'vehiculo_cambiar_distribucion' && name !== 'vehiculo_fijar_servicio') return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
       if(fx.rpcThrow) return Promise.reject(new TypeError('Failed to fetch')); // sin red: la promesa se rechaza
       if(fx.rpcError) return Promise.resolve({data: null, error: fx.rpcError});
@@ -33,6 +33,12 @@
         if(args.p_distribucion === 'otra'){ veh.distribucion = null; veh.tipo_ruedas = args.p_tipo_ruedas; }
         else { veh.distribucion = args.p_distribucion; veh.tipo_ruedas = ruedas <= 10 ? 10 : 16; }
         return Promise.resolve({data: {vehiculo_id: veh.id, distribucion: veh.distribucion, tipo_ruedas: veh.tipo_ruedas}, error: null});
+      }
+      if(name === 'vehiculo_fijar_servicio'){
+        if(fx.servicioError) return Promise.resolve({data: null, error: fx.servicioError});
+        var sv = T.vehiculos.filter(function(v){ return v.id === args.p_vehiculo_id; })[0];
+        sv.servicio = args.p_servicio;
+        return Promise.resolve({data: {vehiculo_id: sv.id, servicio: sv.servicio}, error: null});
       }
       if(name === 'vehiculo_eliminar'){
         // Baja lógica como la RPC: los neumáticos vigentes van al stock o a baja y el vehículo deja de verse.
