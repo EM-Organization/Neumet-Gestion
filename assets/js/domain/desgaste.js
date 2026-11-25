@@ -104,14 +104,15 @@ export function dateUntil(lastAvg, mmPerDay, limit=LIFE_LIMIT_MM, from=new Date(
 // llegaría a 2,0. Primero se quita el ruido de coma flotante (a 1e-6) y luego se redondea a 0,1, mitad hacia arriba.
 // Sin mm1 o mm3 no hay lado que nombrar: el desparejo lo dice la vista (desgaste_irregular) con su diferencia, y side es null.
 const aDecima=x=>Math.round(Math.round(x*1e6)/1e5)/10;
+const sinMedida=v=>v===null||v===undefined;
 export function unevenWear(row, irregularidadMm){
   if(!row) return null;
-  if(row.mm1==null || row.mm3==null){
-    return row.desgaste_irregular===true && row.diferencia_huellas_mm!=null
+  if(sinMedida(row.mm1) || sinMedida(row.mm3)){
+    return row.desgaste_irregular===true && !sinMedida(row.diferencia_huellas_mm)
       ? {diff:Number(row.diferencia_huellas_mm), side:null}
       : null;
   }
-  const presentes=[row.mm1, row.mm2, row.mm3].filter(v=>v!==null&&v!==undefined).map(Number);
+  const presentes=[row.mm1, row.mm2, row.mm3].filter(v=>!sinMedida(v)).map(Number);
   const diff=aDecima(Math.max(...presentes)-Math.min(...presentes));
   const umbral=Number(irregularidadMm ?? IRREGULARIDAD_MM_DEFECTO);
   if(!(diff>=umbral)) return null;
