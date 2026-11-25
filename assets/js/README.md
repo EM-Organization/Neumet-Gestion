@@ -38,6 +38,7 @@ domain/
   inicio.js             PURO: estadoInicio, proporciones, requierenAtencion, proximosCambios, resumen de dispositivos
   rol.js                PURO: decidirRol (admin solo con perfil admin; sin perfil reconocido o rol api: sin acceso); esAdminEmpresa() (regla única del
                         cliente sin sucursal), esUsuarioSucursal(), rotuloRol() («Equipo Neumet», «Administrador de empresa», «Usuario de sucursal»)
+  rol-eje.js            PURO: ROLES_EJE (dirección, tracción, eje loco, auxilio) y rolEjePosicion(distribucion, posicion): rol de cada posición según el eje (CA-31)
   empresa.js            PURO: pantalla Empresa (F10): interpreta las respuestas 200/4xx/502 de quitar y reponer acceso, orden y acciones de la lista, argumentos de alerta_configurar
   neumaticos.js         PURO: pestañas visibles de «Neumáticos» por rol y navegación por teclado
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
