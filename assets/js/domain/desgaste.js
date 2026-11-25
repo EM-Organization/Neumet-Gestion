@@ -95,26 +95,34 @@ export function dateUntil(lastAvg, mmPerDay, limit=LIFE_LIMIT_MM, from=new Date(
   return d==null?null:new Date(new Date(from).getTime()+d*MS_DAY);
 }
 
-// Desgaste desparejo de una medición (CA-06): {diff, side:'interno'|'externo'} si la diferencia entre la medida mayor y la
-// menor supera el umbral del cliente (`irregularidadMm`), si no null. Orden físico (app DAC): mm1=interno, mm2=centro,
-// mm3=externo; el centro cuenta para la diferencia. Mismo criterio que la vista de la base: mayor estricto (2,0 con umbral
-// 2,0 no avisa) y diferencia sobre las medidas presentes, como greatest()/least() de SQL.
+// Desgaste desparejo de una medición (CA-06, RN-06): {diff, side:'interno'|'externo'} si la diferencia entre la medida
+// mayor y la menor es `irregularidadMm` o más (>=, como la base), si no null. Orden físico (app DAC): mm1=interno, mm2=centro,
+// mm3=externo; el centro cuenta para la diferencia, sobre las medidas presentes (como greatest()/least() de SQL).
 // `side` es el borde MÁS DESGASTADO entre interno y externo (el de menos mm). Con interno y externo iguales (desgaste
 // central) sale 'externo' por convención; el texto del aviso aún no cubre ese caso.
-// Se redondea la diferencia: en coma flotante 4,03 − 2,03 da 2,0000000000000004 y con umbral 2 daría un desparejo falso.
+// La diferencia se redondea a 0,1 como round(numeric,1) de la base. Sin el redondeo, 8,7 − 6,7 da 1,9999999999999991 y no
+// llegaría a 2,0. Primero se quita el ruido de coma flotante (a 1e-6) y luego se redondea a 0,1, mitad hacia arriba.
+// Sin mm1 o mm3 no hay lado que nombrar: el desparejo lo dice la vista (desgaste_irregular) con su diferencia, y side es null.
+const aDecima=x=>Math.round(Math.round(x*1e6)/1e5)/10;
 export function unevenWear(row, irregularidadMm){
-  if(!row || row.mm1==null || row.mm3==null) return null;
+  if(!row) return null;
+  if(row.mm1==null || row.mm3==null){
+    return row.desgaste_irregular===true && row.diferencia_huellas_mm!=null
+      ? {diff:Number(row.diferencia_huellas_mm), side:null}
+      : null;
+  }
   const presentes=[row.mm1, row.mm2, row.mm3].filter(v=>v!==null&&v!==undefined).map(Number);
-  const diff=Math.round((Math.max(...presentes)-Math.min(...presentes))*1e6)/1e6;
+  const diff=aDecima(Math.max(...presentes)-Math.min(...presentes));
   const umbral=Number(irregularidadMm ?? IRREGULARIDAD_MM_DEFECTO);
-  if(!(diff>umbral)) return null;
+  if(!(diff>=umbral)) return null;
   return {diff, side:Number(row.mm1)<Number(row.mm3)?'interno':'externo'};
 }
 
 // Análisis completo de una rueda a partir de su historial ascendente. null si no hay historial.
 // `irregularidadMm`: umbral de desgaste desparejo del cliente (ver unevenWear).
-// Campos: lastAvg, mmPerWeek, mmPerDay, days, daysUntilLimit, unevenWear, unevenSide.
-export function analyzeTire(hist, irregularidadMm){
+// `estado`: fila de v_estado_neumaticos de la posición, si se leyó. Sin mm1 o mm3 el desparejo lo decide la base (ver unevenWear).
+// Campos: lastAvg, mmPerWeek, mmPerDay, days, daysUntilLimit, unevenWear, unevenSide (null si el desparejo no tiene lado).
+export function analyzeTire(hist, irregularidadMm, estado){
   if(!hist || hist.length<1) return null;
   const lastAvg=avgMm(hist[hist.length-1]);
   const result={lastAvg};
@@ -125,7 +133,7 @@ export function analyzeTire(hist, irregularidadMm){
     result.days=rate.days;
     result.daysUntilLimit=daysUntil(lastAvg,rate.mmPerDay);
   }
-  const u=unevenWear(hist[hist.length-1], irregularidadMm);
+  const u=unevenWear(estado ?? hist[hist.length-1], irregularidadMm);
   if(u){ result.unevenWear=u.diff; result.unevenSide=u.side; }
   return result;
 }
