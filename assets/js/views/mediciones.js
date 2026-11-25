@@ -26,10 +26,23 @@ const FONDO_STATUS = {
 const colorDeStatus = st => COLOR_STATUS[st] || 'var(--text-tertiary)';
 const fondoDeStatus = st => FONDO_STATUS[st] || 'rgba(0,0,0,0.15)';
 
+// Umbral de desgaste desparejo del cliente del vehículo elegido: cada cliente fija el suyo. Si no se pudo leer
+// (sin fila visible o error), queda null y el dominio usa el de la base.
+let irregularidadMm = null;
+let irregularidadSeq = 0;
+async function cargarIrregularidad(clienteId){
+  // Una respuesta que llega tarde (de un cliente anterior) no pisa la del cliente elegido ahora.
+  const seq = ++irregularidadSeq;
+  irregularidadMm = null;
+  if(!clienteId) return;
+  const {data}=await db.from('clientes').select('irregularidad_mm').eq('id',clienteId).maybeSingle();
+  if(seq===irregularidadSeq) irregularidadMm = data?.irregularidad_mm ?? null;
+}
+
 function mRenderAnalysis(pos){
   const block = document.getElementById('med-analysis-block');
   const cards = document.getElementById('med-analysis-cards');
-  const a = analyzeTire(med.tireData[pos]);
+  const a = analyzeTire(med.tireData[pos], irregularidadMm);
 
   if(!a){ block.style.display='none'; return; }
 
@@ -149,6 +162,8 @@ export function init(){
     document.getElementById('med-empty').style.display='none';
     document.getElementById('med-tire-detail').style.display='none';
     med.tireData={}; med.selPos=null;
+    // El umbral es del cliente del vehículo: en modo cliente, el propio; en el equipo Neumet, el del selector.
+    await cargarIrregularidad(isClienteMode() ? currentClienteId : parseInt(document.getElementById('med-cliente-select').value));
     // Historial del neumático MONTADO en cada posición (v_mediciones_neumatico): tras un cambio no hereda
     // las del viejo y tras una rotación acompaña al neumático.
     const {data,error}=await db.from('v_mediciones_neumatico').select('posicion_actual,mm1,mm2,mm3,promedio,created_at,idneumatico')
