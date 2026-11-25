@@ -12,14 +12,14 @@ Principios que rigen el diseño ([16](16-hoja-de-ruta.md)): dato no medido es nu
 
 **Este documento es una propuesta histórica del 2026-11-13.** No es backlog aprobado ni diseño vigente. Las secciones 1 a 11 describen lo que se propuso entonces; para cualquier comportamiento, manda [23 · Reglas de negocio](23-reglas-negocio.md) (RN-01 a RN-32 y decisiones del 25/11/2026). Donde ese documento y este choquen, **prevalece [23](23-reglas-negocio.md)**. Se conserva el contexto histórico (fuentes, normas, análisis de datos) porque sigue siendo útil como referencia.
 
-Lo que sigue describe la propuesta histórica. El estado de cada ítem está en el apartado 0.2 y en [10](10-tablero.md). En `main` ya están la huella mínima en la base (migración `20261126000000`, aplicación en producción **[confirmar]**), el corte de tramos de km del auxilio (PR 156, migración `20261126010000`, aplicación en producción **[confirmar]**) y el criterio de desparejo y el rol de eje en JS (PR 157).
+Lo que sigue describe la propuesta histórica. El estado de cada ítem está en el apartado 0.2 y en [10](10-tablero.md). En `main` ya están la huella mínima en la base (migración `20261126000000`, aplicación en producción), el corte de tramos de km del auxilio (PR 156, migración `20261126010000`, aplicación en producción) y el criterio de desparejo y el rol de eje en JS (PR 157).
 
 ### 0.1 Reglas que cambian (vigentes)
 
 | Tema | Propuesta histórica (13/11) | Regla vigente ([23](23-reglas-negocio.md)) |
 |---|---|---|
-| Retiro de direccionales (R3) | 5,0 mm en la huella más baja (`direccion_retiro_mm`) | No hay retiro propio de dirección. El retiro general es 3 mm en todos los ejes (RN-02). En dirección, **8 mm es aviso** para revisar la cubierta y pasarla atrás (a tracción o eje loco), y **6 mm es límite** para pasarla atrás. |
-| Colores de alerta | Rojo para retiro; amarillo para rotación y alineación | **Rojo solo para el retiro general** (huella mínima menor que 3 mm: cambiar). **Amarillo** para rotar, alinear y pasar atrás una direccional. Nota: P-02 ([23](23-reglas-negocio.md) §4, resuelta el 25/11) fija dos niveles amarillos en dirección: «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm. |
+| Retiro de direccionales (R3) | 5,0 mm en la huella más baja (`direccion_retiro_mm`) | No hay retiro propio de dirección. El retiro general es 3 mm en todos los ejes (RN-02). En dirección, **«Pasar atrás» a 8 mm o menos** y **«Pasar atrás ya» bajo 6 mm** (amarillo, P-02). |
+| Colores de alerta | Rojo para retiro; amarillo para rotación y alineación | **Rojo solo para el retiro general** (huella mínima menor que 3 mm: cambiar). **Amarillo** para rotar, alinear y pasar atrás una direccional. Nota: P-02 ([23](23-reglas-negocio.md) §4, decidida el 25/11) fija dos niveles amarillos en dirección: «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm. La sugerencia para una direccional que llega a 8 mm es «Pasar a tracción o eje loco» (P-01). |
 | Restricción de posición de direccionales (R7, `apto_otra_posicion`) | No pasar una direccional a otra posición sin aprobación | **Descartada para Agencia Central** (RN-03). Una direccional puede rotar a tracción o a eje loco sin aprobación ni aviso de fuera de posición. No hace falta `apto_otra_posicion`. |
 | Intervalo y disparadores por kilómetros (R10) | No usar kilómetros como disparador; recordatorio por tiempo | Todo el rendimiento se mide por kilómetros con odómetro (RN-04): tasa en mm por 1.000 km, proyección por km y CPK. El **swap se sugiere a los 20.000 km** en cubiertas de vida 0 (RN-05). El tiempo solo es respaldo rotulado cuando no hay odómetro. Sin odómetro, el dato es **«sin dato»**; no se estima ni se inventa (RN-12). |
 | Estado y alertas por desgaste (RN-01) | Umbrales sobre el promedio en la mayoría de las reglas | Estado, alertas y sugerencias se calculan con la **huella mínima** `min(mm1, mm2, mm3)`. El promedio solo se muestra como dato informativo. Si falta alguna huella, no hay mínimo y la posición queda **«sin dato»**, nunca cero. |
@@ -36,9 +36,9 @@ Todo lo que no figure aquí queda fuera del backlog vigente (ver 0.3). Los ítem
 | # | Ítem | RN / G |
 |---|---|---|
 | 1 | Odómetro manual en cada registro: API (con coordinación con DAC), RPC de movimiento y UI | RN-12 / G-12 |
-| 2 | Auxilio: corte de tramos de km en la posición 99 (en `main` por PR 156, migración `20261126010000`; aplicación en producción **[confirmar]**); pendientes un solo auxilio por vehículo y su frecuencia de medición, sin ola asignada | RN-13 / G-13 |
-| 3 | Estado y alertas por huella mínima: en `main` (SQL, migración `20261126000000`, aplicación en producción **[confirmar]**; JS); la leyenda y los umbrales van en la ola 2 | RN-01, RN-08 / G-01 |
-| 4 | Rol de eje y umbrales de dirección (aviso 8 mm y límite 6 mm): rol de eje en JS (PR 157); SQL y umbrales, en la ola 2 | RN-02, RN-31 / G-02, G-28 |
+| 2 | Auxilio: corte de tramos de km en la posición 99 (en `main` por PR 156, migración `20261126010000`; aplicación en producción); pendientes un solo auxilio por vehículo y su frecuencia de medición, sin ola asignada | RN-13 / G-13 |
+| 3 | Estado y alertas por huella mínima: en `main` (SQL, migración `20261126000000`, aplicación en producción; JS); la leyenda y los umbrales van en la ola 2 | RN-01, RN-08 / G-01 |
+| 4 | Rol de eje y umbrales de dirección («Pasar atrás» a 8 mm y «Pasar atrás ya» bajo 6 mm): rol de eje en JS (PR 157); SQL y umbrales, en la ola 2 | RN-02, RN-31 / G-02, G-28 |
 | 5 | Motivo obligatorio en todos los movimientos (catálogo base) | RN-14 / G-14 |
 | 6 | Moneda por defecto USD | RN-28 / G-25 |
 | 7 | Caída brusca de 5 mm como medición sospechosa | RN-09 / G-09 |
@@ -56,7 +56,7 @@ Todo lo que no figure aquí queda fuera del backlog vigente (ver 0.3). Los ítem
 | 14 | Alta de cubiertas por lote, con DOT, medida, proveedor y factura | RN-29, RN-30 / G-26, G-27 |
 | 15 | Máximo de renovaciones por marca, como advertencia | RN-25 / G-23 |
 | 16 | Trabajos de la semana e inspecciones de ayer | RN-18, RN-19 / G-17, G-18 |
-| 17 | Unificar el criterio de desgaste desparejo entre JS (`IRREGULARIDAD_MM_DEFECTO`, `unevenWear`) y SQL (`irregularidad_mm`): **hecho (PR 157)**, con el criterio de la base. Queda por confirmar si el umbral es estricto (código) o incluye el 2 (RN-06) | RN-06 |
+| 17 | Unificar el criterio de desgaste desparejo entre JS (`IRREGULARIDAD_MM_DEFECTO`, `unevenWear`) y SQL (`irregularidad_mm`): **hecho (PR 157)**, con el criterio de la base. Queda pasar a `>=` (2 mm o más) en la ola 2, en la base y en el JS a la vez (RN-06) | RN-06 |
 | 18 | Actualizar este documento según [23](23-reglas-negocio.md) (hecho; última revisión 2026-11-25) | RN-02, RN-03, RN-04 / G-03, G-04 |
 
 P2 (después del piloto, fuera de este documento): `reporte_periodo` mensual y trimestral, agente LLM de solo lectura, ahorro por renovación, km por mm como alerta, WhatsApp o mail, bases de auxilio como sucursales, integración con Smartway.
@@ -64,7 +64,7 @@ P2 (después del piloto, fuera de este documento): `reporte_periodo` mensual y t
 ### 0.3 Qué queda como historia
 
 - Sección 1 (resumen), 2 (qué soporta el modelo, salvo las filas marcadas en 0.1), 3 (datos que faltan), 4 (reglas R0 a R11), 5 (reposición), 6 (casos límite), 7 (flujo del operario), 8 (criterio de prueba), 9 (plan en PR), 10 (preguntas) y 11 (fuentes): **propuesta histórica**. Las fuentes de la sección 11 y el análisis normativo sí se conservan como referencia.
-- Las preguntas de la sección 10 se reemplazan por las preguntas abiertas de [23](23-reglas-negocio.md) §4 (P-01 a P-12, decididas el 25/11/2026 salvo el punto abierto de P-01 y P-02 en 8 mm). La pregunta 1 queda respondida (ver allí).
+- Las preguntas de la sección 10 se reemplazan por las decisiones de [23](23-reglas-negocio.md) §4 (P-01 a P-12, decididas el 25/11/2026). La pregunta 1 queda respondida (ver allí).
 - Los casos de la sección 8 que usan `direccion_retiro_mm` = 5,0 mm, `apto_otra_posicion` o R7 **no son vigentes**. Los casos de R10 basados en tiempo tampoco.
 - El plan de reposición (sección 5 y PR 7 de la sección 9) queda fuera del backlog vigente.
 
@@ -233,7 +233,7 @@ Equivalencias usadas: 2/32 de pulgada = 1,6 mm; 3/32 = 2,4 mm; 4/32 = 3,2 mm; 6/
 
 ### R3 · Retiro por posición
 
-> **Superada en dirección ([23](23-reglas-negocio.md), RN-02 y RN-08).** El retiro general es 3 mm en todos los ejes; en dirección, 8 mm es aviso para revisar y pasar atrás, y 6 mm es límite para pasar atrás (amarillo). El retiro de 5,0 mm de este apartado no se usa. Lo que sigue es histórico.
+> **Superada en dirección ([23](23-reglas-negocio.md), RN-02 y RN-08).** El retiro general es 3 mm en todos los ejes; en dirección, «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm (amarillo). El retiro de 5,0 mm de este apartado no se usa. Lo que sigue es histórico.
 
 - **Condición:** la huella más baja (`minimo`) de una posición es menor o igual a su `umbral_descarte_pos`: `direccion_retiro_mm` en el eje 1 y `umbral_retiro_mm` (3,0 mm por defecto) en el resto. El retiro para recauchutar (a `max(recauchutar_mm, umbral_retiro_mm)`) no es de R3 sino de R9; en una posición con recauchutado posible, R9 dispara siempre que R3 dispara, y ambas se fusionan (R11, donde prevalece R9). Se compara contra la huella más baja y no contra el promedio: 49 CFR 393.75(b) exige en las ruedas delanteras el mínimo «at any point on a major tread groove», es decir en cualquier punto de una ranura principal (fuente 2; el (c), para el resto de las ruedas, dice «in a major tread groove», sin «en cualquier punto»), de modo que un neumático con una huella en 2,8 mm y promedio de 3,3 mm ya incumple 4/32 de pulgada. Las huellas de NEUMET son tres puntos de la banda; que cada uno caiga en una ranura principal depende del calibre y no está verificado. Dato nulo en cualquiera de las huellas: no se calcula, nunca cero (T38).
 - **Parámetros (histórico, no vigente):** `direccion_retiro_mm`, por defecto 5,0 mm, rango 3,2 a 8,0. El mínimo del rango es el piso legal de EE. UU. para ruedas delanteras (4/32 de pulgada, 3,2 mm; fuente 2). El valor por defecto es una práctica de flota (5 a 6/32 de pulgada, fuentes 3 y 4); no hay consenso de fabricantes. Fuera de dirección rige el `umbral_retiro_mm` que el cliente ya tiene; el piso legal de EE. UU. para el resto es 2/32 de pulgada (1,6 mm), por debajo de ese valor.
@@ -547,7 +547,7 @@ Cada PR de este plan actualiza en el mismo PR el apéndice de [08](08-esquema-da
 
 Solo de lógica de negocio; lo técnico queda resuelto arriba, con el valor conservador que se usa mientras no haya respuesta.
 
-1. **Política de retiro de direccionales** (respondida en [23](23-reglas-negocio.md), RN-02 y RN-08: aviso a 8 mm, límite a 6 mm, retiro general a 3 mm; el valor de 5,0 mm de abajo queda superado): ¿a cuántos milímetros se retiran hoy en los camiones y en los buses? El valor por defecto propuesto es 5,0 mm medidos en la huella más baja, con piso de 3,2 mm.
+1. **Política de retiro de direccionales** (respondida en [23](23-reglas-negocio.md), RN-02 y RN-08: «Pasar atrás» a 8 mm o menos, «Pasar atrás ya» bajo 6 mm, retiro general a 3 mm; el valor de 5,0 mm de abajo queda superado): ¿a cuántos milímetros se retiran hoy en los camiones y en los buses? El valor por defecto propuesto es 5,0 mm medidos en la huella más baja, con piso de 3,2 mm.
 2. **País o norma aplicable:** ¿en qué país operan los clientes con flota pesada y qué profundidad mínima legal exige la inspección? Los pisos legales verificados son de EE. UU.; México y Brasil se encontraron solo en resúmenes y Chile y Argentina no tienen un valor oficial hallado para pesados.
 3. **Recauchutado:** ¿los clientes recauchutan, en qué posiciones lo permiten (fuera de dirección) y cuántas vidas de carcasa admiten?
 4. **Intervalos actuales:** ¿cada cuánto rotan hoy y quién lo decide (taller propio o externo)? Sirve para fijar el recordatorio y para medir si la sugerencia mejora algo.

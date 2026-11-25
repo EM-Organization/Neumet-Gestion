@@ -15,19 +15,19 @@ Este documento dice qué regla aplica el sistema, con qué parámetros, en qué 
 
 | RN | Regla | Parámetros | Estado | CA |
 |---|---|---|---|---|
-| RN-01 | El desgaste, las alertas y las sugerencias usan la huella mínima de las tres mediciones. El promedio solo se muestra. | Huella mínima `min(mm1, mm2, mm3)`; umbrales de RN-02 | Parcial: estado y alertas por huella mínima en `main` (migración `20261126000000`, aplicación en producción **[confirmar]**). Faltan umbrales y leyenda, en la ola 2; CA-01 sin ola asignada | CA-01 |
-| RN-02 | Retiro a 3 mm en todos los ejes. En dirección, aviso a 8 mm y límite a 6 mm para pasar la cubierta atrás (a tracción o al eje loco), ambos en amarillo (P-02). En tracción, de 15 a 3 mm, con rotación dentro del eje. | `direccion_aviso_mm` 8; `direccion_limite_mm` 6; `retiro_mm` 3; `traccion_inicial_mm` 15 (solo informativo) | Ola 2 | CA-02 |
+| RN-01 | El desgaste, las alertas y las sugerencias usan la huella mínima de las tres mediciones. El promedio solo se muestra. | Huella mínima `min(mm1, mm2, mm3)`; umbrales de RN-02 | Parcial: estado y alertas por huella mínima en `main` (migración `20261126000000`, aplicación en producción). Faltan umbrales y leyenda, en la ola 2; CA-01 sin ola asignada, a planificar tras la ola 7 | CA-01 |
+| RN-02 | Retiro a 3 mm en todos los ejes. En dirección, dos avisos amarillos para pasar la cubierta atrás: «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm (P-02). La sugerencia para una direccional que llega a 8 mm es «Pasar a tracción o eje loco» (P-01). En tracción, de 15 a 3 mm, con rotación dentro del eje. | `direccion_aviso_mm` 8; `direccion_limite_mm` 6; `retiro_mm` 3; `traccion_inicial_mm` 15 (solo informativo) | Ola 2 | CA-02 |
 | RN-03 | Una direccional puede rotar a tracción o al eje loco sin aprobación ni aviso de posición. | Ninguno | Ola 1 | CA-03 |
 | RN-04 | El rendimiento (tasa, proyección, CPK, km por mm y km por vida) se mide por kilómetros con odómetro. El tiempo solo es respaldo rotulado cuando no hay odómetro. | Tasa en mm por 1.000 km | Ola 6 | CA-04 |
 | RN-05 | Una cubierta nueva (vida 0) sugiere swap a los 20.000 km desde su montaje. Lo cierra cualquier rotación de posición o en disco. | `swap_km` 20.000, solo vida 0 | Ola 2 (apertura) y ola 3 (cierre) | CA-05 |
 | RN-06 | Si la diferencia entre la huella máxima y la mínima es de 2 mm o más, se sugiere revisar la cubierta. La decisión final es del gomero. | `irregularidad_mm` 2 | Parcial: criterio en JS hecho (PR 157). Falta la sugerencia, en la ola 2 | CA-06 |
 | RN-07 | Una cubierta con muchos km y poco desgaste se sugiere revisar. | `km_por_mm_revision`, nulo: alerta apagada (P-04) | Ola 2 (apagada) | CA-07 |
-| RN-08 | Cualquier huella bajo 3 mm exige retiro inmediato, a renovación o a baja según el daño. No se rota a otro eje. | `retiro_mm` 3 | Parcial: el estado por huella mínima está en `main` (migración `20261126000000`). CA-08 sin ola asignada | CA-08 |
+| RN-08 | Cualquier huella bajo 3 mm exige retiro inmediato, a renovación o a baja según el daño. No se rota a otro eje. | `retiro_mm` 3 | Parcial: el estado por huella mínima está en `main` (migración `20261126000000`). CA-08 sin ola asignada, a planificar tras la ola 7 | CA-08 |
 | RN-09 | Si la huella mínima baja 5 mm o más entre dos mediciones válidas consecutivas, la medición queda sospechosa hasta que se revise. | `caida_brusca_mm` 5 (P-11) | Ola 4 | CA-09 |
 | RN-10 | Una medición sospechosa se corrige a mano, con motivo y auditoría. | Motivo obligatorio | Ola 4 | CA-10 |
-| RN-11 | Cada vehículo se mide una vez por mes con el medidor. Una cubierta sin medición en 30 días aparece como «sin medir». | `dias_sin_medir_alerta` 30 | Vigente con 30 días (`dias_sin_medir_alerta`); CA-11 dice 31 (ver notas). La frecuencia del auxilio, en RN-13 | CA-11 |
+| RN-11 | Cada vehículo se mide una vez por mes con el medidor. Una cubierta sin medición en 30 días aparece como «sin medir». | `dias_sin_medir_alerta` 30 | Vigente con 30 días (`dias_sin_medir_alerta`); CA-11 sin ola asignada, a planificar tras la ola 7. La frecuencia del auxilio, en RN-13 | CA-11 (30 días) |
 | RN-12 | El odómetro del vehículo se carga en cada registro: medición, montaje, desmontaje, cambio y rotación. | `odometro_obligatorio` (panel, por crear); `odometro_obligatorio_api` (API, pendiente) | Ola 1 | CA-12 |
-| RN-13 | Cada vehículo tiene a lo sumo un auxilio (posición 99). El auxilio se mide con menos frecuencia y no suma km. | Posición 99 | Parcial: el corte de tramos de km en la posición 99 está en `main` (PR 156, migración `20261126010000`; aplicación en producción **[confirmar]**). Falta un solo auxilio por vehículo y su frecuencia propia: sin ola asignada (P0-2) | CA-13 |
+| RN-13 | Cada vehículo tiene a lo sumo un auxilio (posición 99). El auxilio se mide con menos frecuencia y no suma km. | Posición 99 | Parcial: el corte de tramos de km en la posición 99 está en `main` (PR 156, migración `20261126010000`; aplicación en producción). Falta un solo auxilio por vehículo y su frecuencia propia: sin ola asignada, a planificar tras la ola 7 (P0-2) | CA-13 |
 | RN-14 | Toda rotación, rotación en disco, alineación, cambio y baja lleva motivo, con usuario y fecha. | Catálogo por tipo; «Otro» exige texto (P-06) | Ola 1 | CA-14 |
 | RN-15 | La rotación de posición (dos posiciones del vehículo) y la rotación en disco (misma posición, se invierten interior y exterior) son eventos distintos. | Evento `rotacion_disco` | Ola 3 | CA-15 |
 | RN-16 | El desgaste lateral sugiere alinear. El gomero confirma con la máquina y la alineación se registra con motivo. | Evento `alineacion` | Ola 3 | CA-16 |
@@ -50,10 +50,10 @@ Este documento dice qué regla aplica el sistema, con qué parámetros, en qué 
 
 Notas sobre la tabla:
 
-- **Huecos de la hoja de ruta**: el anexo no asigna ola a P0-2 (un solo auxilio por vehículo y frecuencia propia de medición), a CA-11 ni a CA-13. Pendiente de asignar.
-- **Huella mínima**: la migración `20261126000000` (P0-3) está en `main`. El anexo no asigna ola a CA-01 ni a CA-08; la leyenda y los umbrales por huella mínima van en la ola 2. Pendiente de asignar.
-- **RN-06**: la spec fija el umbral en 2 mm o más. La vista `desgaste_irregular` y el JS de `main` (PR 157) disparan con más de 2 mm; el anexo pasa `irregular` a ≥ en la ola 2. Hasta entonces, una diferencia de 2,0 mm exactos no marca.
-- **RN-11**: la spec fija 30 días en RN-11 y 31 días en CA-11. El sistema usa 30 (`dias_sin_medir_alerta`). Pendiente de confirmar.
+- **Huecos de la hoja de ruta**: el anexo no asigna ola a P0-2 (un solo auxilio por vehículo y frecuencia propia de medición), a CA-11 ni a CA-13. Sin ola asignada, a planificar tras la ola 7.
+- **Huella mínima**: la migración `20261126000000` (P0-3) está en `main`. Sin ola asignada, a planificar tras la ola 7: P0-3, CA-01 y CA-08. La leyenda y los umbrales por huella mínima van en la ola 2.
+- **RN-06**: la spec fija el umbral en 2 mm o más. La vista `desgaste_irregular` y el JS de `main` (PR 157) disparan con más de 2 mm (`>`). En la ola 2 se pasa a `>=` en la base y en el JS a la vez. Hasta entonces, una diferencia de 2,0 mm exactos no marca.
+- **RN-11**: la regla es de 30 días (`dias_sin_medir_alerta`). CA-11 se ajusta a 30; la especificación decía 31.
 - **CA-09** se ajusta a P-11: la ventana es entre mediciones válidas consecutivas, no de 30 días.
 - **CA-02**: el color de `direccion_limite` es amarillo (P-02).
 
@@ -69,7 +69,7 @@ Notas sobre la tabla:
 
 ## 4. Decisiones del 2026-11-25
 
-Las decisiones siguientes cierran las preguntas abiertas de la especificación (P-01 a P-12), salvo el punto abierto del final de la lista. Cada una indica la regla que afecta.
+Las decisiones siguientes cierran las preguntas abiertas de la especificación (P-01 a P-12). Cada una indica la regla que afecta.
 
 - **P-01** · El texto de la sugerencia para una direccional que llega a 8 mm es «Pasar a tracción o eje loco» (RN-02).
 - **P-02** · Dos niveles amarillos en dirección: «Pasar atrás» a 8 mm o menos, y «Pasar atrás ya» bajo 6 mm. El rojo queda solo para el retiro general, bajo 3 mm (RN-02).
@@ -83,7 +83,7 @@ Las decisiones siguientes cierran las preguntas abiertas de la especificación (
 - **P-10** · `factura` y `soporte` son texto libre. El DOT tiene 4 dígitos, formato WWYY (RN-29).
 - **P-11** · La caída brusca se mide entre dos mediciones válidas consecutivas (RN-09).
 - **P-12** · La numeración de posiciones es la del diagrama actual del panel. En el doble piso (8x2), las direccionales son 1 a 4 (RN-31).
-- **P-01 y P-02 en 8 mm** · Las dos decisiones se solapan: P-01 asigna «Pasar a tracción o eje loco» a una direccional que llega a 8 mm, y P-02 asigna «Pasar atrás» a 8 mm o menos. Falta decidir qué texto vale en exactamente 8 mm (RN-02).
+- **P-01 y P-02 a 8 mm** · A 8 mm, la etiqueta del semáforo es «Pasar atrás» (P-02) y el texto de la sugerencia de rotación es «Pasar a tracción o eje loco» (P-01). Bajo 6 mm, la etiqueta es «Pasar atrás ya» (P-02).
 
 Otros puntos de la decisión:
 
