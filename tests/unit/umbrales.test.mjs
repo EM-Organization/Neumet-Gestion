@@ -100,7 +100,7 @@ describe('pasar atrás y swap (direccion_aviso_mm, direccion_limite_mm, swap_km)
     assert.equal(c('direccion_aviso_mm').lbl, 'Pasar atrás desde (mm)');
     assert.equal(c('direccion_aviso_mm').ayuda, 'Cubiertas de dirección con esta huella mínima o menos');
     assert.equal(c('direccion_limite_mm').lbl, 'Pasar atrás ya bajo (mm)');
-    assert.equal(c('direccion_limite_mm').ayuda, 'Cubiertas de dirección con esta huella mínima o menos: pasarlas atrás');
+    assert.equal(c('direccion_limite_mm').ayuda, 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya');
     assert.equal(c('swap_km').lbl, 'Swap a los (km)');
     assert.equal(c('swap_km').ayuda, 'Primera rotación de una cubierta nueva');
     assert.equal(CAMPOS_UMBRAL.some(x => x.key === 'km_por_mm_revision'), false);

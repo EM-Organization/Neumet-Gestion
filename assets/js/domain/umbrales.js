@@ -20,7 +20,7 @@ export const CAMPOS_UMBRAL = [
   // Pasar atrás (cubiertas de dirección) va en mm, pero fuera de las reglas de los umbrales de desgaste: mm: false y dirMm: true
   // (mayor que 0 y hasta 99,9, igual que el check de la base; ver validarUmbrales). Se mide en la huella mínima, como el resto (RN-01).
   { key: 'direccion_aviso_mm', lbl: 'Pasar atrás desde (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos', mm: false, dirMm: true },
-  { key: 'direccion_limite_mm', lbl: 'Pasar atrás ya bajo (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos: pasarlas atrás', mm: false, dirMm: true },
+  { key: 'direccion_limite_mm', lbl: 'Pasar atrás ya bajo (mm)', ayuda: 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya', mm: false, dirMm: true },
   // Swap: kilómetros de la primera rotación de una cubierta nueva (RN-05, 20.000 por defecto). Entero, no mm.
   { key: 'swap_km', lbl: 'Swap a los (km)', ayuda: 'Primera rotación de una cubierta nueva', mm: false }
 ];
