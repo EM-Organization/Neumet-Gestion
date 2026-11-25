@@ -26,7 +26,12 @@ describe('catálogo de distribuciones', () => {
     const d = buscarDistribucion('6x2');
     assert.equal(detalleEjes(d), 'simple, doble, simple');
     assert.equal(etiquetaDistribucion(d), '6x2 · 8 ruedas');
-    assert.equal(textoOpcion(d), '6x2 · 8 ruedas (simple, doble, simple)');
+    assert.equal(textoOpcion(d), '6x2 · 8 ruedas (simple, doble, simple) · bus convencional');
+  });
+  test('alias de bus solo en el texto: 8x2 es «bus doble piso»; el resto, sin alias', () => {
+    assert.equal(textoOpcion(buscarDistribucion('8x2')), '8x2 · 10 ruedas (simple, simple, doble, simple) · bus doble piso');
+    assert.equal(textoOpcion(buscarDistribucion('4x2')), '4x2 · 6 ruedas (simple, doble)');
+    assert.equal(textoOpcion(buscarDistribucion('6x4')), '6x4 · 10 ruedas (simple, doble, doble)');
   });
   test('textoRuedas: la distribución si la tiene; si no, el tipo de siempre', () => {
     assert.equal(textoRuedas({ distribucion: '8x4', tipo_ruedas: 16 }), '8x4 · 12 ruedas');

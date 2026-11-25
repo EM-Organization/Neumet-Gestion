@@ -33,8 +33,11 @@ export const detalleEjes = d => [...d.ejes].map(e => NOMBRE_EJE[e]).join(', ');
 // «6x2 · 8 ruedas»: lo que se muestra en las listas.
 export const etiquetaDistribucion = d => `${d.id} · ${d.ruedas} ruedas`;
 
-// «6x2 · 8 ruedas (simple, doble, simple)»: lo que se muestra al elegir, con los ejes de adelante hacia atrás.
-export const textoOpcion = d => `${etiquetaDistribucion(d)} (${detalleEjes(d)})`;
+// Alias de bus: solo cambia el texto de la opción. El código (6x2, 8x2) es el mismo para un camión que para un bus.
+const ALIAS_BUS = { '6x2': 'bus convencional', '8x2': 'bus doble piso' };
+
+// «6x2 · 8 ruedas (simple, doble, simple) · bus convencional»: lo que se muestra al elegir, con los ejes de adelante hacia atrás.
+export const textoOpcion = d => `${etiquetaDistribucion(d)} (${detalleEjes(d)})${ALIAS_BUS[d.id] ? ` · ${ALIAS_BUS[d.id]}` : ''}`;
 
 // Cantidad de ruedas de un vehículo para listas: su distribución si la tiene; si no, el tipo de ruedas de siempre.
 export function textoRuedas(vehiculo) {
