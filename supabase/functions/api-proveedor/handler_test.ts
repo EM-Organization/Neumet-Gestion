@@ -1,5 +1,17 @@
 import { assert, assertEquals, assertFalse } from 'jsr:@std/assert@1';
-import { crearEntorno, post, R_GUA, R_LOGIN, R_OBT, U_ADMIN, U_CLI, U_DAC, U_OTRO } from './testkit.ts';
+import { ErrorRpc } from './types.ts';
+import {
+  crearEntorno,
+  post,
+  pruebaSinErrores,
+  R_GUA,
+  R_LOGIN,
+  R_OBT,
+  U_ADMIN,
+  U_CLI,
+  U_DAC,
+  U_OTRO,
+} from './testkit.ts';
 import { RATE_LOGIN_IP_POR_MIN } from './handler.ts';
 
 async function j(r: Response) {
@@ -832,5 +844,172 @@ Deno.test('obtener: vehículo inexistente o ajeno conserva su respuesta de siemp
   for (const matricula of ['NOEXISTE1', 'ZZZZ99']) {
     const r = await j(await e.handler(post(R_OBT, { matricula, numero: '' }, { token: T })));
     assertEquals(r, { code: 404, matricula: '', numero: '', data: [] });
+  }
+});
+
+// ------------------------------------------------ odómetro (RN-12, docs/07 apéndice C)
+const exigido = (e: ReturnType<typeof crearEntorno>, cliente = 1) =>
+  e.perfilDe.set(cliente === 1 ? U_DAC : U_OTRO, {
+    rol: 'api',
+    cliente_id: cliente,
+    cliente_activo: true,
+    odometro_obligatorio_api: true,
+  });
+const conOdo = (odo: unknown, patente?: string) => ({ ...montaje([lectura(1)], patente), odometro_km: odo });
+async function sha256(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+pruebaSinErrores('odómetro: flag false y request viejo sin campo -> 200; la RPC no recibe odómetro', async () => {
+  const e = crearEntorno();
+  const r = await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+  assertEquals(r.status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.odometro_km, null);
+});
+
+pruebaSinErrores('odómetro: flag true y falta -> 422 sin llamar a la RPC; el log registra motivo odometro', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  const antes = e.mediciones.length;
+  for (const cuerpo of [montaje([lectura(1)]), conOdo(null)]) {
+    const r = await e.handler(post(R_GUA, cuerpo, { token: T }));
+    assertEquals(r.status, 422);
+    assertEquals(await j(r), { code: 422, message: 'Solicitud inválida' });
+    const l = e.logs.at(-1)!;
+    assertEquals([l.motivo, l.status, l.http_code], ['odometro', 'rechazado', 422]);
+  }
+  assertEquals(e.llamadas.guardar, 0);
+  assertEquals(e.mediciones.length, antes);
+});
+
+pruebaSinErrores('odómetro: 123456 llega a la RPC tal cual; flag true lo acepta y la respuesta conserva su forma', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  const r = await e.handler(post(R_GUA, conOdo(123456), { token: T }));
+  assertEquals(r.status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.odometro_km, 123456);
+  assertEquals(Object.keys(await j(r)), ['code', 'data']);
+});
+
+pruebaSinErrores('odómetro: límites 0 y 2147483647 (máximo de integer) se aceptan', async () => {
+  for (const ok of [0, 2147483647]) {
+    const e = crearEntorno();
+    exigido(e);
+    assertEquals((await e.handler(post(R_GUA, conOdo(ok), { token: T }))).status, 200, String(ok));
+    assertEquals(e.argsGuardar.at(-1)!.odometro_km, ok);
+  }
+});
+
+pruebaSinErrores('odómetro: decimal, negativo, texto, booleano, objeto o fuera de integer -> 400 motivo odometro', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  for (const mal of [12.5, -1, '123456', '', true, [1], {}, 2147483648, 1e20]) {
+    const r = await e.handler(post(R_GUA, conOdo(mal), { token: T }));
+    assertEquals(r.status, 400, JSON.stringify(mal));
+    assertEquals(e.logs.at(-1)!.motivo, 'odometro', JSON.stringify(mal));
+  }
+  assertEquals(e.llamadas.guardar, 0);
+});
+
+pruebaSinErrores('odómetro: Infinity llega como 1e400 en el JSON -> 400 motivo odometro (no es un entero finito)', async () => {
+  const e = crearEntorno();
+  const cuerpo = JSON.stringify(montaje([lectura(1)])).replace(/}$/, ',"odometro_km":1e400}');
+  const r = await e.handler(post(R_GUA, null, { token: T, raw: cuerpo }));
+  assertEquals(r.status, 400);
+  assertEquals(e.logs.at(-1)!.motivo, 'odometro');
+  assertEquals(e.llamadas.guardar, 0);
+});
+
+pruebaSinErrores('odómetro: hash sin odómetro idéntico al de siempre; con odómetro, el hash lo incluye', async () => {
+  const e = crearEntorno();
+  // Contenido de la prueba: cliente 1, patente ABCD12, posición 1 con mm1=9, mm2=8, mm3=8, mm4=7.
+  await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+  assertEquals(e.argsGuardar.at(-1)!.hash, await sha256(JSON.stringify([1, 'ABCD12', [[1, 9, 8, 8, 7]]])));
+  await e.handler(post(R_GUA, conOdo(123456), { token: T }));
+  assertEquals(
+    e.argsGuardar.at(-1)!.hash,
+    await sha256(JSON.stringify([1, 'ABCD12', [[1, 9, 8, 8, 7]], 123456])),
+  );
+});
+
+pruebaSinErrores('odómetro: misma Idempotency-Key con otro odómetro -> 409; el mismo replay no duplica', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  const h = { 'idempotency-key': 'odo-1' };
+  const antes = e.mediciones.length;
+  const a = await e.handler(post(R_GUA, conOdo(123456), { token: T, headers: h }));
+  const b = await e.handler(post(R_GUA, conOdo(123456), { token: T, headers: h }));
+  const c = await e.handler(post(R_GUA, conOdo(123457), { token: T, headers: h }));
+  assertEquals([a.status, b.status, c.status], [200, 200, 409]);
+  assertEquals(await j(a), await j(b));
+  assertEquals(e.mediciones.length, antes + 1);
+});
+
+pruebaSinErrores('odómetro menor que el del vehículo: el handler no lo rechaza ni toca la base; la RPC lo decide', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  const r = await e.handler(post(R_GUA, conOdo(5), { token: T }));
+  assertEquals(r.status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.odometro_km, 5);
+});
+
+pruebaSinErrores('odómetro en un montaje no cuenta: el campo va a nivel de request; con flag true -> 422', async () => {
+  const e = crearEntorno();
+  exigido(e);
+  const r = await e.handler(post(R_GUA, montaje([{ ...lectura(1), odometro_km: 123456 }]), { token: T }));
+  assertEquals(r.status, 422);
+  assertEquals(e.llamadas.guardar, 0);
+});
+
+pruebaSinErrores('odómetro: la exigencia es por cliente; el 422 no revela datos ni el flag de otro cliente', async () => {
+  const e = crearEntorno();
+  exigido(e, 2);
+  // Cliente 1 (flag false) manda sobre un vehículo del cliente 2 sin odómetro: no lo exige el flag del cliente 2.
+  const dac = await e.handler(post(R_GUA, montaje([lectura(1)], 'ZZZZ99'), { token: T }));
+  assertEquals(dac.status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.cliente_id, 1);
+  // Cliente 2 (flag true) sin odómetro: 422 sin rastro de la patente ni del motivo en la respuesta.
+  const otro = await e.handler(post(R_GUA, montaje([lectura(1)], 'ZZZZ99'), { token: 'tok-' + U_OTRO }));
+  assertEquals(otro.status, 422);
+  const texto = JSON.stringify(await j(otro));
+  assertFalse(texto.includes('ZZZZ99'));
+  assertFalse(texto.includes('odometro'));
+  assertFalse(JSON.stringify(e.logs).includes('ZZZZ99'));
+});
+
+pruebaSinErrores('odómetro: perfil sin el flag -> opcional (default false, igual que la columna)', async () => {
+  const e = crearEntorno();
+  e.perfilDe.set(U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true });
+  assertEquals((await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }))).status, 200);
+  assertEquals(e.argsGuardar.at(-1)!.odometro_km, null);
+});
+
+pruebaSinErrores('odómetro: la RPC lo exige (22023) aunque el perfil no -> 422 motivo odometro, sin fallo interno', async () => {
+  const e = crearEntorno();
+  const antes = e.mediciones.length;
+  // Carrera: el flag se activó después de leer el perfil. La RPC lo vuelve a comprobar y el handler responde 422.
+  e.deps.db.guardar = () =>
+    Promise.reject(new ErrorRpc('api_guardar_montaje', 400, '22023', 'odometro obligatorio: indicar la lectura del odómetro del vehículo'));
+  const r = await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+  assertEquals(r.status, 422);
+  assertEquals(await j(r), { code: 422, message: 'Solicitud inválida' });
+  const l = e.logs.at(-1)!;
+  assertEquals([l.motivo, l.status, l.http_code], ['odometro', 'rechazado', 422]);
+  assertEquals(e.mediciones.length, antes);
+});
+
+Deno.test('odómetro: un 22023 de otra causa no es el odómetro: sigue siendo fallo interno (500)', async () => {
+  const e = crearEntorno();
+  e.deps.db.guardar = () =>
+    Promise.reject(new ErrorRpc('api_guardar_montaje', 400, '22023', 'motivo inválido para este movimiento'));
+  const original = console.error;
+  console.error = () => {}; // el 500 registra fallo_interno por consola: es el camino que se prueba
+  try {
+    const r = await e.handler(post(R_GUA, montaje([lectura(1)]), { token: T }));
+    assertEquals(r.status, 500);
+    assertEquals(e.logs.at(-1)!.motivo, 'error_interno');
+  } finally {
+    console.error = original;
   }
 });

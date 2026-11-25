@@ -104,7 +104,7 @@ select test.eq('A: invalidar todas las mediciones resuelve la alerta como sin_da
 -- B. La alerta sigue al neumático (rotar) y se resuelve al cambiarlo o darlo de baja
 -- ---------------------------------------------------------------------------------------------
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(911::bigint, 1::smallint, 2::smallint) as rot \gset
+select public.neumatico_rotar(911::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
 select test.eq('B: rotar conserva las dos alertas (misma fila, nueva posición)',
   (select string_agg(n.idneumatico || '@' || a.posicion || '#' || a.estado, ',' order by n.idneumatico)
@@ -112,8 +112,8 @@ select test.eq('B: rotar conserva las dos alertas (misma fila, nueva posición)'
     where a.vehiculo_id = 911 and a.estado <> 'resuelta'), 'A91-1@2#abierta,A91-2@1#abierta');
 select test.eq('B: rotar no abrió alertas nuevas', test.nal91('A91-1') || '|' || test.nal91('A91-2'), '1|1');
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_cambiar(911::bigint, 2::smallint, 'reparacion', 'Pinchazo', 1100, null, '{"marca":"N"}') as cam \gset
-select public.neumatico_cambiar(911::bigint, 1::smallint, 'baja', 'Corte lateral', 1100, null, '{"marca":"N"}') as baj \gset
+select public.neumatico_cambiar(911::bigint, 2::smallint, 'reparacion', 'Pinchazo', 1100, null, '{"marca":"N"}', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba') as cam \gset
+select public.neumatico_cambiar(911::bigint, 1::smallint, 'baja', 'Corte lateral', 1100, null, '{"marca":"N"}', p_motivo_codigo => 'desgaste') as baj \gset
 reset role;
 select test.eq('B: cambiar el neumático lo resuelve con motivo cambio (A91-1 estaba en pos 2)',
   (select resuelta_motivo from public.alertas where id = test.aid91('A91-1')), 'cambio');

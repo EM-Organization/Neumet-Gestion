@@ -165,7 +165,7 @@ select test.eq('global: sucursal_crear', (public.sucursal_crear('S96 global')->>
 select test.eq('global: vehiculo_crear', (public.vehiculo_crear('960', 'ZZ9600', 10::smallint, null)->>'cliente_id'), '1');
 select test.eq('global: stock_cubierta_agregar', (public.stock_cubierta_agregar('Q-96-1', 'Marca')->>'cliente_id'), '1');
 select test.eq('global: alerta_configurar', (public.alerta_configurar(null::bigint, 6.5)->>'umbral_critico_mm'), '6.5');
-select test.eq('global: neumatico_rotar en su vehículo', (public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint)->>'intercambio'), 'true');
+select test.eq('global: neumatico_rotar en su vehículo', (public.neumatico_rotar(1::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas')->>'intercambio'), 'true');
 reset role;
 select test.become('authenticated', test.u_e6());
 select test.denied('sucursal: no crea sucursales', $$select public.sucursal_crear('X')$$);

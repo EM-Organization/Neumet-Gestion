@@ -2,12 +2,12 @@
 // validación de los formularios y argumentos de las RPC neumatico_montar y neumatico_desmontar. La autorización real
 // vive en la base. docs/08 apéndice «Montar y retirar neumáticos». Tests: tests/unit/montaje.test.mjs
 import { layoutRuedas, POS_AUXILIO } from './vehiculo-diagrama.js';
-import { normalizarQuema, parseKmPrevios, validarOdometroVehiculo, MAX_QUEMA } from './quema.js';
+import { normalizarQuema, parseKmPrevios, MAX_QUEMA } from './quema.js';
 import { cubiertasMontables, filtrarCubiertas, parsePrecio, parseFecha, etiquetaCubierta, MAX_TXT } from './stock-cubiertas.js';
 import { VIDA_MAX } from './ciclo-vida.js';
 import { nombrePosicion } from './posicion.js';
+import { validarMotivo, validarOdometroObligatorio, tipoMotivoRetiro, etiquetaMotivo, MAX_MOTIVO_TEXTO } from './motivos.js';
 
-export const MAX_MOTIVO = 200;
 export const MAX_LISTA = 50; // cubiertas visibles en la lista del modal; el buscador acota el resto
 
 export const DESTINOS_RETIRO = [
@@ -70,15 +70,16 @@ function textoCorto(valor, etiqueta, obligatorio) {
 }
 
 // f: {vehiculoId, posicion, libres:[{posicion}], origen:'stock'|'nuevo', cubiertaId, cubiertas, marca, modelo, quema,
-//     kmPrevios, fechaCompra, precio, vida, odometro, odometroActual, hoy}
+//     kmPrevios, fechaCompra, precio, vida, odometro, odometroActual, odometroObligatorio, hoy}
 // Devuelve {ok:true, params, resumen} (params = argumentos de neumatico_montar) o {ok:false, error}.
+// RN-12: con el flag del cliente el odómetro es obligatorio. RN-14 cubre rotar, cambiar y retirar; montar no lleva motivo.
 export function validarMontaje(f) {
   const x = f || {};
   const pos = Number(x.posicion);
   if (!Number.isInteger(pos) || !(x.libres || []).some(p => p.posicion === pos)) {
     return { ok: false, error: 'Elegir una posición libre' };
   }
-  const od = validarOdometroVehiculo(x.odometro, x.odometroActual);
+  const od = validarOdometroObligatorio(x.odometro, x.odometroActual, !!x.odometroObligatorio);
   if (!od.ok) return od;
   const params = { p_vehiculo_id: Number(x.vehiculoId), p_posicion: pos, p_cubierta_id: null, p_nuevo: null, p_odometro_km: od.valor };
   const donde = nombreDe(pos, x.tipoRuedas);
@@ -115,23 +116,25 @@ export function validarMontaje(f) {
   return { ok: true, params, resumen: `${donde}: entra ${que}${od.valor !== null ? ` · odómetro ${od.valor} km` : ''}` };
 }
 
-// f: {vehiculoId, posicion, neum:{numero_quema, marca, modelo}, destino, motivo, sucursalStock, quema, odometro,
-//     odometroActual, puedeStock}
+// f: {vehiculoId, posicion, neum:{numero_quema, marca, modelo}, destino, catalogo, motivoCodigo, motivoTexto, sucursalStock,
+//     quema, odometro, odometroActual, odometroObligatorio, puedeStock}
+// RN-14: todo retiro lleva motivo del catálogo (baja o desmontaje); «otro» exige texto.
 // Devuelve {ok:true, params, resumen} (params = argumentos de neumatico_desmontar) o {ok:false, error}.
 export function validarRetiro(f) {
   const x = f || {};
   const n = x.neum;
   if (!n) return { ok: false, error: 'No hay un neumático montado en esa posición' };
   if (!DESTINO_IDS.includes(x.destino)) return { ok: false, error: 'Elegir el destino del neumático' };
-  const motivo = String(x.motivo ?? '').trim();
-  if (x.destino === 'baja' && !motivo) return { ok: false, error: 'Falta el motivo de la baja' };
-  if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo es demasiado largo (máx. ${MAX_MOTIVO})` };
-  const od = validarOdometroVehiculo(x.odometro, x.odometroActual);
+  const mot = validarMotivo(x.catalogo, tipoMotivoRetiro(x.destino), x.motivoCodigo, x.motivoTexto);
+  if (!mot.ok) return mot;
+  const od = validarOdometroObligatorio(x.odometro, x.odometroActual, !!x.odometroObligatorio);
   if (!od.ok) return od;
   const params = {
     p_vehiculo_id: Number(x.vehiculoId), p_posicion: Number(x.posicion), p_destino: x.destino,
-    p_motivo: motivo || null, p_odometro_km: od.valor, p_sucursal_stock: null, p_quema: null,
+    p_motivo: null, p_motivo_codigo: mot.codigo, p_motivo_texto: mot.texto,
+    p_odometro_km: od.valor, p_sucursal_stock: null, p_quema: null,
   };
+  const motivo = etiquetaMotivo(x.catalogo, mot.codigo, mot.texto);
   if (x.destino === 'almacenado') {
     if (!x.puedeStock) return { ok: false, error: 'Este usuario no puede usar el stock. Elegir reparación o baja' };
     params.p_sucursal_stock = vacio(x.sucursalStock) ? null : Number(x.sucursalStock);
@@ -145,7 +148,7 @@ export function validarRetiro(f) {
   const quien = [n.marca, n.modelo].filter(Boolean).join(' ') || 'Sin marca';
   return {
     ok: true, params,
-    resumen: `${nombreDe(x.posicion, x.tipoRuedas)}: sale ${quien} (${etiquetaDestinoRetiro(x.destino).toLowerCase()}${motivo ? `: ${motivo}` : ''}) y la posición queda libre`,
+    resumen: `${nombreDe(x.posicion, x.tipoRuedas)}: sale ${quien} (${etiquetaDestinoRetiro(x.destino).toLowerCase()}: ${motivo}) y la posición queda libre`,
   };
 }
 
@@ -162,6 +165,7 @@ function comunes({ code, msg, raw }) {
     const m = /\((\d+) km\)/.exec(raw);
     return m ? `El odómetro del vehículo no puede ser menor al actual (${m[1]} km)` : 'El odómetro del vehículo no puede ser menor al actual';
   }
+  if (msg.includes('odometro obligatorio')) return 'Indicar la lectura del odómetro del vehículo';
   if (msg.includes('odómetro')) return 'Odómetro del vehículo inválido: no puede ser negativo ni menor al actual';
   if (code === '23505' || msg.includes('número de quema ya')) return 'Ese número de quema ya está registrado en otro neumático';
   if (msg.includes('quema demasiado')) return `El número de quema admite hasta ${MAX_QUEMA} caracteres`;
@@ -193,7 +197,10 @@ export function traducirErrorRetiro(err) {
   if (e.msg.includes('stock lo gestiona')) return 'Este usuario no puede usar el stock. Elegir reparación o baja';
   if (e.msg.includes('necesita número de quema')) return 'Falta el número de quema para guardar el neumático en el stock';
   if (e.code === 'P0002') return 'Ya no hay un neumático montado en esa posición. Actualizar la pantalla';
-  if (e.msg.includes('motivo')) return `Falta el motivo de la baja (máx. ${MAX_MOTIVO} caracteres)`;
+  if (e.msg.includes('indicar el motivo del movimiento')) return 'Elegir el motivo';
+  if (e.msg.includes('motivo inválido')) return 'Elegir un motivo de la lista';
+  if (e.msg.includes('texto del motivo')) return 'Escribir el motivo';
+  if (e.msg.includes('motivo demasiado largo')) return `El motivo admite hasta ${MAX_MOTIVO_TEXTO} caracteres`;
   if (e.msg.includes('posición libre')) return 'No hay lugar para guardar el neumático retirado en este vehículo';
   if (e.code === '22023' || e.code === '22004' || e.code === '23514') return 'Datos del formulario inválidos';
   return 'No se pudo retirar el neumático. No se guardó nada. Reintentar';

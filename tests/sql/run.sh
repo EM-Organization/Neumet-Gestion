@@ -208,6 +208,10 @@ echo "== migración auxilio y tramos de km (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126010000_auxilio_tramos_km.sql"
 echo "== migración auxilio y tramos de km (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126010000_auxilio_tramos_km.sql"
+echo "== migración odómetro obligatorio y motivos (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126020000_odometro_motivos.sql"
+echo "== migración odómetro obligatorio y motivos (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126020000_odometro_motivos.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

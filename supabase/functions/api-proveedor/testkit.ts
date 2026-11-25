@@ -1,5 +1,6 @@
 // Dobles de prueba (sin red). Emulan el CONTRATO de las RPC; el comportamiento
 // real de SQL se prueba aparte contra un Postgres local (sql_test.ts).
+import { assertEquals } from 'jsr:@std/assert@1';
 import { createHandler } from './handler.ts';
 import type { Deps, GuardarArgs, GuardarRpc, LogEntrada, ObtenerRpc, PerfilApi } from './types.ts';
 
@@ -7,6 +8,23 @@ export const U_DAC = '11111111-1111-4111-8111-111111111111';
 export const U_OTRO = '22222222-2222-4222-8222-222222222222';
 export const U_ADMIN = '33333333-3333-4333-8333-333333333333';
 export const U_CLI = '44444444-4444-4444-8444-444444444444';
+
+/** Prueba que falla si durante su ejecución se escribe un console.error: un error inesperado no pasa en silencio. */
+export function pruebaSinErrores(nombre: string, fn: () => Promise<void>): void {
+  Deno.test(nombre, async () => {
+    const original = console.error;
+    const escritos: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      escritos.push(args);
+    };
+    try {
+      await fn();
+    } finally {
+      console.error = original;
+    }
+    assertEquals(escritos, [], 'console.error inesperado');
+  });
+}
 
 interface Veh {
   id: number;
@@ -41,10 +59,11 @@ export function crearEntorno() {
     [U_CLI, { email: 'cli@x.cl', clave: 'clave-cli' }],
   ]);
   const perfiles = new Map<string, PerfilApi>([
-    [U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true }],
-    [U_OTRO, { rol: 'api', cliente_id: 2, cliente_activo: true }],
-    [U_ADMIN, { rol: 'admin', cliente_id: null, cliente_activo: true }],
-    [U_CLI, { rol: 'cliente', cliente_id: 1, cliente_activo: true }],
+    // Por defecto el cliente no exige odómetro (compatibilidad con la app vieja); las pruebas de RN-12 lo cambian.
+    [U_DAC, { rol: 'api', cliente_id: 1, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_OTRO, { rol: 'api', cliente_id: 2, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_ADMIN, { rol: 'admin', cliente_id: null, cliente_activo: true, odometro_obligatorio_api: false }],
+    [U_CLI, { rol: 'cliente', cliente_id: 1, cliente_activo: true, odometro_obligatorio_api: false }],
   ]);
   const vehiculos: Veh[] = [
     { id: 10, cliente_id: 1, patente_norm: 'ABCD12', numero: '123' },

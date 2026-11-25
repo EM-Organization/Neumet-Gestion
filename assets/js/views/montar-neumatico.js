@@ -19,6 +19,8 @@ import {
   validarMontaje, validarRetiro, traducirErrorMontaje, traducirErrorRetiro,
 } from '../domain/montaje.js';
 import { POS_AUXILIO } from '../domain/vehiculo-diagrama.js';
+import { MOTIVO_OTRO, motivosDelTipo, tipoMotivoRetiro } from '../domain/motivos.js';
+import { cargarMotivosCliente } from '../core/motivos.js';
 import { EVENTO_CAMBIO } from './cambio-neumatico.js';
 
 const $ = id => document.getElementById(id);
@@ -28,9 +30,18 @@ const nombrePos = (pos, tipo) => etiquetaPosicion({ posicion: Number(pos), auxil
 // El foco se fija tras el turno del observador de core/modal-a11y.js, que al abrir el modal enfoca el primer campo (la posición).
 const enfocar = id => setTimeout(() => { const el = $(id); if (el && el.getClientRects().length) el.focus(); }, 60);
 const puedeUsarStock = () => esAdminEmpresa();
+const MOTIVO_PREDETERMINADO = 'desgaste'; // motivo más habitual: viene marcado y el operario lo cambia solo si no aplica
 
-let mont = null; // {veh, ocupadas, libres, cubiertas, sucursales, puedeStock, origen, cubiertaId, montados}
-let ret = null;  // {veh, neum, sucursales, puedeStock}
+// Rótulo y ayuda de la lectura del odómetro: con el flag del cliente es obligatoria (RN-12) y el texto lo dice antes de enviar.
+function pintarOdometro(rotulo, ayuda, odo, obligatorio, sinLectura) {
+  $(rotulo).textContent = obligatorio ? '(obligatorio)' : '(opcional)';
+  const inicio = obligatorio ? 'Obligatorio' : 'Opcional';
+  $(ayuda).textContent = odo !== null && odo !== undefined
+    ? `${inicio}. No puede ser menor al actual (${fmtNum(odo)} km).` : `${inicio}. ${sinLectura}`;
+}
+
+let mont = null; // {veh, ocupadas, libres, cubiertas, sucursales, puedeStock, origen, cubiertaId, montados, odometroObligatorio}
+let ret = null;  // {veh, neum, sucursales, puedeStock, catalogo, odometroObligatorio}
 let ocupado = false;
 
 function notificarCambio(detalle) {
@@ -45,7 +56,8 @@ function estadoMontar() {
     cubiertaId: mont.cubiertaId, cubiertas: mont.cubiertas,
     marca: val('mont-marca'), modelo: val('mont-modelo'), quema: val('mont-quema'), kmPrevios: val('mont-km-previos'),
     fechaCompra: val('mont-fecha'), precio: val('mont-precio'), vida: val('mont-vida'),
-    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km, tipoRuedas: tipoLayout(mont.veh),
+    odometro: val('mont-odo'), odometroActual: mont.veh.odometro_km, odometroObligatorio: mont.odometroObligatorio,
+    tipoRuedas: tipoLayout(mont.veh),
   };
 }
 
@@ -90,9 +102,8 @@ function limpiarFormulario({ conservar = false } = {}) {
   const propios = ['mont-buscar', 'mont-quema', 'mont-precio', 'mont-odo'];
   for (const id of conservar ? propios : [...propios, 'mont-marca', 'mont-modelo', 'mont-fecha']) $(id).value = '';
   $('mont-km-previos').value = ''; $('mont-vida').value = '0'; // km vacío: lo no medido no se inventa como 0 (docs/14 §5, regla 6)
-  const odo = mont.veh.odometro_km;
-  $('mont-odo-hint').textContent = odo !== null && odo !== undefined
-    ? `Opcional. No puede ser menor al actual (${fmtNum(odo)} km).` : 'Opcional. Lectura actual del vehículo, aparte de los km del neumático.';
+  pintarOdometro('mont-odo-opt', 'mont-odo-hint', mont.veh.odometro_km, mont.odometroObligatorio,
+    'Lectura actual del vehículo, aparte de los km del neumático.');
 }
 
 async function abrirMontar(vehiculoId, posicion) {
@@ -107,15 +118,18 @@ async function abrirMontar(vehiculoId, posicion) {
   const libres = posicionesLibres(ocupadas, tipoLayout(veh));
   if (!libres.length) { showToast('Todas las posiciones tienen un neumático montado'); return; }
   const puedeStock = puedeUsarStock();
-  const [rc, rs] = await Promise.all([
+  const [rc, rs, motivos] = await Promise.all([
     puedeStock
       ? db.from('neumaticos').select('id,numero_quema,marca,modelo,condicion,sucursal_id,vehiculo_id,estado')
         .is('vehiculo_id', null).eq('estado', 'almacenado').eq('cliente_id', veh.cliente_id).order('numero_quema')
       : Promise.resolve({ data: [] }),
     puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', veh.cliente_id).order('nombre') : Promise.resolve({ data: [] }),
+    cargarMotivosCliente(veh.cliente_id),
   ]);
+  // Sin el flag del cliente no se sabe si el odómetro es obligatorio: el diálogo no se abre (RN-12, docs/14 §5).
+  if (!motivos) { showToast('No se pudo abrir el formulario. Reintentar', true); return; }
   const cubiertas = rc.error ? [] : (rc.data || []);
-  mont = { veh, ocupadas, libres, cubiertas, sucursales: rs.error ? [] : (rs.data || []), puedeStock, origen: 'nuevo', cubiertaId: null, montados: 0 };
+  mont = { veh, ocupadas, libres, cubiertas, sucursales: rs.error ? [] : (rs.data || []), puedeStock, origen: 'nuevo', cubiertaId: null, montados: 0, odometroObligatorio: motivos.odometroObligatorio };
   mont.origen = puedeStock && cubiertas.length ? 'stock' : 'nuevo';
   // Con un solo origen posible («Cubierta nueva») las pestañas no aportan: se ocultan.
   $('mont-tabs').hidden = !puedeStock;
@@ -207,18 +221,35 @@ async function confirmarMontar({ viaClic = false } = {}) {
 function estadoRetirar() {
   const d = document.querySelector('input[name="ret-destino"]:checked');
   return {
-    vehiculoId: ret.veh.id, posicion: ret.neum.posicion, neum: ret.neum, destino: d ? d.value : '', motivo: val('ret-motivo'),
+    vehiculoId: ret.veh.id, posicion: ret.neum.posicion, neum: ret.neum, destino: d ? d.value : '',
+    catalogo: ret.catalogo, motivoCodigo: val('ret-motivo'), motivoTexto: val('ret-motivo-texto'),
     sucursalStock: val('ret-suc'), quema: val('ret-quema'), odometro: val('ret-odo'), odometroActual: ret.veh.odometro_km,
-    puedeStock: ret.puedeStock, tipoRuedas: tipoLayout(ret.veh),
+    odometroObligatorio: ret.odometroObligatorio, puedeStock: ret.puedeStock, tipoRuedas: tipoLayout(ret.veh),
   };
 }
 
+// Los motivos dependen del destino (baja o desmontaje): el catálogo se repinta solo cuando cambia ese tipo, y se conserva
+// lo elegido si sigue válido (igual que en cambiar).
+function pintarMotivosRetiro(tipo, anterior) {
+  const sel = $('ret-motivo');
+  const lista = motivosDelTipo(ret.catalogo, tipo);
+  const en = codigo => lista.some(m => m.codigo === codigo);
+  setHtml(sel, joinHtml([
+    html`<option value="">Elegir motivo</option>`,
+    lista.map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
+  ]));
+  sel.value = en(anterior) ? anterior : (en(MOTIVO_PREDETERMINADO) ? MOTIVO_PREDETERMINADO : '');
+  sel.dataset.tipo = tipo;
+}
+
 function actualizarRetirar() {
-  const f = estadoRetirar();
+  let f = estadoRetirar();
+  const tipo = tipoMotivoRetiro(f.destino);
+  if ($('ret-motivo').dataset.tipo !== tipo) { pintarMotivosRetiro(tipo, f.motivoCodigo); f = estadoRetirar(); }
   const stock = f.destino === 'almacenado';
   $('ret-stock-wrap').style.display = stock ? 'block' : 'none';
   $('ret-quema-wrap').style.display = stock && !ret.neum.numero_quema ? '' : 'none';
-  $('ret-motivo-opt').textContent = f.destino === 'baja' ? '(obligatorio)' : '(opcional)';
+  $('ret-motivo-texto-wrap').style.display = f.motivoCodigo === MOTIVO_OTRO ? '' : 'none';
   const r = validarRetiro(f);
   $('ret-resumen').textContent = r.ok ? r.resumen : 'Completar los datos para ver el resumen';
   $('ret-error').textContent = '';
@@ -235,8 +266,14 @@ async function abrirRetirar(vehiculoId, posicion) {
   if (rv.error || rn.error || !rv.data) { console.error(rv.error || rn.error); showToast('No se pudo cargar el neumático. Reintentar', true); return; }
   const neum = rn.data;
   if (!neum || neum.estado !== 'montado') { showToast(`No hay un neumático montado en ${nombrePos(posicion, tipoLayout(rv.data))}`, true); return; }
-  const rs = puedeStock ? await db.from('sucursales').select('id,nombre').eq('cliente_id', rv.data.cliente_id).order('nombre') : { data: [] };
-  ret = { veh: rv.data, neum, sucursales: rs.error ? [] : (rs.data || []), puedeStock };
+  const [rs, motivos] = await Promise.all([
+    puedeStock ? db.from('sucursales').select('id,nombre').eq('cliente_id', rv.data.cliente_id).order('nombre') : Promise.resolve({ data: [] }),
+    cargarMotivosCliente(rv.data.cliente_id),
+  ]);
+  // Sin catálogo ni flag el diálogo no se abre: un motivo sin lista o un odómetro sin regla serían una adivinanza (docs/14 §5).
+  if (!motivos) { showToast('No se pudieron cargar los motivos. Reintentar', true); return; }
+  ret = { veh: rv.data, neum, sucursales: rs.error ? [] : (rs.data || []), puedeStock,
+    catalogo: motivos.catalogo, odometroObligatorio: motivos.odometroObligatorio };
   const destinos = DESTINOS_RETIRO.filter(d => puedeStock || d.id !== 'almacenado');
   $('ret-sub').textContent = etiquetaCoche(rv.data.nombre);
   setHtml($('ret-actual'), html`<div>Neumático en <strong>${nombrePos(posicion, tipoLayout(rv.data))}</strong>:
@@ -244,9 +281,9 @@ async function abrirRetirar(vehiculoId, posicion) {
   setHtml($('ret-destinos'), joinHtml(destinos.map((d, i) => html`<label class="cambio-op"><input type="radio" name="ret-destino" value="${d.id}" ${i === 0 ? 'checked' : ''}
     data-change="neumatico-retirar-resumen"/> <span>${d.label}</span></label>`)));
   setHtml($('ret-suc'), joinHtml([html`<option value="">${SIN_SUCURSAL}</option>`, ret.sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
-  for (const id of ['ret-motivo', 'ret-quema', 'ret-odo']) $(id).value = '';
-  const odo = rv.data.odometro_km;
-  $('ret-odo-hint').textContent = odo !== null && odo !== undefined ? `Opcional. No puede ser menor al actual (${fmtNum(odo)} km).` : 'Opcional. Lectura actual del vehículo.';
+  for (const id of ['ret-motivo-texto', 'ret-quema', 'ret-odo']) $(id).value = '';
+  pintarMotivosRetiro(tipoMotivoRetiro(destinos[0].id), MOTIVO_PREDETERMINADO); // el primer destino viene marcado
+  pintarOdometro('ret-odo-opt', 'ret-odo-hint', rv.data.odometro_km, ret.odometroObligatorio, 'Lectura actual del vehículo.');
   $('ret-confirmar').disabled = false;
   actualizarRetirar();
   $('modal-retirar').classList.add('show');

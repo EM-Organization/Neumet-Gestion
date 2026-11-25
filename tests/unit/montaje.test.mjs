@@ -145,13 +145,21 @@ test('validarMontaje: odómetro no menor al actual y origen desconocido', () => 
 
 // ── Validar retiro ──
 const neum = { numero_quema: 'Q-1', marca: 'Michelin', modelo: 'X' };
-const ret = { vehiculoId: 7, posicion: 3, neum, destino: 'almacenado', motivo: '', sucursalStock: '4', quema: '', odometro: '', odometroActual: 1000, puedeStock: true, tipoRuedas: 10 };
+const CAT = [
+  { tipo: 'baja', codigo: 'desgaste', etiqueta: 'Desgaste', orden: 1, activo: true },
+  { tipo: 'baja', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'desmontaje', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'cambio', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'rotacion', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+];
+const ret = { vehiculoId: 7, posicion: 3, neum, destino: 'almacenado', catalogo: CAT, motivoCodigo: 'otro', motivoTexto: 'Retiro de prueba', sucursalStock: '4', quema: '', odometro: '', odometroActual: 1000, puedeStock: true, tipoRuedas: 10 };
 
 test('validarRetiro: a stock en una sucursal', () => {
   const r = validarRetiro(ret);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.params, { p_vehiculo_id: 7, p_posicion: 3, p_destino: 'almacenado', p_motivo: null, p_odometro_km: null, p_sucursal_stock: 4, p_quema: null });
-  assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X \(stock\)/);
+  assert.deepEqual(r.params, { p_vehiculo_id: 7, p_posicion: 3, p_destino: 'almacenado', p_motivo: null, p_motivo_codigo: 'otro', p_motivo_texto: 'Retiro de prueba', p_odometro_km: null, p_sucursal_stock: 4, p_quema: null });
+  assert.match(r.resumen, /^Eje 2 izquierda exterior: sale Michelin X \(stock: Retiro de prueba\)/);
   assert.equal(validarRetiro({ ...ret, sucursalStock: '' }).params.p_sucursal_stock, null, 'sin sucursal');
 });
 
@@ -160,19 +168,29 @@ test('validarRetiro: sin quema exige indicarla para volver al stock', () => {
   assert.match(validarRetiro(sin).error, /Falta el número de quema/);
   assert.equal(validarRetiro({ ...sin, quema: ' NQ-9 ' }).params.p_quema, 'NQ-9');
   assert.match(validarRetiro({ ...sin, quema: 'q'.repeat(41) }).error, /hasta 40/);
-  assert.equal(validarRetiro({ ...sin, destino: 'baja', motivo: 'x' }).ok, true, 'la baja no exige quema');
+  assert.equal(validarRetiro({ ...sin, destino: 'baja', motivoCodigo: 'desgaste', motivoTexto: null }).ok, true, 'la baja no exige quema');
 });
 
-test('validarRetiro: baja exige motivo; reparación y stock no', () => {
-  assert.match(validarRetiro({ ...ret, destino: 'baja' }).error, /Falta el motivo de la baja/);
-  assert.match(validarRetiro({ ...ret, destino: 'baja', motivo: '   ' }).error, /Falta el motivo/);
-  const b = validarRetiro({ ...ret, destino: 'baja', motivo: ' Montaje equivocado ' });
+test('validarRetiro: todo retiro exige motivo del catálogo; «otro» exige texto (RN-14)', () => {
+  assert.match(validarRetiro({ ...ret, motivoCodigo: '' }).error, /Elegir el motivo/);
+  assert.match(validarRetiro({ ...ret, motivoCodigo: 'inventado' }).error, /lista/);
+  assert.match(validarRetiro({ ...ret, motivoCodigo: 'swap_20000' }).error, /lista/, 'código de rotación no sirve para desmontar');
+  assert.match(validarRetiro({ ...ret, motivoTexto: '   ' }).error, /Escribir el motivo/);
+  assert.match(validarRetiro({ ...ret, motivoTexto: 'm'.repeat(301) }).error, /hasta 300/);
+  const b = validarRetiro({ ...ret, destino: 'baja', motivoCodigo: 'desgaste', motivoTexto: 'ignorado' });
   assert.equal(b.ok, true);
-  assert.equal(b.params.p_motivo, 'Montaje equivocado');
+  assert.equal(b.params.p_motivo_codigo, 'desgaste');
+  assert.equal(b.params.p_motivo_texto, null, 'el texto solo se envía con «otro»');
+  assert.equal(b.params.p_motivo, null, 'el p_motivo antiguo no se envía');
   assert.equal(b.params.p_sucursal_stock, null, 'sin sucursal fuera del stock');
-  assert.match(b.resumen, /baja: Montaje equivocado/);
+  assert.match(b.resumen, /baja: Desgaste\)/);
   assert.equal(validarRetiro({ ...ret, destino: 'reparacion' }).ok, true);
-  assert.match(validarRetiro({ ...ret, destino: 'baja', motivo: 'm'.repeat(201) }).error, /demasiado largo/);
+});
+
+test('validarRetiro: con el flag de odómetro obligatorio, sin lectura no se guarda', () => {
+  assert.match(validarRetiro({ ...ret, odometroObligatorio: true }).error, /Indicar la lectura del odómetro/);
+  assert.equal(validarRetiro({ ...ret, odometroObligatorio: true, odometro: '1200' }).params.p_odometro_km, 1200);
+  assert.equal(validarRetiro({ ...ret, odometro: '' }).ok, true, 'sin flag, opcional como antes');
 });
 
 test('validarRetiro: sin permiso de stock, destino inválido, odómetro y auxilio', () => {
@@ -206,7 +224,12 @@ test('traducirErrorRetiro: mensajes de negocio y genérico', () => {
   assert.match(traducirErrorRetiro({ code: '42501', message: 'permiso denegado' }), /Sin permiso/);
   assert.match(traducirErrorRetiro({ code: 'P0002', message: 'no hay neumático montado en la posición 3 del vehículo' }), /Ya no hay un neumático/);
   assert.match(traducirErrorRetiro({ code: '22023', message: 'el neumático necesita número de quema para volver al stock' }), /número de quema/);
-  assert.match(traducirErrorRetiro({ code: '22023', message: 'indicar el motivo de la baja' }), /motivo de la baja/);
+  // Mensajes reales de la base (migración 20261126020000): cada uno tiene su texto de interfaz.
+  assert.equal(traducirErrorRetiro({ code: '22023', message: 'indicar el motivo del movimiento' }), 'Elegir el motivo');
+  assert.match(traducirErrorRetiro({ code: '22023', message: 'motivo inválido para este movimiento' }), /Elegir un motivo de la lista/);
+  assert.match(traducirErrorRetiro({ code: '22023', message: 'indicar el texto del motivo «otro»' }), /Escribir el motivo/);
+  assert.match(traducirErrorRetiro({ code: '22023', message: 'motivo demasiado largo (máx. 300)' }), /hasta 300 caracteres/);
+  assert.match(traducirErrorRetiro({ code: '22023', message: 'odometro obligatorio: indicar la lectura del odómetro del vehículo' }), /odómetro del vehículo/);
   assert.match(traducirErrorRetiro({ code: '53400', message: 'no hay posición libre para guardar el neumático retirado' }), /No hay lugar/);
   assert.match(traducirErrorRetiro({ code: '23505', message: 'el número de quema ya está registrado en otro neumático' }), /quema ya está registrado/);
   assert.match(traducirErrorRetiro({ message: 'boom' }), /No se pudo retirar/);

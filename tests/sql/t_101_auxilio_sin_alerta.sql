@@ -83,7 +83,7 @@ create temp table t_pre as
 grant select on t_pre to public;
 
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(10002::bigint, 3::smallint, 99::smallint) as rot \gset
+select public.neumatico_rotar(10002::bigint, 3::smallint, 99::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
 select test.eq('A: tras rotar 3<->99, el indicador auxilio sigue a la posición',
   (select string_agg(idneumatico || '@' || posicion || ':' || auxilio, ',' order by idneumatico)
@@ -106,12 +106,12 @@ select test.eq('A: medir R-AUX en la posición 3 mantiene la alerta con el valor
 -- Inverso: una rueda de ruta con alerta abierta que pasa a 99 la cierra; al volver a la ruta se reevalúa
 select test.eq('B: R-X (2,0 mm) en la posición 3 tiene alerta abierta', test.abiertas100('R-X'), 1::bigint);
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint) as rot \gset
+select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
 select test.eq('B: R-X en 99 queda sin alerta abierta y fuera de v_alertas',
   test.abiertas100('R-X') || '|' || (select count(*) from public.v_alertas where vehiculo_id = 10003), '0|0');
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint) as rot \gset
+select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
 select test.eq('B: al volver R-X a la ruta (posición 3) la alerta se reevalúa y vuelve a abrirse',
   test.abiertas100('R-X') || '|' || (select count(*) from public.v_alertas where vehiculo_id = 10003), '1|1');
@@ -122,7 +122,7 @@ create temp table t_c as select a.id, a.veces_reabierta from public.alertas a jo
 grant select on t_c to public;
 select test.eq('C: R-P1 (2,0 mm) tiene su alerta', (select count(*) from t_c), 1::bigint);
 select test.become('authenticated', test.u_cli_a());
-select public.neumatico_rotar(10004::bigint, 1::smallint, 2::smallint) as rot \gset
+select public.neumatico_rotar(10004::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
 select test.eq('C: rotar 1<->2 conserva la misma alerta abierta, sin cierres ni reaperturas en falso',
   (select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id

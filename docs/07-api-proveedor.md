@@ -69,6 +69,7 @@ Resuelto: el orden es el de la app (interno-centro-externo) y el panel lo etique
 - `patente` normalizada y validada (`^[A-Z0-9-]{3,12}$`); `numero` debe ser `""`.
 - `posicion` entero existente en el montaje del vehículo (o auxilio); sin duplicados dentro del mismo request.
 - `distribucion` (opcional): código del catálogo (apéndice B, «Distribución del vehículo»); ausente, `null` o vacío = no informada; otro valor = 400.
+- `odometro_km` (opcional a nivel de request, RN-12): entero de 0 a 2147483647; ausente con el cliente obligado = 422; cualquier otro valor inválido = 400 (apéndice C).
 - `mm*` números finitos, `0 ≤ mm ≤ 40` (parametrizable); `mm3 == mm2`; auxilio sin medir: los cuatro `null` → **no se persiste, no es error, no es cero**.
 - Fallos por neumático ⇒ HTTP 2xx con `guardado:false` en esa posición; el resto se guarda (semántica del contrato). Errores globales (token, JSON inválido) ⇒ 401/400/5xx.
 
@@ -215,7 +216,7 @@ Código `AxB`: A = posiciones de rueda (un par doble cuenta como una), B = posic
 
 ### Motivo agregado en `ingesta_log.motivo`
 
-`no_encontrado` (vehículo no creable), `vehiculo_creado` (alta sin otras fallas), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno` y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta (`{posicion, guardado}`) sin volver a crear nada; el motivo se repite salvo en un alta: el replay no repite `vehiculo_creado` (queda con motivo vacío y `payload_resumen.replay = true`).
+`no_encontrado` (vehículo no creable), `vehiculo_creado` (alta sin otras fallas), `sin_neumaticos` (todas las posiciones rechazadas por esa causa; también `obtener_montaje` de un coche con `data` vacío), `fallo_parcial` (alguna posición rechazada por otro motivo), `idempotencia_conflicto`, `rate_limit`, `error_interno`, `odometro` (HTTP 400 o 422, apéndice C) y los de validación de entrada (`patente`, `montajes`, `posicion`, `posicion_duplicada`, `tipo_mm`, etc., con HTTP 400). Vacío si todo se guardó. Los reintentos con la misma clave repiten la respuesta (`{posicion, guardado}`) sin volver a crear nada; el motivo se repite salvo en un alta: el replay no repite `vehiculo_creado` (queda con motivo vacío y `payload_resumen.replay = true`).
 
 ### Contrato de `obtener_montaje`
 
@@ -224,6 +225,41 @@ Coche existente sin neumáticos cargados responde `code 200`, `data: []` (la app
 ### Panel admin: siguiente paso
 
 El panel **no tiene hoy ninguna vista del log de ingesta** (`ingesta_log` solo la lee el admin por SQL/API), por lo que no se creó una. Siguiente paso: una lista de ingesta para el admin que muestre este motivo con la etiqueta «Coche sin neumáticos cargados» y la ayuda «Cargar las ruedas del coche en el panel para que se guarden las mediciones» (textos según `14-guia-de-textos.md`).
+
+## Apéndice C · Odómetro en cada registro (RN-12, 2026-11-25)
+
+Estado: **implementado en el repositorio, no desplegado.** Antes de desplegar, la migración del mismo cambio debe estar aplicada (orden en la última sección).
+
+**Campo.** `guardar_montaje_mm` acepta `odometro_km` a **nivel de request** (no dentro de `montajes`; un campo dentro de un montaje se ignora). Entero de 0 a 2147483647 (el `integer` de Postgres). Ausente o `null` = no informado.
+
+**Flag por cliente.** `clientes.odometro_obligatorio_api` (boolean, default `false`), independiente del flag `odometro_obligatorio` que usa el panel. Se lee en cada request junto al perfil (`perfiles → clientes`). La función lo lee con `service_role`, que salta la RLS: el rol `api` con su propio JWT no ve su fila de `clientes` (ver docs/07 §4.1). Solo `true` exige el odómetro; `false`, ausente o no booleano lo dejan opcional. La RPC `api_guardar_montaje` lee el mismo flag y lo vuelve a exigir al guardar, así que la base tiene la última palabra.
+
+**Qué responde cada caso:**
+
+| Request | Flag `false` | Flag `true` |
+|---|---|---|
+| Sin `odometro_km` (o `null`) | 200. Las mediciones quedan sin odómetro. Hash igual que antes | **422** (ver forma abajo). No se llama a la RPC |
+| Entero válido (0 a 2147483647) | 200. Se guarda en cada medición del request | 200. Igual |
+| Decimal, negativo, texto (incluso `""`), booleano, objeto o fuera de integer | **400**, motivo `odometro` | **400**, motivo `odometro` |
+
+**Carrera con el flag.** Si el flag pasa a `true` entre la lectura del perfil y la llamada a la RPC, la base responde 22023 con el mensaje de odómetro y la API responde **422** con motivo `odometro`. La RPC valida antes de insertar, así que no se guarda nada. Cualquier otro 22023 sigue siendo fallo interno (500).
+
+**Forma de la respuesta de error** (la misma de todos los errores de entrada, sin datos del cliente):
+
+- 422: HTTP 422, cuerpo `{"code":422,"message":"Solicitud inválida"}`.
+- 400: HTTP 400, cuerpo `{"code":400,"message":"Solicitud inválida"}`.
+
+El motivo `odometro` no viaja en la respuesta; queda en `ingesta_log` con `status = 'rechazado'` y `http_code` 400 o 422. El valor del odómetro **no** se registra en el log.
+
+**Odómetro menor que el del vehículo.** Es válido para el handler: responde 200 y pasa el valor a la RPC. El contrato con la RPC `api_guardar_montaje` (migración `20261126020000`, sección 9; cubierto por `tests/sql/t_105_odometro_motivos.sql`, sección D) es: guarda la medición con `odometro_km`; la regla de calidad (`20261116000000_calidad_datos.sql`) la marca `sospechosa`; y solo sube `vehiculos.odometro_km` si el nuevo valor es mayor. La Edge Function **no** lee ni escribe `vehiculos` ni `mediciones` para esto.
+
+**Idempotencia.** El odómetro entra al hash solo cuando viene. Sin él, el hash es el de antes (una request de la app vieja, en vuelo durante el despliegue, conserva su identidad). Con la misma `Idempotency-Key` y otro odómetro, la respuesta es 409 (`idempotencia_conflicto`). Un replay con el mismo contenido repite la respuesta sin duplicar mediciones.
+
+**Compatibilidad con la app de DAC vigente.** Con el flag en `false` (o sin tocar), nada cambia: la app vieja no envía el campo y sigue funcionando. **No poner `odometro_obligatorio_api = true` para un cliente hasta que su app envíe el odómetro:** la app vieja recibiría 422 en cada guardado.
+
+**Cambio requerido del lado DAC (fuera de este repositorio, pendiente).** La app de medición debe pedir el odómetro **una vez por sesión de inspección**, antes de medir, y enviarlo como `odometro_km` en cada `guardar_montaje_mm`. Coordinar el contrato con DAC antes de activar el flag para su cliente. Hasta entonces, el flag queda en `false`.
+
+**Orden de despliegue (obligatorio).** 1) Aplicar la migración con el CLI. 2) Desplegar la función `api-proveedor`. Si la función sale antes que la columna `clientes.odometro_obligatorio_api`, la lectura de `perfiles` falla y responde 500 a **todas** las cuentas, también al login. Si sale antes que la función `api_guardar_montaje` con `p_odometro_km`, las requests con odómetro fallan con 500; las que no lo traen siguen funcionando.
 
 ---
 

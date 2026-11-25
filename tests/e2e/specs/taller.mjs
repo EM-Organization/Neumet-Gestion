@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, abrirDetallePorMatricula, irA, dormir, texto } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
+import { confirmarRotacionEnDialogo } from '../lib/rotacion.mjs';
 import { nombrePos, avisoRotacion } from '../../../assets/js/domain/cambio-neumatico.js';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
@@ -26,16 +27,16 @@ const rpcsDesde = (env, desde, nombre) => env.peticiones.slice(desde).filter(r =
 // Llama a una RPC con el cliente REAL del panel (supabase-js + sesión de prueba) y devuelve {data, error}.
 const rpc = (p, nombre, args) => p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.rpc(${JSON.stringify(nombre)}, ${JSON.stringify(args)})).then(r => ({ data: r.data, error: r.error && { code: r.error.code, message: r.error.message } }))`);
 
-async function seleccionarRueda(p, pos) {
+export async function seleccionarRueda(p, pos) {
   await p.click(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
   await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-rotar-btn') && document.querySelector('#vd-rotar-btn').dataset.posicion === '${pos}'`, { que: `panel de la rueda ${pos}` });
 }
 
-// Rotar es reversible: no pide confirmación; el aviso nombra el vehículo y el intercambio (o el movimiento a una posición libre).
+// Rotar pide el motivo y el odómetro en el diálogo «Rotar» (sin confirmación extra); el aviso nombra el vehículo y el intercambio (o el movimiento a una posición libre).
 async function rotarPorUI(p, posA, posB, avisoEsperado) {
   await seleccionarRueda(p, posA);
   await p.eval(`(() => { const s = document.querySelector('#vd-rotar-destino'); s.value = '${posB}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
-  await p.click('#vd-rotar-btn');
+  await confirmarRotacionEnDialogo(p);
   await p.esperar(`/Rotación registrada/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de rotación registrada' });
   assert.equal(await p.eval(`document.querySelector('#toast-msg').textContent`), avisoEsperado);
   assert.equal(await p.eval(`document.querySelector('#modal-confirm').classList.contains('show')`), false, 'rotar no pide confirmación');
@@ -109,7 +110,7 @@ export function registrar(env) {
       const antes = foto(env, id);
       const desde = env.peticiones.length;
       await flujo(env, `rotar-denegado-${patente}`, rol, async p => {
-        const r = await rpc(p, 'neumatico_rotar', { p_vehiculo_id: id, p_pos_a: 1, p_pos_b: 2, p_odometro_km: null });
+        const r = await rpc(p, 'neumatico_rotar', { p_vehiculo_id: id, p_pos_a: 1, p_pos_b: 2, p_motivo_codigo: 'swap_20000', p_odometro_km: null });
         assert.equal(r.error && r.error.code, '42501', 'permiso denegado');
         assert.equal(r.data, null);
       }, { http: [{ ruta: /rpc\/neumatico_rotar/, status: 403 }] });
@@ -136,9 +137,9 @@ export function registrar(env) {
     const id = vehId(env, 'DEMO005');
     const antes = foto(env, id);
     await flujo(env, 'sin-perfil', 'sinperfil', async p => {
-      const r = await rpc(p, 'neumatico_rotar', { p_vehiculo_id: id, p_pos_a: 1, p_pos_b: 2, p_odometro_km: null });
+      const r = await rpc(p, 'neumatico_rotar', { p_vehiculo_id: id, p_pos_a: 1, p_pos_b: 2, p_motivo_codigo: 'swap_20000', p_odometro_km: null });
       assert.equal(r.error && r.error.code, '42501');
-      const c = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: id, p_posicion: 1, p_destino_viejo: 'baja', p_motivo: 'x', p_odometro_km: null, p_stock_id: null, p_nuevo: { marca: 'X' } });
+      const c = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: id, p_posicion: 1, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_odometro_km: null, p_stock_id: null, p_nuevo: { marca: 'X' } });
       assert.equal(c.error && c.error.code, '42501');
       const o = await rpc(p, 'vehiculo_registrar_odometro', { p_vehiculo_id: id, p_odometro_km: 1 });
       assert.equal(o.error && o.error.code, '42501');
@@ -161,7 +162,7 @@ export function registrar(env) {
       assert.ok(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]') && !!document.querySelector('input[name="cambio-origen"][value="cubierta"]')`), 'el perfil global puede elegir un lote o una cubierta del stock');
       await p.eval(`document.querySelector('input[name="cambio-origen"][value="stock"]').click()`);   // lote anterior (la cubierta individual es la opción por defecto)
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
-      await p.eval(`(() => { const m = document.querySelector('#cambio-motivo'); m.value = 'Desgaste E2E'; m.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+      await p.eval(`(() => { const m = document.querySelector('#cambio-motivo'); m.value = 'desgaste'; m.dispatchEvent(new Event('change', { bubbles: true })); })()`);
       await p.eval(`(() => { const s = document.querySelector('#cambio-stock'); s.value = '${stock.id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
       await p.esperar(`/sale .* y entra/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen del cambio' });
       await p.click('#cambio-confirmar');
@@ -192,7 +193,7 @@ export function registrar(env) {
       assert.equal(await p.eval(`!!document.querySelector('input[name="cambio-origen"][value="stock"]') || !!document.querySelector('input[name="cambio-origen"][value="cubierta"]')`), false, 'la sucursal no ve el stock');
       assert.equal(await p.eval(`!!document.querySelector('#cambio-retorno-wrap').offsetParent`), false, 'la sucursal no devuelve neumáticos al stock');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
-      await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Pinchazo'); set('#cambio-marca', 'MarcaE2E'); set('#cambio-modelo', 'Modelo X'); })()`);
+      await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'danio'); set('#cambio-marca', 'MarcaE2E'); set('#cambio-modelo', 'Modelo X'); })()`);
       await p.click('#cambio-confirmar');
       await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 2) + ': el neumático nuevo ya figura montado')}`, { que: 'cambio registrado' });
     });
@@ -208,7 +209,7 @@ export function registrar(env) {
     const stockId = Number(env.sql(`select id from public.stock_neumaticos where cantidad > 0 order by id limit 1`));
     const antesA = foto(env, ajeno), antesP = foto(env, propio);
     await flujo(env, 'cambiar-denegado', 'salto', async p => {
-      const base = { p_destino_viejo: 'baja', p_motivo: 'x', p_odometro_km: null };
+      const base = { p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_odometro_km: null };
       const a = await rpc(p, 'neumatico_cambiar', { ...base, p_vehiculo_id: ajeno, p_posicion: 1, p_stock_id: null, p_nuevo: { marca: 'X' } });
       assert.equal(a.error && a.error.code, '42501');
       const b = await rpc(p, 'neumatico_cambiar', { ...base, p_vehiculo_id: propio, p_posicion: 1, p_stock_id: stockId, p_nuevo: null });
@@ -251,7 +252,7 @@ export function registrar(env) {
       assert.equal(await p.eval(`document.querySelector('#cambio-km-previos').value`), '0', 'los km previos empiezan en 0');
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="baja"]').click()`);
       await p.eval(`document.querySelector('input[name="cambio-origen"][value="nuevo"]').click()`);
-      await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'Desgaste'); set('#cambio-marca', 'MarcaQuema'); set('#cambio-quema', '  E2E-001 '); set('#cambio-km-previos', '0'); })()`);
+      await p.eval(`(() => { const set = (id, v) => { const e = document.querySelector(id); e.value = v; e.dispatchEvent(new Event('change', { bubbles: true })); }; set('#cambio-motivo', 'desgaste'); set('#cambio-marca', 'MarcaQuema'); set('#cambio-quema', '  E2E-001 '); set('#cambio-km-previos', '0'); })()`);
       await p.esperar(`/quema E2E-001/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen con la quema' });
       await p.click('#cambio-confirmar');
       await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 4) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
@@ -274,7 +275,7 @@ export function registrar(env) {
     const odo = Number(env.sql(`select odometro_km from public.vehiculos where id = ${id}`));
     const antes = foto(env, id);
     await flujo(env, 'quema-rechazos', 'montevideo', async p => {
-      const base = { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: 'x', p_stock_id: null, p_nuevo: { marca: 'X' } };
+      const base = { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_stock_id: null, p_nuevo: { marca: 'X' } };
       const dup = await rpc(p, 'neumatico_cambiar', { ...base, p_odometro_km: null, p_numero_quema: 'q04-01', p_km_previos: 0 });
       assert.equal(dup.error && dup.error.code, '23505', 'la quema de otro neumático del cliente (otra caja) se rechaza');
       assert.match(dup.error.message, /número de quema ya está registrado/);
@@ -286,7 +287,7 @@ export function registrar(env) {
     }, { http: [{ ruta: /rpc\/neumatico_cambiar/, status: [400, 409] }] });
     assert.equal(foto(env, id), antes, 'los rechazos no cambiaron nada');
     await flujo(env, 'quema-ok', 'montevideo', async p => {
-      const ok = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: 'x', p_stock_id: null, p_nuevo: { marca: 'X' }, p_odometro_km: odo, p_numero_quema: 'E2E-002', p_km_previos: 0 });
+      const ok = await rpc(p, 'neumatico_cambiar', { p_vehiculo_id: id, p_posicion: 2, p_destino_viejo: 'baja', p_motivo: null, p_motivo_codigo: 'desgaste', p_stock_id: null, p_nuevo: { marca: 'X' }, p_odometro_km: odo, p_numero_quema: 'E2E-002', p_km_previos: 0 });
       assert.equal(ok.error, null);
       assert.equal(ok.data.numero_quema, 'E2E-002');
       assert.equal(ok.data.km_previos, 0);
