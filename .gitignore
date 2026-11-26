@@ -39,3 +39,6 @@ supabase/.temp/
 # Salidas de Vite y Vitest
 .vite/
 coverage/
+
+# Planes de oleada del PM y el TL (locales)
+.claude/oleadas/

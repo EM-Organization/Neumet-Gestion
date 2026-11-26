@@ -27,7 +27,7 @@ El estado cambiante del trabajo vive en `docs/10-tablero.md`, no aquí.
 CI corre Postgres 16; producción es 17. Ambos deben pasar. Un PR no se fusiona con CI rojo.
 
 ## Reglas
-- **Ramas**: nunca se empuja a `main`; cada cambio va en rama propia y entra por PR. Fusionar con `gh pr merge --merge --delete-branch`.
+- **Ramas**: nunca se empuja a `main`. El trabajo de una oleada se acumula en la rama `dev` y entra a `main` en un solo PR `dev → main` al cerrarla (`gh pr merge --merge`, sin `--delete-branch`: `dev` no se borra). Un cambio suelto fuera de una oleada puede ir en rama propia con su PR.
   Nunca borrar una rama con PR abierto o sin fusionar.
 - **Git**: `git add` con rutas explícitas, nunca `-A` ni `.`; mirar `git status` antes. Mensajes de commit con prefijo de fase (`F7: ...`) cuando aplique.
 - **Secretos**: gitleaks escanea todas las ramas y el historial. Sin claves ni contraseñas de ejemplo de alta entropía en ningún commit,
@@ -47,40 +47,33 @@ CI corre Postgres 16; producción es 17. Ambos deben pasar. Un PR no se fusiona 
 - **Docs**: el PR que cambia comportamiento actualiza en el mismo PR lo que corresponda (apéndice de `docs/08`, `docs/10`, README si cambian conteos). Skill `neumet-docs-sync`.
 - **Tras desplegar**: el navegador cachea módulos ES; ante vistas vacías, recarga forzada (Cmd+Shift+R) antes de investigar.
 
-## Subagentes y trabajo en paralelo
-Para tareas complejas el agente principal actúa de **director**: planifica y delega con `Agent` (en segundo plano, sin polling), y queda libre para el usuario.
-Cada autor trabaja en su propia rama y worktree (`isolation: "worktree"`); un agente por rama, máximo 3 autores a la vez. Flujo completo en `neumet-orquestar`.
+## Roles y oleadas
+| Rol | Quién | Modelo | Esfuerzo | Para qué |
+|---|---|---|---|---|
+| Project Manager | sesión principal (`.claude/agents/neumet-project-manager.md`) | opus | medium | Habla con el usuario, coordina la oleada, lanza agentes, integra en `dev` y hace el PR a `main` |
+| Technical Leader | `.claude/agents/neumet-technical-leader.md` | opus | medium | Planifica la oleada en archivos de tarea, revisa sin frenar y corrige en el sitio los fallos claros |
+| Developer | `.claude/agents/neumet-developer.md` | haiku | high | Implementa una tarea en su worktree con sus pruebas rápidas en verde |
 
-Los roles están definidos en `.claude/agents/` y se lanzan con `subagent_type`:
+Especialistas, a pedido del PM: `neumet-operativo` (haiku, sin edición: aplicar migraciones, desplegar, limpiar worktrees), `neumet-dba` (opus, solo lectura y MCP de lectura de Supabase: rendimiento, RLS e índices) y `neumet-ux` (opus, navegador con datos simulados: clics, textos y capturas; necesita la extensión de Chrome conectada con `/chrome`, de preferencia un perfil sin sesiones reales).
 
-| Agente | Modelo | Herramientas | Qué hace |
-|---|---|---|---|
-| `neumet-autor` | `sonnet` | todas | Implementa un área en su rama, con pruebas, y abre el PR |
-| `neumet-revisor` | `opus` | solo lectura y Bash | Encuentra bloqueantes y emite veredicto; sin herramientas de edición; no edita ni fusiona |
-| `neumet-corrector` | `sonnet` | todas | Arregla en la rama los bloqueantes del revisor, con un test por cada uno |
-| `neumet-operativo` | `haiku` | solo lectura y Bash | Aplicar migraciones, regenerar demo, redesplegar, limpiar worktrees, poner al día con `main` las ramas de los PR abiertos tras cada fusión |
-| `neumet-dba` | `opus` | solo lectura + MCP de lectura de Supabase | Consultor de BD: audita rendimiento, RLS e índices; no aplica nada |
-| `neumet-ux` | `opus` | solo lectura, Bash, `Skill`, `ToolSearch` y navegador (`mcp__claude-in-chrome__*`); sin MCP de Supabase | Auditor de UX/UI: navega el panel con datos simulados, cuenta clics y revisa visualmente PR de interfaz |
+**El usuario solo decide lo de alto nivel**: negocio, alcance, prioridades, una migración que borre datos o riesgo sobre datos reales. Todo lo técnico lo resuelven el PM y el TL. Nunca se le pide revisar ni fusionar un PR.
 
-El director lanza `neumet-ux` para la auditoría de clics (`docs/10`) o para revisar la interfaz de un PR; necesita la extensión de Chrome conectada (`/chrome`), de preferencia con un perfil de Chrome sin sesiones reales y en primer plano (sin ella cae a capturas). Los agentes cargan al iniciar la sesión: reiniciar Claude Code tras agregarlo.
-El director lanza `neumet-dba` antes de escalar clientes o cuando una migración toca vistas o RLS pesadas; el revisor puede pedirlo.
-
-Siempre `effort: "medium"`. **Compuerta antes de producción**: autor → revisores (en paralelo, un foco cada uno) → (corrector → revisor, máx. 2 rondas) → migración aplicada → fusión → función desplegada → verificación sobre `main`.
-**Autonomía**: el desarrollo es autónomo de punta a punta. Con la compuerta cumplida (veredicto consolidado APROBADO, CI verde, rama al día, `db push --dry-run` limpio) el director aplica la migración, fusiona, despliega y verifica **sin pedir permiso**. Al humano solo se le consulta por lógica de negocio, dudas críticas (p. ej. una migración que borra datos o riesgo sobre datos de clientes reales) o si tras 2 rondas siguen los bloqueantes. Nunca se le pide revisar o fusionar un PR.
-**Agilidad sin bajar calidad**: diseño previo para concurrencia, revisores en paralelo con foco y ramas al día tras cada fusión; detalle y límites en `neumet-orquestar`, `neumet-pr` y `docs/13`.
-Autor, revisor y corrector de un PR son agentes distintos. Nunca dos PR con migración al mismo tiempo en producción. Los agentes en segundo plano no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`.
+Se trabaja en **oleadas cortas**, y al cerrar cada una se frena para que el usuario audite el flujo. El PM sigue la skill `neumet-oleada`. Lo que vale para todos:
+- El plan de cada oleada vive en `.claude/oleadas/<oleada>/`, sin versionar: un `plan.md` con el índice y un archivo por tarea. Cada developer lee solo el suyo.
+- Cada tarea es un área que no comparte archivos con las otras de su ronda; como máximo una con migración por oleada. Sin tope de líneas (decisión del usuario, 2026-11-26).
+- Las tareas se integran en `dev` a medida que terminan. Durante la oleada, cada una pasa solo las pruebas rápidas de lo que toca (`BASE=origin/dev npm run verificar:rapido` y, si toca SQL, `tests/sql/run.sh`). Lo caro (CI completo, `e2e`, todos los smoke) corre una vez, en el PR `dev → main`.
+- **La revisión no frena el trabajo en `dev`**: una sola ronda del TL, solo fallos graves; lo claro y pequeño lo corrige él en el sitio y lo menor queda en `docs/10` (pendientes). Antes del PR a `main` tienen que estar revisadas las migraciones, RLS, Edge Functions y datos sensibles de la oleada.
+- **Hacia producción, al cerrar**: CI verde en el PR `dev → main` → migración aplicada con el CLI → fusión → función desplegada → verificación sobre `main`. Con eso cumplido el PM lo hace sin pedir permiso.
+- Los subagentes no lanzan otros subagentes: solo el PM. Los agentes en segundo plano no sobreviven a un reinicio: su trabajo queda en `.claude/worktrees/agent-*`.
 
 ## Skills del proyecto (`.claude/skills/`)
 | Skill | Para qué |
 |---|---|
-| `neumet-orquestar` | Modo director: delegar en autores paralelos, revisor, corrector y operativo; compuerta a producción |
+| `neumet-oleada` | Procedimiento del PM: planificar, lanzar, integrar en `dev`, cerrar con el PR a `main` y auditar |
 | `neumet-verificar` | Correr localmente lo que correría el CI, escalonado según lo que cambió |
-| `neumet-pr` | Flujo de autor: rama/worktree, implementación, pruebas, docs, PR |
-| `neumet-revisar-pr` | Flujo de revisor con el checklist de `docs/13` |
-| `neumet-corregir-pr` | Flujo de corrector: arreglar los bloqueantes del revisor, un test por cada uno |
 | `neumet-migracion` | Escribir y revisar una migración (no la aplica) |
-| `neumet-aplicar-migracion` | `db push` con dry-run y verificación; con la compuerta cumplida (ver Autonomía) |
-| `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas; con la compuerta cumplida (`demo` solo a pedido) |
+| `neumet-aplicar-migracion` | `db push` con dry-run y verificación, al cerrar la oleada |
+| `neumet-operar` | Desplegar funciones, regenerar demo, limpiar worktrees y ramas (`demo` solo a pedido) |
 | `neumet-docs-sync` | Detectar y corregir desfases entre docs y código |
 | `neumet-auditoria-db` | Auditoría de BD solo lectura (advisors, RLS, planes, índices); la usa `neumet-dba`, nunca aplica |
 | `neumet-auditoria-ux` | Auditoría de UX/UI navegando el panel simulado (`tests/visual/navegar.sh`): clics, textos, móvil; la usa `neumet-ux` |

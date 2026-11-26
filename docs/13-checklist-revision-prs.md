@@ -1,7 +1,7 @@
 # 13 · Checklist de revisión de PR y criterio de pruebas
 
-Lo que debe cumplir un PR para fusionarse. Lo aplica el revisor y el autor lo verifica antes de abrir el PR.
-Un PR chico o solo de docs lo revisa uno; uno grande, hasta tres revisores en paralelo con foco acotado (seguridad/base/RLS; UX y textos; concurrencia y pruebas mutantes) y el director consolida un solo veredicto (ver `neumet-orquestar`).
+Lo que debe cumplir un PR para fusionarse. El developer lo tiene en cuenta al implementar.
+Lo aplica un Technical Leader al revisar las tareas de una oleada integradas en `dev` (una sola ronda, solo fallos graves; lo claro lo corrige en el sitio), y el PM antes del PR `dev → main`.
 **Bloqueante** es todo incumplimiento de una regla de `CLAUDE.md` o de este checklist (p. ej. arreglo de bug sin test que falle sin el arreglo, `SECURITY DEFINER` sin `search_path` vacío, RLS nueva sin pruebas por rol, clics aumentados sin justificación, texto en segunda persona o color como único indicador, cambio de comportamiento sin actualizar `docs/08` o `docs/10`), además de pérdida de datos, elección del usuario perdida, fuga entre roles y afirmación falsa en la documentación (ejemplos, no lista cerrada). **Sugerencia** es lo opinable o de estilo que no viola una regla. Desde la ronda 1 el revisor las separa.
 
 ## 1. Rigor al buscar bugs
@@ -47,12 +47,12 @@ Autor y revisor comprueban, con una prueba que falla sin el arreglo, cada caso a
 - Los comentarios del código explican el porqué, no narran lo obvio.
 
 ## 5. Despliegue
-- Si el PR trae migración, el revisor la lee entera (permisos, `search_path`, RLS) y avisa al director; se aplica antes de fusionar el front que la usa.
+- Si el PR trae migración, el TL la lee entera (permisos, `search_path`, RLS) y avisa al PM; se aplica antes de fusionar el front que la usa.
 - Si cambia archivos servidos por Vercel, comprobar el efecto de la caché.
 - Nunca fusionar con CI rojo; nunca ampliar el allowlist de secretos para acomodar un valor de ejemplo.
 
 ## 6. Auditoría UX por tareas al cerrar una fase
-Al cerrar cada fase que toca la interfaz (F8, F10, F11 y siguientes), antes de darla por terminada, el director lanza `neumet-ux` (skill `neumet-auditoria-ux`) para recorrer las tareas frecuentes por rol: medir, cambiar, rotar, montar, ver alertas, consultar el stock y, según la fase, administrar usuarios y sucursales.
+Al cerrar cada fase que toca la interfaz (F8, F10, F11 y siguientes), antes de darla por terminada, el PM lanza `neumet-ux` (skill `neumet-auditoria-ux`) para recorrer las tareas frecuentes por rol: medir, cambiar, rotar, montar, ver alertas, consultar el stock y, según la fase, administrar usuarios y sucursales.
 - Se cuentan los clics de cada tarea y se comparan con el conteo anterior de `docs/10`; un aumento sin justificación es un hallazgo.
 - Se revisa que cada tarea se encuentre en un solo lugar del menú, de acuerdo con [docs/12](12-mapa-navegacion.md) (sección 4).
 - Se mira la pantalla en escritorio y en móvil, con los textos de [docs/14](14-guia-de-textos.md) (sección 5).

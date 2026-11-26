@@ -1,7 +1,7 @@
 # 10 · Tablero del proyecto
 
 > Actualizado: 2026-11-25 (reglas de negocio y decisiones del 25/11, [23](23-reglas-negocio.md); este PR es solo documentación). Fuente de verdad del estado; los PR en GitHub tienen el detalle.
-> Flujo: un agente por área en su rama y worktree → PR con tests → revisor distinto del autor (checklist en [13-checklist-revision-prs.md](13-checklist-revision-prs.md)) → el director aplica migraciones y despliega.
+> Flujo (oleadas, ver `CLAUDE.md`): un developer por tarea en su worktree → integración en `dev` con revisión del TL sin frenar (checklist en [13-checklist-revision-prs.md](13-checklist-revision-prs.md)) → PR `dev → main` con CI → el PM aplica migraciones, fusiona y despliega.
 > Procedimientos de operación: [11-runbook-operacion.md](11-runbook-operacion.md). Lo que no pudo verificarse desde el repositorio va marcado **[confirmar]**.
 
 ## Infraestructura
