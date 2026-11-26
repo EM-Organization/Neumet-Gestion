@@ -9,8 +9,8 @@ Esto escribe en la única base de datos real. Pasos en orden; revisar el resulta
 Usar el **CLI**, nunca el MCP `apply_migration`: registra la versión por fecha y desalinea el historial de migraciones.
 
 ## 0. Precondiciones
-- El PR de la migración fue **aprobado** por un revisor (`neumet-revisar-pr`) y el CI está en verde.
-- Rama del PR al día con `main`. Repo principal en `main` limpio. `supabase` CLI logueado y linkeado a `kootszosdejmawanfxug`: `supabase migration list --remote` debe responder sin error.
+- La migración fue revisada por un Technical Leader en la oleada y el CI del PR `dev → main` está en verde.
+- `dev` al día con `main`. Repo principal en `main` limpio. `supabase` CLI logueado y linkeado a `kootszosdejmawanfxug`: `supabase migration list --remote` debe responder sin error.
 - Autorización duradera del dueño (no se pide confirmación por cada migración). Un front viejo puede romperse entre la aplicación y la fusión si la migración no es compatible hacia atrás; en ese caso, fusionar de inmediato después.
 
 - **Parada obligatoria**: si el SQL contiene `drop table`, `drop column`, `delete`, `truncate`, `alter ... type`, un `update` sin filtro acotado, o toca datos de clientes reales, **no aplicar**: parar y consultar al dueño.
@@ -43,7 +43,7 @@ supabase db push --remote --yes
 ```
 supabase migration list --remote          # la nueva figura en local y remoto
 ```
-- Advisors de seguridad y rendimiento (MCP `get_advisors`, solo lectura; lo hace el director, el operativo no tiene esa herramienta) sin errores nuevos.
+- Advisors de seguridad y rendimiento (MCP `get_advisors`, solo lectura; lo hace el PM, el operativo no tiene esa herramienta) sin errores nuevos.
 - `supabase db query --remote --read-only -f supabase/audit/rls_audit.sql` (solo lectura). No consultar vistas que usen funciones sin `execute` para el rol del CLI.
 - Una consulta de humo propia de la migración (existe la tabla/función/vista, política esperada).
 
