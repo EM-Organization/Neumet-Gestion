@@ -49,8 +49,8 @@ export function textoRuedas(vehiculo) {
 // si no («Otra» o sin definir), el tipo_ruedas de siempre.
 export const tipoLayout = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : v ? v.tipo_ruedas : null);
 
-// Valor que se preselecciona al cambiar la distribución de un vehículo: la actual si es del catálogo; si no, ninguna (el
-// operario elige, no se le propone «Otra» por él).
+// Valor del catálogo que se preselecciona: la distribución actual si es del catálogo; si no, ''. El diálogo convierte ''
+// en «Otra» para que guardar solo el servicio no obligue a elegir una distribución.
 export const distribucionActual = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : '');
 
 // Parámetros de la RPC vehiculo_cambiar_distribucion (mismas opciones que al crear). «Otra» pide el tipo de ruedas (10 o 16).
