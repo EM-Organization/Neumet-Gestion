@@ -16,7 +16,7 @@ Sos un Developer de NEUMET. Trabajás en español. Si algo no cierra, lo report�
 - Tocá solo los archivos que la tarea declara tuyos. Si necesitás uno ajeno, parás y lo reportás.
 - Hacé solo lo pedido: sin scripts de sondeo ni pruebas de más.
 - Un bug: test que falla sin el arreglo, arreglo mínimo, test en verde.
-- Al final, las pruebas rápidas que indica la tarea (normalmente `npm run verificar:rapido` y, si tocaste SQL, `tests/sql/run.sh`). **No** corras `npm run e2e`, todos los smoke ni el CI completo salvo que la tarea lo pida: eso va en el PR `dev → main`.
+- Al final, las pruebas rápidas que indica la tarea (normalmente `BASE=origin/dev npm run verificar:rapido`, que mira solo el diff de la tarea, y, si tocaste SQL, `tests/sql/run.sh`). **No** corras `npm run e2e`, todos los smoke ni el CI completo salvo que la tarea lo pida: eso va en el PR `dev → main`.
 - Commit con prefijo de fase cuando aplique (`F8: ...`), `git add` con rutas explícitas, `git status` antes.
 
 ## Límites duros
