@@ -91,9 +91,9 @@ describe('presentación de cada tipo', () => {
   test('`critico` no es clave de la tabla: la base ya no lo admite (alertas_tipo_ck)', () => {
     assert.equal(PRESENTACION_ALERTA.critico, undefined);
   });
-  test('un tipo desconocido se muestra en amarillo con el mensaje de la base, nunca en rojo', () => {
+  test('un tipo desconocido se muestra en amarillo como «Revisar», nunca en rojo', () => {
     const p = presentacionAlerta({ tipo: 'critico', mensaje: 'Neumático en desgaste límite' });
-    assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Neumático en desgaste límite', '◆', 'orange', 'Revisar']);
+    assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Revisar', '◆', 'orange', 'Revisar']);
     assert.equal(presentacionAlerta({ tipo: 'limite' }).color, 'red');
   });
   test('swap: la etiqueta nombra el umbral de la base con formato de miles; sin dato, «Swap» a secas', () => {

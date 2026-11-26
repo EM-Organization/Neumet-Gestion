@@ -46,7 +46,8 @@ export const PRESENTACION_ALERTA = Object.freeze({
   km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
 });
 
-// Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo con el mensaje de la base.
+// Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo como «Revisar». El mensaje no va en
+// la etiqueta: la columna Mensaje ya lo muestra al lado (detalleAlerta), y como etiqueta se repetía.
 // El swap nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Swap» a secas, sin inventar una cifra.
 export function presentacionAlerta(a) {
   if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) {
@@ -55,7 +56,7 @@ export function presentacionAlerta(a) {
     if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Swap a ${fmtNum(km)} km` };
     return p;
   }
-  return { etiqueta: String((a && a.mensaje) || 'Revisar la alerta'), simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
+  return { etiqueta: 'Revisar', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
 }
 
 // Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
