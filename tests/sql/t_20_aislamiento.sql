@@ -7,9 +7,11 @@ insert into _esperado values
   ('v_ultima_medicion',       14, 11, 3),
   ('v_mediciones_neumatico',  20, 17, 3),
   ('v_estado_neumaticos',     14, 11, 3),
-  -- v_alertas y alertas: vacías en el fixture general (ningún neumático bajo umbral_retiro).
-  ('v_alertas',                0,  0, 0),
-  ('alertas',                  0,  0, 0),
+  -- v_alertas y alertas en el fixture general: ninguna de límite (ningún neumático bajo umbral_retiro), pero la ola 2
+  -- abre dirección e irregular: A tiene 3 (dirección en pos2, desparejo en pos5 y pos6), B tiene 2 (dirección límite
+  -- en pos2 y desparejo en pos3); el admin ve las 5. Ver t_10.
+  ('v_alertas',                5,  3, 2),
+  ('alertas',                  5,  3, 2),
   ('v_resumen_flota_cliente',  2,  1, 1),
   ('v_salud_dispositivos',     5,  4, 1),
   ('eventos_neumatico',        3,  2, 1),

@@ -76,6 +76,9 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, m
 create or replace function test.abiertas100(p_idn text) returns bigint language sql as $$
   select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
    where n.idneumatico = p_idn and a.estado <> 'resuelta' $$;
+-- Los triggers de alertas son diferidos: se vacían aquí para que la aserción lea el estado ya sincronizado.
+set constraints all immediate;
+set constraints all deferred;
 select test.eq('A: el auxilio en 99 (2,0 mm) no tiene alerta; la rueda de ruta sana tampoco',
   test.abiertas100('R-AUX') || '|' || test.abiertas100('R-RUTA'), '0|0');
 create temp table t_pre as
@@ -88,6 +91,9 @@ reset role;
 select test.eq('A: tras rotar 3<->99, el indicador auxilio sigue a la posición',
   (select string_agg(idneumatico || '@' || posicion || ':' || auxilio, ',' order by idneumatico)
      from public.neumaticos where vehiculo_id = 10002), 'R-AUX@3:false,R-RUTA@99:true');
+-- La rotación encola sus triggers diferidos: se vacían antes de leer la alerta (y se vuelve al modo diferido).
+set constraints all immediate;
+set constraints all deferred;
 select test.eq('A: la rueda que pasó a la posición 3 (2,0 mm) abre alerta; la que pasó a 99 no',
   test.abiertas100('R-AUX') || '|' || test.abiertas100('R-RUTA'), '1|0');
 select test.eq('A: v_alertas ve la alerta de R-AUX en la posición 3',
@@ -108,11 +114,17 @@ select test.eq('B: R-X (2,0 mm) en la posición 3 tiene alerta abierta', test.ab
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
+-- La rotación encola sus triggers diferidos: se vacían antes de leer (y se vuelve al modo diferido).
+set constraints all immediate;
+set constraints all deferred;
 select test.eq('B: R-X en 99 queda sin alerta abierta y fuera de v_alertas',
   test.abiertas100('R-X') || '|' || (select count(*) from public.v_alertas where vehiculo_id = 10003), '0|0');
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_rotar(10003::bigint, 3::smallint, 99::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
+-- La rotación encola sus triggers diferidos: se vacían antes de leer (y se vuelve al modo diferido).
+set constraints all immediate;
+set constraints all deferred;
 select test.eq('B: al volver R-X a la ruta (posición 3) la alerta se reevalúa y vuelve a abrirse',
   test.abiertas100('R-X') || '|' || (select count(*) from public.v_alertas where vehiculo_id = 10003), '1|1');
 
@@ -124,6 +136,9 @@ select test.eq('C: R-P1 (2,0 mm) tiene su alerta', (select count(*) from t_c), 1
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_rotar(10004::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
+-- La rotación encola sus triggers diferidos: se vacían antes de leer (y se vuelve al modo diferido).
+set constraints all immediate;
+set constraints all deferred;
 select test.eq('C: rotar 1<->2 conserva la misma alerta abierta, sin cierres ni reaperturas en falso',
   (select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
     where n.idneumatico = 'R-P1' and a.estado <> 'resuelta' and a.id = (select id from t_c) and a.veces_reabierta = (select veces_reabierta from t_c)),

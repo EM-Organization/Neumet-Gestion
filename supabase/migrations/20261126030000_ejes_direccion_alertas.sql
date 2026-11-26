@@ -103,6 +103,27 @@ $$;
 revoke all on function public.vehiculo_fijar_servicio(bigint, text) from public, anon;
 grant execute on function public.vehiculo_fijar_servicio(bigint, text) to authenticated;
 
+-- 4. Alertas con tipo (RN-02, RN-05, RN-06, RN-07). Una abierta por cubierta y tipo. Los mm dejan de ser obligatorios
+--    en swap, que mide km. Motivos nuevos: 'rotacion' (D2) y 'reemplazada' (D3).
+alter table public.alertas drop constraint if exists alertas_tipo_ck;
+alter table public.alertas add constraint alertas_tipo_ck
+  check (tipo in ('limite', 'direccion_aviso', 'direccion_limite', 'irregular', 'swap', 'km_por_mm'));
+alter table public.alertas drop constraint if exists alertas_resuelta_motivo_check;
+alter table public.alertas drop constraint if exists alertas_resuelta_motivo_ck;
+alter table public.alertas add constraint alertas_resuelta_motivo_ck
+  check (resuelta_motivo in ('recuperada', 'cambio', 'baja', 'manual', 'sin_datos', 'rotacion', 'reemplazada'));
+alter table public.alertas add column if not exists km_actual integer, add column if not exists umbral_km integer;
+alter table public.alertas alter column umbral_mm drop not null, alter column mm_apertura drop not null,
+  alter column mm_minimo drop not null, alter column mm_actual drop not null;
+alter table public.alertas drop constraint if exists alertas_valores_ck;
+alter table public.alertas add constraint alertas_valores_ck check (
+  (tipo = 'swap' and km_actual is not null and umbral_km is not null)
+  or (tipo <> 'swap' and umbral_mm is not null and mm_apertura is not null
+      and mm_minimo is not null and mm_actual is not null));
+drop index if exists public.alertas_una_abierta_uk;
+create unique index if not exists alertas_una_abierta_por_tipo_uk
+  on public.alertas (neumatico_id, tipo) where estado <> 'resuelta';
+
 -- Base: copia de 20261126010000_auxilio_tramos_km.sql:224-386. La ola 2 agrega columnas al final y cambia desgaste_irregular.
 create or replace view public.v_estado_neumaticos
 with (security_invoker = true) as
@@ -244,7 +265,9 @@ b as (
     case when s.promedio is null then null
          else greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3) end as diferencia_huellas_mm,
     -- RN-06 y D7: la diferencia se redondea a 0,1 mm, como en el panel, y el umbral incluye el valor (>=).
-    coalesce(round(greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3), 1) >= s.irregularidad_mm, false)
+    -- Sin mm1 o mm3 no hay diferencia, como unevenWear del panel: la guarda evita el falso positivo con null.
+    coalesce(s.mm1 is not null and s.mm3 is not null
+      and round(greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3), 1) >= s.irregularidad_mm, false)
       as desgaste_irregular,
     coalesce(s.n90, 0) as n_mediciones_90d,
     -- Tasa: al menos 3 mediciones y 14 días reales entre la primera y la última de la ventana
@@ -284,110 +307,76 @@ from (
 revoke all on public.v_estado_neumaticos from public, anon;
 grant select on public.v_estado_neumaticos to authenticated;
 
--- Copia de 20261126000000_huella_minima.sql:190-290
-create or replace function public.alerta_sincronizar(p_cliente_id bigint, p_neumaticos bigint[] default null)
-returns void
+-- Copia de 20261126010000_auxilio_tramos_km.sql:40-138, partida en dos. Este cálculo va sin autorización: lo usa
+-- alerta_estado_tiros dentro del sync (SECURITY DEFINER), que no tiene un usuario que autorizar. Sin permiso para
+-- authenticated ni anon. El wrapper km_tramos_cubierta conserva la firma, la autorización y los permisos de siempre.
+create or replace function public.km_tramos_cubierta_interno(p_neumatico bigint)
+returns table (
+  cerrados            bigint,
+  cerrados_con_dato   bigint,
+  km_cerrados         bigint,
+  montajes_sin_cierre bigint,
+  ultimo_montaje      boolean,
+  ult_odo             integer,
+  ult_veh             bigint,
+  decreciente         boolean
+)
 language plpgsql
+stable
 security definer
 set search_path = ''
+rows 1
 as $$
-declare
-  v_now timestamptz := now();
 begin
-  if p_cliente_id is null then
-    return;
-  end if;
+  return query
 
-  -- 1. El neumático ya no está montado: cambio o baja.
-  update public.alertas a
-     set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
-         resuelta_motivo = case when n.estado = 'baja' then 'baja' else 'cambio' end
-    from public.neumaticos n
-   where n.id = a.neumatico_id
-     and a.cliente_id = p_cliente_id
-     and a.estado <> 'resuelta'
-     and n.estado <> 'montado'
-     and (p_neumaticos is null or a.neumatico_id = any (p_neumaticos));
-
-  -- 2. Neumáticos montados: cierra, actualiza, reabre o abre. Todo con la huella MÍNIMA (RN-01).
-  with e as (
-    select s.neumatico_id, s.vehiculo_id, s.posicion, s.idneumatico, s.minimo, s.ultima_medicion_at,
-           c.umbral_retiro_mm as umbral, c.alerta_histeresis_mm as hist,
-           -- Regla del auxilio: su poca vida útil es normal, no es advertencia. Es auxilio la rueda en la posición 99.
-           (s.posicion = 99) as auxilio
-      from public.v_estado_neumaticos s
-      join public.clientes c on c.id = s.cliente_id
-     where s.cliente_id = p_cliente_id
-       and s.neumatico_id is not null
-       and (p_neumaticos is null or s.neumatico_id = any (p_neumaticos))
-  ),
-  cierra as (
-    update public.alertas a
-       set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
-           resuelta_motivo = case when e.minimo is null or e.auxilio then 'sin_datos' else 'recuperada' end,
-           mm_actual = coalesce(e.minimo, a.mm_actual), umbral_mm = e.umbral,
-           vehiculo_id = e.vehiculo_id, posicion = e.posicion
-      from e
-     where e.neumatico_id = a.neumatico_id
-       and a.estado <> 'resuelta'
-       and (e.minimo is null or e.auxilio or e.minimo >= e.umbral + e.hist)
-     returning a.neumatico_id
-  ),
-  sigue as (
-    update public.alertas a
-       set mm_actual = e.minimo, mm_minimo = least(a.mm_minimo, e.minimo), umbral_mm = e.umbral,
-           vehiculo_id = e.vehiculo_id, posicion = e.posicion, idneumatico = e.idneumatico,
-           ultima_medicion_at = e.ultima_medicion_at, updated_at = v_now
-      from e
-     where e.neumatico_id = a.neumatico_id
-       and a.estado <> 'resuelta'
-       and e.minimo is not null
-       and not e.auxilio
-       and e.minimo < e.umbral + e.hist
-     returning a.neumatico_id
-  ),
-  candidatos as (
-    -- Neumáticos en desgaste límite (mínimo bajo el umbral) sin alerta no resuelta. Sin mínimo, nunca abren alerta.
-    select e.* from e
-     where e.minimo is not null
-       and not e.auxilio
-       and e.minimo < e.umbral
-       and not exists (select 1 from public.alertas x
-                        where x.neumatico_id = e.neumatico_id and x.estado <> 'resuelta')
-  ),
-  reabre as (
-    update public.alertas a
-       set estado = 'abierta', resuelta_at = null, resuelta_motivo = null, resuelta_por = null, nota_resolucion = null,
-           reconocida_at = null, reconocida_por = null, nota_reconocida = null,
-           silenciada_hasta = null, silencio_motivo = null, silenciada_por = null,
-           veces_reabierta = a.veces_reabierta + 1, abierta_at = v_now, updated_at = v_now,
-           mm_apertura = k.minimo, mm_minimo = k.minimo, mm_actual = k.minimo, umbral_mm = k.umbral,
-           vehiculo_id = k.vehiculo_id, posicion = k.posicion, idneumatico = k.idneumatico,
-           ultima_medicion_at = k.ultima_medicion_at
-      from (select u.id as alerta_id, c.*
-              from candidatos c
-              -- Solo la última alerta resuelta del neumático, y solo si fue por recuperación reciente.
-              cross join lateral (select r.id, r.resuelta_motivo, r.resuelta_at
-                                    from public.alertas r
-                                   where r.neumatico_id = c.neumatico_id and r.estado = 'resuelta'
-                                   order by r.resuelta_at desc, r.id desc limit 1) u
-             where u.resuelta_motivo = 'recuperada'
-               and u.resuelta_at >= v_now - interval '7 days') k
-     where a.id = k.alerta_id
-    returning a.neumatico_id
-  )
-  insert into public.alertas (cliente_id, vehiculo_id, neumatico_id, posicion, idneumatico, umbral_mm,
-                              mm_apertura, mm_minimo, mm_actual, ultima_medicion_at)
-  select p_cliente_id, c.vehiculo_id, c.neumatico_id, c.posicion, c.idneumatico, c.umbral,
-         c.minimo, c.minimo, c.minimo, c.ultima_medicion_at
-    from candidatos c
-   where c.neumatico_id not in (select neumatico_id from reabre)
-  on conflict (neumatico_id) where estado <> 'resuelta' do nothing;
+  select
+    count(*) filter (where t.accion = 'cierra'),
+    count(*) filter (where t.accion = 'cierra' and t.conocido),
+    coalesce(sum(t.odometro_km - t.prev_odo) filter (where t.accion = 'cierra' and t.conocido), 0)::bigint,
+    count(*) filter (where t.accion = 'abre' and t.prev_accion = 'abre'),
+    coalesce(bool_or(t.ultimo and t.accion = 'abre'), false),
+    max(case when t.ultimo and t.accion = 'abre' then t.odometro_km end),
+    max(case when t.ultimo and t.accion = 'abre' then t.vehiculo_id end),
+    coalesce(bool_or(t.decr), false)
+  from (
+    select
+      w.vehiculo_id, w.accion, w.odometro_km, w.prev_accion, w.prev_veh, w.prev_odo, w.ultimo, w.decr,
+      (w.accion = 'cierra' and w.prev_accion = 'abre' and w.prev_veh = w.vehiculo_id
+        and w.odometro_km is not null and w.prev_odo is not null
+        and w.odometro_km >= w.prev_odo)                                   as conocido
+    from (
+      select
+        e.vehiculo_id, e.odometro_km, e.accion,
+        lag(e.accion)      over wt as prev_accion,
+        lag(e.vehiculo_id) over wt as prev_veh,
+        lag(e.odometro_km) over wt as prev_odo,
+        (lead(e.id) over wt is null) as ultimo,
+        (e.odometro_km is not null and lag(e.odometro_km) over wv is not null
+          and e.odometro_km < lag(e.odometro_km) over wv)    as decr
+      from (
+        select x.*,
+          case
+            when x.tipo = 'montaje' and coalesce(x.posicion_destino, 0) <> 99 then 'abre'
+            when x.tipo in ('desmontaje', 'baja') and coalesce(x.posicion_origen, 0) <> 99 then 'cierra'
+            when x.tipo = 'rotacion' and coalesce(x.posicion_origen, 0) <> 99 and x.posicion_destino = 99 then 'cierra'
+            when x.tipo = 'rotacion' and x.posicion_origen = 99 and coalesce(x.posicion_destino, 0) <> 99 then 'abre'
+            else null
+          end as accion
+        from public.eventos_neumatico x
+        where x.neumatico_id = km_tramos_cubierta_interno.p_neumatico and x.vehiculo_id is not null
+          and x.tipo in ('montaje', 'desmontaje', 'baja', 'rotacion')
+      ) e
+      -- Marcas de tramo (accion no nula) en una partición; el resto de eventos, en otra. decr usa todos los eventos.
+      window wt as (partition by (e.accion is not null) order by e.created_at, e.id),
+             wv as (partition by e.vehiculo_id order by e.created_at, e.id)
+    ) w
+  ) t;
 end
 $$;
-revoke all on function public.alerta_sincronizar(bigint, bigint[]) from public, anon, authenticated;
+revoke all on function public.km_tramos_cubierta_interno(bigint) from public, anon, authenticated;
 
--- Copia de 20261126010000_auxilio_tramos_km.sql:40-138
+-- Wrapper de km_tramos_cubierta_interno: misma firma, misma autorización y mismos permisos que la versión de 20261126010000.
 create or replace function public.km_tramos_cubierta(p_neumatico bigint)
 returns table (
   cerrados            bigint,
@@ -439,54 +428,320 @@ begin
     end if;
   end if;
 
-  return query
-
-  select
-    count(*) filter (where t.accion = 'cierra'),
-    count(*) filter (where t.accion = 'cierra' and t.conocido),
-    coalesce(sum(t.odometro_km - t.prev_odo) filter (where t.accion = 'cierra' and t.conocido), 0)::bigint,
-    count(*) filter (where t.accion = 'abre' and t.prev_accion = 'abre'),
-    coalesce(bool_or(t.ultimo and t.accion = 'abre'), false),
-    max(case when t.ultimo and t.accion = 'abre' then t.odometro_km end),
-    max(case when t.ultimo and t.accion = 'abre' then t.vehiculo_id end),
-    coalesce(bool_or(t.decr), false)
-  from (
-    select
-      w.vehiculo_id, w.accion, w.odometro_km, w.prev_accion, w.prev_veh, w.prev_odo, w.ultimo, w.decr,
-      (w.accion = 'cierra' and w.prev_accion = 'abre' and w.prev_veh = w.vehiculo_id
-        and w.odometro_km is not null and w.prev_odo is not null
-        and w.odometro_km >= w.prev_odo)                                   as conocido
-    from (
-      select
-        e.vehiculo_id, e.odometro_km, e.accion,
-        lag(e.accion)      over wt as prev_accion,
-        lag(e.vehiculo_id) over wt as prev_veh,
-        lag(e.odometro_km) over wt as prev_odo,
-        (lead(e.id) over wt is null) as ultimo,
-        (e.odometro_km is not null and lag(e.odometro_km) over wv is not null
-          and e.odometro_km < lag(e.odometro_km) over wv)    as decr
-      from (
-        select x.*,
-          case
-            when x.tipo = 'montaje' and coalesce(x.posicion_destino, 0) <> 99 then 'abre'
-            when x.tipo in ('desmontaje', 'baja') and coalesce(x.posicion_origen, 0) <> 99 then 'cierra'
-            when x.tipo = 'rotacion' and coalesce(x.posicion_origen, 0) <> 99 and x.posicion_destino = 99 then 'cierra'
-            when x.tipo = 'rotacion' and x.posicion_origen = 99 and coalesce(x.posicion_destino, 0) <> 99 then 'abre'
-            else null
-          end as accion
-        from public.eventos_neumatico x
-        where x.neumatico_id = km_tramos_cubierta.p_neumatico and x.vehiculo_id is not null
-          and x.tipo in ('montaje', 'desmontaje', 'baja', 'rotacion')
-      ) e
-      -- Marcas de tramo (accion no nula) en una partición; el resto de eventos, en otra. decr usa todos los eventos.
-      window wt as (partition by (e.accion is not null) order by e.created_at, e.id),
-             wv as (partition by e.vehiculo_id order by e.created_at, e.id)
-    ) w
-  ) t;
+  return query select i.* from public.km_tramos_cubierta_interno(p_neumatico) i;
 end
 $$;
 revoke all on function public.km_tramos_cubierta(bigint) from public, anon;
 grant execute on function public.km_tramos_cubierta(bigint) to authenticated;
+
+-- Estado por neumático que evalúa alerta_sincronizar. Una sola definición para todas las sentencias del sync.
+-- km es el tramo abierto (desde el último montaje: odómetro actual menos el del montaje), no los tramos cerrados:
+-- el swap mide la primera rotación de una cubierta de vida 0. Solo se calcula para cubiertas montadas de vida 0.
+create or replace function public.alerta_estado_tiros(p_cliente_id bigint, p_neumaticos bigint[])
+returns table (
+  neumatico_id bigint, vehiculo_id bigint, posicion integer, idneumatico text, montado boolean, vida integer,
+  auxilio boolean, minimo numeric, dif numeric, ultima_medicion_at timestamptz, rol_eje text,
+  estado_direccion text, km integer, rota boolean, umbral_retiro numeric, hist numeric, dir_aviso numeric,
+  dir_limite numeric, irr_mm numeric, swap_km integer
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select s.neumatico_id, s.vehiculo_id, s.posicion::integer, s.idneumatico::text,
+         (n.estado = 'montado'), s.vida::integer, (s.posicion = 99),
+         s.minimo::numeric,
+         -- D7 y RN-06: diferencia redondeada a 0,1 mm. Sin mm1 o mm3 no hay medida, como unevenWear del panel.
+         (case when s.mm1 is null or s.mm3 is null then null
+               else round(greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3), 1) end)::numeric,
+         s.ultima_medicion_at, s.rol_eje, s.estado_direccion,
+         (case when n.estado = 'montado' and s.vida = 0 and s.posicion is not null and s.posicion <> 99
+               then (select case when k.ultimo_montaje and k.ult_veh = s.vehiculo_id and k.ult_odo is not null
+                                  and v.odometro_km >= k.ult_odo
+                                 then v.odometro_km - k.ult_odo end
+                       from public.km_tramos_cubierta_interno(s.neumatico_id) k)
+          end)::integer,
+         -- D1: hubo una rotación después del último montaje (sin montaje, cualquiera cuenta).
+         exists (select 1 from public.eventos_neumatico r
+                  where r.neumatico_id = s.neumatico_id and r.tipo = 'rotacion'
+                    and r.id > coalesce((select max(m.id) from public.eventos_neumatico m
+                                          where m.neumatico_id = s.neumatico_id and m.tipo = 'montaje'), 0)),
+         c.umbral_retiro_mm, c.alerta_histeresis_mm, c.direccion_aviso_mm, c.direccion_limite_mm,
+         c.irregularidad_mm, c.swap_km
+    from public.v_estado_neumaticos s
+    join public.neumaticos n on n.id = s.neumatico_id
+    join public.clientes c on c.id = s.cliente_id
+    left join public.vehiculos v on v.id = s.vehiculo_id
+   where s.cliente_id = p_cliente_id
+     and s.neumatico_id is not null
+     and (p_neumaticos is null or s.neumatico_id = any (p_neumaticos));
+$$;
+revoke all on function public.alerta_estado_tiros(bigint, bigint[]) from public, anon, authenticated;
+
+-- Sincronización de alertas (contratos 6 y 7; D1 a D3, D7). Cada tipo va en su propia sentencia: así cada sentencia
+-- ve el estado que dejaron las anteriores y ninguna fila recibe dos cambios en la misma sentencia.
+create or replace function public.alerta_sincronizar(p_cliente_id bigint, p_neumaticos bigint[] default null)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_now timestamptz := now();
+begin
+  if p_cliente_id is null then
+    return;
+  end if;
+
+  -- 1. El neumático ya no está montado: cambio o baja. Vale para todos los tipos.
+  update public.alertas a
+     set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
+         resuelta_motivo = case when n.estado = 'baja' then 'baja' else 'cambio' end
+    from public.neumaticos n
+   where n.id = a.neumatico_id
+     and a.cliente_id = p_cliente_id
+     and a.estado <> 'resuelta'
+     and n.estado <> 'montado'
+     and (p_neumaticos is null or a.neumatico_id = any (p_neumaticos));
+
+  -- 2. Desgaste límite (tipo 'limite'): la lógica de la ola 1, con la huella MÍNIMA (RN-01).
+  with e as (
+    select t.neumatico_id, t.vehiculo_id, t.posicion, t.idneumatico, t.minimo, t.ultima_medicion_at,
+           t.umbral_retiro as umbral, t.hist, t.auxilio
+      from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+  ),
+  cierra as (
+    update public.alertas a
+       set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
+           resuelta_motivo = case when e.minimo is null or e.auxilio then 'sin_datos' else 'recuperada' end,
+           mm_actual = coalesce(e.minimo, a.mm_actual), umbral_mm = e.umbral,
+           vehiculo_id = e.vehiculo_id, posicion = e.posicion
+      from e
+     where e.neumatico_id = a.neumatico_id
+       and a.tipo = 'limite'
+       and a.estado <> 'resuelta'
+       and (e.minimo is null or e.auxilio or e.minimo >= e.umbral + e.hist)
+     returning a.neumatico_id
+  ),
+  sigue as (
+    update public.alertas a
+       set mm_actual = e.minimo, mm_minimo = least(a.mm_minimo, e.minimo), umbral_mm = e.umbral,
+           vehiculo_id = e.vehiculo_id, posicion = e.posicion, idneumatico = e.idneumatico,
+           ultima_medicion_at = e.ultima_medicion_at, updated_at = v_now
+      from e
+     where e.neumatico_id = a.neumatico_id
+       and a.tipo = 'limite'
+       and a.estado <> 'resuelta'
+       and e.minimo is not null
+       and not e.auxilio
+       and e.minimo < e.umbral + e.hist
+     returning a.neumatico_id
+  ),
+  candidatos as (
+    -- Mínimo bajo el umbral de retiro, sin alerta de límite no resuelta. Sin mínimo, nunca abre; en la 99, tampoco.
+    select e.* from e
+     where e.minimo is not null
+       and not e.auxilio
+       and e.minimo < e.umbral
+       and not exists (select 1 from public.alertas x
+                        where x.neumatico_id = e.neumatico_id and x.tipo = 'limite' and x.estado <> 'resuelta')
+  ),
+  reabre as (
+    update public.alertas a
+       set estado = 'abierta', resuelta_at = null, resuelta_motivo = null, resuelta_por = null, nota_resolucion = null,
+           reconocida_at = null, reconocida_por = null, nota_reconocida = null,
+           silenciada_hasta = null, silencio_motivo = null, silenciada_por = null,
+           veces_reabierta = a.veces_reabierta + 1, abierta_at = v_now, updated_at = v_now,
+           mm_apertura = k.minimo, mm_minimo = k.minimo, mm_actual = k.minimo, umbral_mm = k.umbral,
+           vehiculo_id = k.vehiculo_id, posicion = k.posicion, idneumatico = k.idneumatico,
+           ultima_medicion_at = k.ultima_medicion_at
+      from (select u.alerta_id, c.*
+              from candidatos c
+              -- Solo la última alerta de límite resuelta del neumático, y solo si fue por recuperación reciente.
+              cross join lateral (select r.id as alerta_id, r.resuelta_motivo, r.resuelta_at
+                                    from public.alertas r
+                                   where r.neumatico_id = c.neumatico_id and r.tipo = 'limite' and r.estado = 'resuelta'
+                                   order by r.resuelta_at desc, r.id desc limit 1) u
+             where u.resuelta_motivo = 'recuperada'
+               and u.resuelta_at >= v_now - interval '7 days') k
+     where a.id = k.alerta_id
+    returning a.neumatico_id
+  )
+  insert into public.alertas (cliente_id, vehiculo_id, neumatico_id, posicion, idneumatico, tipo, umbral_mm,
+                              mm_apertura, mm_minimo, mm_actual, ultima_medicion_at)
+  select p_cliente_id, c.vehiculo_id, c.neumatico_id, c.posicion, c.idneumatico, 'limite', c.umbral,
+         c.minimo, c.minimo, c.minimo, c.ultima_medicion_at
+    from candidatos c
+   where c.neumatico_id not in (select neumatico_id from reabre)
+  on conflict (neumatico_id, tipo) where estado <> 'resuelta' do nothing;
+
+  -- 3. Dirección (D2, D3, RN-07). Una alerta por cubierta: cambia su tipo al cambiar de nivel, sin abrir otra.
+  --    Cierre por rotación solo si cambió la posición (D2); si no, reemplazada bajo el retiro, o recuperada.
+  update public.alertas a
+     set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
+         resuelta_motivo = case when t.posicion is distinct from a.posicion then 'rotacion'
+                                when t.minimo is null then 'sin_datos'
+                                when t.minimo < t.umbral_retiro then 'reemplazada'
+                                else 'recuperada' end,
+         mm_actual = coalesce(t.minimo, a.mm_actual), vehiculo_id = t.vehiculo_id
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo in ('direccion_aviso', 'direccion_limite')
+     and a.estado <> 'resuelta'
+     and (t.posicion is distinct from a.posicion or t.rol_eje is distinct from 'direccion'
+          or t.minimo is null or t.minimo < t.umbral_retiro or t.minimo > t.dir_aviso + t.hist);
+
+  -- 3b. Cambio de nivel en la misma fila. Cualquier cambio de nivel la deja abierta y sin reconocer.
+  update public.alertas a
+     set tipo = case when a.tipo = 'direccion_aviso' then 'direccion_limite' else 'direccion_aviso' end,
+         umbral_mm = case when a.tipo = 'direccion_aviso' then t.dir_limite else t.dir_aviso end,
+         estado = 'abierta', abierta_at = v_now, reconocida_at = null, reconocida_por = null, nota_reconocida = null,
+         silenciada_hasta = null, silencio_motivo = null, silenciada_por = null,
+         mm_actual = t.minimo, mm_minimo = least(a.mm_minimo, t.minimo), idneumatico = t.idneumatico,
+         ultima_medicion_at = t.ultima_medicion_at, updated_at = v_now
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.estado <> 'resuelta'
+     and ((a.tipo = 'direccion_aviso' and t.minimo < t.dir_limite)
+          or (a.tipo = 'direccion_limite' and t.minimo >= t.dir_limite + t.hist));
+
+  -- 3c. Dirección que sigue abierta: huella, umbral vigente y vehículo al día. La posición queda fija (D2).
+  update public.alertas a
+     set mm_actual = t.minimo, mm_minimo = least(a.mm_minimo, t.minimo),
+         umbral_mm = case when a.tipo = 'direccion_limite' then t.dir_limite else t.dir_aviso end,
+         vehiculo_id = t.vehiculo_id, idneumatico = t.idneumatico, ultima_medicion_at = t.ultima_medicion_at,
+         updated_at = v_now
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo in ('direccion_aviso', 'direccion_limite')
+     and a.estado <> 'resuelta';
+
+  -- 3d. Apertura: cubierta montada en eje de dirección con huella entre el retiro y el aviso (D3).
+  insert into public.alertas (cliente_id, vehiculo_id, neumatico_id, posicion, idneumatico, tipo, umbral_mm,
+                              mm_apertura, mm_minimo, mm_actual, ultima_medicion_at)
+  select p_cliente_id, t.vehiculo_id, t.neumatico_id, t.posicion, t.idneumatico,
+         case when t.estado_direccion = 'direccion_limite' then 'direccion_limite' else 'direccion_aviso' end,
+         case when t.estado_direccion = 'direccion_limite' then t.dir_limite else t.dir_aviso end,
+         t.minimo, t.minimo, t.minimo, t.ultima_medicion_at
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.montado and not t.auxilio and t.posicion is not null and t.estado_direccion is not null
+     and not exists (select 1 from public.alertas x
+                      where x.neumatico_id = t.neumatico_id and x.tipo in ('direccion_aviso', 'direccion_limite')
+                        and x.estado <> 'resuelta')
+  on conflict (neumatico_id, tipo) where estado <> 'resuelta' do nothing;
+
+  -- 4. Irregular (D7): diferencia de huellas redondeada a 0,1 mm, sin histéresis. Sigue la posición actual.
+  update public.alertas a
+     set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
+         resuelta_motivo = case when t.auxilio or t.dif is null then 'sin_datos' else 'recuperada' end,
+         mm_actual = coalesce(t.dif, a.mm_actual), vehiculo_id = t.vehiculo_id, posicion = t.posicion
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo = 'irregular'
+     and a.estado <> 'resuelta'
+     and (t.auxilio or t.dif is null or t.dif < t.irr_mm);
+
+  update public.alertas a
+     set mm_actual = t.dif, mm_minimo = t.dif, umbral_mm = t.irr_mm, posicion = t.posicion,
+         vehiculo_id = t.vehiculo_id, idneumatico = t.idneumatico, ultima_medicion_at = t.ultima_medicion_at,
+         updated_at = v_now
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo = 'irregular'
+     and a.estado <> 'resuelta';
+
+  insert into public.alertas (cliente_id, vehiculo_id, neumatico_id, posicion, idneumatico, tipo, umbral_mm,
+                              mm_apertura, mm_minimo, mm_actual, ultima_medicion_at)
+  select p_cliente_id, t.vehiculo_id, t.neumatico_id, t.posicion, t.idneumatico, 'irregular', t.irr_mm,
+         t.dif, t.dif, t.dif, t.ultima_medicion_at
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.montado and not t.auxilio and t.posicion is not null
+     and t.dif is not null and t.dif >= t.irr_mm
+     and not exists (select 1 from public.alertas x
+                      where x.neumatico_id = t.neumatico_id and x.tipo = 'irregular' and x.estado <> 'resuelta')
+  on conflict (neumatico_id, tipo) where estado <> 'resuelta' do nothing;
+
+  -- 5. Swap (D1): primera rotación de una cubierta de vida 0, a partir de swap_km del tramo abierto. Sin
+  --    rotación después del montaje. El cierre es por rotación (cambio de posición o rotación registrada); si no,
+  --    sin_datos cuando deja de cumplirse la apertura.
+  update public.alertas a
+     set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
+         resuelta_motivo = case when t.posicion is distinct from a.posicion or t.rota then 'rotacion' else 'sin_datos' end,
+         km_actual = coalesce(t.km, a.km_actual), vehiculo_id = t.vehiculo_id
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo = 'swap'
+     and a.estado <> 'resuelta'
+     and (t.posicion is distinct from a.posicion or t.rota or t.km is null or t.km < t.swap_km
+          or t.vida is distinct from 0 or t.auxilio or not t.montado);
+
+  update public.alertas a
+     set km_actual = t.km, umbral_km = t.swap_km, vehiculo_id = t.vehiculo_id, updated_at = v_now
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.neumatico_id = a.neumatico_id
+     and a.tipo = 'swap'
+     and a.estado <> 'resuelta';
+
+  insert into public.alertas (cliente_id, vehiculo_id, neumatico_id, posicion, idneumatico, tipo, km_actual, umbral_km,
+                              ultima_medicion_at)
+  select p_cliente_id, t.vehiculo_id, t.neumatico_id, t.posicion, t.idneumatico, 'swap', t.km, t.swap_km,
+         t.ultima_medicion_at
+    from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
+   where t.montado and t.vida = 0 and not t.auxilio and t.posicion is not null and not t.rota
+     and t.km is not null and t.km >= t.swap_km
+     and not exists (select 1 from public.alertas x
+                      where x.neumatico_id = t.neumatico_id and x.tipo = 'swap' and x.estado <> 'resuelta')
+  on conflict (neumatico_id, tipo) where estado <> 'resuelta' do nothing;
+end
+$$;
+revoke all on function public.alerta_sincronizar(bigint, bigint[]) from public, anon, authenticated;
+
+-- Triggers. Los de neumaticos y vehiculos son diferidos: se evalúan al cerrar la transacción, cuando ya existen los
+-- eventos de la misma operación. neumatico_rotar cambia la posición antes de insertar el evento de rotación; con un
+-- trigger inmediato, el sync abriría un swap que esa rotación debe impedir. Los tests que leen alertas dentro de la
+-- misma transacción fijan set constraints all immediate.
+drop trigger if exists trg_alerta_neumaticos_ins on public.neumaticos;
+create constraint trigger trg_alerta_neumaticos_ins after insert on public.neumaticos
+  deferrable initially deferred for each row execute function public.trg_alerta_neumaticos();
+drop trigger if exists trg_alerta_neumaticos_upd on public.neumaticos;
+create constraint trigger trg_alerta_neumaticos_upd after update of estado, posicion, vehiculo_id, idneumatico, vida
+  on public.neumaticos deferrable initially deferred for each row execute function public.trg_alerta_neumaticos();
+
+create or replace function public.trg_alerta_vehiculos()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  begin
+    -- Cambio de distribución u odómetro: solo las cubiertas de ese vehículo.
+    perform public.alerta_sincronizar(new.cliente_id,
+                                      array(select n.id from public.neumaticos n where n.vehiculo_id = new.id));
+  exception when others then
+    raise warning 'alerta_sincronizar (vehiculos): % [%]', sqlerrm, sqlstate;
+  end;
+  return null;
+end
+$$;
+revoke all on function public.trg_alerta_vehiculos() from public, anon, authenticated;
+drop trigger if exists trg_alerta_vehiculos on public.vehiculos;
+create constraint trigger trg_alerta_vehiculos after update of distribucion, odometro_km on public.vehiculos
+  deferrable initially deferred for each row execute function public.trg_alerta_vehiculos();
+
+drop trigger if exists trg_alerta_clientes on public.clientes;
+create trigger trg_alerta_clientes after update of umbral_critico_mm, umbral_retiro_mm, alerta_histeresis_mm,
+  irregularidad_mm, direccion_aviso_mm, direccion_limite_mm, swap_km on public.clientes
+  for each row
+  when (old.umbral_critico_mm is distinct from new.umbral_critico_mm
+        or old.umbral_retiro_mm is distinct from new.umbral_retiro_mm
+        or old.alerta_histeresis_mm is distinct from new.alerta_histeresis_mm
+        or old.irregularidad_mm is distinct from new.irregularidad_mm
+        or old.direccion_aviso_mm is distinct from new.direccion_aviso_mm
+        or old.direccion_limite_mm is distinct from new.direccion_limite_mm
+        or old.swap_km is distinct from new.swap_km)
+  execute function public.trg_alerta_clientes();
 
 -- Base: copia de 20261120500000_cerrar_escrituras_neumet.sql:242-337. La ola 2 agrega dirección y swap, con firma nueva.
 -- create or replace no cambia una firma: hay que quitar la de ocho argumentos. Los tres parámetros nuevos van al final y
@@ -656,7 +911,7 @@ left join (select cliente_id,
 left join (select cliente_id,
                   count(*) filter (where severidad = 1) as sev1,
                   count(*) filter (where severidad = 2) as sev2,
-                  count(*) filter (where severidad = 3) as sev3
+                  count(*) filter (where severidad = 3 and tipo = 'limite') as sev3
            from public.v_alertas group by cliente_id) a on a.cliente_id = c.id
 left join (select cliente_id, max(created_at) as ultima_medicion_at
            from public.mediciones where cliente_id is not null group by cliente_id) mm
@@ -666,16 +921,33 @@ where c.deleted_at is null;
 revoke all on public.v_resumen_flota_cliente from authenticated, public, anon;
 grant select on public.v_resumen_flota_cliente to authenticated;
 
--- Copia de 20261125500000_auxilio_sin_alerta.sql:128-146
+-- Copia de 20261125500000_auxilio_sin_alerta.sql:128-146; la ola 2 cambia severidad y mensaje, y agrega columnas al final.
+-- Contrato 7: mismas columnas y orden, más color, km_actual y umbral_km al final. Severidad 3 solo para el límite
+-- (rojo); el resto es 2 (amarillo). En swap el valor es el km; en los demás, la huella en mm.
 create or replace view public.v_alertas
 with (security_invoker = true) as
 select a.cliente_id, a.vehiculo_id, v.nombre as vehiculo_nombre, v.patente, a.posicion, a.neumatico_id, a.idneumatico,
-       a.tipo, 3 as severidad, a.mm_actual::numeric as valor,
-       format('Desgaste límite: %s mm (umbral %s mm)', replace(trim_scale(a.mm_actual)::text, '.', ','),
-              replace(trim_scale(a.umbral_mm)::text, '.', ',')) as mensaje,
+       a.tipo,
+       case when a.tipo = 'limite' then 3 else 2 end as severidad,
+       case when a.tipo = 'swap' then a.km_actual::numeric else a.mm_actual::numeric end as valor,
+       case a.tipo
+         when 'limite' then format('Desgaste límite: %s mm (umbral %s mm)',
+              replace(trim_scale(a.mm_actual)::text, '.', ','), replace(trim_scale(a.umbral_mm)::text, '.', ','))
+         when 'direccion_aviso' then format('Pasar a tracción o eje loco: %s mm (aviso %s mm)',
+              replace(trim_scale(a.mm_actual)::text, '.', ','), replace(trim_scale(a.umbral_mm)::text, '.', ','))
+         when 'direccion_limite' then format('Pasar a tracción o eje loco: %s mm (límite %s mm)',
+              replace(trim_scale(a.mm_actual)::text, '.', ','), replace(trim_scale(a.umbral_mm)::text, '.', ','))
+         when 'irregular' then format('Revisar la cubierta: %s mm de diferencia entre huellas (máximo %s mm)',
+              replace(trim_scale(a.mm_actual)::text, '.', ','), replace(trim_scale(a.umbral_mm)::text, '.', ','))
+         when 'swap' then format('Hacer el swap: %s km desde el montaje (swap a los %s km)',
+              replace(to_char(a.km_actual::numeric, 'FM999,999,999'), ',', '.'),
+              replace(to_char(a.umbral_km::numeric, 'FM999,999,999'), ',', '.'))
+       end as mensaje,
        a.ultima_medicion_at,
        a.id as alerta_id, a.estado, a.umbral_mm, a.mm_apertura, a.mm_minimo, a.abierta_at, a.reconocida_at,
-       a.silenciada_hasta, a.veces_reabierta
+       a.silenciada_hasta, a.veces_reabierta,
+       case when a.tipo = 'limite' then 'rojo' else 'amarillo' end as color,
+       a.km_actual, a.umbral_km
 from public.alertas a
 join public.vehiculos v on v.id = a.vehiculo_id
 left join public.neumaticos n on n.id = a.neumatico_id
@@ -686,3 +958,6 @@ where a.estado <> 'resuelta'
 
 revoke all on public.v_alertas from public, anon;
 grant select on public.v_alertas to authenticated;
+
+-- D6. Relleno al aplicar: evalúa toda la flota con las reglas nuevas (tipos, umbrales de dirección y swap).
+select public.alerta_sincronizar(c.id, null) from public.clientes c where c.deleted_at is null;

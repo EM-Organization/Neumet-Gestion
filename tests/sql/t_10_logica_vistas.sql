@@ -78,9 +78,11 @@ select test.eq('dif 2.1 => irregular (pos6)',
 select test.eq('irregularidad por cliente: B pos3 dif 1.3 > 1.0',
   (select desgaste_irregular from v_estado_neumaticos where vehiculo_id=3 and posicion=3), true);
 
--- Alertas por tipo (cliente A). Desde la migración 20261123000000 la única alerta es de
--- «desgaste límite» (< umbral_retiro_mm); en el fixture no hay neumáticos bajo 3 mm.
-select test.eq('A: no hay alertas de desgaste límite', (select count(*) from v_alertas where cliente_id=1), 0::bigint);
+-- Alertas (cliente A). Desde la ola 2 los triggers de neumaticos y vehiculos son diferidos: se fijan inmediatos
+-- antes de leer alertas en esta transacción. Este bloque mira el límite (tipo 'limite', < umbral_retiro_mm); en el
+-- fixture no hay neumáticos bajo 3 mm. Los demás tipos (irregular, dirección, swap) se miran más abajo.
+set constraints all immediate;
+select test.eq('A: no hay alertas de desgaste límite', (select count(*) from v_alertas where cliente_id=1 and tipo = 'limite'), 0::bigint);
 -- Indicadores de v_estado_neumaticos (no alertas)
 select test.eq('A: indicador poco desgaste (pos3)', (select posicion from v_estado_neumaticos where cliente_id=1 and estado='poco_desgaste'), 3::smallint);
 select test.eq('A: cruza el crítico pronto solo pos2 (3 sem); pos1 con 5 sem no',
@@ -97,10 +99,15 @@ select test.eq('A: sin_medir de pos7 sin días (nunca medido)',
   (select dias_desde_medicion from v_estado_neumaticos where cliente_id=1 and posicion=7 and vehiculo_id=1), null::integer);
 select test.eq('A: V2 pos2 (8 d) no figura sin medir',
   (select sin_medir from v_estado_neumaticos where vehiculo_id=2 and posicion=2), false);
-select test.eq('A: v_alertas vacío en el fixture',
-  (select array_agg(tipo || '/' || posicion) from v_alertas where cliente_id=1), null);
-select test.eq('B: v_alertas vacío en el fixture',
-  (select array_agg(tipo order by tipo) from v_alertas where cliente_id=2), null);
+select test.eq('A: sin alertas de límite en el fixture',
+  (select array_agg(tipo || '/' || posicion) from v_alertas where cliente_id=1 and tipo = 'limite'), null);
+select test.eq('B: sin alertas de límite en el fixture',
+  (select array_agg(tipo order by tipo) from v_alertas where cliente_id=2 and tipo = 'limite'), null);
+-- Alertas que no son de límite en A (D3, D7): dirección en pos2 (8,0 mm con aviso 8,0, inclusivo; sin distribución
+-- cargada, 1 y 2 son el eje delantero), y desparejo en pos5 (2,0 con umbral 2,0, D7) y pos6 (2,1).
+select test.eq('A: alertas que no son de límite', (select array_agg(tipo || '/' || posicion order by tipo, posicion) from v_alertas where cliente_id=1 and tipo <> 'limite'), array['direccion_aviso/2','irregular/5','irregular/6']);
+-- Alertas que no son de límite en B: dirección límite en pos2 (5,5 mm < 6,0 por defecto) y desparejo en pos3 (1,3 > 1,0).
+select test.eq('B: alertas que no son de límite', (select array_agg(tipo || '/' || posicion order by tipo, posicion) from v_alertas where cliente_id=2 and tipo <> 'limite'), array['direccion_limite/2','irregular/3']);
 select test.eq('alertas: mensaje no vacío y severidad 1..3',
   (select count(*) from v_alertas where mensaje is null or mensaje = '' or severidad not between 1 and 3), 0::bigint);
 
@@ -110,7 +117,8 @@ select test.eq('resumen A: nuevo/poco_desgaste/mayor_desgaste/desgaste_limite/de
   (select array[n_ok,n_bajo,n_mayor_desgaste,n_critico,n_sin_datos] from v_resumen_flota_cliente where cliente_id=1), array[8::bigint,1,1,0,1]);
 select test.eq('resumen A: con datos', (select n_neumaticos_con_datos from v_resumen_flota_cliente where cliente_id=1), 10::bigint);
 select test.eq('resumen A: alertas por severidad 1/2/3',
-  (select array[n_alertas_sev1,n_alertas_sev2,n_alertas_sev3] from v_resumen_flota_cliente where cliente_id=1), array[0::bigint,0,0]);
+  (select array[n_alertas_sev1,n_alertas_sev2,n_alertas_sev3] from v_resumen_flota_cliente where cliente_id=1), array[0::bigint,3,0]);
+-- Tres alertas amarillas (dirección en pos2 y desparejo en pos5 y pos6); ninguna roja: el rojo es solo el límite (D8).
 select test.eq('resumen B: nuevo/poco_desgaste/mayor_desgaste/desgaste_limite/desconocido',
   (select array[n_ok,n_bajo,n_mayor_desgaste,n_critico,n_sin_datos] from v_resumen_flota_cliente where cliente_id=2), array[1::bigint,1,1,0,0]);
 select test.eq('resumen A: última medición no nula',

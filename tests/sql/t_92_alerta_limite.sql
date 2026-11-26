@@ -37,16 +37,17 @@ returns bigint language sql as $$
   insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at)
   values (p_veh, p_cli, p_pos, p_idn, p_mm, p_mm, p_mm, now() - p_horas * interval '1 hour')
   returning id $$;
--- estado|mm_apertura|mm_minimo|mm_actual|veces_reabierta de la alerta no resuelta (o 'sin alerta')
+-- estado|mm_apertura|mm_minimo|mm_actual|veces_reabierta de la alerta de límite no resuelta (o 'sin alerta').
+-- Desde la ola 2 la dirección y el desparejo también abren alertas (otro tipo): los helpers miran solo 'limite'.
 create or replace function test.al91(p_idn text) returns text language sql stable as $$
   select coalesce((select a.estado || '|' || a.mm_apertura || '|' || a.mm_minimo || '|' || a.mm_actual || '|' || a.veces_reabierta
                      from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-                    where n.idneumatico = p_idn and a.estado <> 'resuelta'), 'sin alerta') $$;
+                    where n.idneumatico = p_idn and a.estado <> 'resuelta' and a.tipo = 'limite'), 'sin alerta') $$;
 create or replace function test.nal91(p_idn text) returns bigint language sql stable as $$
-  select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id where n.idneumatico = p_idn $$;
+  select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id where n.idneumatico = p_idn and a.tipo = 'limite' $$;
 create or replace function test.aid91(p_idn text) returns bigint language sql stable as $$
   select a.id from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-   where n.idneumatico = p_idn order by a.id desc limit 1 $$;
+   where n.idneumatico = p_idn and a.tipo = 'limite' order by a.id desc limit 1 $$;
 create or replace function test.costo91(p_sql text) returns numeric language plpgsql as $$
 declare j json;
 begin
@@ -61,7 +62,10 @@ grant execute on function test.med91(bigint, bigint, int, text, numeric, numeric
 -- ---------------------------------------------------------------------------------------------
 select test.eq('A: el relleno no creó alertas de prueba antes de medir', test.nal91('A91-1'), 0::bigint);
 select test.med91(911, 1, 1, 'A91-1', 100, 3.2);
-select test.eq('A: 3,2 mm con retiro 3,0 no abre alerta', test.al91('A91-1'), 'sin alerta');
+-- Con 3,2 mm, la posición 1 (dirección, umbral 6,0) abre «direccion_limite»; el límite (retiro 3,0) no abre.
+-- Se comprueba el tipo para que el filtro de límite no esconda una alerta de límite equivocada.
+select test.eq('A: 3,2 mm abre solo la alerta de dirección', (select string_agg(a.tipo, ',' order by a.tipo) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id where n.idneumatico = 'A91-1' and a.estado <> 'resuelta'), 'direccion_limite');
+select test.eq('A: 3,2 mm con retiro 3,0 no abre alerta de límite', test.al91('A91-1'), 'sin alerta');
 select test.med91(911, 1, 1, 'A91-1', 90, 2.8);
 select test.eq('A: 2,8 mm abre una alerta, con mm de apertura y mínimo', test.al91('A91-1'), 'abierta|2.80|2.80|2.80|0');
 select test.eq('A: la alerta guarda el umbral de retiro vigente y el vehículo',
@@ -72,7 +76,8 @@ select test.med91(911, 1, 1, 'A91-1', 70, 3.2);
 select test.eq('A: histéresis: 3,2 mm (entre 3,0 y 3,5) no resuelve', test.al91('A91-1'), 'abierta|2.80|2.50|3.20|0');
 select test.med91(911, 1, 1, 'A91-1', 60, 3.6);
 select test.eq('A: 3,6 mm (>= 3,5) resuelve como recuperada', test.al91('A91-1') || '|' || (select resuelta_motivo from public.alertas where id = test.aid91('A91-1')), 'sin alerta|recuperada');
-select test.eq('A: resuelta no figura en v_alertas', (select count(*) from public.v_alertas where idneumatico = 'A91-1'), 0::bigint);
+-- La dirección de la posición 1 (3,6 mm < 6,0) sigue abierta y sí figura: se mira solo el límite.
+select test.eq('A: la alerta de límite resuelta no figura en v_alertas', (select count(*) from public.v_alertas where idneumatico = 'A91-1' and tipo = 'limite'), 0::bigint);
 select test.med91(911, 1, 1, 'A91-1', 50, 2.9);
 select test.eq('A: cruce nuevo dentro de 7 días reabre la MISMA fila (veces_reabierta + 1)',
   test.al91('A91-1') || '|' || test.nal91('A91-1'), 'abierta|2.90|2.90|2.90|1|1');
@@ -80,7 +85,7 @@ select test.eq('A: reabierta sin reconocimiento ni resolución previos',
   (select (reconocida_at is null and resuelta_at is null and resuelta_motivo is null)::text from public.alertas where id = test.aid91('A91-1')), 'true');
 select test.eq('A: dato no medido: A91-3 sin mediciones no genera alerta', test.nal91('A91-3'), 0::bigint);
 select test.eq('A: v_alertas expone alerta_id, estado y severidad crítica',
-  (select alerta_id || '|' || estado || '|' || severidad || '|' || mensaje from public.v_alertas where idneumatico = 'A91-1'),
+  (select alerta_id || '|' || estado || '|' || severidad || '|' || mensaje from public.v_alertas where idneumatico = 'A91-1' and tipo = 'limite'),
   test.aid91('A91-1') || '|abierta|3|Desgaste límite: 2,9 mm (umbral 3 mm)');
 
 -- Lote de la API: varias mediciones de varios neumáticos en UNA sentencia, una alerta por neumático.
@@ -106,19 +111,25 @@ select test.eq('A: invalidar todas las mediciones resuelve la alerta como sin_da
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_rotar(911::bigint, 1::smallint, 2::smallint, p_motivo_codigo => 'diferencia_huellas') as rot \gset
 reset role;
+-- Los cambios de posición y de estado del neumático llegan por el trigger diferido (al commit).
+-- En esta transacción de prueba se vacía la cola antes de leer las alertas y se vuelve al modo diferido.
+set constraints all immediate;
 select test.eq('B: rotar conserva las dos alertas (misma fila, nueva posición)',
   (select string_agg(n.idneumatico || '@' || a.posicion || '#' || a.estado, ',' order by n.idneumatico)
      from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-    where a.vehiculo_id = 911 and a.estado <> 'resuelta'), 'A91-1@2#abierta,A91-2@1#abierta');
+    where a.vehiculo_id = 911 and a.estado <> 'resuelta' and a.tipo = 'limite'), 'A91-1@2#abierta,A91-2@1#abierta');
+set constraints all deferred;
 select test.eq('B: rotar no abrió alertas nuevas', test.nal91('A91-1') || '|' || test.nal91('A91-2'), '1|1');
 select test.become('authenticated', test.u_cli_a());
 select public.neumatico_cambiar(911::bigint, 2::smallint, 'reparacion', 'Pinchazo', 1100, null, '{"marca":"N"}', p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba') as cam \gset
 select public.neumatico_cambiar(911::bigint, 1::smallint, 'baja', 'Corte lateral', 1100, null, '{"marca":"N"}', p_motivo_codigo => 'desgaste') as baj \gset
 reset role;
+set constraints all immediate;
 select test.eq('B: cambiar el neumático lo resuelve con motivo cambio (A91-1 estaba en pos 2)',
   (select resuelta_motivo from public.alertas where id = test.aid91('A91-1')), 'cambio');
 select test.eq('B: dar de baja lo resuelve con motivo baja (A91-2 estaba en pos 1)',
   (select resuelta_motivo from public.alertas where id = test.aid91('A91-2')), 'baja');
+set constraints all deferred;
 select test.eq('B: los neumáticos nuevos no heredan alerta',
   (select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
     where a.vehiculo_id = 911 and a.estado <> 'resuelta'), 0::bigint);
@@ -196,7 +207,7 @@ select test.med91(911, 1, 3, 'A91-3', 5, 2.0);
 select test.med91(913, 2, 1, 'A91-B1', 5, 3.0);
 select test.eq('D: alertas vivas de partida: Norte 1, Sur 1, B 1 (umbral de B 4,0)',
   (select count(*) filter (where vehiculo_id = 911) || '|' || count(*) filter (where vehiculo_id = 912) || '|' || count(*) filter (where vehiculo_id = 913)
-     from public.alertas where estado <> 'resuelta'), '1|1|1');
+     from public.alertas where estado <> 'resuelta' and tipo = 'limite'), '1|1|1');
 select test.aid91('A91-3') as a_n, test.aid91('A91-S1') as a_s, test.aid91('A91-B1') as a_b \gset
 
 select test.become('authenticated', test.u_c91n());
@@ -268,7 +279,7 @@ select test.eq('E: sucursal Norte ve la suya', (select count(*) from public.v_al
 select test.eq('E: sucursal Norte no ve la de Sur ni la de B', (select count(*) from public.alertas where id in (:a_s, :a_b)), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_c91s());
-select test.eq('E: sucursal Sur ve solo la suya', (select string_agg(idneumatico, ',') from public.v_alertas), 'A91-S1');
+select test.eq('E: sucursal Sur ve solo la suya', (select string_agg(idneumatico, ',') from public.v_alertas where tipo = 'limite'), 'A91-S1');
 reset role;
 select test.become('authenticated', test.u_cli_a());
 select test.eq('E: cliente global ve las de su cliente y ninguna ajena', (select count(*) from public.alertas where cliente_id <> 1), 0::bigint);
@@ -279,7 +290,7 @@ select test.denied('E: DELETE directo', $$delete from public.alertas$$);
 reset role;
 select test.become('authenticated', test.u_cli_b());
 select test.eq('E: otro cliente ve solo las suyas', (select count(*) from public.alertas where cliente_id <> 2), 0::bigint);
-select test.eq('E: otro cliente ve la suya', (select count(*) from public.v_alertas where vehiculo_id = 913), 1::bigint);
+select test.eq('E: otro cliente ve la suya', (select count(*) from public.v_alertas where vehiculo_id = 913 and tipo = 'limite'), 1::bigint);
 reset role;
 select test.become('authenticated', test.u_admin());
 select test.denied('E: ni el admin escribe directo (solo por RPC o triggers)', $$update public.alertas set nota_reconocida = 'x'$$);
@@ -332,13 +343,14 @@ select test.eq('F: v_alertas sigue con security_invoker',
 select test.eq('F: ningún neumático en desgaste límite queda sin alerta (toda la base de prueba)',
   (select count(*) from public.v_estado_neumaticos e
     where e.estado = 'desgaste_limite' and e.neumatico_id is not null
-      and not exists (select 1 from public.alertas a where a.neumatico_id = e.neumatico_id and a.estado <> 'resuelta')), 0::bigint);
+      and not exists (select 1 from public.alertas a where a.neumatico_id = e.neumatico_id and a.estado <> 'resuelta' and a.tipo = 'limite')), 0::bigint);
 select test.eq('F: ninguna alerta no resuelta con el neumático sano (>= umbral_retiro + histéresis)',
   (select count(*) from public.alertas a join public.v_estado_neumaticos e on e.neumatico_id = a.neumatico_id
     join public.clientes c on c.id = a.cliente_id
-    where a.estado <> 'resuelta' and e.promedio >= c.umbral_retiro_mm + c.alerta_histeresis_mm), 0::bigint);
-select test.eq('F: una sola alerta no resuelta por neumático (índice único parcial)',
-  (select count(*) from (select neumatico_id from public.alertas where estado <> 'resuelta' group by 1 having count(*) > 1) x), 0::bigint);
+    where a.estado <> 'resuelta' and a.tipo = 'limite' and e.promedio >= c.umbral_retiro_mm + c.alerta_histeresis_mm), 0::bigint);
+-- La unicidad es por (neumático, tipo): dirección y límite pueden estar abiertas a la vez.
+select test.eq('F: una sola alerta no resuelta por neumático y tipo (índice único parcial)',
+  (select count(*) from (select neumatico_id, tipo from public.alertas where estado <> 'resuelta' group by 1, 2 having count(*) > 1) x), 0::bigint);
 
 -- Planes: por debajo de jit_above_cost (100000) para que PG16 no compile con JIT.
 select test.become('authenticated', test.u_cli_a());
