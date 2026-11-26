@@ -153,25 +153,24 @@ export function bandasGrafico(th, max) {
   ];
 }
 
-// Dirección (RN-02, P-02): «Pasar atrás» a `direccion_aviso_mm` o menos; «Pasar atrás ya» bajo `direccion_limite_mm`. Los
-// umbrales son de cada empresa: sin ellos la fila no lleva etiqueta. Decide por la huella mínima (RN-01), igual que el
-// estado. No se mira el rol del eje: main todavía no lo expone.
+// Dirección (RN-02, P-02): la base decide el estado (`estado_direccion`) con los umbrales de cada empresa; aquí solo se
+// traduce. No se recalcula con umbrales: así la vista no puede discrepar de la base.
 export function etiquetaDireccion(fila) {
-  const aviso = num(fila && fila.direccion_aviso_mm), limite = num(fila && fila.direccion_limite_mm);
-  const mm = huellaMinima(fila);
-  if (aviso === null || limite === null || mm === null) return null;
-  if (mm < limite) return 'Pasar atrás ya';
-  if (mm <= aviso) return 'Pasar atrás';
+  const estado = fila && fila.estado_direccion;
+  if (estado === 'direccion_aviso') return 'Pasar atrás';
+  if (estado === 'direccion_limite') return 'Pasar atrás ya';
   return null;
 }
 
 // Leyenda del panel: cómo se decide el estado y, si hay filas de dirección, sus umbrales con coma decimal. Si las filas traen
-// umbrales distintos (varias empresas), no se nombra una cifra que no vale para todas.
+// umbrales distintos (varias empresas), no se nombra una cifra que no vale para todas. Solo cuentan las filas de dirección:
+// los umbrales de tracción son otros y no van en esta leyenda.
 const LEYENDA_ESTADO = 'Estado por la huella mínima de las tres.';
 export function leyendaDireccion(filas) {
   const pares = new Map();
   for (const f of filas || []) {
-    const aviso = num(f && f.direccion_aviso_mm), limite = num(f && f.direccion_limite_mm);
+    if (!f || f.rol_eje !== 'direccion') continue;
+    const aviso = num(f.direccion_aviso_mm), limite = num(f.direccion_limite_mm);
     if (aviso !== null && limite !== null) pares.set(`${aviso}|${limite}`, { aviso, limite });
   }
   if (pares.size === 0) return LEYENDA_ESTADO;
