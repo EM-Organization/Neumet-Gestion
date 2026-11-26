@@ -1,9 +1,9 @@
 // Tests de domain/umbrales.js (puro). Ejecutar: npm test
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { CAMPOS_UMBRAL, validarUmbrales, validarHisteresis, mensajeErrorUmbrales, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
+import { CAMPOS_UMBRAL, validarUmbrales, validarHisteresis, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
 
-const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
+const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '8', direccion_limite_mm: '6', swap_km: '20000' };
 
 describe('aNumero', () => {
   test('coma o punto', () => { assert.equal(aNumero('7,5'), 7.5); assert.equal(aNumero(' 7.5 '), 7.5); });
@@ -14,7 +14,7 @@ describe('validarUmbrales', () => {
   test('valores por defecto válidos', () => {
     const v = validarUmbrales(OK);
     assert.equal(v.ok, true);
-    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2 });
+    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, swap_km: 20000 });
   });
   test('acepta coma decimal', () => assert.equal(validarUmbrales({ ...OK, umbral_bajo_mm: '8,5' }).valores.umbral_bajo_mm, 8.5));
   test('exige descenso estricto: mayor desgaste < poco desgaste < nuevo', () => {
@@ -40,6 +40,13 @@ describe('validarUmbrales', () => {
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7,5' }).ok, false);
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7' }).ok, true);
   });
+  test('los mensajes de rango escriben 99,9 con coma, no 99.9', () => {
+    for (const raw of [{ direccion_aviso_mm: '100' }, { umbral_bajo_mm: '100' }]) {
+      const e = validarUmbrales({ ...OK, ...raw }).error;
+      assert.match(e, /99,9/);
+      assert.doesNotMatch(e, /99\.9/);
+    }
+  });
 });
 
 describe('histéresis', () => {
@@ -60,13 +67,61 @@ describe('histéresis', () => {
   });
 });
 
+describe('pasar atrás y swap (direccion_aviso_mm, direccion_limite_mm, swap_km)', () => {
+  test('valores válidos y en el objeto de valores', () => {
+    const v = validarUmbrales(OK);
+    assert.equal(v.valores.direccion_aviso_mm, 8);
+    assert.equal(v.valores.direccion_limite_mm, 6);
+    assert.equal(v.valores.swap_km, 20000);
+  });
+  test('pasar atrás ya bajo debe ser menor que pasar atrás desde', () => {
+    const igual = validarUmbrales({ ...OK, direccion_aviso_mm: '6', direccion_limite_mm: '6' });
+    assert.equal(igual.ok, false); assert.equal(igual.campo, 'direccion_limite_mm');
+    assert.match(igual.error, /debe ser menor que Pasar atrás desde/);
+    assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '5', direccion_limite_mm: '6' }).ok, false);
+  });
+  test('pasar atrás es mayor que 0 y hasta 99,9 con un decimal, como el check de la base', () => {
+    const cero = validarUmbrales({ ...OK, direccion_limite_mm: '0' });
+    assert.equal(cero.ok, false); assert.equal(cero.campo, 'direccion_limite_mm'); assert.match(cero.error, /mayor que 0/);
+    assert.equal(validarUmbrales({ ...OK, direccion_limite_mm: '0,1' }).ok, true);
+    const aviso0 = validarUmbrales({ ...OK, direccion_aviso_mm: '0' });
+    assert.equal(aviso0.ok, false); assert.equal(aviso0.campo, 'direccion_aviso_mm');
+    assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '99,9' }).ok, true);
+    assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '100' }).ok, false);
+    assert.equal(validarUmbrales({ ...OK, direccion_aviso_mm: '-1' }).ok, false);
+    const dec = validarUmbrales({ ...OK, direccion_aviso_mm: '8,25' });
+    assert.equal(dec.ok, false); assert.equal(dec.campo, 'direccion_aviso_mm'); assert.match(dec.error, /máximo un decimal/);
+  });
+  test('swap_km es entero entre 1000 y 200000', () => {
+    for (const s of ['999', '200001', '20000,5']) {
+      const v = validarUmbrales({ ...OK, swap_km: s });
+      assert.equal(v.ok, false, s); assert.equal(v.campo, 'swap_km');
+    }
+    assert.match(validarUmbrales({ ...OK, swap_km: '999' }).error, /entero entre 1000 y 200000/);
+    assert.equal(validarUmbrales({ ...OK, swap_km: '1000' }).ok, true);
+    assert.equal(validarUmbrales({ ...OK, swap_km: '200000' }).ok, true);
+    assert.equal(validarUmbrales({ ...OK, swap_km: '' }).campo, 'swap_km');
+  });
+  test('rótulos y ayudas de los tres campos; km_por_mm_revision no se muestra', () => {
+    const c = key => CAMPOS_UMBRAL.find(x => x.key === key);
+    assert.equal(c('direccion_aviso_mm').lbl, 'Pasar atrás desde (mm)');
+    assert.equal(c('direccion_aviso_mm').ayuda, 'Cubiertas de dirección con esta huella mínima o menos');
+    assert.equal(c('direccion_limite_mm').lbl, 'Pasar atrás ya bajo (mm)');
+    assert.equal(c('direccion_limite_mm').ayuda, 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya');
+    assert.equal(c('swap_km').lbl, 'Swap a los (km)');
+    assert.equal(c('swap_km').ayuda, 'Primera rotación de una cubierta nueva');
+    assert.equal(CAMPOS_UMBRAL.some(x => x.key === 'km_por_mm_revision'), false);
+  });
+});
+
 describe('textos y orden de los campos (docs/14)', () => {
   test('de mayor a menor: bajo, crítico, retiro; luego los demás ajustes', () => {
     assert.deepEqual(CAMPOS_UMBRAL.map(c => c.key).slice(0, 3), ['umbral_bajo_mm', 'umbral_critico_mm', 'umbral_retiro_mm']);
   });
   test('sin colores entre paréntesis, sin comillas rectas, sin «<» en lo que ve el operario', () => {
     const textos = CAMPOS_UMBRAL.flatMap(c => [c.lbl, c.ayuda])
-      .concat([validarUmbrales({ ...OK, umbral_critico_mm: '9' }).error, validarHisteresis('9').error]);
+      .concat([validarUmbrales({ ...OK, umbral_critico_mm: '9' }).error, validarHisteresis('9').error,
+        validarUmbrales({ ...OK, direccion_limite_mm: '9' }).error, validarUmbrales({ ...OK, swap_km: '999' }).error]);
     for (const t of textos) {
       assert.doesNotMatch(t, /\((naranja|rojo|amarillo|verde)\)/i, t);
       assert.doesNotMatch(t, /"/, t);
@@ -81,6 +136,7 @@ describe('textos y orden de los campos (docs/14)', () => {
     assert.match(c.ayuda, /Indicador/);
   });
   test('rótulos de umbrales orientados a categorías, sin nombres técnicos viejos', () => {
+    // Solo los umbrales en mm: los de dirección y swap no entran (su rótulo «Pasar atrás ya bajo» contiene «bajo»; se prueba aparte).
     const labels = CAMPOS_UMBRAL.filter(c => c.mm).map(c => c.lbl);
     for (const t of labels) {
       assert.doesNotMatch(t, /\b(bajo|crítico|critico|retiro)\b/i, t);
@@ -89,16 +145,6 @@ describe('textos y orden de los campos (docs/14)', () => {
     assert.ok(labels.some(t => /Poco desgaste/.test(t)));
     assert.ok(labels.some(t => /Mayor desgaste/.test(t)));
   });
-});
-
-describe('mensajeErrorUmbrales', () => {
-  test('check_violation muestra el detalle de la BD', () => {
-    const m = mensajeErrorUmbrales({ code: '23514', message: 'new row for relation "clientes" violates check constraint "clientes_umbrales_orden"' });
-    assert.match(m, /no son válidos/); assert.match(m, /clientes_umbrales_orden/); assert.doesNotMatch(m, /</);
-  });
-  test('permisos', () => assert.match(mensajeErrorUmbrales({ code: '42501', message: 'permission denied' }), /permiso/));
-  test('otro error conserva el mensaje', () => assert.match(mensajeErrorUmbrales({ message: 'timeout' }), /timeout/));
-  test('sin mensaje', () => assert.equal(mensajeErrorUmbrales(null), 'No se pudieron guardar los umbrales'));
 });
 
 describe('resumenFlota', () => {

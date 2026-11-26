@@ -130,18 +130,32 @@ describe('unevenWear (CA-06: umbral del cliente y criterio de la base)', () => {
   test('el umbral por defecto es el de la base: 2,0 mm', () => {
     assert.equal(IRREGULARIDAD_MM_DEFECTO, 2);
   });
-  test('9 / 10 / 11 con umbral 2,0 no es desparejo: la diferencia tiene que superarlo', () => {
-    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, 2), null);
+  test('9 / 10 / 11 con umbral 2,0 es desparejo: 2,0 mm o más (RN-06), lado interno', () => {
+    assert.deepEqual(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, 2), { diff: 2, side: 'interno' });
+  });
+  test('1,9 mm no llega al umbral de 2,0', () => {
+    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 10.9 }, 2), null);
+  });
+  test('la diferencia se muestra con un decimal como la base: 2,04 pasa a 2,0', () => {
+    assert.deepEqual(unevenWear({ mm1: 9, mm2: 10, mm3: 11.04 }, 2), { diff: 2, side: 'interno' });
+  });
+  test('9,96 − 8 (1,96) redondea a 2,0 y es desparejo; 9,94 − 8 (1,94) redondea a 1,9 y no', () => {
+    assert.deepEqual(unevenWear({ mm1: 8, mm2: 9, mm3: 9.96 }, 2), { diff: 2, side: 'interno' });
+    assert.equal(unevenWear({ mm1: 8, mm2: 9, mm3: 9.94 }, 2), null);
+  });
+  test('8,7 − 6,7 da 1,9999999999999991 en coma flotante y cuenta como 2,0', () => {
+    assert.deepEqual(unevenWear({ mm1: 6.7, mm2: 7, mm3: 8.7 }, 2), { diff: 2, side: 'interno' });
   });
   test('9 / 10 / 11,1 sí es desparejo, con el lado interno (el más desgastado es mm1)', () => {
     const r = unevenWear({ mm1: 9, mm2: 10, mm3: 11.1 }, 2);
     close(r.diff, 2.1); assert.equal(r.side, 'interno');
   });
-  test('4,03 / 3 / 2,03 no es desparejo: en coma flotante 4,03 − 2,03 da 2,0000000000000004 y no debe contar', () => {
-    assert.equal(unevenWear({ mm1: 4.03, mm2: 3, mm3: 2.03 }, 2), null);
+  test('4,03 / 3 / 2,03 es desparejo de 2,0 exactos: en coma flotante 4,03 − 2,03 da 2,0000000000000004 y el resultado sale limpio', () => {
+    assert.deepEqual(unevenWear({ mm1: 4.03, mm2: 3, mm3: 2.03 }, 2), { diff: 2, side: 'externo' });
   });
-  test('sin umbral del cliente (no se pudo leer) usa el de la base', () => {
-    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, null), null);
+  test('sin umbral del cliente (no se pudo leer) usa el de la base: 2,0 mm', () => {
+    assert.deepEqual(unevenWear({ mm1: 9, mm2: 10, mm3: 11 }, null), { diff: 2, side: 'interno' });
+    assert.equal(unevenWear({ mm1: 9, mm2: 10, mm3: 10.9 }, null), null);
     close(unevenWear({ mm1: 9, mm2: 10, mm3: 11.1 }, null).diff, 2.1);
   });
   test('el umbral lo fija el cliente: 3 mm no alcanzan con 4 y sí con 2,5', () => {
@@ -168,6 +182,20 @@ describe('unevenWear (CA-06: umbral del cliente y criterio de la base)', () => {
     const r = unevenWear({ mm1: 6, mm2: null, mm3: 9 }, 2);
     close(r.diff, 3); assert.equal(r.side, 'interno');
     assert.equal(unevenWear({ mm1: 9, mm2: null, mm3: 9 }, 2), null);
+  });
+});
+
+describe('unevenWear sin mm1 o mm3: lo dice la fila de estado (desgaste_irregular)', () => {
+  const sinInterno = { mm1: null, mm2: 10, mm3: 7 };
+  test('con la marca de la vista: la diferencia que calculó la vista y sin lado', () => {
+    assert.deepEqual(unevenWear({ ...sinInterno, desgaste_irregular: true, diferencia_huellas_mm: 3 }, 2), { diff: 3, side: null });
+  });
+  test('sin marca o con la marca en falso: null', () => {
+    assert.equal(unevenWear(sinInterno, 2), null);
+    assert.equal(unevenWear({ ...sinInterno, desgaste_irregular: false, diferencia_huellas_mm: 3 }, 2), null);
+  });
+  test('sin mm3 también cuenta con la marca', () => {
+    assert.deepEqual(unevenWear({ mm1: 10, mm2: 9, mm3: null, desgaste_irregular: true, diferencia_huellas_mm: 2 }, 2), { diff: 2, side: null });
   });
 });
 
@@ -206,7 +234,16 @@ describe('analyzeTire', () => {
     assert.equal(analyzeTire([row(6, 7, 9)], 4).unevenWear, undefined);
     assert.equal(analyzeTire([row(6, 7, 9)], 2).unevenWear, 3);
   });
-  test('CA-06 en el análisis: 9 / 10 / 11 no avisa con el umbral de 2,0', () => {
-    assert.equal(analyzeTire([row(9, 10, 11)], 2).unevenWear, undefined);
+  test('CA-06 en el análisis: 9 / 10 / 11 avisa con el umbral de 2,0, lado interno', () => {
+    const a = analyzeTire([row(9, 10, 11)], 2);
+    assert.equal(a.unevenWear, 2); assert.equal(a.unevenSide, 'interno');
+  });
+  test('sin mm1, el aviso sale de la fila de estado y no dice el lado', () => {
+    const estado = { mm1: null, mm2: 10, mm3: 7, desgaste_irregular: true, diferencia_huellas_mm: 3 };
+    const a = analyzeTire([row(null, 10, 7)], 2, estado);
+    assert.equal(a.unevenWear, 3); assert.equal(a.unevenSide, null);
+  });
+  test('sin mm1 y sin fila de estado no hay aviso, como antes', () => {
+    assert.equal(analyzeTire([row(null, 10, 7)], 2).unevenWear, undefined);
   });
 });

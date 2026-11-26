@@ -42,7 +42,7 @@ async function cargarIrregularidad(clienteId){
 function mRenderAnalysis(pos){
   const block = document.getElementById('med-analysis-block');
   const cards = document.getElementById('med-analysis-cards');
-  const a = analyzeTire(med.tireData[pos], irregularidadMm);
+  const a = analyzeTire(med.tireData[pos], irregularidadMm, med.estado?.[pos]);
 
   if(!a){ block.style.display='none'; return; }
 
@@ -82,7 +82,7 @@ function mRenderAnalysis(pos){
       <div class="analysis-card warn">
         <div class="ac-label">Desgaste desparejo</div>
         <div class="ac-value warn">${fmtNum(a.unevenWear,1)} mm</div>
-        <div class="ac-sub">Mayor desgaste en el lado ${a.unevenSide}. Revisar alineación o presión.</div>
+        <div class="ac-sub">${a.unevenSide ? `Mayor desgaste en el lado ${a.unevenSide}. Revisar alineación o presión.` : 'Diferencia entre huellas. Revisar alineación o presión.'}</div>
       </div>`);
   }
 
@@ -122,7 +122,7 @@ export async function medInit(){
   document.getElementById('med-empty').style.display='flex';
   document.getElementById('med-tire-detail').style.display='none';
   document.getElementById('med-loading').style.display='none';
-  med.tireData={}; med.selPos=null; med.selDevice=null; med.selSession=null;
+  med.tireData={}; med.estado={}; med.selPos=null; med.selDevice=null; med.selSession=null;
   const activeMode=document.querySelector('.med-tab.active')?.dataset?.mode||'vehiculo';
   medSwitchMode(activeMode);
 }
@@ -161,7 +161,7 @@ export function init(){
     document.getElementById('med-loading').style.display='flex';
     document.getElementById('med-empty').style.display='none';
     document.getElementById('med-tire-detail').style.display='none';
-    med.tireData={}; med.selPos=null;
+    med.tireData={}; med.estado={}; med.selPos=null;
     // El umbral es del cliente del vehículo: en modo cliente, el propio; en el equipo Neumet, el del selector.
     await cargarIrregularidad(isClienteMode() ? currentClienteId : parseInt(document.getElementById('med-cliente-select').value));
     // Historial del neumático MONTADO en cada posición (v_mediciones_neumatico): tras un cambio no hereda
@@ -169,6 +169,10 @@ export function init(){
     const {data,error}=await db.from('v_mediciones_neumatico').select('posicion_actual,mm1,mm2,mm3,promedio,created_at,idneumatico')
       .eq('vehiculo_id',vid).eq('estado_montaje','montado').order('created_at',{ascending:true}).order('medicion_id',{ascending:true});
     if(error){ showToast(userError(error),true); document.getElementById('med-loading').style.display='none'; return; }
+    // Estado por posición (v_estado_neumaticos): cuando falta mm1 o mm3 el historial no alcanza a dar el desparejo, y la base sí.
+    const {data:estados,error:errEstado}=await db.from('v_estado_neumaticos').select('posicion,mm1,mm2,mm3,desgaste_irregular,diferencia_huellas_mm').eq('vehiculo_id',vid);
+    if(errEstado){ showToast(userError(errEstado),true); document.getElementById('med-loading').style.display='none'; return; }
+    (estados||[]).forEach(e=>{ med.estado[parseInt(e.posicion)]=e; });
     // Agrupar historial por posición actual (últimas 10 lecturas por rueda)
     const grp={};
     (data||[]).forEach(r=>{ const p=parseInt(r.posicion_actual); if(!grp[p]) grp[p]=[]; grp[p].push(r); });
