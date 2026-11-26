@@ -59,9 +59,10 @@ select test.eq('borde 3 mm: mínimo 3,0 => mayor desgaste (retiro es < 3, no <= 
   (select estado from public.v_estado_neumaticos where idneumatico = 'HM-B3'), 'mayor_desgaste');
 select test.eq('borde 3 mm: mínimo 2,99 => desgaste límite',
   (select estado from public.v_estado_neumaticos where idneumatico = 'HM-B3E'), 'desgaste_limite');
-select test.eq('borde 3 mm: 3,0 no abre alerta; 2,99 sí',
+-- Solo el límite: con huellas de 3,0 u 2,99 y 8 en las otras dos, la diferencia (5 mm) también abre «irregular» (default 2 mm).
+select test.eq('borde 3 mm: 3,0 no abre alerta de límite; 2,99 sí',
   (select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-    where n.idneumatico in ('HM-B3', 'HM-B3E') and a.estado <> 'resuelta'), 1::bigint);
+    where n.idneumatico in ('HM-B3', 'HM-B3E') and a.estado <> 'resuelta' and a.tipo = 'limite'), 1::bigint);
 
 -- Bordes en 8 mm (bueno): 8,0 exacto es nuevo; 7,9 es poco desgaste.
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values
@@ -97,11 +98,11 @@ insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, m
   (10301, 1, 3, 'HM-CA1', 3.2, 4.5, 4.5, now() - interval '1 hour');
 select test.eq('histéresis: con mínimo 3,2 la alerta sigue abierta',
   (select count(*) from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-    where n.idneumatico = 'HM-CA1' and a.estado <> 'resuelta'), 1::bigint);
+    where n.idneumatico = 'HM-CA1' and a.estado <> 'resuelta' and a.tipo = 'limite'), 1::bigint);
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values
   (10301, 1, 3, 'HM-CA1', 3.6, 4.5, 4.5, now());
 select test.eq('histéresis: con mínimo 3,6 (>= 3,5) la alerta se resuelve por recuperación',
   (select a.resuelta_motivo from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
-    where n.idneumatico = 'HM-CA1' order by a.id desc limit 1), 'recuperada');
+    where n.idneumatico = 'HM-CA1' and a.tipo = 'limite' order by a.id desc limit 1), 'recuperada');
 
 rollback;

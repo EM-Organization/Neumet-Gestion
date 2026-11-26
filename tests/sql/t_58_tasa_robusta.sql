@@ -221,17 +221,24 @@ select test.eq('mismas filas (vehículo, posición) en la vista nueva y la anter
      (select vehiculo_id, posicion from public.v_estado_neumaticos except select vehiculo_id, posicion from pg_temp.v_estado_old)
      union all
      (select vehiculo_id, posicion from pg_temp.v_estado_old except select vehiculo_id, posicion from public.v_estado_neumaticos)) d), 0::bigint);
-select test.eq('todas las columnas salvo estado y la tasa y sus derivadas son idénticas a las de la vista anterior',
+select test.eq('todas las columnas salvo estado, la tasa, sus derivadas y desgaste_irregular (D7) son idénticas a las de la vista anterior',
   (select count(*) from public.v_estado_neumaticos n join pg_temp.v_estado_old o using (vehiculo_id, posicion)
     where (n.cliente_id, n.vehiculo_nombre, n.patente, n.neumatico_id, n.idneumatico, n.marca, n.modelo, n.vida, n.estado_montaje,
            n.mm1, n.mm2, n.mm3, n.promedio, n.odometro_km, n.ultima_medicion_at, n.dias_desde_medicion, n.sin_medir,
-           n.diferencia_huellas_mm, n.desgaste_irregular, n.n_mediciones_90d,
+           n.diferencia_huellas_mm, n.n_mediciones_90d,
            n.umbral_bajo_mm, n.umbral_critico_mm, n.umbral_retiro_mm, n.dias_sin_medir_alerta)
       is distinct from
           (o.cliente_id, o.vehiculo_nombre, o.patente, o.neumatico_id, o.idneumatico, o.marca, o.modelo, o.vida, o.estado_montaje,
            o.mm1, o.mm2, o.mm3, o.promedio, o.odometro_km, o.ultima_medicion_at, o.dias_desde_medicion, o.sin_medir,
-           o.diferencia_huellas_mm, o.desgaste_irregular, o.n_mediciones_90d,
+           o.diferencia_huellas_mm, o.n_mediciones_90d,
            o.umbral_bajo_mm, o.umbral_critico_mm, o.umbral_retiro_mm, o.dias_sin_medir_alerta)), 0::bigint);
+
+-- desgaste_irregular cambia en la ola 2 (D7): base >= sobre la diferencia redondeada a 0,1 mm. Se compara con la fórmula,
+-- no con la vista anterior.
+select test.eq('desgaste_irregular: diferencia redondeada a 0,1 mm y umbral inclusivo en todas las filas',
+  (select count(*) from public.v_estado_neumaticos n join public.clientes c on c.id = n.cliente_id
+    where n.desgaste_irregular is distinct from
+          coalesce(round(greatest(n.mm1, n.mm2, n.mm3) - least(n.mm1, n.mm2, n.mm3), 1) >= c.irregularidad_mm, false)), 0::bigint);
 
 -- Oráculo independiente de la tasa: v_mediciones_neumatico (sin cambios) + eventos de reinicio.
 create temp table _oraculo as
