@@ -22,7 +22,7 @@ import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, resumenPosiciones, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 import { textoAvisoInicio } from '../domain/calidad.js';
-import { sinReconocer } from '../domain/alertas.js';
+import { sinReconocer, textoRecuadro } from '../domain/alertas.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -93,8 +93,10 @@ function bloqueResumen(rs, ult) {
 function bloqueAtencion(at, alertas, porVeh) {
   const nAlertas = alertas.length;
   const nuevas = sinReconocer(alertas);
+  const recuadro = textoRecuadro(alertas);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
+    ${recuadro ? html`<p class="inicio-linea">${recuadro}</p>` : ''}
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}

@@ -90,6 +90,11 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   var qs = fx.queries.join(',');
   log.push('flota-consultas='+qs);
   if(qs.indexOf('v_estado_neumaticos') === -1 || qs.indexOf('v_alertas') === -1 || qs.indexOf('v_resumen_flota_cliente') === -1) fail('flota: no consulto las vistas SQL');
+  // Recuadro de Inicio con estas alertas: tres sin silenciar (dos abiertas y una reconocida) y una silenciada, que no cuenta.
+  if(!nav('inicio')) return;
+  await sleep(700);
+  var inicioTxt = $('#inicio-contenido').textContent.replace(/\s+/g, ' ');
+  if(!/× 3 cambiar · ◆ 0 revisar/.test(inicioTxt)) fail('inicio (flota): falta el recuadro «× 3 cambiar · ◆ 0 revisar» (la silenciada no cuenta): ' + inicioTxt.slice(0, 200));
 };
 
 
