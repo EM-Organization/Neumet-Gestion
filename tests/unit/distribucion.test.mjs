@@ -2,7 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DISTRIBUCIONES, OTRA_DISTRIBUCION, buscarDistribucion, tipoRuedasDe, detalleEjes, etiquetaDistribucion, textoOpcion, textoRuedas, tipoLayout, distribucionActual, validarCambioDistribucion, traducirErrorDistribucion,
+  DISTRIBUCIONES, OTRA_DISTRIBUCION, buscarDistribucion, tipoRuedasDe, detalleEjes, etiquetaDistribucion, textoOpcion, textoRuedas, tipoLayout, distribucionActual, validarCambioDistribucion, traducirErrorDistribucion, SERVICIOS, validarCambioServicio, traducirErrorServicio,
 } from '../../assets/js/domain/distribucion.js';
 
 const leer = ruta => readFileSync(new URL(ruta, import.meta.url), 'utf8');
@@ -84,5 +84,20 @@ describe('cambiar la distribución de un vehículo', () => {
     const m = 'la distribución tiene 10 ruedas y hay neumáticos montados en las posiciones 11: retirarlos o elegir otra distribución';
     assert.match(traducirErrorDistribucion({ code: '23514', message: m }), /^La distribución tiene 10 ruedas .*posiciones 11/);
     assert.equal(traducirErrorDistribucion({ code: '42501' }), 'Sin permiso para cambiar este vehículo');
+  });
+});
+
+describe('cambiar el servicio del vehículo (bus o camión)', () => {
+  test('validarCambioServicio: camión o bus; «Sin definir» se guarda como null', () => {
+    assert.deepEqual(SERVICIOS, ['camion', 'bus']);
+    assert.deepEqual(validarCambioServicio({ vehiculoId: 1, servicio: 'bus' }).params, { p_vehiculo_id: 1, p_servicio: 'bus' });
+    assert.deepEqual(validarCambioServicio({ vehiculoId: 1, servicio: '' }).params, { p_vehiculo_id: 1, p_servicio: null });
+    assert.equal(validarCambioServicio({ vehiculoId: 1, servicio: 'camión' }).ok, false);
+    assert.equal(validarCambioServicio({ vehiculoId: null, servicio: 'bus' }).ok, false);
+  });
+  test('traducirErrorServicio: sin permiso, valor no válido y, por defecto, reintentar (sin texto crudo)', () => {
+    assert.equal(traducirErrorServicio({ code: '42501' }), 'Sin permiso para cambiar el servicio de este vehículo');
+    assert.equal(traducirErrorServicio({ code: '23514' }), 'El servicio no es válido. Elegir camión o bus');
+    assert.equal(traducirErrorServicio({ code: '08006', message: 'connection failure' }), 'No se pudo guardar el servicio. Reintentar');
   });
 });

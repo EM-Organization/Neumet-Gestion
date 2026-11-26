@@ -49,8 +49,8 @@ export function textoRuedas(vehiculo) {
 // si no («Otra» o sin definir), el tipo_ruedas de siempre.
 export const tipoLayout = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : v ? v.tipo_ruedas : null);
 
-// Valor que se preselecciona al cambiar la distribución de un vehículo: la actual si es del catálogo; si no, ninguna (el
-// operario elige, no se le propone «Otra» por él).
+// Valor del catálogo que se preselecciona: la distribución actual si es del catálogo; si no, ''. El diálogo convierte ''
+// en «Otra» para que guardar solo el servicio no obligue a elegir una distribución.
 export const distribucionActual = v => (v && buscarDistribucion(v.distribucion) ? v.distribucion : '');
 
 // Parámetros de la RPC vehiculo_cambiar_distribucion (mismas opciones que al crear). «Otra» pide el tipo de ruedas (10 o 16).
@@ -76,4 +76,24 @@ export function traducirErrorDistribucion(err) {
   if (err && err.code === '22023') return 'Falta elegir la distribución de neumáticos';
   if (err && err.code === '23514') return 'La distribución o el tipo de ruedas no es válido';
   return 'No se pudo cambiar la distribución. Reintentar';
+}
+
+// Servicio del vehículo (vehiculos.servicio, docs/18): camión o bus. «Sin definir» se guarda como null, que la regla trata como bus.
+export const SERVICIOS = Object.freeze(['camion', 'bus']);
+export const AYUDA_SERVICIO = 'Sin definir, la sugerencia de rotación trata el vehículo como bus.';
+
+// Parámetros de la RPC vehiculo_fijar_servicio. Campo vacío = sin definir.
+export function validarCambioServicio({ vehiculoId, servicio } = {}) {
+  if (!Number.isInteger(vehiculoId)) return { ok: false, error: 'Elegir el vehículo' };
+  const s = String(servicio ?? '').trim();
+  if (s && !SERVICIOS.includes(s)) return { ok: false, error: 'Elegir camión o bus' };
+  return { ok: true, params: { p_vehiculo_id: vehiculoId, p_servicio: s || null } };
+}
+
+// Texto para el operario ante un rechazo al guardar el servicio, sin el mensaje crudo de la base.
+export function traducirErrorServicio(err) {
+  const code = err && err.code;
+  if (code === '42501') return 'Sin permiso para cambiar el servicio de este vehículo';
+  if (code === '23514') return 'El servicio no es válido. Elegir camión o bus';
+  return 'No se pudo guardar el servicio. Reintentar';
 }

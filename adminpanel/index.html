@@ -1269,11 +1269,11 @@
   </div>
 </div>
 
-<!-- Modal Cambiar distribución (quien opera neumáticos; RPC vehiculo_cambiar_distribucion) -->
+<!-- Modal Distribución y servicio (quien opera neumáticos; RPC vehiculo_cambiar_distribucion y vehiculo_fijar_servicio) -->
 <div class="modal-backdrop" id="modal-veh-dist" data-backdrop-close="vehiculo-cambiar-distribucion-cerrar">
   <form class="modal" id="veh-dist-form" novalidate>
     <div class="modal-header">
-      <div class="modal-title" id="veh-dist-title">Cambiar distribución</div>
+      <div class="modal-title" id="veh-dist-title">Distribución y servicio</div>
       <div class="modal-sub" id="veh-dist-sub"></div>
     </div>
     <div class="modal-body">
@@ -1283,6 +1283,9 @@
       <div class="field" id="veh-dist-tipo-campo" hidden><label for="veh-dist-ruedas">Tipo de ruedas</label>
         <select id="veh-dist-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
         <div class="field-hint">El vehículo queda sin distribución definida.</div></div>
+      <div class="field"><label for="veh-dist-servicio">Servicio</label>
+        <select id="veh-dist-servicio" aria-describedby="veh-dist-servicio-ayuda"><option value="">Sin definir</option><option value="camion">Camión</option><option value="bus">Bus</option></select>
+        <div class="field-hint" id="veh-dist-servicio-ayuda"></div></div>
       <div id="veh-dist-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">

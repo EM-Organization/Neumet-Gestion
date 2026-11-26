@@ -40,7 +40,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   log.push('alertas-filas='+rows().length);
   if(rows().length !== 4) fail('alertas: se esperaban 4 filas, hay '+rows().length);
   if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
-  if(rows()[0].textContent.indexOf('Desgaste límite: 2,9 mm') === -1) fail('alertas: falta mensaje');
+  if(rows()[0].textContent.indexOf('2,9 mm (umbral 3 mm)') === -1) fail('alertas: falta mensaje');
+  // El chip ya nombra el tipo: el mensaje no repite el prefijo «Desgaste límite:» que trae la base (detalleAlerta).
+  if(/Desgaste límite:/.test(rows()[0].textContent)) fail('alertas: el mensaje repite el tipo: ' + rows()[0].textContent.replace(/\s+/g, ' ').slice(0, 160));
   if(!rows()[0].querySelector('[data-action="verVehiculo"]')) fail('alertas: falta enlace al vehiculo');
   if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('.pos-mini .mini-veh .mv-dest'); }).length !== 4) fail('alertas: cada alerta de rueda debe mostrar el mini vehículo con la rueda resaltada');
   if(!/Delantera izquierda/.test(rows()[0].textContent) || /(^|\s)P\d/.test(rows()[0].textContent)) fail('alertas: posición sin nombre: '+rows()[0].textContent);
@@ -90,6 +92,35 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   var qs = fx.queries.join(',');
   log.push('flota-consultas='+qs);
   if(qs.indexOf('v_estado_neumaticos') === -1 || qs.indexOf('v_alertas') === -1 || qs.indexOf('v_resumen_flota_cliente') === -1) fail('flota: no consulto las vistas SQL');
+  // Recuadro de Inicio con estas alertas: tres sin silenciar (dos abiertas y una reconocida) y una silenciada, que no cuenta.
+  if(!nav('inicio')) return;
+  await sleep(700);
+  var inicioTxt = $('#inicio-contenido').textContent.replace(/\s+/g, ' ');
+  if(!/× 3 cambiar · ◆ 0 revisar/.test(inicioTxt)) fail('inicio (flota): falta el recuadro «× 3 cambiar · ◆ 0 revisar» (la silenciada no cuenta): ' + inicioTxt.slice(0, 200));
+  // El texto cuenta alertas de cualquier tipo: un swap o un «Pasar atrás» no son desgaste límite (sinReconocer).
+  if(/de desgaste límite sin reconocer/.test(inicioTxt)) fail('inicio (flota): el texto dice «de desgaste límite» y cuenta alertas de cualquier tipo: ' + inicioTxt.slice(0, 200));
+  if(!/2 alertas sin reconocer/.test(inicioTxt)) fail('inicio (flota): falta «2 alertas sin reconocer»: ' + inicioTxt.slice(0, 200));
+  // Color (RN-20): «cambiar» en rojo (hay tres) y «revisar» en gris (cero). Rojo solo para lo crítico (docs/14).
+  var recI = $('#inicio-contenido .inicio-linea');
+  if(!recI || !recI.querySelector('.badge.red') || !recI.querySelector('.badge.gray') || recI.querySelector('.badge.orange')) fail('inicio (flota): el recuadro debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
+  // Tipo de cada alerta (presentacionAlerta, docs/14): cada límite lleva «× Desgaste límite» en rojo; una alerta de cambio de
+  // posición va en amarillo con «◆ Swap» y nada en rojo. Va al final, con una alerta propia, para no mover las cifras de arriba.
+  fx.alertasExtra = [{cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:null,tipo:'swap',severidad:2,valor:null,mensaje:'Intercambiar el juego de neumáticos entre ejes',ultima_medicion_at:new Date(Date.now()-4*86400000).toISOString(),alerta_id:105,estado:'abierta',silenciada_hasta:null}];
+  if(!nav('alertas')) return;
+  await sleep(700);
+  var limites = all('#alert-tbody tr[data-tipo="limite"]');
+  if(limites.length !== 4 || Array.prototype.some.call(limites, function(r){ var b = r.querySelector('.badge.red'); return !b || !/× Desgaste límite/.test(b.textContent); })) fail('alertas: cada alerta de desgaste límite debe llevar «× Desgaste límite» en rojo');
+  // El chip de tipo no se parte en el móvil («Desgaste / límite»): el envoltorio .alerta-tipo va con nowrap (styles.css).
+  var tipoEl = limites[0] && limites[0].querySelector('.alerta-tipo');
+  if(!tipoEl || w.getComputedStyle(tipoEl).whiteSpace !== 'nowrap') fail('alertas: el chip de tipo debe ir sin salto de línea (.alerta-tipo): ' + (tipoEl ? w.getComputedStyle(tipoEl).whiteSpace : 'sin .alerta-tipo'));
+  var swap = $('#alert-tbody tr[data-tipo="swap"]');
+  if(!swap) fail('alertas: falta la alerta de cambio de posición');
+  else {
+    var tSwap = swap.textContent.replace(/\s+/g, ' ');
+    if(/Neumático crítico/.test(tSwap) || swap.querySelector('.badge.red')) fail('alertas: la alerta de cambio de posición no debe ir en rojo ni decir «Neumático crítico»: ' + tSwap);
+    if(!swap.querySelector('.badge.orange') || !/◆ Swap/.test(tSwap)) fail('alertas: la alerta de cambio de posición debe llevar «◆ Swap» en amarillo: ' + tSwap);
+  }
+  fx.alertasExtra = null;
 };
 
 
