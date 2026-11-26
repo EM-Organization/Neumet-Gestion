@@ -43,7 +43,7 @@ Tras lo ya implementado (F1 a F7), la **siguiente fase de producto es F8, la sug
 | Pantalla «Sin acceso» para sesiones sin perfil o de rol `api` | Hecho |
 | Km por cubierta (km previos + tramos montados) y diagnóstico de odómetro | Hecho (migración `20261115000000`, aplicada: vista `v_km_cubierta` y `odometro_anomalias`; ver `docs/08` apéndice H) |
 | Precios y costos solo para admin y perfil global | Hecho (migración `20261116500000`, aplicada: privilegios por columna sobre `neumaticos.precio_unidad` y `eventos_neumatico.costo`; ver `docs/08` apéndice K). Todo código que lea esos valores debe usar `precios_visibles()`, `neumaticos_precios()` y `eventos_costos()` |
-| Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; propuesta histórica en [18](18-rotacion-vehiculos-pesados.md) (PR 74), superada donde choca con la especificación de reglas de negocio del 24/11/2026 (ver [18](18-rotacion-vehiculos-pesados.md) apartado 0); pendiente de implementar (F8) |
+| Sugerencia de rotación para camiones y buses | **Prioridad fuerte** (2026-11-13): diseño base en `docs/15` A; propuesta histórica en [18](18-rotacion-vehiculos-pesados.md) (PR 74), superada donde choca con [23](23-reglas-negocio.md) (ver [18](18-rotacion-vehiculos-pesados.md) apartado 0); olas 1 a 7 en [10](10-tablero.md); pendiente de implementar (F8) |
 | Separar admin del equipo Neumet y admin de empresa | En curso (F10; plan en [17](17-plan-roles-admin.md)): migraciones A, B, C1 y C2 aplicadas, panel Empresa y menú nuevo hechos; pendiente el MFA del equipo Neumet (PR propio) |
 | Migración gradual del panel a un framework con build (y sistema de diseño) | Planificado (F11; plan en [19](19-migracion-framework.md), sin implementar; sin prioridad asignada, no altera el orden de F8 ni de F10) |
 | Formulario de contacto y panel sobre el proyecto Supabase nuevo (`kootszosdejmawanfxug`) | Hecho |
@@ -103,7 +103,7 @@ Todas las migraciones de `supabase/migrations/` están aplicadas en el proyecto 
 - Recomendación de rotación con umbral configurable (histórico, diseño en `docs/15`; no vigente para la regla de dirección).
 - Reposición (histórica, fuera del backlog vigente): necesidad neta = demanda durante el plazo de entrega + seguridad − disponible apto; sugerencia revisable, nunca una compra automática.
 
-- **Alcance vigente de F8 (especificación del 24/11/2026):** backlog P0 y P1 en [18](18-rotacion-vehiculos-pesados.md) apartado 0.2. Lo demás de este bloque es propuesta histórica.
+- **Alcance vigente de F8 ([23](23-reglas-negocio.md)):** reglas RN-01 a RN-32 y sus olas 1 a 7 en [10](10-tablero.md). El backlog P0 y P1 de [18](18-rotacion-vehiculos-pesados.md) apartado 0.2 es un resumen. Lo demás de este bloque es propuesta histórica.
 
 ### F9 · Conteo físico y bajas
 - Conteo por ubicación con diferencias (faltantes y sobrantes) y ajuste con causal y aprobación.
