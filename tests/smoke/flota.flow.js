@@ -40,7 +40,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   log.push('alertas-filas='+rows().length);
   if(rows().length !== 4) fail('alertas: se esperaban 4 filas, hay '+rows().length);
   if(rows()[0].dataset.severidad !== '3') fail('alertas: la primera no es la mas severa');
-  if(rows()[0].textContent.indexOf('Desgaste límite: 2,9 mm') === -1) fail('alertas: falta mensaje');
+  if(rows()[0].textContent.indexOf('2,9 mm (umbral 3 mm)') === -1) fail('alertas: falta mensaje');
+  // El chip ya nombra el tipo: el mensaje no repite el prefijo «Desgaste límite:» que trae la base (detalleAlerta).
+  if(/Desgaste límite:/.test(rows()[0].textContent)) fail('alertas: el mensaje repite el tipo: ' + rows()[0].textContent.replace(/\s+/g, ' ').slice(0, 160));
   if(!rows()[0].querySelector('[data-action="verVehiculo"]')) fail('alertas: falta enlace al vehiculo');
   if(Array.prototype.filter.call(rows(), function(r){ return r.querySelector('.pos-mini .mini-veh .mv-dest'); }).length !== 4) fail('alertas: cada alerta de rueda debe mostrar el mini vehículo con la rueda resaltada');
   if(!/Delantera izquierda/.test(rows()[0].textContent) || /(^|\s)P\d/.test(rows()[0].textContent)) fail('alertas: posición sin nombre: '+rows()[0].textContent);

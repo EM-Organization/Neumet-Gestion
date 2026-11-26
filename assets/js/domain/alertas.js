@@ -59,6 +59,14 @@ export function presentacionAlerta(a) {
   return { etiqueta: 'Revisar', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
 }
 
+// La columna Mensaje ya muestra el tipo en el chip: el prefijo «<etiqueta>:» que trae la base se quita para no repetirlo.
+// Sin prefijo, el texto queda igual; sin mensaje, da cadena vacía.
+export function detalleAlerta(a) {
+  const mensaje = String((a && a.mensaje) ?? '');
+  const prefijo = `${presentacionAlerta(a).etiqueta}:`;
+  return mensaje.startsWith(prefijo) ? mensaje.slice(prefijo.length).trim() : mensaje;
+}
+
 // Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
 // «Cambiar» es el neumático en desgaste límite (tipo `limite` o color rojo de la base); el resto, «revisar».
 export function conteoRecuadro(alertas, ahora = Date.now()) {

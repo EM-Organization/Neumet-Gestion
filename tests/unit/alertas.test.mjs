@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, sinReconocer, hastaSilencio,
   validarNota, traducirErrorAlerta, CHIP_ESTADO_ALERTA, PRESENTACION_ALERTA, SIMBOLO_REVISAR, presentacionAlerta, conteoRecuadro,
-  partesRecuadro,
+  partesRecuadro, detalleAlerta,
 } from '../../assets/js/domain/alertas.js';
 import { ESTADOS, BANDERA } from '../../assets/js/domain/estado-desgaste.js';
 import { ordenarAlertas } from '../../assets/js/domain/flota.js';
@@ -100,6 +100,15 @@ describe('presentación de cada tipo', () => {
     assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Swap a 30.000 km', simbolo: '◆', color: 'orange', accion: 'Revisar' });
     assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: null }).etiqueta, 'Swap');
     assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Swap');
+  });
+  test('detalleAlerta quita el prefijo «<etiqueta>:» que trae la base: el chip ya nombra el tipo', () => {
+    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: 'Desgaste límite: 2,9 mm (umbral 3 mm)' }), '2,9 mm (umbral 3 mm)');
+  });
+  test('detalleAlerta deja igual un mensaje sin prefijo', () => {
+    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: '2,9 mm (umbral 3 mm)' }), '2,9 mm (umbral 3 mm)');
+  });
+  test('detalleAlerta de un mensaje nulo da cadena vacía', () => {
+    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: null }), '');
   });
 });
 
