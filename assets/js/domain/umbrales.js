@@ -4,6 +4,7 @@
 // Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
 // Los textos hablan de las categorías de producto; los nombres técnicos de las columnas no se muestran (docs/14).
 import { ESTADOS } from './estado-desgaste.js';
+import { fmtNum } from './formato.js';
 const bajo = e => e.texto.toLowerCase();
 // Orden de los nombres para los mensajes de umbrales: de mayor a menor.
 export const ORDEN_NOMBRES = `${bajo(ESTADOS.mayor)}, ${bajo(ESTADOS.poco)}, ${bajo(ESTADOS.bueno)}`;
@@ -26,6 +27,8 @@ export const CAMPOS_UMBRAL = [
 ];
 
 const MM_MAX = 99.9; // numeric(3,1)
+// Los mensajes los lee el operario: 99,9 con coma (es-AR), no 99.9. MM_MAX queda numérico para comparar.
+const MM_MAX_TXT = fmtNum(MM_MAX, 1);
 const lblDe = k => CAMPOS_UMBRAL.find(c => c.key === k).lbl;
 
 // "7,5" y "7.5" valen; '' o texto no numérico => NaN
@@ -54,7 +57,7 @@ export function validarUmbrales(raw = {}) {
   if (!h.ok) return { ok: false, campo: 'alerta_histeresis_mm', error: h.error };
   for (const c of CAMPOS_UMBRAL.filter(c => c.mm)) {
     const n = v[c.key];
-    if (n <= 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser mayor que 0 y hasta ${MM_MAX}` };
+    if (n <= 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser mayor que 0 y hasta ${MM_MAX_TXT}` };
     if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-9) return { ok: false, campo: c.key, error: `${c.lbl}: máximo un decimal` };
   }
   if (!Number.isInteger(v.dias_sin_medir_alerta) || v.dias_sin_medir_alerta < 1 || v.dias_sin_medir_alerta > 3650) {
@@ -64,7 +67,7 @@ export function validarUmbrales(raw = {}) {
   // qué campo falla; por eso se valida aquí, con el nombre del campo.
   for (const c of CAMPOS_UMBRAL.filter(c => c.dirMm)) {
     const n = v[c.key];
-    if (n <= 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser mayor que 0 y hasta ${MM_MAX}` };
+    if (n <= 0 || n > MM_MAX) return { ok: false, campo: c.key, error: `${c.lbl}: debe ser mayor que 0 y hasta ${MM_MAX_TXT}` };
     if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-9) return { ok: false, campo: c.key, error: `${c.lbl}: máximo un decimal` };
   }
   if (!Number.isInteger(v.swap_km) || v.swap_km < 1000 || v.swap_km > 200000) {

@@ -40,6 +40,13 @@ describe('validarUmbrales', () => {
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7,5' }).ok, false);
     assert.equal(validarUmbrales({ ...OK, dias_sin_medir_alerta: '7' }).ok, true);
   });
+  test('los mensajes de rango escriben 99,9 con coma, no 99.9', () => {
+    for (const raw of [{ direccion_aviso_mm: '100' }, { umbral_bajo_mm: '100' }]) {
+      const e = validarUmbrales({ ...OK, ...raw }).error;
+      assert.match(e, /99,9/);
+      assert.doesNotMatch(e, /99\.9/);
+    }
+  });
 });
 
 describe('histéresis', () => {
