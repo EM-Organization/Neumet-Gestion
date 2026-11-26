@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, sinReconocer, hastaSilencio,
   validarNota, traducirErrorAlerta, CHIP_ESTADO_ALERTA, PRESENTACION_ALERTA, SIMBOLO_REVISAR, presentacionAlerta, conteoRecuadro,
+  textoRecuadro,
 } from '../../assets/js/domain/alertas.js';
 import { ESTADOS, BANDERA } from '../../assets/js/domain/estado-desgaste.js';
 import { ordenarAlertas } from '../../assets/js/domain/flota.js';
@@ -123,6 +124,18 @@ describe('recuadro «cambiar» y «revisar»', () => {
       { tipo: 'swap', silenciada_hasta: '2026-06-01T00:00:00Z' },
     ], AHORA), { cambiar: 0, revisar: 1 });
     assert.deepEqual(conteoRecuadro([], AHORA), { cambiar: 0, revisar: 0 });
+  });
+  test('textoRecuadro: «× N cambiar · ◆ N revisar»; vacío si no hay nada que contar', () => {
+    assert.equal(textoRecuadro([], AHORA), '');
+    assert.equal(textoRecuadro([{ tipo: 'swap', silenciada_hasta: '2026-06-12T00:00:00Z' }], AHORA), '');
+    assert.equal(textoRecuadro([
+      { tipo: 'limite', estado: 'abierta' },
+      { tipo: 'limite', estado: 'reconocida' },
+      { tipo: 'swap', estado: 'abierta' },
+      { tipo: 'direccion_aviso', estado: 'abierta' },
+      { tipo: 'swap', estado: 'abierta', silenciada_hasta: '2026-06-12T00:00:00Z' },
+    ], AHORA), '× 2 cambiar · ◆ 2 revisar');
+    assert.equal(textoRecuadro([{ tipo: 'irregular' }], AHORA), '× 0 cambiar · ◆ 1 revisar');
   });
 });
 

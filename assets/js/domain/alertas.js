@@ -70,6 +70,14 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
   return c;
 }
 
+// Texto del recuadro: «× 2 cambiar · ◆ 2 revisar». Vacío si no hay nada que contar, así el recuadro no aparece.
+export function textoRecuadro(alertas, ahora = Date.now()) {
+  const { cambiar, revisar } = conteoRecuadro(alertas, ahora);
+  if (!cambiar && !revisar) return '';
+  const { simbolo, accion } = presentacionAlerta({ tipo: 'limite' });
+  return `${simbolo} ${cambiar} ${accion.toLowerCase()} · ${SIMBOLO_REVISAR} ${revisar} revisar`;
+}
+
 export function hastaSilencio(dias = DIAS_SILENCIO, ahora = Date.now()) {
   return new Date(ahora + dias * 86400000).toISOString();
 }
