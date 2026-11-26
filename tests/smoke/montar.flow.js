@@ -199,8 +199,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(!bd || bd.textContent.trim() !== 'Distribución y servicio') { fail('distribución: falta «Distribución y servicio» en la cabecera'); return; }
   bd.click();
   if(!await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').options.length === 7; }, 'el diálogo de distribución')) return;
-  if($('#veh-dist-distribucion').value !== '') fail('distribución: un vehículo sin distribución no debe traer una elegida: ' + $('#veh-dist-distribucion').value);
-  $('#veh-dist-form').requestSubmit(); await sleep(100);
+  if($('#veh-dist-distribucion').value !== 'otra') fail('distribución: un vehículo sin distribución debe preseleccionar «Otra»: ' + $('#veh-dist-distribucion').value);
+  poner('#veh-dist-distribucion', ''); $('#veh-dist-form').requestSubmit(); await sleep(100);
   if(rpcs('vehiculo_cambiar_distribucion').length || !/Falta elegir la distribución/.test(txt('#veh-dist-error'))) fail('distribución: sin elegir no debe llegar a la RPC: ' + txt('#veh-dist-error'));
   poner('#veh-dist-distribucion', 'otra');
   if($('#veh-dist-tipo-campo').hidden) fail('distribución: «Otra» debe pedir el tipo de ruedas');
@@ -247,6 +247,34 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   fx.servicioError = null; poner('#veh-dist-servicio', ''); $('#veh-dist-form').requestSubmit();
   await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === 3 && cerrado(); }, 'el reintento del servicio');
   if(JSON.stringify(rpcs('vehiculo_fijar_servicio')[2].args) !== '{"p_vehiculo_id":13,"p_servicio":null}') fail('servicio: «Sin definir» debe guardarse como null');
+
+  // Guardar solo lo que cambió. Vehículo sin distribución: cambiar solo el servicio llama a una sola RPC, la de servicio.
+  var vh = w.__vehFx.T.vehiculos.filter(function(v){ return v.id === 13; })[0];
+  vh.distribucion = null; vh.tipo_ruedas = 10; vh.servicio = null;
+  var nDist = rpcs('vehiculo_cambiar_distribucion').length, nServ = rpcs('vehiculo_fijar_servicio').length;
+  $('#toast-msg').textContent = '';
+  await abrirServicio(); if($('#veh-dist-distribucion').value !== 'otra') fail('solo servicio: sin distribución debe preseleccionar «Otra»: ' + $('#veh-dist-distribucion').value);
+  var totalA = fx.rpcs.length;
+  poner('#veh-dist-servicio', 'camion'); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === nServ + 1 && cerrado(); }, 'la RPC de servicio sin distribución');
+  if(fx.rpcs.length - totalA !== 1) fail('solo servicio sin distribución: debe llamar a una sola RPC, llamó ' + (fx.rpcs.length - totalA));
+  if(rpcs('vehiculo_cambiar_distribucion').length !== nDist) fail('solo servicio sin distribución: llamó a vehiculo_cambiar_distribucion');
+  if(txt('#toast-msg') !== 'Servicio guardado') fail('solo servicio: el aviso debe ser «Servicio guardado», no «' + txt('#toast-msg') + '»');
+  await sleep(300);
+  // Con distribución: cambiar solo el servicio no llama a vehiculo_cambiar_distribucion, y el diálogo trae la de la base.
+  vh.distribucion = '6x2'; vh.tipo_ruedas = 10;
+  nDist = rpcs('vehiculo_cambiar_distribucion').length; nServ = rpcs('vehiculo_fijar_servicio').length;
+  await abrirServicio(); if($('#veh-dist-distribucion').value !== '6x2') fail('solo servicio con distribución: el diálogo debe traer 6x2: ' + $('#veh-dist-distribucion').value);
+  poner('#veh-dist-servicio', 'bus'); $('#veh-dist-form').requestSubmit();
+  await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === nServ + 1 && cerrado(); }, 'la RPC de servicio con distribución');
+  if(rpcs('vehiculo_cambiar_distribucion').length !== nDist) fail('solo servicio con distribución: llamó a vehiculo_cambiar_distribucion');
+  await sleep(300);
+  // Sin cambios: cierra sin llamar a ninguna RPC y sin avisar.
+  var totalAntes = fx.rpcs.length; $('#toast-msg').textContent = '';
+  await abrirServicio(); $('#veh-dist-form').requestSubmit();
+  await esperar(cerrado, 'el cierre sin cambios');
+  if(fx.rpcs.length !== totalAntes) fail('sin cambios: no debe llamar a ninguna RPC (llamó ' + (fx.rpcs.length - totalAntes) + ')');
+  if(txt('#toast-msg') !== '') fail('sin cambios: no debe avisar, dice «' + txt('#toast-msg') + '»');
 
   // Eliminar el vehículo (administrador de empresa): el botón está en la cabecera y el diálogo ofrece stock o baja.
   var T = w.__vehFx.T;

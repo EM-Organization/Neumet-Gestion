@@ -16,7 +16,7 @@ import {
 } from '../domain/distribucion.js';
 
 const $ = id => document.getElementById(id);
-let ctx = null; // {vehiculoId, servicio: el de la base al abrir ('' = sin definir)}
+let ctx = null; // {vehiculoId, distribucion, tipoRuedas, servicio}: lo que mostró el diálogo al abrir; al guardar se compara contra eso.
 let ocupado = false;
 
 const mostrarTipo = () => { $('veh-dist-tipo-campo').hidden = $('veh-dist-distribucion').value !== OTRA_DISTRIBUCION; };
@@ -27,14 +27,17 @@ async function abrir(vehiculoId) {
   const r = await db.from('vehiculos').select('id,nombre,tipo_ruedas,distribucion,servicio').eq('id', vehiculoId).maybeSingle();
   if (r.error) { console.error(r.error); showToast('No se pudo cargar el vehículo. Reintentar', true); return; }
   if (!r.data) { showToast('El vehículo ya no existe. Actualizar la pantalla', true); return; }
-  ctx = { vehiculoId, servicio: r.data.servicio || '' };
   $('veh-dist-sub').textContent = r.data.nombre ? etiquetaCoche(r.data.nombre) : '';
   setHtml($('veh-dist-distribucion'), joinHtml([html`<option value="">Elegir distribución…</option>`,
     DISTRIBUCIONES.map(d => html`<option value="${d.id}">${textoOpcion(d)}</option>`),
     html`<option value="${OTRA_DISTRIBUCION}">Otra distribución</option>`]));
-  $('veh-dist-distribucion').value = distribucionActual(r.data);
-  $('veh-dist-servicio').value = ctx.servicio;
+  // Sin distribución en la base (nunca elegida, o una cantidad de ruedas que el catálogo no cubre), se preselecciona «Otra» con
+  // el tipo de ruedas del vehículo: así guardar solo el servicio no obliga a elegir una distribución.
+  $('veh-dist-distribucion').value = distribucionActual(r.data) || OTRA_DISTRIBUCION;
+  $('veh-dist-servicio').value = r.data.servicio || '';
   $('veh-dist-ruedas').value = String(r.data.tipo_ruedas) === '16' ? '16' : '10';
+  // Lo que muestra el diálogo al abrir es lo de partida: al guardar se compara contra esto para mandar solo lo que cambió.
+  ctx = { vehiculoId, distribucion: $('veh-dist-distribucion').value, tipoRuedas: $('veh-dist-ruedas').value, servicio: $('veh-dist-servicio').value };
   mostrarTipo();
   $('veh-dist-error').textContent = '';
   $('veh-dist-guardar').disabled = false;
@@ -53,30 +56,46 @@ async function guardarServicio(params) {
   } catch (e) { return traducirErrorServicio(e); }
 }
 
+// Aviso de éxito según lo que se guardó: solo el servicio, «Servicio guardado».
+function textoGuardado(cambiaDist, cambiaServicio) {
+  if (cambiaDist && cambiaServicio) return 'Distribución y servicio guardados';
+  return cambiaServicio ? 'Servicio guardado' : 'Distribución cambiada';
+}
+
 // Se envía desde el submit del formulario (Enter o clic): un solo camino, protegido por `ocupado` contra el doble envío.
-// La distribución va primero; si el servicio falla después, la distribución ya quedó guardada y el diálogo sigue abierto con el aviso.
+// Solo se manda lo que cambió: la distribución (vehiculo_cambiar_distribucion) y el servicio (vehiculo_fijar_servicio). Si la
+// distribución se guardó y el servicio falla, la distribución ya quedó: el diálogo sigue abierto con el aviso.
 ACTIONS['vehiculo-cambiar-distribucion-guardar'] = async function () {
   if (!ctx || ocupado || esAdmin()) return;
-  const r = validarCambioDistribucion({ vehiculoId: ctx.vehiculoId, distribucion: $('veh-dist-distribucion').value, tipoRuedas: $('veh-dist-ruedas').value });
-  const s = validarCambioServicio({ vehiculoId: ctx.vehiculoId, servicio: $('veh-dist-servicio').value });
+  const mio = ctx;
+  const distribucion = $('veh-dist-distribucion').value, tipoRuedas = $('veh-dist-ruedas').value, servicio = $('veh-dist-servicio').value;
+  const cambiaDist = distribucion !== mio.distribucion || tipoRuedas !== mio.tipoRuedas;
+  const cambiaServicio = servicio !== mio.servicio;
+  if (!cambiaDist && !cambiaServicio) { ACTIONS['vehiculo-cambiar-distribucion-cerrar'](); return; }
+  const r = cambiaDist ? validarCambioDistribucion({ vehiculoId: mio.vehiculoId, distribucion, tipoRuedas }) : { ok: true };
+  const s = cambiaServicio ? validarCambioServicio({ vehiculoId: mio.vehiculoId, servicio }) : { ok: true };
   const aviso = (!r.ok && r.error) || (!s.ok && s.error) || '';
   if (aviso) { $('veh-dist-error').textContent = aviso; return; }
   ocupado = true; $('veh-dist-guardar').disabled = true;
-  const mio = ctx;
-  const cambiaServicio = $('veh-dist-servicio').value !== mio.servicio;
   let guardada = false, msg = '';
   try {
-    const res = await db.rpc('vehiculo_cambiar_distribucion', r.params);
-    if (res.error) throw res.error;
-    guardada = true;
-    if (cambiaServicio) msg = await guardarServicio(s.params);
+    if (cambiaDist) {
+      const res = await db.rpc('vehiculo_cambiar_distribucion', r.params);
+      if (res.error) throw res.error;
+      guardada = true;
+      mio.distribucion = distribucion; mio.tipoRuedas = tipoRuedas;
+    }
+    if (cambiaServicio) {
+      msg = await guardarServicio(s.params);
+      if (!msg) { guardada = true; mio.servicio = servicio; }
+    }
   } catch (e) {
     console.error(e);
     msg = traducirErrorDistribucion(e);
   }
   if (!msg) {
     if (ctx === mio) ACTIONS['vehiculo-cambiar-distribucion-cerrar']();
-    showToast(cambiaServicio ? 'Distribución y servicio guardados' : 'Distribución cambiada');
+    showToast(textoGuardado(cambiaDist, cambiaServicio));
   } else {
     if (ctx === mio) { $('veh-dist-error').textContent = msg; $('veh-dist-guardar').disabled = false; }
     showToast(msg, true);
