@@ -70,12 +70,17 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
   return c;
 }
 
-// Texto del recuadro: «× 2 cambiar · ◆ 2 revisar». Vacío si no hay nada que contar, así el recuadro no aparece.
-export function textoRecuadro(alertas, ahora = Date.now()) {
+// Partes del recuadro «× N cambiar · ◆ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
+// (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero va en gris, así el rojo queda para
+// lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
+export function partesRecuadro(alertas, ahora = Date.now()) {
   const { cambiar, revisar } = conteoRecuadro(alertas, ahora);
-  if (!cambiar && !revisar) return '';
-  const { simbolo, accion } = presentacionAlerta({ tipo: 'limite' });
-  return `${simbolo} ${cambiar} ${accion.toLowerCase()} · ${SIMBOLO_REVISAR} ${revisar} revisar`;
+  if (!cambiar && !revisar) return [];
+  const { simbolo, accion, color } = presentacionAlerta({ tipo: 'limite' });
+  return [
+    { color: cambiar ? color : 'gray', simbolo, texto: `${cambiar} ${accion.toLowerCase()}` },
+    { color: revisar ? 'orange' : 'gray', simbolo: SIMBOLO_REVISAR, texto: `${revisar} revisar` },
+  ];
 }
 
 export function hastaSilencio(dias = DIAS_SILENCIO, ahora = Date.now()) {

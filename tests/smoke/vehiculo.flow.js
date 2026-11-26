@@ -423,6 +423,9 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
   // Recuadro de la cabecera: el camión 01 tiene una alerta de desgaste límite abierta (vehiculo.fixture).
   if(!/× 1 cambiar · ◆ 0 revisar/.test($('#vd-cab').textContent.replace(/\s+/g, ' '))) fail('detalle: falta el recuadro «× 1 cambiar · ◆ 0 revisar» en la cabecera');
+  // Color (RN-20): «cambiar» en rojo (hay uno) y «revisar» en gris (cero).
+  var recD = $('#vd-cab .vd-p-nota');
+  if(!recD || !recD.querySelector('.badge.red') || !recD.querySelector('.badge.gray') || recD.querySelector('.badge.orange')) fail('detalle: el recuadro de la cabecera debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
   // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.
   if(q.indexOf('v_mediciones_neumatico') === -1 || /(^|,)mediciones(,|$)/.test(q)) fail('detalle: las mediciones deben leerse de v_mediciones_neumatico, no de mediciones por posicion');
   $('#breadcrumb-parent').click(); await sleep(400);

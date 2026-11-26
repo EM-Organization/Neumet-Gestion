@@ -21,7 +21,7 @@ import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.j
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { severidadLabel } from '../domain/flota.js';
-import { textoRecuadro } from '../domain/alertas.js';
+import { partesRecuadro } from '../domain/alertas.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { etiquetaMotivo } from '../domain/motivos.js';
 import { cargarMotivosCliente } from '../core/motivos.js';
@@ -131,14 +131,14 @@ function cabecera() {
   const sem = estadoVehiculo(filas, datos.th);
   const ult = filas.reduce((m, f) => (f.ultima_medicion_at && (!m || f.ultima_medicion_at > m) ? f.ultima_medicion_at : m), null);
   const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
-  const recuadro = textoRecuadro(datos.alertas);
+  const recuadro = partesRecuadro(datos.alertas).map((p, i) => html`${i ? ' · ' : ''}${chip(p.color, p.texto, p.simbolo)}`);
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
     <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? tagEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
       ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Distribución y servicio</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost" data-action="openCicloVida" data-args="[${vehiculoId}, true]">Odómetro y ciclo de vida</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
-    ${recuadro ? html`<p class="vd-p-nota">${recuadro}</p>` : ''}
+    ${recuadro.length ? html`<p class="vd-p-nota">${recuadro}</p>` : ''}
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
       ${veh.numero && String(veh.numero) !== String(veh.nombre) ? dato('Número de coche', veh.numero) : ''}

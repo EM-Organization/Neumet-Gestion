@@ -95,6 +95,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   await sleep(700);
   var inicioTxt = $('#inicio-contenido').textContent.replace(/\s+/g, ' ');
   if(!/× 3 cambiar · ◆ 0 revisar/.test(inicioTxt)) fail('inicio (flota): falta el recuadro «× 3 cambiar · ◆ 0 revisar» (la silenciada no cuenta): ' + inicioTxt.slice(0, 200));
+  // Color (RN-20): «cambiar» en rojo (hay tres) y «revisar» en gris (cero). Rojo solo para lo crítico (docs/14).
+  var recI = $('#inicio-contenido .inicio-linea');
+  if(!recI || !recI.querySelector('.badge.red') || !recI.querySelector('.badge.gray') || recI.querySelector('.badge.orange')) fail('inicio (flota): el recuadro debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
 };
 
 
