@@ -94,7 +94,11 @@ describe('presentación de cada tipo', () => {
     const p = presentacionAlerta({ tipo: 'critico', mensaje: 'Neumático en desgaste límite' });
     assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Neumático en desgaste límite', '◆', 'orange', 'Revisar']);
     assert.equal(presentacionAlerta({ tipo: 'limite' }).color, 'red');
-    assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Swap a 20.000 km');
+  });
+  test('swap: la etiqueta nombra el umbral de la base con formato de miles; sin dato, «Swap» a secas', () => {
+    assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Swap a 30.000 km', simbolo: '◆', color: 'orange', accion: 'Revisar' });
+    assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: null }).etiqueta, 'Swap');
+    assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Swap');
   });
 });
 

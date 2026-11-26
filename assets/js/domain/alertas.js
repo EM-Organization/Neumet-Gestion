@@ -1,6 +1,7 @@
 // Dominio: alertas con estado y su presentación (docs/08 apéndice M). Funciones PURAS (sin DOM ni supabase).
 // Entradas = filas de v_alertas (estado: abierta | reconocida; silenciada_hasta; tipo; color; severidad).
 import { ESTADOS } from './estado-desgaste.js';
+import { fmtNum } from './formato.js';
 
 export const ESTADO_ALERTA_LABEL = { abierta: 'Abierta', reconocida: 'Reconocida', silenciada: 'Silenciada' };
 // Color del chip de estado: el rojo es de lo crítico (el neumático), no del estado de gestión de la alerta. «Abierta» pide
@@ -41,13 +42,19 @@ export const PRESENTACION_ALERTA = Object.freeze({
   direccion_aviso: { etiqueta: 'Pasar atrás', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   direccion_limite: { etiqueta: 'Pasar atrás ya', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   irregular: { etiqueta: 'Desgaste irregular', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
-  swap: { etiqueta: 'Swap a 20.000 km', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  swap: { etiqueta: 'Swap', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
 });
 
 // Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo con el mensaje de la base.
+// El swap nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Swap» a secas, sin inventar una cifra.
 export function presentacionAlerta(a) {
-  if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) return PRESENTACION_ALERTA[a.tipo];
+  if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) {
+    const p = PRESENTACION_ALERTA[a.tipo];
+    const km = Number(a.umbral_km);
+    if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Swap a ${fmtNum(km)} km` };
+    return p;
+  }
   return { etiqueta: String((a && a.mensaje) || 'Revisar la alerta'), simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
 }
 
