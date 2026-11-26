@@ -100,7 +100,7 @@ function bloqueAtencion(at, alertas, porVeh) {
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
-    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta de desgaste límite sin reconocer', 'alertas de desgaste límite sin reconocer')}.</p>` : ''}
+    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta sin reconocer', 'alertas sin reconocer')}.</p>` : ''}
     <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
   </section>`;
 }
