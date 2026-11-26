@@ -1,4 +1,109 @@
--- Copia de 20261126010000_auxilio_tramos_km.sql:224-386
+-- F8 · Ola 2, brief 1 (base): ejes, umbrales de dirección y alertas con tipo (RN-02, RN-05, RN-06, RN-07, RN-31).
+-- Requiere 20261126020000_odometro_motivos.sql (y sus antecesores).
+-- Reemplaza definiciones vigentes de 20261126010000, 20261126000000, 20261125500000, 20261123000000 y 20261120500000.
+-- Cada decisión (D1 a D8) está en el apéndice AB de docs/08, con los riesgos de despliegue.
+-- Idempotente (el CI la aplica dos veces): sin begin/commit y search_path vacío en las SECURITY DEFINER.
+
+-- 1. Ejes y rol de cada posición (CA-31). El catálogo da los ejes de adelante hacia atrás (S simple de 2 ruedas,
+--    D doble de 4). El rol sale del eje: simple antes del primer doble es dirección, doble es tracción y simple después
+--    es eje loco. La posición 99 es auxilio. Espejo de assets/js/domain/rol-eje.js (tests/unit/rol-eje-sql.test.mjs).
+create or replace function public.distribucion_ejes(p_id text)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select case p_id
+    when '4x2' then 'SD'
+    when '6x2' then 'SDS'
+    when '6x4' then 'SDD'
+    when '8x2' then 'SSDS'
+    when '8x4' then 'SSDD'
+  end
+$$;
+revoke all on function public.distribucion_ejes(text) from public, anon;
+grant execute on function public.distribucion_ejes(text) to authenticated, service_role;
+
+create or replace function public.rol_eje_posicion(p_distribucion text, p_posicion integer)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  with ejes as (
+    -- Ejes en orden, con las ruedas acumuladas hasta cada uno (S = 2, D = 4). Fuera del catálogo no hay ejes.
+    select x.k, x.letra, sum(case x.letra when 'D' then 4 else 2 end) over (order by x.k) as hasta
+      from (select g.k, substr(public.distribucion_ejes(p_distribucion), g.k, 1) as letra
+              from generate_series(1, 4) as g(k)) x
+     where x.letra in ('S', 'D')
+  )
+  select case
+    when p_posicion = 99 then 'auxilio'
+    -- Sin distribución del catálogo solo se sabe que 1 y 2 son el eje delantero (igual que rolEjePosicion).
+    when not exists (select 1 from ejes) then case when p_posicion in (1, 2) then 'direccion' end
+    else (select case when e.letra = 'D' then 'traccion'
+                      when e.k < (select min(d.k) from ejes d where d.letra = 'D') then 'direccion'
+                      else 'loco' end
+            from ejes e
+           where p_posicion between 1 and e.hasta
+           order by e.k
+           limit 1)
+  end
+$$;
+revoke all on function public.rol_eje_posicion(text, integer) from public, anon;
+grant execute on function public.rol_eje_posicion(text, integer) to authenticated, service_role;
+
+-- 2. Umbrales de dirección, km del swap y revisión por km (D8, D1, D4). Dirección: aviso 8 mm y límite 6 mm para la
+--    rueda del eje de dirección. Swap: km a los que se pide el cambio (20.000 por defecto). km_por_mm_revision nulo
+--    apaga el tipo km_por_mm (D4: no se evalúa en esta ola).
+alter table public.clientes
+  add column if not exists direccion_aviso_mm numeric(4,1) not null default 8,
+  add column if not exists direccion_limite_mm numeric(4,1) not null default 6,
+  add column if not exists swap_km integer not null default 20000,
+  add column if not exists km_por_mm_revision integer;
+-- Privilegios por columna: t_96 exige que toda columna nueva de clientes se otorgue a propósito. Son configuración,
+-- no sensibles: v_estado_neumaticos las lee con security_invoker. authenticated no las escribe; las cambia alerta_configurar.
+grant select (direccion_aviso_mm, direccion_limite_mm, swap_km, km_por_mm_revision) on public.clientes to authenticated;
+alter table public.clientes drop constraint if exists clientes_direccion_umbrales_ck;
+alter table public.clientes add constraint clientes_direccion_umbrales_ck
+  check (0 < direccion_limite_mm and direccion_limite_mm < direccion_aviso_mm and direccion_aviso_mm <= 99.9);
+alter table public.clientes drop constraint if exists clientes_swap_km_ck;
+alter table public.clientes add constraint clientes_swap_km_ck check (swap_km between 1000 and 200000);
+alter table public.clientes drop constraint if exists clientes_km_por_mm_ck;
+alter table public.clientes add constraint clientes_km_por_mm_ck
+  check (km_por_mm_revision is null or km_por_mm_revision > 0);
+
+-- 3. Servicio del vehículo (D5): camión o bus. Lo fija el administrador con la RPC, con el mismo permiso que la
+--    distribución (neumatico_autorizar_vehiculo). Vacío o nulo deja el servicio sin definir.
+alter table public.vehiculos add column if not exists servicio text;
+alter table public.vehiculos drop constraint if exists vehiculos_servicio_ck;
+alter table public.vehiculos add constraint vehiculos_servicio_ck
+  check (servicio is null or servicio in ('camion', 'bus'));
+
+create or replace function public.vehiculo_fijar_servicio(p_vehiculo_id bigint, p_servicio text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_aut      record;
+  v_servicio text := lower(nullif(btrim(coalesce(p_servicio, '')), ''));
+begin
+  -- 42501 si el vehículo no es del usuario. Va antes que el catálogo: a quien no puede tocarlo no se le revela nada.
+  select * into v_aut from public.neumatico_autorizar_vehiculo(p_vehiculo_id);
+  if v_servicio is not null and v_servicio not in ('camion', 'bus') then
+    raise exception 'servicio fuera de catálogo' using errcode = '23514';
+  end if;
+  update public.vehiculos v set servicio = v_servicio where v.id = p_vehiculo_id;
+end;
+$$;
+revoke all on function public.vehiculo_fijar_servicio(bigint, text) from public, anon;
+grant execute on function public.vehiculo_fijar_servicio(bigint, text) to authenticated;
+
+-- Base: copia de 20261126010000_auxilio_tramos_km.sql:224-386. La ola 2 agrega columnas al final y cambia desgaste_irregular.
 create or replace view public.v_estado_neumaticos
 with (security_invoker = true) as
 with s as (
@@ -138,7 +243,8 @@ b as (
          else s.ultima_at < now() - make_interval(days => s.dias_sin_medir_alerta) end as sin_medir,
     case when s.promedio is null then null
          else greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3) end as diferencia_huellas_mm,
-    coalesce(greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3) > s.irregularidad_mm, false)
+    -- RN-06 y D7: la diferencia se redondea a 0,1 mm, como en el panel, y el umbral incluye el valor (>=).
+    coalesce(round(greatest(s.mm1, s.mm2, s.mm3) - least(s.mm1, s.mm2, s.mm3), 1) >= s.irregularidad_mm, false)
       as desgaste_irregular,
     coalesce(s.n90, 0) as n_mediciones_90d,
     -- Tasa: al menos 3 mediciones y 14 días reales entre la primera y la última de la ventana
@@ -150,15 +256,30 @@ b as (
     s.umbral_bajo_mm, s.umbral_critico_mm, s.umbral_retiro_mm, s.dias_sin_medir_alerta
   from s
 )
-select b.*,
-  case when b.tasa_mm_semana > 0 and b.promedio is not null
-       then round(greatest(b.promedio - b.umbral_critico_mm, 0) / b.tasa_mm_semana, 2) end as semanas_hasta_critico,
-  case when b.tasa_mm_semana > 0 and b.promedio is not null
-       then round(greatest(b.promedio - b.umbral_retiro_mm, 0) / b.tasa_mm_semana, 2) end  as semanas_hasta_retiro,
-  -- Huella mínima (RN-01). NULL si falta cualquiera de las tres: least() ignora nulos y daría un mínimo falso.
-  case when b.mm1 is null or b.mm2 is null or b.mm3 is null then null
-       else least(b.mm1, b.mm2, b.mm3) end as minimo
-from b;
+-- Dirección (D3, RN-07): solo en el eje de dirección, con huella medida y no bajo el retiro (RN-08: bajo el retiro
+-- manda la roja). El límite se mira antes que el aviso, porque el rango del aviso incluye al límite.
+select y.*,
+  case when y.rol_eje = 'direccion' and y.minimo >= y.umbral_retiro_mm then
+         case when y.minimo < y.direccion_limite_mm then 'direccion_limite'
+              when y.minimo <= y.direccion_aviso_mm then 'direccion_aviso' end
+  end as estado_direccion
+from (
+  select b.*,
+    case when b.tasa_mm_semana > 0 and b.promedio is not null
+         then round(greatest(b.promedio - b.umbral_critico_mm, 0) / b.tasa_mm_semana, 2) end as semanas_hasta_critico,
+    case when b.tasa_mm_semana > 0 and b.promedio is not null
+         then round(greatest(b.promedio - b.umbral_retiro_mm, 0) / b.tasa_mm_semana, 2) end as semanas_hasta_retiro,
+    -- Huella mínima (RN-01). NULL si falta cualquiera de las tres: least() ignora nulos y daría un mínimo falso.
+    case when b.mm1 is null or b.mm2 is null or b.mm3 is null then null
+         else least(b.mm1, b.mm2, b.mm3) end as minimo,
+    -- Columnas nuevas al final: distribución y servicio del vehículo, rol del eje y umbrales de dirección del cliente.
+    vh.distribucion, vh.servicio,
+    public.rol_eje_posicion(vh.distribucion, b.posicion) as rol_eje,
+    cl.direccion_aviso_mm, cl.direccion_limite_mm
+  from b
+  left join public.vehiculos vh on vh.id = b.vehiculo_id
+  left join public.clientes cl on cl.id = b.cliente_id
+) y;
 
 revoke all on public.v_estado_neumaticos from public, anon;
 grant select on public.v_estado_neumaticos to authenticated;
@@ -367,8 +488,11 @@ $$;
 revoke all on function public.km_tramos_cubierta(bigint) from public, anon;
 grant execute on function public.km_tramos_cubierta(bigint) to authenticated;
 
--- Copia de 20261120500000_cerrar_escrituras_neumet.sql:242-337
-create or replace function public.alerta_configurar(p_cliente_id bigint, p_umbral_critico_mm numeric DEFAULT NULL::numeric, p_histeresis_mm numeric DEFAULT NULL::numeric, p_umbral_bajo_mm numeric DEFAULT NULL::numeric, p_umbral_retiro_mm numeric DEFAULT NULL::numeric, p_dias_sin_medir integer DEFAULT NULL::integer, p_irregularidad_mm numeric DEFAULT NULL::numeric, p_huella_absurda_mm numeric DEFAULT NULL::numeric)
+-- Base: copia de 20261120500000_cerrar_escrituras_neumet.sql:242-337. La ola 2 agrega dirección y swap, con firma nueva.
+-- create or replace no cambia una firma: hay que quitar la de ocho argumentos. Los tres parámetros nuevos van al final y
+-- nulos = no cambiar, así el panel actual sigue funcionando hasta que se fusione el Brief 2.
+drop function if exists public.alerta_configurar(bigint, numeric, numeric, numeric, numeric, integer, numeric, numeric);
+create or replace function public.alerta_configurar(p_cliente_id bigint, p_umbral_critico_mm numeric DEFAULT NULL::numeric, p_histeresis_mm numeric DEFAULT NULL::numeric, p_umbral_bajo_mm numeric DEFAULT NULL::numeric, p_umbral_retiro_mm numeric DEFAULT NULL::numeric, p_dias_sin_medir integer DEFAULT NULL::integer, p_irregularidad_mm numeric DEFAULT NULL::numeric, p_huella_absurda_mm numeric DEFAULT NULL::numeric, p_direccion_aviso_mm numeric DEFAULT NULL::numeric, p_direccion_limite_mm numeric DEFAULT NULL::numeric, p_swap_km integer DEFAULT NULL::integer)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -382,6 +506,8 @@ declare
   v_critico  numeric;
   v_retiro   numeric;
   v_abiertas bigint;
+  v_da       numeric;
+  v_dl       numeric;
 begin
   if v_uid is null then
     raise exception 'permiso denegado' using errcode = '42501';
@@ -397,7 +523,8 @@ begin
   end if;
 
   if p_umbral_critico_mm is null and p_histeresis_mm is null and p_umbral_bajo_mm is null and p_umbral_retiro_mm is null
-     and p_dias_sin_medir is null and p_irregularidad_mm is null and p_huella_absurda_mm is null then
+     and p_dias_sin_medir is null and p_irregularidad_mm is null and p_huella_absurda_mm is null
+     and p_direccion_aviso_mm is null and p_direccion_limite_mm is null and p_swap_km is null then
     raise exception 'parámetros obligatorios' using errcode = '22004';
   end if;
 
@@ -437,12 +564,31 @@ begin
     end if;
   end if;
 
+  -- Dirección (D8) y swap (D1). El check de clientes es la última barrera; estos mensajes son los que ve el operario.
+  if p_direccion_aviso_mm is not null and p_direccion_aviso_mm <> round(p_direccion_aviso_mm, 1)
+     or p_direccion_limite_mm is not null and p_direccion_limite_mm <> round(p_direccion_limite_mm, 1) then
+    raise exception 'los umbrales de dirección admiten un decimal' using errcode = '22023';
+  end if;
+  if (p_direccion_aviso_mm is not null and (p_direccion_aviso_mm <= 0 or p_direccion_aviso_mm > 99.9))
+     or (p_direccion_limite_mm is not null and (p_direccion_limite_mm <= 0 or p_direccion_limite_mm > 99.9)) then
+    raise exception 'los umbrales de dirección van de 0,1 a 99,9 mm' using errcode = '23514';
+  end if;
+  if p_swap_km is not null and (p_swap_km < 1000 or p_swap_km > 200000) then
+    raise exception 'el swap va de 1.000 a 200.000 km' using errcode = '23514';
+  end if;
   v_bajo    := coalesce(p_umbral_bajo_mm,    v_c.umbral_bajo_mm);
   v_critico := coalesce(p_umbral_critico_mm, v_c.umbral_critico_mm);
   v_retiro  := coalesce(p_umbral_retiro_mm,  v_c.umbral_retiro_mm);
   if not (v_retiro < v_critico and v_critico < v_bajo) then
     raise exception 'el nivel crítico debe quedar entre el de retiro (% mm) y el de desgaste bajo (% mm)', v_retiro, v_bajo
       using errcode = '23514';
+  end if;
+
+  -- El límite de dirección debe quedar bajo el aviso (D8). No se cruza con el retiro.
+  v_da := coalesce(p_direccion_aviso_mm, v_c.direccion_aviso_mm);
+  v_dl := coalesce(p_direccion_limite_mm, v_c.direccion_limite_mm);
+  if not (v_dl < v_da) then
+    raise exception 'el límite de dirección (% mm) debe quedar bajo el aviso (% mm)', v_dl, v_da using errcode = '23514';
   end if;
 
   update public.clientes c
@@ -452,7 +598,10 @@ begin
          dias_sin_medir_alerta = coalesce(p_dias_sin_medir, c.dias_sin_medir_alerta),
          irregularidad_mm      = coalesce(p_irregularidad_mm, c.irregularidad_mm),
          alerta_histeresis_mm  = coalesce(p_histeresis_mm, c.alerta_histeresis_mm),
-         huella_absurda_mm     = coalesce(p_huella_absurda_mm, c.huella_absurda_mm)
+         huella_absurda_mm     = coalesce(p_huella_absurda_mm, c.huella_absurda_mm),
+         direccion_aviso_mm    = v_da,
+         direccion_limite_mm   = v_dl,
+         swap_km               = coalesce(p_swap_km, c.swap_km)
    where c.id = v_c.id;
 
   select count(*) into v_abiertas from public.alertas a where a.cliente_id = v_c.id and a.estado <> 'resuelta';
@@ -461,9 +610,14 @@ begin
                             'histeresis_mm', v_c.alerta_histeresis_mm, 'umbral_bajo_mm', v_c.umbral_bajo_mm,
                             'umbral_retiro_mm', v_c.umbral_retiro_mm, 'dias_sin_medir_alerta', v_c.dias_sin_medir_alerta,
                             'irregularidad_mm', v_c.irregularidad_mm, 'huella_absurda_mm', v_c.huella_absurda_mm,
+                            'direccion_aviso_mm', v_c.direccion_aviso_mm, 'direccion_limite_mm', v_c.direccion_limite_mm,
+                            'swap_km', v_c.swap_km,
                             'alertas_abiertas', v_abiertas);
 end
 $$;
+
+revoke all on function public.alerta_configurar(bigint, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, numeric, integer) from public, anon;
+grant execute on function public.alerta_configurar(bigint, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, numeric, integer) to authenticated;
 
 -- Copia de 20261125500000_auxilio_sin_alerta.sql:149-193
 create or replace view public.v_resumen_flota_cliente

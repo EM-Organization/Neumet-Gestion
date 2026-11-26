@@ -45,7 +45,7 @@ insert into _m values
   (1,1,3,1,5,5,5,null,null),
   -- V1 pos4: 4.99 (crítico)
   (1,1,4,1,4.99,4.99,4.99,null,null),
-  -- V1 pos5: dif exacta 2.0 (NO irregular); dos filas idénticas misma fecha => tasa null
+  -- V1 pos5: dif exacta 2.0 (irregular: la base es >=, D7); dos filas idénticas misma fecha => tasa null
   (1,1,5,2,10,8,9,null,null),(1,1,5,2,10,8,9,null,null),
   -- V1 pos6: dif 2.1 (irregular)
   (1,1,6,1,10.1,8,9,null,null),

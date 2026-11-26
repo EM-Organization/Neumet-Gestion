@@ -212,6 +212,10 @@ echo "== migración odómetro obligatorio y motivos (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126020000_odometro_motivos.sql"
 echo "== migración odómetro obligatorio y motivos (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126020000_odometro_motivos.sql"
+echo "== migración ejes, dirección y alertas (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126030000_ejes_direccion_alertas.sql"
+echo "== migración ejes, dirección y alertas (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126030000_ejes_direccion_alertas.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

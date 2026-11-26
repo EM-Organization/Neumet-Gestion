@@ -70,9 +70,9 @@ select test.eq('v_ultima_medicion: una fila por (vehículo,posición)',
 select test.eq('v_ultima_medicion excluye mediciones sin vehículo',
   (select count(*) from v_ultima_medicion where vehiculo_id is null), 0::bigint);
 
--- Desgaste irregular (umbral estricto >)
-select test.eq('dif 2.0 con umbral 2.0 => NO irregular (pos5)',
-  (select desgaste_irregular from v_estado_neumaticos where vehiculo_id=1 and posicion=5), false);
+-- Desgaste irregular: la base es >= sobre la diferencia redondeada a 0,1 mm (D7, ola 2)
+select test.eq('dif 2.0 con umbral 2.0 => irregular (pos5, D7: umbral inclusivo)',
+  (select desgaste_irregular from v_estado_neumaticos where vehiculo_id=1 and posicion=5), true);
 select test.eq('dif 2.1 => irregular (pos6)',
   (select desgaste_irregular from v_estado_neumaticos where vehiculo_id=1 and posicion=6), true);
 select test.eq('irregularidad por cliente: B pos3 dif 1.3 > 1.0',
@@ -88,8 +88,8 @@ select test.eq('A: cruza el crítico pronto solo pos2 (3 sem); pos1 con 5 sem no
     where cliente_id=1 and estado in ('nuevo','poco_desgaste') and semanas_hasta_critico <= 4), array[2::smallint]);
 select test.eq('A: semanas hasta el crítico de pos2 = 3',
   (select semanas_hasta_critico from v_estado_neumaticos where vehiculo_id=1 and posicion=2), 3.00);
-select test.eq('A: desgaste_irregular solo pos6',
-  (select array_agg(posicion) from v_estado_neumaticos where cliente_id=1 and desgaste_irregular), array[6::smallint]);
+select test.eq('A: desgaste_irregular en pos5 (2,0 con umbral 2,0, D7) y pos6',
+  (select array_agg(posicion order by posicion) from v_estado_neumaticos where cliente_id=1 and desgaste_irregular), array[5::smallint, 6::smallint]);
 select test.eq('A: sin_medir = pos7 (nunca), pos8 (40 d), V2 pos3 (31 d)',
   (select array_agg(vehiculo_id::text||'/'||posicion order by vehiculo_id, posicion) from v_estado_neumaticos where cliente_id=1 and sin_medir),
   array['1/7','1/8','2/3']);
