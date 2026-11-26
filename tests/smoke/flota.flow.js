@@ -110,6 +110,9 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   await sleep(700);
   var limites = all('#alert-tbody tr[data-tipo="limite"]');
   if(limites.length !== 4 || Array.prototype.some.call(limites, function(r){ var b = r.querySelector('.badge.red'); return !b || !/× Desgaste límite/.test(b.textContent); })) fail('alertas: cada alerta de desgaste límite debe llevar «× Desgaste límite» en rojo');
+  // El chip de tipo no se parte en el móvil («Desgaste / límite»): el envoltorio .alerta-tipo va con nowrap (styles.css).
+  var tipoEl = limites[0] && limites[0].querySelector('.alerta-tipo');
+  if(!tipoEl || w.getComputedStyle(tipoEl).whiteSpace !== 'nowrap') fail('alertas: el chip de tipo debe ir sin salto de línea (.alerta-tipo): ' + (tipoEl ? w.getComputedStyle(tipoEl).whiteSpace : 'sin .alerta-tipo'));
   var swap = $('#alert-tbody tr[data-tipo="swap"]');
   if(!swap) fail('alertas: falta la alerta de cambio de posición');
   else {

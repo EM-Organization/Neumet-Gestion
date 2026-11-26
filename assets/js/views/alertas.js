@@ -71,7 +71,7 @@ function fila(a, mostrarCliente) {
   const silencio = estado === 'silenciada' ? html`<div class="flota-cliente">Hasta ${fmtFecha(a.silenciada_hasta)}</div>` : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}" data-estado="${estado}">
     <td data-label="Estado">${chipEstado(estado)}${silencio}</td>
-    <td data-label="Mensaje">${chip(tipo.color, tipo.etiqueta, tipo.simbolo)} ${comaDecimal(detalleAlerta(a))}</td>
+    <td data-label="Mensaje"><span class="alerta-tipo">${chip(tipo.color, tipo.etiqueta, tipo.simbolo)}</span> ${comaDecimal(detalleAlerta(a))}</td>
     <td data-label="Vehículo">${etiquetaCoche(a.vehiculo_nombre)}${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}</td>
     <td data-label="Posición">${celdaPosicion(a)}</td>
     <td data-label="Última medición">${a.ultima_medicion_at ? relDate(a.ultima_medicion_at) : 'nunca'}</td>

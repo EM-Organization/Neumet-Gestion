@@ -774,6 +774,8 @@
 .alert-acciones { display:flex; gap:6px; flex-wrap:wrap; }
 /* Seis columnas con acciones: con el relleno general (16 px) la tabla mide ~700 px y a 940 px de pantalla las acciones se salían de la tarjeta (con la barra lateral quedan 656 px). */
 .alert-tabla th, .alert-tabla td { padding-left: 8px; padding-right: 8px; }
+/* El chip de tipo va en .alerta-tipo: sin salto, «Desgaste límite» no se parte en dos líneas en el móvil. Va aquí y no en .badge, que es de todas las vistas. */
+.alerta-tipo { white-space: nowrap; }
 @media (max-width: 640px) {
   .table-wrap .alert-tabla { min-width: 0; }
   .alert-tabla thead { display: none; }
