@@ -64,6 +64,7 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
   const c = { cambiar: 0, revisar: 0 };
   for (const a of alertas || []) {
     if (!a || estadoAlerta(a, ahora) === 'silenciada') continue;
+    // «rojo» es el color de la base (v_alertas.color); la tabla usa «red» para las clases del chip: dos vocabularios, no unificar.
     if (a.tipo === 'limite' || a.color === 'rojo') c.cambiar++; else c.revisar++;
   }
   return c;

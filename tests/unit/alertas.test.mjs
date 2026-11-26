@@ -114,6 +114,9 @@ describe('recuadro «cambiar» y «revisar»', () => {
     ], AHORA);
     assert.deepEqual(c, { cambiar: 3, revisar: 2 });
   });
+  test('un tipo desconocido con color «rojo» cuenta como cambiar: lo decide el color que manda la base', () => {
+    assert.deepEqual(conteoRecuadro([{ tipo: 'critico', color: 'rojo' }], AHORA), { cambiar: 1, revisar: 0 });
+  });
   test('las silenciadas no cuentan; el silencio vencido sí', () => {
     assert.deepEqual(conteoRecuadro([
       { tipo: 'swap', silenciada_hasta: '2026-06-12T00:00:00Z' },
