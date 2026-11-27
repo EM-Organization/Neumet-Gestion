@@ -1591,3 +1591,50 @@ Nota: la consulta agrupa por vehículo y posición (la cubierta en `mediciones`)
 - **Moneda por defecto.** Los costos nuevos sin moneda explícita pasan a USD para todos los clientes. Los costos ya cargados no cambian. Conviene revisar con la consulta del AD.9 antes de aplicar.
 - **Umbral por cliente.** Todos los clientes quedan con 5 mm. Una medición que hoy queda válida puede quedar sospechosa tras la regla nueva, pero solo en mediciones nuevas.
 - **Historia sin recalcular.** Las mediciones anteriores no cambian de calidad. La consulta del AD.9 dimensiona cuántas serían caídas bruscas.
+
+# Apéndice AH · Asistente de reportes: cuota y registro (`20261126090000_asistente_uso.sql`)
+
+Implementa la cuota de 30 preguntas por usuario y día y el registro de uso del asistente de reportes (docs/24 §7 y §9). Sin `service_role`: la Edge Function `asistente-reportes` escribe el registro con las dos RPC de abajo, con el JWT del usuario. Es la única migración del asistente.
+
+## AH.1 Tabla `asistente_uso`
+- Una fila por pregunta: `user_id` (FK a `auth.users`, cascada), `cliente_id` (FK a `clientes`, cascada), `dia` (día calendario de Montevideo, fijado por `asistente_reservar` al insertar), `created_at`, `resultado` (`en_curso`, `ok`, `error` o `cuota`), `modelo` (hasta 100), `tools` (`text[]`, hasta 20), `tokens_entrada`, `tokens_salida`, `duracion_ms` (enteros no negativos), `costo` (`numeric(12,6)`, no negativo), `prompt_version` (hasta 20), `aviso` (hasta 60) y `cerrada_at`.
+- Índices: `(user_id, dia)` y único parcial `(user_id, dia) where resultado = 'cuota'`: a lo sumo una fila de cuota por usuario y día.
+- No guarda texto de la pregunta ni de la respuesta.
+- Privilegios: `revoke all` a `public`, `anon` y `authenticated`; `grant select` solo a `authenticated`. Sin `insert`, `update` ni `delete` para ningún rol: solo las RPC escriben.
+- RLS: política `asistente_uso_select` para `authenticated`, con `user_id = auth.uid()` o `is_admin()`.
+
+## AH.2 `asistente_reservar(p_cliente_id bigint default null) returns jsonb`
+- `security definer`, `search_path = ''`, `volatile`. Ejecución solo para `authenticated`.
+- Autorización según el perfil, dentro de la función:
+  - Sin sesión, sin perfil, perfil `api` o empresa dada de baja → `42501`.
+  - Admin: `p_cliente_id` obligatorio; si falta, no existe o tiene `deleted_at` → `22023` con el mensaje `cliente_requerido`.
+  - Perfil de cliente: usa el cliente del perfil y **ignora** `p_cliente_id`. Rol `global` si no tiene sucursal; `sucursal` si la tiene, con el nombre de la sucursal.
+- Cuota: toma un bloqueo consultivo por usuario (`pg_advisory_xact_lock`) y cuenta las filas del día con `resultado <> 'cuota'`. Con 30 o más, inserta una fila `cuota` (una sola por día) y responde `permitido: false`. Si no, inserta una fila `en_curso` y responde `permitido: true`.
+- Respuesta si se permite: `permitido`, `id`, `usadas` (incluye esta pregunta), `limite` (30), `rol`, `cliente_id`, `cliente_nombre`, `sucursal_id`, `sucursal_nombre`, `costos_visibles` (`precios_visibles()`) y `moneda_default`.
+- Respuesta si se rechaza: `permitido: false`, `usadas` y `limite`.
+
+## AH.3 `asistente_cerrar(p_id, p_resultado, p_modelo, p_tools, p_tokens_entrada, p_tokens_salida, p_costo, p_duracion_ms, p_prompt_version, p_aviso) returns boolean`
+- `security definer`, `search_path = ''`. Solo para `authenticated`.
+- Solo cierra la fila propia `en_curso` y la pasa a `ok` o `error`. Devuelve `false` si la fila no es del usuario, no existe o ya estaba cerrada. No puede pasar una fila a `cuota` ni borrarla.
+- Valida antes del update con `22023`: resultado distinto de `ok`/`error`, modelo de más de 100, más de 20 tools, valores negativos, `prompt_version` de más de 20 o `aviso` de más de 60. Un valor nulo conserva lo que ya guardó `asistente_reservar`.
+
+## AH.4 Por qué sin `service_role` y el riesgo aceptado
+- Las tools corren con el JWT del usuario (docs/24 §4). Escribir el registro con la misma identidad evita una clave de servicio en la función.
+- La cuota no se puede saltar: la única ruta de inserción es `asistente_reservar`, que cuenta antes, y `asistente_cerrar` no puede borrar ni convertir una fila en cuota.
+- Riesgo aceptado: un usuario puede alterar las cifras de uso de sus propias filas (modelo, tokens, costo). Sirven para monitoreo; el gasto lo topa el tope de OpenRouter (docs/24 §7).
+- Una petición que nunca cierra queda `en_curso` y cuenta como usada. No hay limpieza automática.
+
+## AH.5 Concurrencia
+- Dos preguntas simultáneas del mismo usuario con 29 usadas: la primera toma el bloqueo; la segunda espera, cuenta 30 y se rechaza. Usuarios distintos no se bloquean entre sí (claves de bloqueo distintas).
+- Un fallo a mitad de la reserva deshace todo: la transacción de la llamada no deja filas a medias.
+
+## AH.6 Pruebas
+- SQL: `tests/sql/t_120_asistente_uso.sql`. Cubre por rol: global (cuota de 30, una sola fila `cuota`, filas de ayer y `cuota` que no cuentan, cliente del perfil), sucursal (sin costos, nombre de la sucursal), admin (`cliente_requerido`, cliente dado de baja e inexistente), `api`, sin perfil, empresa dada de baja, `anon`; cierre propio, repetido y ajeno; validaciones `22023`; visibilidad de la tabla por rol; escrituras directas `42501`; `prosecdef` y `search_path` vacío.
+- Concurrencia: `tests/sql/concurrencia_asistente_cuota.sh` (dos sesiones reales). Comprobado a mano: sin el `pg_advisory_xact_lock`, la prueba falla con «solo una pregunta debía permitirse».
+- `tests/sql/run.sh` aplica la migración dos veces (idempotencia).
+- Pendiente de integrar: `t_96` exige que toda `security definer` ejecutable por `authenticated` figure en un grupo de su catálogo; las dos RPC deben declararse ahí.
+- E2E: `tests/e2e/specs/asistente.mjs`, con la API real y el JWT de cada rol (su estado está en la entrega de la oleada).
+
+## AH.7 Riesgos de despliegue
+- Aplicar la migración con el CLI (`neumet-aplicar-migracion`) antes de desplegar la función `asistente-reportes` y de fusionar el panel que la llama. Sin la tabla, la función responde error de base.
+- No se modifica ninguna tabla existente: el efecto sobre datos previos es nulo.
