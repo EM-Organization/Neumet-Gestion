@@ -91,6 +91,9 @@ function limpiarUrl() {
 
 // Quien puede operar sobre neumáticos (cambiar, rotar, retirar, montar): el cliente. El equipo Neumet solo mira (docs/17 PR 9).
 const puedeOperar = () => !esAdmin();
+// Valor del select «Rotar con la posición» para la rotación en disco: lo lee cambio-neumatico.js (neumatico-rotar-pos).
+const DESTINO_DISCO = 'disco';
+const POSICION_AUXILIO = 99;
 
 export function abrirDetalle(id, pos = null, origenForzado = null, esUrl = false) {
   const activa = vistaActiva();
@@ -136,6 +139,7 @@ function cabecera() {
   setHtml($('vd-cab'), html`
     <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? tagEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
       ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Distribución y servicio</button>` : ''}
+      ${puedeOperar() ? html`<button type="button" class="btn ghost" id="vd-alinear-btn" data-action="vehiculo-alinear" data-vehiculo-id="${vehiculoId}">Registrar alineación</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost" data-action="openCicloVida" data-args="[${vehiculoId}, true]">Odómetro y ciclo de vida</button>` : ''}
       ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
     ${recuadro.length ? html`<p class="vd-p-nota">${recuadro}</p>` : ''}
@@ -410,10 +414,12 @@ function acciones(pos, bajoRetiro = false) {
   const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
   if (bajoRetiro) return html`<div class="vd-pie"><p class="vd-p-razon"><strong>Retirar ya.</strong> Bajo el límite de retiro no se rota a otro eje (RN-08).</p><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
   // Rotar abre el diálogo (motivo y odómetro). El botón lleva data-args='[vehiculoId, posA, posB]', que se actualiza al elegir el destino.
+  // «En disco» (valor DESTINO_DISCO) rota la cubierta en su misma posición; el auxilio (99) no se rota en disco (RN-15).
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
+  const enDisco = Number(pos) !== POSICION_AUXILIO ? html`<option value="${DESTINO_DISCO}">En disco (misma posición)</option>` : '';
   const rotar = html`<div class="vd-rotar">
     <label for="vd-rotar-destino">Rotar con la posición</label>
-    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, tipoLayout(datos.veh))}</option>`)}</select>
+    <select id="vd-rotar-destino" class="select-filter"><option value="">Elegir posición…</option>${enDisco}${destinos.map(r => html`<option value="${r.posicion}">${nombrePos(r.posicion, tipoLayout(datos.veh))}</option>`)}</select>
     <button type="button" class="btn" id="vd-rotar-btn" data-action="neumatico-rotar-pos" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-destino="" data-args="${JSON.stringify([vehiculoId, pos, null])}">Rotar</button></div>`;
   return html`<div class="vd-pie"><div class="vd-p-acciones">${cambiar}${retirar}</div>${rotar}</div>`;
 }
@@ -693,8 +699,10 @@ export function init() {
   $('vd-panel').addEventListener('change', e => {
     if (e.target.id !== 'vd-rotar-destino') return;
     const b = $('vd-rotar-btn');
-    b.dataset.destino = e.target.value;
-    b.dataset.args = JSON.stringify([vehiculoId, Number(b.dataset.posicion), e.target.value ? Number(e.target.value) : null]);
+    const v = e.target.value;
+    b.dataset.destino = v;
+    const destino = v === DESTINO_DISCO ? DESTINO_DISCO : (v ? Number(v) : null);
+    b.dataset.args = JSON.stringify([vehiculoId, Number(b.dataset.posicion), destino]);
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !nulo(seleccion) && $('view-vehiculo-detalle').classList.contains('active')) cerrarPanel();

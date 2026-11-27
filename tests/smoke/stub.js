@@ -93,6 +93,8 @@
   var mot = [
     ['baja','desgaste','Desgaste',1],['baja','danio','Daño',2],['baja','venta','Venta',3],['baja','chatarra','Chatarra',4],['baja','devolucion_proveedor','Devolución al proveedor',5],['baja','otro','Otro',9],
     ['rotacion','swap_20000','Swap a 20.000 km',1],['rotacion','diferencia_huellas','Diferencia entre huellas',2],['rotacion','paso_direccional_a_traccion','Direccional pasa a tracción o eje loco',3],['rotacion','paso_a_eje_loco','Paso a eje loco',4],['rotacion','otro','Otro',9],
+    ['rotacion_disco','desgaste_lateral','Desgaste lateral',1],['rotacion_disco','swap_20000','Swap a 20.000 km',2],['rotacion_disco','otro','Otro',9],
+    ['alineacion','desgaste_lateral','Desgaste lateral',1],['alineacion','control','Control de rutina',2],['alineacion','reparacion_tren','Reparación del tren delantero',3],['alineacion','otro','Otro',9],
     ['cambio','desgaste','Desgaste',1],['cambio','danio','Daño o pinchazo',2],['cambio','desgaste_irregular','Desgaste irregular',3],['cambio','otro','Otro',9],
     ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9]
   ].map(function(r){ return {tipo:r[0],codigo:r[1],etiqueta:r[2],orden:r[3],activo:true,cliente_id:null}; });

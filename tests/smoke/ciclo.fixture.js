@@ -6,9 +6,11 @@
   window.supabase.createClient = function(){
     var c = base.apply(this, arguments), from = c.from, rpc = c.rpc;
     c.rpc = function(name, args){
-      if(name !== 'neumatico_rotar' && name !== 'neumatico_cambiar') return rpc.apply(c, arguments);
+      if(['neumatico_rotar','neumatico_cambiar','neumatico_rotar_disco','vehiculo_alinear'].indexOf(name) === -1) return rpc.apply(c, arguments);
       fx.rpcs.push({name: name, args: args});
-      var res = fx.rpcError ? {data: null, error: fx.rpcError} : {data: {intercambio: true}, error: null};
+      // Disco y alineación: la base responde con su propio retorno (sin «intercambio»).
+      var ok = name === 'vehiculo_alinear' ? {neumaticos: 2, duplicada: false} : (name === 'neumatico_rotar_disco' ? {duplicada: false} : {intercambio: true});
+      var res = fx.rpcError ? {data: null, error: fx.rpcError} : {data: ok, error: null};
       // fx.rpcDelay (ms): RPC lenta, para probar el tiempo de espera y la respuesta que llega tarde
       return fx.rpcDelay ? new Promise(function(ok){ setTimeout(function(){ ok(res); }, fx.rpcDelay); }) : Promise.resolve(res);
     };

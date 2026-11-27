@@ -39,6 +39,7 @@ Capturas de los fallos: `tests/e2e/capturas/` (o `E2E_CAPTURAS`). Un solo test: 
   el selector del perfil global.
 - **alertas-dispositivos**: conteos, filtros y estados contra `v_alertas` y `v_salud_dispositivos` (Dispositivos solo para admin); el cliente no abre la vista ni por menú, ni por acción, ni cargando sus datos.
 - **ola2-alertas-servicio**: v_alertas con color, severidad y umbral_km por tipo contra la base real; el servicio del vehículo se fija desde «Distribución y servicio» con `vehiculo_fijar_servicio` y el diálogo lo muestra al reabrirlo; el aviso de umbrales nombra Empresa > Umbrales y solo lo ve el administrador de empresa.
+- **ola3-disco-alineacion**: rotar en disco desde el panel cierra la lateral con `rotacion` y guarda el evento `rotacion_disco`; registrar alineación cierra la lateral con `alineacion`, deja la irregular abierta y guarda un evento por cubierta en ruta; la API rechaza el auxilio (22023) y los roles sin permiso (42501).
 - **recorrido**: todas las vistas por rol, CSV de Reportes paginado, Mediciones, Flota, Clientes, Ficha, Stock.
 - **taller**: rotar y cambiar neumático con RPC reales (admin, global, sucursal), rechazos 42501 con la base intacta,
   stock solo para el perfil global, odómetro que no baja.

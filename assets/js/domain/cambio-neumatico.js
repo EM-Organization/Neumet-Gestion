@@ -192,6 +192,23 @@ export function traducirErrorRotacion(err) {
   return 'No se pudo registrar la rotación. No se guardó nada';
 }
 
+// Errores de vehiculo_alinear. Los de odómetro, motivo y «sin neumáticos» son los mismos de la rotación; el respaldo
+// no puede decir «rotación», y la alineación tiene además el odómetro negativo (23514) que la rotación no traduce.
+export function traducirErrorAlineacion(err) {
+  const code = err && err.code ? String(err.code) : '';
+  const msg = (err && err.message ? String(err.message) : '').toLowerCase();
+  if (code === '42501' || msg.includes('permission denied') || msg.includes('permiso denegado')) return 'Sin permiso para registrar alineaciones en este vehículo';
+  if (msg.includes('odometro obligatorio')) return 'Indicar la lectura del odómetro del vehículo';
+  if (msg.includes('odómetro del vehículo no puede ser menor')) {
+    const m = /\((\d+) km\)/.exec(String(err.message));
+    return m ? `El odómetro del vehículo no puede ser menor al actual (${m[1]} km)` : 'El odómetro del vehículo no puede ser menor al actual';
+  }
+  if (msg.includes('odometro negativo')) return 'Odómetro del vehículo inválido: no puede ser negativo ni menor al actual';
+  if (msg.includes('motivo')) return `Elegir un motivo de la lista. Con «otro», escribirlo (máx. ${MAX_MOTIVO_TEXTO} caracteres)`;
+  if (msg.includes('no tiene neumáticos montados')) return 'El vehículo no tiene neumáticos montados';
+  return 'No se pudo registrar la alineación. No se guardó nada';
+}
+
 // Rotación desde un botón de posición: valida y detecta el intercambio.
 export function validarRotacion(neumaticos, vehiculoId, posA, posB, tipo) {
   const a = Number(posA), b = Number(posB);
