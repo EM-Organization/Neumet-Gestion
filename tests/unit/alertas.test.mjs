@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   estadoAlerta, etiquetaEstadoAlerta, contarPorEstadoAlerta, filtrarPorEstadoAlerta, sinReconocer, hastaSilencio,
   validarNota, traducirErrorAlerta, CHIP_ESTADO_ALERTA, PRESENTACION_ALERTA, SIMBOLO_REVISAR, presentacionAlerta, conteoRecuadro,
-  partesRecuadro, detalleAlerta,
+  partesRecuadro, detalleAlerta, tiempoRelativo,
 } from '../../assets/js/domain/alertas.js';
 import { ESTADOS, BANDERA } from '../../assets/js/domain/estado-desgaste.js';
 import { ordenarAlertas } from '../../assets/js/domain/flota.js';
@@ -148,7 +148,7 @@ describe('recuadro «cambiar» y «revisar»', () => {
     ], AHORA), { cambiar: 0, revisar: 1 });
     assert.deepEqual(conteoRecuadro([], AHORA), { cambiar: 0, revisar: 0 });
   });
-  test('partesRecuadro: «cambiar» en rojo y «revisar» en amarillo; una cifra en cero va en gris; sin nada que contar, vacío', () => {
+  test('partesRecuadro: «cambiar» en rojo y «revisar» en amarillo; sin nada que contar, vacío', () => {
     assert.deepEqual(partesRecuadro([], AHORA), []);
     assert.deepEqual(partesRecuadro([{ tipo: 'swap', silenciada_hasta: '2026-06-12T00:00:00Z' }], AHORA), []);
     assert.deepEqual(partesRecuadro([
@@ -161,14 +161,29 @@ describe('recuadro «cambiar» y «revisar»', () => {
       { color: 'red', simbolo: '×', texto: '2 cambiar' },
       { color: 'orange', simbolo: '◆', texto: '2 revisar' },
     ]);
+  });
+  test('partesRecuadro no muestra las cifras en cero', () => {
+    assert.deepEqual(partesRecuadro([{ tipo: 'limite' }, { tipo: 'limite' }], AHORA), [
+      { color: 'red', simbolo: '×', texto: '2 cambiar' },
+    ]);
     assert.deepEqual(partesRecuadro([{ tipo: 'irregular' }], AHORA), [
-      { color: 'gray', simbolo: '×', texto: '0 cambiar' },
       { color: 'orange', simbolo: '◆', texto: '1 revisar' },
     ]);
     assert.deepEqual(partesRecuadro([{ tipo: 'limite' }], AHORA), [
       { color: 'red', simbolo: '×', texto: '1 cambiar' },
-      { color: 'gray', simbolo: '◆', texto: '0 revisar' },
     ]);
+    assert.deepEqual(partesRecuadro([{ tipo: 'limite' }, { tipo: 'swap' }, { tipo: 'swap' }, { tipo: 'swap' }], AHORA), [
+      { color: 'red', simbolo: '×', texto: '1 cambiar' },
+      { color: 'orange', simbolo: '◆', texto: '3 revisar' },
+    ]);
+  });
+  test('tiempoRelativo: minutos, horas, días; sin fecha, «–»', () => {
+    const hace = ms => new Date(AHORA - ms).toISOString();
+    assert.equal(tiempoRelativo(hace(30 * 60000), AHORA), 'hace 30 min');
+    assert.equal(tiempoRelativo(hace(26 * 3600000), AHORA), 'hace 1 día');
+    assert.equal(tiempoRelativo(hace(3 * 86400000), AHORA), 'hace 3 días');
+    assert.equal(tiempoRelativo(null, AHORA), '–');
+    assert.equal(tiempoRelativo('no es fecha', AHORA), '–');
   });
 });
 

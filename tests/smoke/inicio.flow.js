@@ -21,7 +21,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!/1 neumático en desgaste límite/.test(txt)) fail('inicio('+rol+'): falta la causa del vehículo en desgaste límite');
   if(!/~6 semanas/.test(txt)) fail('inicio('+rol+'): faltan los próximos cambios con semanas');
   if(!/Dispositivos: \d+ de \d+ activos/.test(txt)) fail('inicio('+rol+'): falta la línea de dispositivos');
-  if(!$('#inicio-contenido [data-action="irA"][data-args=\'["alertas"]\']')) fail('inicio('+rol+'): falta "Ver todas las alertas"');
+  // Un solo enlace a Alertas, con el filtro «Abiertas» (docs/10 ola 5): «Ver alertas abiertas (N)».
+  var enlAbiertas = $('#inicio-contenido [data-action="alertasVerAbiertas"]');
+  if(!enlAbiertas || !/Ver alertas abiertas \(\d+\)/.test(enlAbiertas.textContent)) fail('inicio('+rol+'): falta «Ver alertas abiertas (N)»');
   // Dispositivos: el cliente ve el dato sin enlace (no gestiona hardware); administración abre la vista.
   var enlDisp = $('#inicio-contenido [data-action="irA"][data-args=\'["dispositivos"]\']');
   if(cliMode && enlDisp) fail('inicio(cliente): enlaza a Dispositivos');

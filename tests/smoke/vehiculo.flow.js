@@ -521,10 +521,10 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var q = w.__vehFx.queries.join(',');
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
   // Recuadro de la cabecera: el camión 01 tiene una alerta de desgaste límite abierta (vehiculo.fixture).
-  if(!/× 1 cambiar · ◆ 0 revisar/.test($('#vd-cab').textContent.replace(/\s+/g, ' '))) fail('detalle: falta el recuadro «× 1 cambiar · ◆ 0 revisar» en la cabecera');
-  // Color (RN-20): «cambiar» en rojo (hay uno) y «revisar» en gris (cero).
+  if(!/× 1 cambiar/.test($('#vd-cab').textContent.replace(/\s+/g, ' ')) || /0 revisar/.test($('#vd-cab').textContent)) fail('detalle: el recuadro de la cabecera debe ser «× 1 cambiar», sin «0 revisar»');
+  // Color (RN-20): «cambiar» en rojo (hay uno); sin «revisar», porque es cero y no se muestra.
   var recD = $('#vd-cab .vd-cab-titulo');
-  if(!recD || !recD.querySelector('.badge.red') || !recD.querySelector('.badge.gray') || recD.querySelector('.badge.orange')) fail('detalle: el recuadro de la cabecera debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
+  if(!recD || !recD.querySelector('.badge.red') || recD.querySelector('.badge.orange')) fail('detalle: el recuadro de la cabecera debe ser solo «cambiar», en rojo');
   // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.
   if(q.indexOf('v_mediciones_neumatico') === -1 || /(^|,)mediciones(,|$)/.test(q)) fail('detalle: las mediciones deben leerse de v_mediciones_neumatico, no de mediciones por posicion');
   $('#breadcrumb-parent').click(); await sleep(400);

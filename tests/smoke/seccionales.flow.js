@@ -74,7 +74,10 @@ window.seccionalesClienteFlow = async function(w, d, sleep, fail, log){
   await nav('vehiculos'); await sleep(300);
   await nav('alertas');
   setSel('#sec-select', ''); await sleep(500);
-  if (rows().length !== 4) fail('selector: Alertas/Todas debía tener 4 filas, hay ' + rows().length);
+  // Al entrar, Alertas muestra las abiertas; «Todas» (chip) muestra todo.
+  if (rows().length !== 2) fail('selector: Alertas/Todas debía tener 2 abiertas al entrar, hay ' + rows().length);
+  $('#alert-chips [data-action="alertasEstado"]').click(); await sleep(300);
+  if (rows().length !== 4) fail('selector: Alertas con el chip Todas debía tener 4 filas, hay ' + rows().length);
 
   // Inicio y Reportes consultan con el filtro de sucursal en el servidor
   fx.vehEqs.length = 0;
