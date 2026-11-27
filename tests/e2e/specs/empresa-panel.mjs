@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, irA, texto } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
+import { CAMPOS_UMBRAL } from '../../../assets/js/domain/umbrales.js';
 
 const SECCION = ['empresa-usuarios', 'empresa-umbrales'];
 
@@ -34,7 +35,7 @@ export function registrar(env) {
 
         // Umbrales: editar y guardar con Enter
         await irA(p, 'empresa-umbrales');
-        await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === 6 && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
+        await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === ${CAMPOS_UMBRAL.length} && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
         // El campo muestra el decimal con coma (es-AR), no con el punto de la base.
         assert.equal(await p.eval(`document.querySelector('#eu-alerta_histeresis_mm').value`), String(Number(previo.alerta_histeresis_mm)).replace('.', ','), 'la histéresis actual viene de la base');
         const nuevo = Number(previo.umbral_bajo_mm) + 0.5;
