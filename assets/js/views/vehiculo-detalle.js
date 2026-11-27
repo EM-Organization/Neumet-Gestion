@@ -21,7 +21,7 @@ import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.j
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { partesRecuadro, presentacionAlerta, detalleAlerta } from '../domain/alertas.js';
-import { avisoPanel, textoKmPrevios, itemsMasCabecera, textoSemanas } from '../domain/panel-rueda.js';
+import { avisoPanel, textoKmPrevios, itemsMasCabecera, textoSemanas, semanasHasta } from '../domain/panel-rueda.js';
 import { menuMas } from '../core/menu-mas.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { etiquetaMotivo } from '../domain/motivos.js';
@@ -324,7 +324,7 @@ function seccionTasa(fila, u, razonMostrada) {
   const est = wearStatus(huellaMinima(fila), datos.th);
   const yaCritico = est === 'mayor' || est === 'limite', yaRetiro = est === 'limite';
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
-    <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>
+    <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, semanasHasta(huellaMinima(fila), u.critico, tasa), yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, semanasHasta(huellaMinima(fila), u.retiro, tasa), yaRetiro)}</ul>
     <p class="vd-p-nota">El mínimo decide el estado; el promedio es informativo.</p>`;
 }
 
@@ -462,7 +462,7 @@ function renderPanel() {
     return;
   }
   const bajoRetiro = estadoDeFila(fila).id === 'limite';
-  const aviso = avisoPanel({ bajoRetiro, razonAcelerado: ind && ind.mayorAlNormal ? ind.razon : null, semanasRetiro: fila.semanas_hasta_retiro });
+  const aviso = avisoPanel({ bajoRetiro, razonAcelerado: ind && ind.mayorAlNormal ? ind.razon : null, semanasRetiro: semanasHasta(huellaMinima(fila), u.retiro, fila.tasa_mm_semana) });
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, tipoLayout(datos.veh))}</h3>
