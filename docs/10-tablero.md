@@ -1,6 +1,6 @@
 # 10 · Tablero del proyecto
 
-> Actualizado: 2026-11-27 (olas 2 y 3 de F8 en `main`, PR 161 y 162, migraciones `20261126030000` y `20261126040000` aplicadas; ola 4 en `main`, PR 163, migración `20261126050000` aplicada; siguiente: ola 5; reglas de negocio y decisiones del 25/11, [23](23-reglas-negocio.md)). Fuente de verdad del estado; los PR en GitHub tienen el detalle.
+> Actualizado: 2026-11-27 (olas 2 y 3 de F8 en `main`, PR 161 y 162, migraciones `20261126030000` y `20261126040000` aplicadas; ola 4 en `main`, PR 163, migración `20261126050000` aplicada; ola de densidad del panel en `main`, PR 164, sin migración; siguiente en la hoja de ruta: ola 5 de F8; reglas de negocio y decisiones del 25/11, [23](23-reglas-negocio.md)). Fuente de verdad del estado; los PR en GitHub tienen el detalle.
 > Flujo (oleadas, ver `CLAUDE.md`): un developer por tarea en su worktree → integración en `dev` con revisión del TL sin frenar (checklist en [13-checklist-revision-prs.md](13-checklist-revision-prs.md)) → PR `dev → main` con CI → el PM aplica migraciones, fusiona y despliega.
 > Procedimientos de operación: [11-runbook-operacion.md](11-runbook-operacion.md). Lo que no pudo verificarse desde el repositorio va marcado **[confirmar]**.
 
@@ -70,6 +70,8 @@
 - Vehículos sin parpadeo de orden (fix, solo front, sin migración): en la vista del cliente la lista se pintaba por nombre y se reordenaba por urgencia al llegar `v_estado_neumaticos`; ahora, sin búsqueda, espera ese estado (con «Cargando…») y se pinta una sola vez ordenada. Con búsqueda sigue sin esperar. Cubierto en `tests/smoke/vehiculo.flow.js`.
 - Documentación del producto: README raíz, índice de `docs/` y guías de revisión y de textos.
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
+- Ola de densidad del panel (UX, fuera de la numeración de F8; PR 164, sin migración ni cambios en funciones; en `main` el 27/11/2026). Pedido del dueño: menos información a la vista sin perder datos para decidir. Ficha del vehículo en 1280×720 con «Ver más» y «Más»; Alertas abre en «Abiertas» con cinco columnas; umbrales avanzados plegados; Inicio con «Requieren atención» primero, cifras en cero ocultas y «Últimas mediciones» por vehículo; el panel de rueda e Inicio proyectan el plazo con la huella mínima. Decisiones del dueño del 27/11: «Mayor desgaste» naranja con ◆ y rojo con × solo para «Desgaste límite» (revierte la del 21/11; «Revisar» pasa a ◎) y panel solo para escritorio ([14](14-guia-de-textos.md)).
+  - Clics de las tareas frecuentes (nueva referencia): ver un neumático crítico 1; cambiar 3 (sin desplazar la página); rotar 8; reconocer desde Inicio 2; silenciar o resolver 3. Suben 1 clic, solo en usos poco frecuentes: «Distribución y servicio», «Odómetro y ciclo de vida» y «Eliminar vehículo» (menú «Más»); km, costos, gráfico, velocidad e historial («Ver más»); alertas reconocidas o silenciadas (su filtro); ajustes avanzados de umbrales.
 
 ## Pendientes
 
@@ -103,6 +105,19 @@
   - Tras una rotación en disco, Mediciones muestra el lado invertido hasta la siguiente medición.
   - Se puede precargar el motivo «desgaste lateral» al rotar o alinear desde un aviso lateral.
   - El CSV de Stock exporta todo el cliente, no lo filtrado en pantalla.
+- Ola de densidad (PR 164), requiere migración:
+  - `v_estado_neumaticos.semanas_hasta_*` proyecta con el promedio (G-04); el panel de rueda e Inicio ya calculan con la huella mínima.
+  - El motivo de catálogo «Swap a 20.000 km» (`swap_20000`) y el mensaje «Hacer el swap» de `v_alertas` siguen con «swap», y el 20.000 es fijo aunque la empresa cambie su umbral.
+  - La alerta de límite repite «(umbral 3 mm)» en cada fila porque viene en el mensaje de la base.
+- Ola de densidad (PR 164), ajustes menores (no bloquean):
+  - Panel de rueda: «Ver más» abierto pide el gráfico dos veces; sin número de quema ya no dice «Sin registrar»; bajo el límite no se explica el desgaste acelerado (queda la marca); la nota «El mínimo decide el estado» solo sale con tasa positiva y el promedio quedó a tres clics; el pie sigue en dos filas.
+  - La altura de la ficha depende de la constante de 56 px del margen de `.view`.
+  - Umbrales: si la base rechaza el guardado, «Ajustes avanzados» no se abre hacia el campo. Empresa tiene dos botones primarios.
+  - Alertas: dos líneas de ayuda apuntan a «Empresa > Umbrales»; el filtro no vuelve a «Abiertas» al cambiar de sucursal (decidido así); los datos simulados no tienen `abierta_at`.
+  - Inicio: en «Últimas mediciones», una subida de huella («+0,5 mm») no aclara que no es desgaste. El oráculo e2e `alertasAbiertas` deja afuera un estado nulo. Evaluar si «Dispositivos» aporta al administrador de empresa.
+  - Neumáticos: «Enviar a recauchutar» en cubiertas nuevas, «Sin dato» doble y «Lotes anteriores» siempre abierto.
+  - Reportes: «0 km» sin dato y ▲ para «Muestra baja». «Montar cubierta nueva»: 9 campos con el resumen cortado. Mediciones: la leyenda fija de `index.html` no usa los colores de estado.
+  - Smoke `cliente` (Stock, menú «Más» con teclado): falló una vez en local; el CI del PR 164 pasó.
 - Ola 4 de F8, ajustes menores (no bloquean):
   - Dos filas de auditoría por cambio de moneda (`FIJAR_MONEDA` y `trg_audit_clientes`); unificar si se ordena la auditoría de `clientes`.
   - `medicion_corregir` fija el rango 0 a 30 mm; `medicion_evaluar_calidad` lo recibe por parámetro. Unificar si el máximo pasa a ser por cliente.
