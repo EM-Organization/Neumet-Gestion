@@ -7,6 +7,7 @@ import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } fr
 import { ACTIONS, registerActions } from '../core/actions.js';
 import { registerView, vistaActiva, reloadActiveView } from '../core/nav.js';
 import { fmtFecha } from '../domain/formato.js';
+import { MONEDA_DEFECTO, monedaInicial } from '../domain/costos.js';
 import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { ordenarCubiertas, etiquetaCubierta } from '../domain/stock-cubiertas.js';
@@ -17,6 +18,14 @@ import {
 } from '../domain/recauchutado.js';
 
 const $ = id => document.getElementById(id);
+
+// Moneda que se precarga al aceptar: la del cliente de la cubierta (clientes.moneda_default). Sin cliente o si la lectura
+// falla, USD; la base usa la moneda del cliente si el campo queda vacío (p_moneda null).
+async function monedaDelCliente(clienteId) {
+  if (!clienteId) return MONEDA_DEFECTO;
+  const { data, error } = await db.from('clientes').select('moneda_default').eq('id', clienteId).maybeSingle();
+  return monedaInicial(error ? null : data && data.moneda_default);
+}
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 // El equipo Neumet no opera dentro de una empresa (docs/17 P1): ve los procesos en solo lectura. Las cuatro RPC
 // recauchutado_* pierden su rama de admin en el PR 11 (C2).
@@ -158,7 +167,7 @@ registerActions({
     $('reca-cubierta-buscar').value = '';
     setHtml($('reca-proveedores'), joinHtml(proveedoresUsados(procesos).map(n => html`<option value="${n}"></option>`)));
     ['reca-proveedor', 'reca-motivo', 'reca-banda-marca', 'reca-banda-modelo', 'reca-profundidad', 'reca-costo'].forEach(id => { $(id).value = ''; });
-    $('reca-moneda').value = 'UYU'; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
+    $('reca-moneda').value = ''; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
     if (elegida !== null) {
       if (!libres.some(c => c.id === elegida)) { modal = null; showToast('La cubierta ya no se puede enviar a recauchutar', true); return; }
       $('reca-cubierta-buscar').value = textoCubierta(libres.find(c => c.id === elegida));
@@ -169,14 +178,16 @@ registerActions({
     $('modal-reca').classList.add('show');
     enfocar(elegida !== null ? 'reca-proveedor' : 'reca-cubierta-buscar');
   },
-  recaAbrir(modo, id) {
+  async recaAbrir(modo, id) {
     const p = procesos.find(x => x.id === id);
     if (!p || !puedeGestionar()) return;
     modal = { modo, id, cliente: p.cliente_id };
+    // Antes de abrir el diálogo: la moneda del cliente de la cubierta se lee sin repintar el formulario a medias.
+    const moneda = await monedaDelCliente(p.cliente_id);
     $('reca-title').textContent = TITULOS[modo]; $('reca-sub').textContent = etiquetaProceso(p);
     ['reca-motivo', 'reca-banda-marca', 'reca-banda-modelo', 'reca-profundidad', 'reca-costo'].forEach(x => { $(x).value = ''; });
     $('reca-dictamen').value = 'apto';
-    $('reca-moneda').value = 'UYU'; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
+    $('reca-moneda').value = moneda; $('reca-fecha').value = hoyISO(); $('reca-fecha').max = hoyISO();
     setHtml($('reca-sucursal'), opcionesSucursal(p.cliente_id));
     mostrarCampos(modo, 'apto'); err('');
     $('reca-guardar').textContent = modo === 'aceptar' ? 'Aceptar' : modo === 'rechazar' ? 'Rechazar' : 'Guardar';

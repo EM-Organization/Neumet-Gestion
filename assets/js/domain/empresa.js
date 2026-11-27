@@ -137,6 +137,7 @@ const PARAM_UMBRAL = {
   irregularidad_mm: 'p_irregularidad_mm',
   direccion_aviso_mm: 'p_direccion_aviso_mm',
   direccion_limite_mm: 'p_direccion_limite_mm',
+  caida_brusca_mm: 'p_caida_brusca_mm',
   swap_km: 'p_swap_km'
 };
 export function argsAlertaConfigurar(clienteId, valores) {

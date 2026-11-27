@@ -3,7 +3,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { CAMPOS_UMBRAL, validarUmbrales, validarHisteresis, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
 
-const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '8', direccion_limite_mm: '6', swap_km: '20000' };
+const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '8', direccion_limite_mm: '6', caida_brusca_mm: '5', swap_km: '20000' };
 
 describe('aNumero', () => {
   test('coma o punto', () => { assert.equal(aNumero('7,5'), 7.5); assert.equal(aNumero(' 7.5 '), 7.5); });
@@ -14,7 +14,7 @@ describe('validarUmbrales', () => {
   test('valores por defecto válidos', () => {
     const v = validarUmbrales(OK);
     assert.equal(v.ok, true);
-    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, swap_km: 20000 });
+    assert.deepEqual(v.valores, { umbral_bajo_mm: 8, umbral_critico_mm: 5, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 3, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, caida_brusca_mm: 5, swap_km: 20000 });
   });
   test('acepta coma decimal', () => assert.equal(validarUmbrales({ ...OK, umbral_bajo_mm: '8,5' }).valores.umbral_bajo_mm, 8.5));
   test('exige descenso estricto: mayor desgaste < poco desgaste < nuevo', () => {
@@ -64,6 +64,27 @@ describe('histéresis', () => {
       const v = validarUmbrales({ ...OK, alerta_histeresis_mm: h });
       assert.equal(v.ok, false, h); assert.equal(v.campo, 'alerta_histeresis_mm');
     }
+  });
+});
+
+describe('caída brusca (caida_brusca_mm, RN-09)', () => {
+  test('mayor que 0 y hasta 30, con un decimal (coma o punto)', () => {
+    assert.equal(validarUmbrales({ ...OK, caida_brusca_mm: '5' }).ok, true);
+    assert.equal(validarUmbrales({ ...OK, caida_brusca_mm: '30' }).ok, true);
+    assert.equal(validarUmbrales({ ...OK, caida_brusca_mm: '4,5' }).valores.caida_brusca_mm, 4.5);
+  });
+  test('0, 30,1, 4,25 y vacío se rechazan con el nombre del campo', () => {
+    for (const raw of ['0', '30,1', '4,25', '']) {
+      const v = validarUmbrales({ ...OK, caida_brusca_mm: raw });
+      assert.equal(v.ok, false, raw); assert.equal(v.campo, 'caida_brusca_mm', raw);
+    }
+    assert.match(validarUmbrales({ ...OK, caida_brusca_mm: '30,1' }).error, /Caída brusca desde \(mm\): debe ser mayor que 0 y hasta 30/);
+    assert.match(validarUmbrales({ ...OK, caida_brusca_mm: '4,25' }).error, /máximo un decimal/);
+  });
+  test('rótulo y ayuda de docs/14', () => {
+    const c = CAMPOS_UMBRAL.find(x => x.key === 'caida_brusca_mm');
+    assert.equal(c.lbl, 'Caída brusca desde (mm)');
+    assert.equal(c.ayuda, 'Baja de la huella mínima entre dos mediciones que deja la nueva como sospechosa');
   });
 });
 

@@ -3,7 +3,10 @@
 // Las invalidadas no cuentan en estados, tasas ni alertas, pero se conservan y se muestran atenuadas y tachadas.
 // Toda la escritura pasa por las RPC medicion_invalidar y medicion_revalidar (autorización en la base: otro cliente u
 // otra sucursal reciben «permiso denegado»). `listaCalidad` la reutiliza el detalle del vehículo.
-// Acciones: calidad-invalidar (id), calidad-revalidar (id), calidad-confirmar, calidad-cerrar, calidad-filtro.
+// Corregir (F8 ola 4): corrige a mano las tres huellas de una medición en revisión (medicion_corregir). La medición
+// queda válida con las huellas nuevas y el motivo; el antes y el después quedan en audit_log.
+// Acciones: calidad-invalidar (id), calidad-revalidar (id), calidad-confirmar, calidad-cerrar, calidad-filtro,
+// calidad-corregir (id), calidad-corregir-confirmar, calidad-corregir-cerrar, calidad-corregir-motivo (codigo).
 import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml, safeCls } from '../core/html.js';
@@ -13,22 +16,30 @@ import { registerView, reloadActiveView } from '../core/nav.js';
 import { registerActions } from '../core/actions.js';
 import { esAdmin } from '../core/auth.js';
 import { contextoListo, filtrarFilas } from '../core/seccional.js';
-import { fmtFechaHora, plural } from '../domain/formato.js';
+import { fmtFechaHora, fmtNum, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion } from '../domain/posicion.js';
 import {
   MAX_LISTA, etiquetaCalidad, simboloCalidad, soloObservadas, contarObservadas, valoresTexto, validarMotivo,
-  traducirErrorCalidad,
+  traducirErrorCalidad, validarCorreccion, sinCambios, traducirErrorCorreccion,
 } from '../domain/calidad.js';
+import { motivosDelTipo, TIPO_MOTIVO, MOTIVO_OTRO } from '../domain/motivos.js';
+import { cargarMotivosCliente } from '../core/motivos.js';
 
 const $ = id => document.getElementById(id);
-export const SEL_CALIDAD = 'id,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,created_at,calidad,calidad_motivo,calidad_at,vehiculos(nombre,patente,tipo_ruedas,distribucion)';
+export const SEL_CALIDAD = 'id,vehiculo_id,cliente_id,posicion,idneumatico,mm1,mm2,mm3,promedio,created_at,calidad,calidad_motivo,calidad_at,corregida_at,vehiculos(nombre,patente,tipo_ruedas,distribucion)';
 const CLS = { sospechosa: 'orange', invalidada: 'gray' };
 
 let filas = [];       // observadas del alcance del usuario (sospechosas e invalidadas)
 let filtro = 'sospechosa';
 let pendiente = null; // id de la medición que se está invalidando
+let corr = null;      // { id, medicion, catalogo } de la corrección en curso
 let ocupado = false;
+
+// Campo del modal de corrección -> id en index.html, para llevar el foco al primer dato a revisar.
+const CAMPO_CORRECCION = { mm1: 'corr-mm1', mm2: 'corr-mm2', mm3: 'corr-mm3', motivoCodigo: 'corr-motivo', motivoTexto: 'corr-motivo-texto' };
+// Códigos que traducirErrorCorreccion explica al operario. Cualquier otro es un fallo inesperado y se registra en consola.
+const CODIGOS_CORRECCION = ['42501', 'P0002', '22023', '22004', '23514'];
 
 // Lista de mediciones con observaciones. `conVehiculo`: encabezar cada fila con el coche (lista general).
 // Las invalidadas van atenuadas y con los valores tachados; el estado se dice también con texto y símbolo.
@@ -43,6 +54,7 @@ export function listaCalidad(rows, { conVehiculo = false, tipos = null } = {}) {
       <div class="cal-valores${inval ? ' tachado' : ''}">${valoresTexto(r)}<span class="cal-fecha"> · ${fmtFechaHora(r.created_at)}</span></div>
       ${r.calidad_motivo ? html`<div class="cal-motivo">${inval ? 'Motivo: ' : ''}${r.calidad_motivo}</div>` : ''}
       ${esAdmin() ? '' : html`<div class="cal-acciones">
+        ${inval ? '' : html`<button type="button" class="btn" data-action="calidad-corregir" data-args="${JSON.stringify([r.id])}">Corregir</button>`}
         ${inval ? '' : html`<button type="button" class="btn" data-action="calidad-invalidar" data-args="${JSON.stringify([r.id])}">Invalidar</button>`}
         <button type="button" class="btn ghost" data-action="calidad-revalidar" data-args="${JSON.stringify([r.id])}">Marcar como válida</button>
       </div>`}</li>`;
@@ -123,7 +135,78 @@ async function revalidar(id) {
   } finally { ocupado = false; }
 }
 
+// ── Corregir huellas ─────────────────────────────────────────────────────────────────────────────────────────────
+// Valores de la medición en el formato del campo (coma decimal). Sin dato, el campo queda vacío para que lo escriba el operario.
+const campoMm = v => (v === null || v === undefined || v === '' ? '' : fmtNum(v, 1));
+
+function cerrarCorregir() { $('modal-corregir').classList.remove('show'); corr = null; }
+
+function cambiarMotivoCorreccion(codigo) {
+  $('corr-motivo-texto-wrap').style.display = codigo === MOTIVO_OTRO ? '' : 'none';
+}
+
+function errorCorreccion(msg, idCampo) {
+  $('corr-error').textContent = msg;
+  if (idCampo && $(idCampo)) $(idCampo).focus();
+}
+
+// Motivos y huellas se leen al abrir: el catálogo del cliente de la medición, no el de la sesión.
+async function abrirCorregir(id) {
+  if (esAdmin() || ocupado) return;
+  const r = filas.find(x => String(x.id) === String(id)) || null;
+  if (!r) return;
+  ocupado = true;
+  try {
+    const motivos = await cargarMotivosCliente(r.cliente_id);
+    if (!motivos) { showToast('No se pudieron cargar los motivos. Reintentar', true); return; }
+    corr = { id: Number(id), medicion: r, catalogo: motivos.catalogo };
+    $('corr-sub').textContent = [etiquetaCoche((r.vehiculos || {}).nombre || ''), valoresTexto(r)].filter(Boolean).join(' · ');
+    setHtml($('corr-motivo'), joinHtml([
+      html`<option value="">Elegir motivo</option>`,
+      motivosDelTipo(corr.catalogo, TIPO_MOTIVO.corregir).map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
+    ]));
+    $('corr-mm1').value = campoMm(r.mm1);
+    $('corr-mm2').value = campoMm(r.mm2);
+    $('corr-mm3').value = campoMm(r.mm3);
+    $('corr-motivo').value = '';
+    $('corr-motivo-texto').value = '';
+    cambiarMotivoCorreccion('');
+    $('corr-error').textContent = '';
+    $('corr-confirmar').disabled = false;
+    $('modal-corregir').classList.add('show');
+  } finally { ocupado = false; }
+}
+
+// Guarda de rol: la RPC también lo rechaza (42501). Sin cambios en las huellas no se llama a la base.
+async function confirmarCorregir() {
+  if (!corr || ocupado || esAdmin()) return;
+  const v = validarCorreccion({
+    medicionId: corr.id, mm1: $('corr-mm1').value, mm2: $('corr-mm2').value, mm3: $('corr-mm3').value,
+    motivoCodigo: $('corr-motivo').value, motivoTexto: $('corr-motivo-texto').value,
+  }, corr.catalogo);
+  if (!v.ok) { errorCorreccion(v.error, CAMPO_CORRECCION[v.campo]); return; }
+  if (sinCambios(corr.medicion, v.args)) { errorCorreccion('Sin cambios en las huellas', 'corr-mm1'); return; }
+  ocupado = true; $('corr-confirmar').disabled = true;
+  try {
+    const { error } = await db.rpc('medicion_corregir', v.args);
+    if (error) throw error;
+    cerrarCorregir();
+    showToast('Medición corregida');
+    reloadActiveView();
+  } catch (e) {
+    if (!CODIGOS_CORRECCION.includes(e && e.code)) console.error(e);
+    const msg = traducirErrorCorreccion(e);
+    errorCorreccion(msg);
+    showToast(msg, true);
+    $('corr-confirmar').disabled = false;
+  } finally { ocupado = false; }
+}
+
 registerActions({
+  'calidad-corregir': id => abrirCorregir(id),
+  'calidad-corregir-confirmar': () => confirmarCorregir(),
+  'calidad-corregir-cerrar': () => cerrarCorregir(),
+  'calidad-corregir-motivo': codigo => cambiarMotivoCorreccion(codigo),
   'calidad-invalidar': id => abrirInvalidar(id),
   'calidad-revalidar': id => revalidar(id),
   'calidad-confirmar': () => confirmarInvalidar(),
@@ -134,4 +217,8 @@ registerActions({
 
 // Cuelga de Inicio: el aviso de Inicio lleva aquí.
 registerView('calidad', 'Mediciones a revisar', load, { menu: 'inicio' });
-export function init() {}
+export function init() {
+  // Enter mantenido (e.repeat) no vuelve a enviar la corrección: como en Rotar y Cambiar.
+  $('corregir-form').addEventListener('submit', e => { e.preventDefault(); confirmarCorregir(); });
+  $('corregir-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
+}

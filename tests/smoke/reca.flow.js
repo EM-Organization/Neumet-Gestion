@@ -66,7 +66,15 @@ window.recauchutadoFlow = async function(w, d, sleep, fail, log, cliMode, secuse
     if($('#btn-reca-enviar').style.display === 'none') fail('reca(cliente): falta «Enviar a recauchutar»');
     var acc = all('#reca-lista [data-action="recaAbrir"]');
     if(acc.length < 2) fail('reca(cliente): faltan las acciones por proceso (hay '+acc.length+')');
-    if(acc.length){ acc[0].click(); await sleep(300); if(!$('#modal-reca').classList.contains('show')) fail('reca(cliente): la acción no abrió el modal'); $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200); }
+    if(acc.length){
+      // La moneda del cliente (F8 ola 4) se precarga en la aceptación: con UYU en la fila, el campo debe mostrar UYU
+      w.__clientesStub[0].moneda_default = 'UYU';
+      acc[0].click(); await sleep(300);
+      if(!$('#modal-reca').classList.contains('show')) fail('reca(cliente): la acción no abrió el modal');
+      if($('#reca-moneda') && $('#reca-moneda').value !== 'UYU') fail('reca(cliente): la moneda no se precarga con la del cliente: '+$('#reca-moneda').value);
+      $('#modal-reca [data-action="recaCerrar"]').click(); await sleep(200);
+      w.__clientesStub[0].moneda_default = 'USD';
+    }
     $('.nav-item[data-view="inicio"]').click(); await sleep(300);
     log.push('reca(cliente): acciones conservadas');
     return;
