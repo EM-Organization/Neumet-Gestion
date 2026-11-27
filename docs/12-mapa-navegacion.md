@@ -9,15 +9,15 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 | Problema detectado | Resolución |
 |---|---|
 | Inicio no orientaba y mostraba casi todo en rojo | Inicio es un panel de decisión: buscador, proporciones de la flota, vehículos que requieren atención, próximos cambios. El rojo queda solo como punto o chip de neumáticos en desgaste límite |
-| El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Inicio y en Vehículos lo reemplaza el buscador propio de la pantalla |
+| El buscador solo existía dentro de Vehículos | Buscador en la barra superior de todas las pantallas (atajo `/`). En Vehículos lo reemplaza el buscador propio de la lista; Inicio usa el de la barra superior |
 | Stock era una pestaña escondida en Vehículos | Pestaña **Stock** del ítem **Neumáticos** del menú. El administrador de empresa agrega y gestiona sus propias cubiertas (una por una, con quema, condición y sucursal); los lotes anteriores quedan como bloque de solo lectura |
 | «Estado de la flota» duplicaba a Inicio para el cliente | El cliente no la ve: su equivalente es **Vehículos**, ordenado por urgencia con el estado de cada uno. El administrador la conserva en Administración como vista entre clientes |
 | Clientes y Ficha de cliente eran dos entradas | Una sola entrada, **Clientes**. El nombre de un cliente abre su ficha, con «Volver a Clientes» y migas «Clientes › Nombre» |
 | Vehículos mencionados sin enlace al detalle | Todo vehículo de Inicio, Alertas, Estado de la flota y Reportes abre el detalle |
 | Dispositivos no aporta al cliente (no gestiona hardware) | La vista es solo de administración: sin ítem de menú para el cliente y el router la rechaza (`registerView(..., { soloAdmin: true })`: `switchView` devuelve a Inicio al cliente que la pida por menú, enlace o acción). El estado de sus equipos queda en Inicio como dato, sin enlace |
-| Inicio no mostraba qué se midió últimamente | Bloque «Últimas mediciones»: los 8 vehículos medidos más recientemente con la comparativa de desgaste de cada neumático respecto de su medición anterior |
+| Inicio no mostraba qué se midió últimamente | Bloque «Últimas mediciones»: los 8 vehículos medidos más recientemente, una fila por vehículo con su peor cambio frente a la medición anterior |
 | Inicio mostraba las posiciones como «P1, P2…», sin significado a la vista | Mini vehículo (SVG liviano, vista desde arriba) con las ruedas coloreadas por desgaste y la rueda en cuestión resaltada, más el nombre de la posición en texto («Delantera izquierda», «Eje 2 derecha exterior»; convención en `assets/js/domain/posicion.js`). Se usa en Requieren atención, Próximos cambios, Últimas mediciones, Alertas y la tabla de km del ciclo de vida |
-| El buscador de Inicio no se distinguía de las tarjetas y el resumen de proporciones iba antes de las decisiones | El buscador es un bloque propio, centrado y alto, sobre las tarjetas. El resumen «N de M neumáticos en buen estado o con poco desgaste» va después de Próximos cambios |
+| El buscador de Inicio ocupaba media pantalla antes que las decisiones, y el resumen de proporciones iba antes de ellas | Inicio no tiene buscador propio: usa el de la barra superior. Requieren atención va a todo el ancho; el resumen «N de M neumáticos en buen estado o con poco desgaste» va en dos columnas junto a Próximos cambios, y las cifras que valen 0 no se dibujan |
 | Migas y menú activo incoherentes | `registerView(..., { menu })` define qué ítem queda resaltado; las migas muestran «Padre › Actual». Las dos pestañas de Neumáticos llevan la misma miga («Neumáticos › Stock» / «Neumáticos › Recauchutado») y sin título repetido bajo las pestañas; el detalle de vehículo lleva miga dinámica a su origen («Vehículos › Coche NNN», «Alertas › Coche NNN», «Inicio › Coche NNN», «Estado de la flota › Coche NNN») |
 | El selector «Sucursal» de la barra superior aparecía en todas las vistas aunque no filtrara | Solo se muestra donde filtra (`selectorEnVista` en `domain/seccional.js`: Inicio, Vehículos, Alertas, Reportes, calidad, flota, mediciones y dispositivos); Stock lo toma como valor inicial de su filtro de sucursal (también «Todas»: quita el filtro que traía). **La sucursal elegida filtra solo donde el selector se ve** (`seleccionAplica` en `domain/seccional.js`): en el detalle de un vehículo, en Stock y en la búsqueda de la barra desde ellos la selección se ignora, de modo que buscar un camión de otra sucursal lo encuentra y la referencia de tasas del detalle usa toda la flota. Se eligió ignorarla y no mostrar un indicador para no sumar elementos a la pantalla. En 390 px baja a su propia fila a todo el ancho |
 
@@ -44,7 +44,6 @@ flowchart TD
   V -->|solo administrador de empresa: Agregar vehículo| VA[Diálogo Agregar vehículo]
   B[Buscador de la barra superior - tecla /] -->|matrícula, número de coche o quema| VD[Detalle de vehículo]
   B -->|quema de una cubierta en stock| S
-  I -->|buscador de Inicio| VD
   I -->|Ver coche en Requieren atención| VD
   I -->|Ver coche en Próximos cambios| VD
   I -->|Ver coche en Últimas mediciones| VD
@@ -61,7 +60,7 @@ flowchart TD
   R -->|CSV / versión imprimible| X[Descarga]
 ```
 
-Orden de Inicio (de arriba abajo): buscador (bloque destacado) · Requieren atención y Próximos cambios (dos columnas en escritorio) · resumen «N de M neumáticos en buen estado o con poco desgaste» · Últimas mediciones · Clientes con más urgencias (solo administración) · línea de dispositivos.
+Orden de Inicio (de arriba abajo): Requieren atención (todo el ancho) · aviso de revisión · Próximos cambios y resumen «N de M neumáticos en buen estado o con poco desgaste» (dos columnas en escritorio) · Últimas mediciones · Clientes con más urgencias (solo administración) · línea de dispositivos. Las cifras del resumen que valen 0 no se dibujan; si no hay neumáticos medidos, dice «Sin neumáticos medidos».
 
 Cada fila de vehículo trae un mini vehículo y el botón «Ver coche 106», que abre el detalle y deja seleccionada la rueda señalada (`verVehiculo` acepta la posición como segundo argumento; si el vehículo no tiene datos de esa posición, abre sin selección). Las posiciones se nombran así: eje 1 «Delantera izquierda/derecha»; ejes siguientes «Eje N izquierda/derecha» y, si son duales, «exterior» o «interior» (la más cercana al chasis); posición 99 «Auxilio». En las listas compactas, más de tres posiciones se resumen como «N posiciones».
 
@@ -69,20 +68,19 @@ Inicio incluye una línea con los dispositivos activos y los que llevan días si
 
 ### Últimas mediciones (Inicio)
 
-Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora de Montevideo). El bloque lista los 8 vehículos medidos más recientemente (de la sucursal elegida, si hay selector) con número de coche, matrícula, fecha y, por neumático, «mm anterior → mm última» y la diferencia. La comparativa solo existe si ese mismo neumático (`idneumatico`) tiene una medición anterior a la visita; si no, muestra los mm y «Sin previa». Un desgaste mayor a 1 mm entre visitas se destaca en ámbar; una lectura mayor que la anterior por más de 0,3 mm se muestra con signo «+». El estado nunca se comunica solo con color: la diferencia siempre va escrita. Los datos salen de la función `ultimas_mediciones` (migración `20261110020000_ultimas_mediciones.sql`, security invoker: la RLS decide qué ve cada rol). Si la función falla, solo ese bloque muestra el error.
+Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora de Montevideo). El bloque lista los 8 vehículos medidos más recientemente (de la sucursal elegida, si hay selector), una fila por vehículo con su número de coche, matrícula y fecha. La fila muestra su peor cambio: la posición, el estado de esa rueda y la diferencia de mm frente a su medición anterior (`idneumatico`), o «Sin medición previa» si ese neumático no tiene una. El peor cambio es el de peor estado; a igual estado, la mayor caída en mm; a igual caída, la primera posición. «Ver coche N» abre el detalle con esa rueda seleccionada. Los mm son promedios de la visita, no huellas: el bloque lleva «(informativo)» una sola vez, en el pie. El estado nunca se comunica solo con color: el nombre del estado y la diferencia van escritos. Los datos salen de la función `ultimas_mediciones` (migración `20261110020000_ultimas_mediciones.sql`, security invoker: la RLS decide qué ve cada rol). Si la función falla, solo ese bloque muestra el error.
 
 ### Dónde lleva cada click (cliente)
 
 | Pantalla | Elemento | Destino | Menú resaltado |
 |---|---|---|---|
-| Barra superior (todas menos Inicio y Vehículos) | Buscador: Enter con una coincidencia, o elegir un resultado | Detalle de vehículo | Vehículos |
-| Barra superior e Inicio | Buscador con la quema de una cubierta que está en stock (resultado «Quema S-001 · En stock · …») | Stock filtrado por esa quema | Neumáticos (pestaña Stock) |
+| Barra superior (todas menos Vehículos, también Inicio) | Buscador: Enter con una coincidencia, o elegir un resultado | Detalle de vehículo | Vehículos |
+| Barra superior (también Inicio) | Buscador con la quema de una cubierta que está en stock (resultado «Quema S-001 · En stock · …») | Stock filtrado por esa quema | Neumáticos (pestaña Stock) |
 | Cambio de neumático | «Cubierta del stock» (opción por defecto si hay) o «Lote del stock»; destino «Almacenar» con la sucursal donde queda | Detalle del vehículo (se refresca) | Vehículos |
-| Inicio | Buscador | Detalle (una coincidencia) o lista de resultados | Inicio → Vehículos |
 | Inicio | «Ver coche N» de «Requieren atención» | Detalle de vehículo (rueda señalada seleccionada) | Vehículos |
 | Inicio | «Ver coche N» de «Próximos cambios» | Detalle de vehículo (rueda seleccionada) | Vehículos |
 | Inicio | «Ver alertas abiertas (N)» | Alertas, con el filtro «Abiertas» | Alertas |
-| Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo | Vehículos |
+| Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo, con la rueda del peor cambio seleccionada | Vehículos |
 | Alertas | Clic en la fila o en el nombre del vehículo | Detalle de vehículo (rueda de la alerta seleccionada); «Ver vehículo» también está en el menú «Más» | Vehículos |
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
 | Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta (número, matrícula, **distribución de neumáticos obligatoria**, sucursal; «Otra distribución» pide además el tipo de ruedas); al guardar, la lista se recarga | Vehículos |

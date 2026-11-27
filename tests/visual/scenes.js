@@ -61,7 +61,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'cambiar-distribucion': async function(){ await abrirDetalle(); click('#vd-cab [data-action="vehiculo-cambiar-distribucion"]'); await sleep(600); click('#veh-dist-distribucion input[value="6x2"]'); await sleep(300); },
     'confirmar-eliminar': async function(){ nav('clientes'); await sleep(800); click('#tbody-clientes button[data-a="del"]'); await sleep(500); },
     'stock-mover': async function(){ nav('stock'); await sleep(800); click('[data-cubierta="31"] [data-action="cubiertaMover"]'); await sleep(500); },
-    'stock-busqueda': async function(){ nav('inicio'); await sleep(600); var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 's-0'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
+    'stock-busqueda': async function(){ nav('inicio'); await sleep(600); var i = $('#busq-global-input'); i.value = 's-0'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
     'alertas': async function(){ nav('alertas'); await sleep(800); },
     'flota': async function(){ nav('flota'); await sleep(800); },
     'dispositivos': async function(){ nav('dispositivos'); await sleep(800); },
@@ -85,7 +85,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'recauchutado': async function(){ nav('recauchutado'); await sleep(800); },
     'recauchutado-aceptar': async function(){ nav('recauchutado'); await sleep(800); click('[data-proceso="3"] [data-args*="aceptar"]'); await sleep(500); },
     'reca-enviar': async function(){ nav('recauchutado'); await sleep(800); click('#btn-reca-enviar'); await sleep(500); },
-    'busqueda': async function(){ var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 'cam'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
+    'busqueda': async function(){ var i = $('#busq-global-input'); i.value = 'cam'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
     'selector-seccional': async function(){ nav('flota'); await sleep(800); }
   };
   if(!escenas[name]){ fail('escena desconocida: '+name); return; }

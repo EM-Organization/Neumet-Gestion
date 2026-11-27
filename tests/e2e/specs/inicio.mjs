@@ -4,12 +4,14 @@ import assert from 'node:assert/strict';
 import { flujo } from '../lib/flujo.mjs';
 import { ALCANCE, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
 import { nombrePosicion } from '../../../assets/js/domain/posicion.js';
+import { ESTADOS } from '../../../assets/js/domain/estado-desgaste.js';
 
 // Lee de la pantalla de Inicio las proporciones, el contador de alertas, los dispositivos y las listas.
 export const LEER_INICIO = `(() => {
   const c = document.querySelector('#inicio-contenido');
   const num = e => Number(e.textContent.replace(/\\D/g, ''));
-  const cifras = [...c.querySelectorAll('.inicio-cifra strong')].map(num);
+  // Las cifras que valen 0 no se dibujan: se devuelven en orden fijo (nuevo, poco, mayor, límite, desconocido) y las ausentes valen 0.
+  const cifras = ['ok', 'bajo', 'mayor', 'limite', 'neutral'].map(k => { const s = c.querySelector('.inicio-cifra .inicio-punto.' + k); return s ? num(s.parentElement.querySelector('strong')) : 0; });
   const frase = (c.querySelector('#inicio-h-resumen') || {}).textContent || '';
   const alertas = c.querySelector('[data-action="alertasVerAbiertas"]');
   // Hay dos líneas con esa clase: el recuadro de alertas (en «Requieren atención») y la de dispositivos. Se separan por el texto.
@@ -19,20 +21,27 @@ export const LEER_INICIO = `(() => {
   const atencion = [...c.querySelectorAll('#inicio-h-atencion ~ ul .inicio-fila')].map(f => ({
     patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', limite: !!f.querySelector('.inicio-punto.limite'), mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
   const proximos = [...c.querySelectorAll('#inicio-h-proximos ~ ul .inicio-fila')].map(f => ({ patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
-  return { cifras, frase: frase.replace(/\\s+/g, ' ').trim(), alertas: alertas ? alertas.textContent : '', linea, recuadro,
+  return { cifras, dibujadas: c.querySelectorAll('.inicio-cifra').length, frase: frase.replace(/\\s+/g, ' ').trim(), alertas: alertas ? alertas.textContent : '', linea, recuadro,
            atencion, proximos, texto: c.innerText, titulo: document.querySelector('#inicio-title').textContent,
            segmentos: c.querySelectorAll('.inicio-seg').length, cardsRojas: c.querySelectorAll('.badge.red').length,
            rojosFueraRecuadro: [...c.querySelectorAll('.badge.red')].filter(b => !b.closest('.inicio-linea')).length };
 })()`;
 
-// Últimas mediciones tal como se ven: una entrada por vehículo con sus neumáticos.
-export const LEER_ULTIMAS = `[...document.querySelectorAll('#inicio-contenido #inicio-h-ultimas ~ ul > li')].map(li => ({
-  patente: (li.querySelector('.dash-fleet-pat') || {}).textContent || '',
-  neus: [...li.querySelectorAll('.um-neu')].map(n => ({ pos: n.querySelector('.um-pos').textContent,
-    mm: n.querySelector('.um-mm').textContent, dif: (n.querySelector('.um-dif') || n.querySelector('.um-sin')).textContent.replace(/\\s+/g, ' ').trim(),
-    destacado: !!n.querySelector('.um-dif.alto') })) }))`;
+// Últimas mediciones tal como se ven: una fila por vehículo con su peor cambio, el «(informativo)» del pie y el botón «Ver».
+export const LEER_ULTIMAS = `(() => {
+  const sec = document.querySelector('#inicio-contenido #inicio-h-ultimas');
+  const caja = sec ? sec.closest('section') : null;
+  const filas = caja ? [...caja.querySelectorAll('ul.inicio-lista > li')] : [];
+  return {
+    filas: filas.map(li => ({
+      patente: (li.querySelector('.dash-fleet-pat') || {}).textContent || '',
+      detalle: ((li.querySelector('.inicio-fila-causa') || {}).textContent || '').replace(/\\s+/g, ' ').trim(),
+      destacadas: li.querySelectorAll('.mini-veh .mv-dest').length })),
+    informativos: caja ? (caja.innerText.match(/\\(informativo\\)/g) || []).length : -1 };
+})()`;
 
 // Referencia independiente de la función SQL: compara por fecha de Montevideo en vez de por instante y no usa la función.
+// Devuelve una fila por neumático de la última visita de cada vehículo, con su estado de v_estado_neumaticos (auxilio incluido).
 export function ultimasEsperadas(env, rol) {
   return json(env, `
     with ult as (
@@ -46,19 +55,28 @@ export function ultimasEsperadas(env, rol) {
     select ses.patente, ses.posicion, ses.promedio::float as ahora,
            (select p.promedio::float from public.mediciones p where p.idneumatico = ses.idneumatico
                and (p.created_at at time zone 'America/Montevideo')::date < (ses.u at time zone 'America/Montevideo')::date
-             order by p.created_at desc limit 1) as antes
+             order by p.created_at desc limit 1) as antes,
+           (select case when e.posicion = 99 and e.estado in ('mayor_desgaste', 'desgaste_limite') then 'poco_desgaste' else e.estado end
+              from public.v_estado_neumaticos e where e.vehiculo_id = ses.id and e.posicion = ses.posicion limit 1) as estado
       from ses order by ses.u desc, ses.id, ses.posicion`);
 }
 
+// Peor cambio de un vehículo con el criterio de la vista: peor estado, luego mayor caída en mm, luego la primera posición.
+const RANGO = ['desgaste_limite', 'mayor_desgaste', 'poco_desgaste', 'nuevo', 'desconocido'];
+const CLAVE_BASE = { desgaste_limite: 'limite', mayor_desgaste: 'mayor', poco_desgaste: 'poco', nuevo: 'bueno', desconocido: 'sinDatos' };
 const f1 = n => Number(n).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-export function textoNeumatico(f) {
-  // El valor de la visita es un promedio (ultimas_mediciones.mm_ahora): se rotula como informativo (RN-01).
-  if (f.antes === null) return { pos: nombrePosicion(f.posicion), mm: `Promedio ${f1(f.ahora)} mm (informativo)`, dif: 'Sin previa', destacado: false };
-  const dif = Math.round((f.ahora - f.antes) * 100) / 100;
-  return { pos: nombrePosicion(f.posicion), mm: `Promedio ${f1(f.antes)} → ${f1(f.ahora)} mm (informativo)`, dif: `${dif > 0 ? '+' : dif < 0 ? '\u2212' : ''}${f1(Math.abs(dif))}`, destacado: dif <= 0 && -dif > 1 };
+const redondeo = (ahora, antes) => Math.round((ahora - antes) * 100) / 100;
+export function textoPeorEsperado(filas) {
+  const estado = f => RANGO.indexOf(f.estado ?? 'desconocido');
+  const caida = f => (f.antes === null ? 0 : Math.max(0, -redondeo(f.ahora, f.antes)));
+  const peor = [...filas].sort((a, b) => estado(a) - estado(b) || caida(b) - caida(a) || a.posicion - b.posicion)[0];
+  const dif = peor.antes === null ? null : redondeo(peor.ahora, peor.antes);
+  const cambio = dif === null ? 'Sin medición previa' : `${dif > 0 ? '+' : dif < 0 ? '−' : ''}${f1(Math.abs(dif))} mm`;
+  return [nombrePosicion(peor.posicion), ESTADOS[CLAVE_BASE[peor.estado ?? 'desconocido']].texto, cambio].join(' · ');
 }
 
-export const INICIO_LISTO = `document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 5`;
+// Espera a que Inicio esté pintado entero (el resumen se dibuja junto con el resto), sin contar cifras: las que valen 0 no se dibujan.
+export const INICIO_LISTO = `!!document.querySelector('#inicio-h-resumen')`;
 
 export function registrar(env) {
   for (const rol of ['admin', 'global', 'salto', 'montevideo']) {
@@ -69,8 +87,11 @@ export function registrar(env) {
         const e = cifrasInicio(env, rol);
         const buenos = e.nuevo + e.pocoDesgaste;
         assert.ok(e.alertas > 0 && e.limite > 0, 'el demo debe tener alertas y desgaste límite (si no, la prueba no prueba nada)');
-        // Proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido y total de neumáticos.
-        assert.deepEqual(l.cifras, [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido], `proporciones de Inicio (${rol})`);
+        // Proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido (los ceros valen 0 en la lectura).
+        const porEstado = [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido];
+        assert.deepEqual(l.cifras, porEstado, `proporciones de Inicio (${rol})`);
+        // Las cifras que valen 0 no se dibujan (RN de Inicio): solo se dibujan las no cero.
+        assert.equal(l.dibujadas, porEstado.filter(n => n > 0).length, `cifras dibujadas de Inicio (${rol}): solo las no cero`);
         const m = l.frase.match(/^(?:(\d[\d.]*) de )?(\d[\d.]*) neumáticos? están en buen estado o con poco desgaste$|^Los (\d[\d.]*) neumáticos están en buen estado o con poco desgaste$/);
         assert.ok(m, `frase de resumen inesperada: ${l.frase}`);
         const total = Number((m[2] || m[3]).replace(/\D/g, ''));
@@ -114,19 +135,21 @@ export function registrar(env) {
         }
         else assert.doesNotMatch(l.texto, /Clientes con más urgencias/);
         assert.equal(l.titulo, 'Inicio');
-        // Últimas mediciones: los 8 vehículos medidos más recientemente del alcance del rol, con la comparativa de cada neumático.
+        // Últimas mediciones: los 8 vehículos medidos más recientemente del alcance del rol, una fila por vehículo con su peor cambio.
         const esp = ultimasEsperadas(env, rol);
         const vehEsp = [...new Set(esp.map(f => f.patente))];
         assert.equal(vehEsp.length, Math.min(8, (await vehiculosVisibles(env, rol)).length), 'el demo debe tener al menos 8 vehículos medidos (o todos los del alcance)');
         assert.ok(esp.some(f => f.antes !== null) && esp.some(f => f.antes === null), 'el demo debe traer neumáticos con y sin medición previa');
         const ult = await p.eval(LEER_ULTIMAS);
-        assert.deepEqual(ult.map(v => v.patente), vehEsp, `últimas mediciones (${rol}): vehículos y orden`);
-        for (const v of ult) {
-          assert.deepEqual(v.neus.map(({ pos, mm, dif, destacado }) => ({ pos, mm, dif: dif.replace('Desgaste alto: ', ''), destacado })),
-            esp.filter(f => f.patente === v.patente).map(textoNeumatico), `últimas mediciones (${rol}): neumáticos de ${v.patente}`);
+        assert.deepEqual(ult.filas.map(f => f.patente), vehEsp, `últimas mediciones (${rol}): vehículos y orden`);
+        for (const f of ult.filas) {
+          assert.equal(f.detalle, textoPeorEsperado(esp.filter(e => e.patente === f.patente)), `últimas mediciones (${rol}): peor cambio de ${f.patente}`);
+          assert.ok(f.destacadas >= 1, `últimas mediciones (${rol}): ${f.patente} sin rueda resaltada`);
         }
+        // «(informativo)» va una sola vez, en el pie de la lista, y no en cada fila.
+        assert.equal(ult.informativos, 1, `últimas mediciones (${rol}): «(informativo)» una sola vez`);
         const visiblesU = new Set((await vehiculosVisibles(env, rol)).map(v => v.patente));
-        for (const v of ult) assert.ok(visiblesU.has(v.patente), `${v.patente} (últimas mediciones) fuera del alcance de ${rol}`);
+        for (const f of ult.filas) assert.ok(visiblesU.has(f.patente), `${f.patente} (últimas mediciones) fuera del alcance de ${rol}`);
         // Click abre el detalle del vehículo.
         await p.click('#inicio-contenido #inicio-h-ultimas ~ ul > li:first-child .inicio-ver');
         await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelector('#vd-cab').innerText.includes(${JSON.stringify(vehEsp[0])})`, { que: 'detalle del primer vehículo medido' });
