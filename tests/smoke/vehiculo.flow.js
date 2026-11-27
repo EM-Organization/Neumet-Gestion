@@ -411,10 +411,14 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     else {
       if($('#cambio-actual').textContent.indexOf('Eje 2 izquierda exterior') === -1 || /\bP\d/.test($('#cambio-actual').textContent)) fail('detalle: el modal de cambio no es de la posición 3 con nombre: '+$('#cambio-actual').textContent);
       if($('#vd-panel [data-action="neumatico-cambiar"]') && !$('#vd-panel [data-action="neumatico-cambiar"]').classList.contains('primary')) fail('detalle: Cambiar neumático debe ser la acción primaria');
+      // Nada viene elegido: se marca la primera cubierta del stock antes de confirmar
+      var cubElegida = $('#cambio-lista input[name="cambio-cubierta"]');
+      if(cubElegida) cubElegida.click(); else fail('detalle: el cambio no ofrece cubiertas del stock para elegir');
       $('#cambio-motivo').value = 'desgaste';
       $('#cambio-confirmar').click(); await sleep(600);
       var cam = rpcs('neumatico_cambiar');
       if(cam.length !== 1 || cam[0].args.p_vehiculo_id !== 10 || cam[0].args.p_posicion !== 3) fail('detalle: el cambio no llego a la RPC real: '+JSON.stringify(cam.map(function(c){ return c.args; })));
+      else if(cubElegida && String(cam[0].args.p_cubierta_id) !== cubElegida.value) fail('detalle: la RPC no lleva la cubierta elegida ('+cubElegida.value+'): '+cam[0].args.p_cubierta_id);
       if($('#modal-cambio').classList.contains('show')) fail('detalle: el modal de cambio no se cerro');
       // Respuesta que nunca llega: el modal se cierra (no se reintenta: el cambio pudo aplicarse), se recarga el detalle
       // y la respuesta tardía no pinta nada
@@ -424,6 +428,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
       var lect1 = w.__cicloFx.lecturas.v_estado_neumaticos || 0;
       $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400);
       $('#vd-panel [data-action="neumatico-cambiar"]').click(); await sleep(700);
+      var cubTardia = $('#cambio-lista input[name="cambio-cubierta"]'); if(cubTardia) cubTardia.click();
       $('#cambio-motivo').value = 'desgaste';
       $('#cambio-confirmar').click(); await sleep(700);
       if($('#modal-cambio').classList.contains('show')) fail('detalle: sin respuesta, el modal de cambio debe cerrarse (no dejarlo listo para reintentar)');
