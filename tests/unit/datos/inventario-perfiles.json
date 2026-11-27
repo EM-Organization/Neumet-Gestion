@@ -563,5 +563,10 @@
   "archivo": "supabase/migrations/20261126040000_disco_alineacion.sql",
   "linea": 493,
   "texto": "from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261126050000_calidad_moneda.sql",
+  "linea": 327,
+  "texto": "select p.sucursal_id into v_suc from public.perfiles p where p.user_id = auth.uid();"
  }
 ]

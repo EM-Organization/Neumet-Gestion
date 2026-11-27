@@ -52,10 +52,10 @@ grant execute on function test.err105(text) to public;
 -- ---------------------------------------------------------------------------
 -- A. Catálogo, columnas y privilegios (como dueño de la migración)
 -- ---------------------------------------------------------------------------
-select test.eq('A: catálogo base: alineación 4, baja 6, cambio 4, desmontaje 4, rotación 5, rotación en disco 3 (ola 3)',
+select test.eq('A: catálogo base: alineación 4, baja 6, cambio 4, desmontaje 4, rotación 5, rotación en disco 3 (ola 3), corrección de medición 4 (ola 4)',
   (select string_agg(tipo || '=' || n, ' ' order by tipo) from (
      select tipo, count(*) n from public.motivos_movimiento where cliente_id is null group by tipo) s),
-  'alineacion=4 baja=6 cambio=4 desmontaje=4 rotacion=5 rotacion_disco=3');
+  'alineacion=4 baja=6 cambio=4 correccion_medicion=4 desmontaje=4 rotacion=5 rotacion_disco=3');
 select test.eq('A: ningún catálogo personalizado sembrado para clientes reales',
   (select count(*) from public.motivos_movimiento where cliente_id is not null), 0::bigint);
 select test.eq('A: los dos flags son false por defecto y ningún cliente real se cambió',
@@ -97,27 +97,27 @@ select test.eq('A: la etiqueta de paso_direccional_a_traccion es la del brief',
 -- ---------------------------------------------------------------------------
 insert into public.motivos_movimiento (cliente_id, tipo, codigo, etiqueta) values (2, 'baja', 'zz105', 'Solo cliente B');
 select test.become('authenticated', test.u_g105());
-select test.eq('B: global del cliente 1 ve el catálogo base (26)',
-  (select count(*) from public.motivos_movimiento where cliente_id is null), 26::bigint);
+select test.eq('B: global del cliente 1 ve el catálogo base (30)',
+  (select count(*) from public.motivos_movimiento where cliente_id is null), 30::bigint);
 select test.eq('B: global del cliente 1 no ve el personalizado del cliente 2',
   (select count(*) from public.motivos_movimiento where codigo = 'zz105'), 0::bigint);
 select test.denied('B: authenticated no inserta en el catálogo',
   $$insert into public.motivos_movimiento (tipo, codigo, etiqueta) values ('baja', 'x105', 'x')$$, '42501');
 reset role;
 select test.become('authenticated', test.u_s105());
-select test.eq('B: sucursal del cliente 1 ve el catálogo base (26)',
-  (select count(*) from public.motivos_movimiento where cliente_id is null), 26::bigint);
+select test.eq('B: sucursal del cliente 1 ve el catálogo base (30)',
+  (select count(*) from public.motivos_movimiento where cliente_id is null), 30::bigint);
 reset role;
 select test.become('authenticated', test.u_b105());
-select test.eq('B: cliente 2 ve su personalizado y el base (27)',
-  (select count(*) from public.motivos_movimiento where codigo = 'zz105' or cliente_id is null), 27::bigint);
+select test.eq('B: cliente 2 ve su personalizado y el base (31)',
+  (select count(*) from public.motivos_movimiento where codigo = 'zz105' or cliente_id is null), 31::bigint);
 reset role;
 select test.become('authenticated', test.u_sinperfil());
 select test.eq('B: sin perfil no ve el catálogo', (select count(*) from public.motivos_movimiento), 0::bigint);
 reset role;
 select test.become('authenticated', test.u_admin());
-select test.eq('B: admin del equipo ve el catálogo base y el personalizado (27)',
-  (select count(*) from public.motivos_movimiento), 27::bigint);
+select test.eq('B: admin del equipo ve el catálogo base y el personalizado (31)',
+  (select count(*) from public.motivos_movimiento), 31::bigint);
 reset role;
 select test.become('anon');
 select test.denied('B: anon no lee el catálogo', $$select count(*) from public.motivos_movimiento$$, '42501');

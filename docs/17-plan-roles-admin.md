@@ -88,6 +88,7 @@ Quitar acceso solo es seguro si **todas** las rutas de autorización lo respetan
 | `uso_cerrar_mes` de la migración B (`20261119500000_uso_cliente_mensual.sql`, `:106` y `:107`, solo servicio) | cuenta los perfiles `cliente` del cliente y busca su último ingreso en `auth.users` | Foto de uso mensual: no autoriza nada y no la ejecuta ningún JWT (`revoke` a `authenticated`); sin fila no cuenta. Las líneas se fijan en `tests/unit/datos/inventario-perfiles.json` |
 | RPC nuevas de la migración A (`20261119000000_admin_empresa.sql`, 14 pares, todos revisados) | `admin_empresa_cliente_id` (`:41`), `accesos_quitados_marcar_auth` (`:109`, solo comprueba si hay perfil), `usuarios_empresa_listar` (`:176`, `:189`), `usuario_empresa_quitar_acceso` (`:224`, `:242`, `:253`, `:257`, `:286`), `usuario_empresa_reponer_acceso` (`:319`, `:333`, `:345`, `:362`) y `alerta_configurar` (`:563`) | Autorizan al administrador de empresa por el mismo criterio de la sección 2.2 (rol `cliente` sin sucursal y cliente vigente), bloquean o borran el perfil objetivo (quitar), lo insertan (reponer) o solo comprueban su existencia; sin fila niegan. Las líneas se fijan en `tests/unit/datos/inventario-perfiles.json` |
 | Panel, `resolverRol` | `assets/js/core/auth.js:57` | Lee el propio perfil; sin fila deja «Sin acceso» (salvo `clienteVinculado`, ver abajo) |
+| `medicion_corregir` (ola 4) | `20261126050000_calidad_moneda.sql:327` | Deriva el rol de auditoría (`admin_empresa` o `sucursal`) sin citar el rol administrador global, porque la RPC está en el grupo «recorta» de `t_96`. La autorización es `medicion_autorizar` |
 
 **Excluido con motivo, por archivo y línea.** Cada resultado de los cuatro `grep` (77 pares archivo:línea sobre la rama del plan; con la migración A la referencia de la prueba, `tests/unit/datos/inventario-perfiles.json`, llegó a 98 (101 en `main`, 95 tras el PR 9a): los 77 más los 14 de la migración A y los del PR 3 que se detallan en la sección 10, clasificados en la tabla de arriba y en esta lista) está en la tabla o en esta lista; ninguno queda fuera. Ninguno de los de esta lista lee o escribe filas de `perfiles` en tiempo de ejecución:
 
@@ -273,6 +274,7 @@ La firma exacta de la API de Auth se confirma contra la versión de `supabase-js
 | `neumatico_cambiar`, `neumatico_montar`, `neumatico_desmontar`, `neumatico_rotar` | Ninguno |
 | `recauchutado_enviar`, `recauchutado_dictaminar`, `recauchutado_aceptar`, `recauchutado_rechazar` | Ninguno |
 | `medicion_invalidar`, `medicion_revalidar` | Ninguno |
+| `medicion_corregir`, `cliente_fijar_moneda` | Ninguno (ola 4) |
 | `vehiculo_crear`, `vehiculo_mover_sucursal`, `vehiculo_registrar_odometro` | Ninguno (PR 9a) |
 | `stock_cubierta_agregar`, `stock_cubierta_editar`, `stock_cubierta_eliminar`, `stock_cubierta_mover` | Ninguno (PR 9a) |
 | `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar` | Ninguno (PR 9a) |
