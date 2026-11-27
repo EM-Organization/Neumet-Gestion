@@ -33,6 +33,7 @@ import { registrar as usoIsla } from './specs/uso-isla.mjs';
 import { registrar as stockLotesSucursal } from './specs/stock-lotes-sucursal.mjs';
 import { registrar as eliminarVehiculo } from './specs/eliminar-vehiculo.mjs';
 import { registrar as motivosOdometro } from './specs/motivos-odometro.mjs';
+import { registrar as ola2AlertasServicio } from './specs/ola2-alertas-servicio.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -67,4 +68,5 @@ usoIsla(env);
 stockLotesSucursal(env);
 eliminarVehiculo(env);
 motivosOdometro(env);
+ola2AlertasServicio(env);
 contrato(env);

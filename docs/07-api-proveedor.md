@@ -210,9 +210,9 @@ Código `AxB`: A = posiciones de rueda (un par doble cuenta como una), B = posic
 
 **Salida (`obtener_montaje`).** La respuesta agrega `distribucion` (texto): el código del vehículo o `""` si no está definida (como el resto de los textos ausentes; así no hay `null` que una app con `org.json` convierta en la cadena «null»). Un vehículo no encontrado conserva su respuesta de siempre (`code 404`, sin el campo). Es un campo **aditivo**: quien no lo conoce lo ignora.
 
-**Cómo se define.** En el panel, al agregar un vehículo (obligatoria; «Otra distribución» deja el vehículo sin definir y pide el tipo de ruedas) y por la API al crear o adoptar. Los vehículos existentes quedan sin definir y se completan con el botón «Cambiar distribución» del detalle del coche (no deja reducir por debajo de lo montado).
+**Cómo se define.** En el panel, al agregar un vehículo (obligatoria; «Otra distribución» deja el vehículo sin definir y pide el tipo de ruedas) y por la API al crear o adoptar. Los vehículos existentes quedan sin definir y se completan con el botón «Distribución y servicio» del detalle del coche (no deja reducir por debajo de lo montado).
 
-**Límites conocidos.** (1) El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (`TODO-CONFIG-CATALOG` de la app móvil); ampliarlo es una migración que redefine `distribucion_ruedas` más las dos copias. (2) El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene (si no, de `tipo_ruedas`, 10 o 16). (3) Editar la distribución de un vehículo ya creado es solo desde el panel (botón «Cambiar distribución»); la API no la cambia una vez creado.
+**Límites conocidos.** (1) El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (`TODO-CONFIG-CATALOG` de la app móvil); ampliarlo es una migración que redefine `distribucion_ruedas` más las dos copias. (2) El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene (si no, de `tipo_ruedas`, 10 o 16). (3) Editar la distribución de un vehículo ya creado es solo desde el panel (botón «Distribución y servicio»); la API no la cambia una vez creado.
 
 ### Motivo agregado en `ingesta_log.motivo`
 
