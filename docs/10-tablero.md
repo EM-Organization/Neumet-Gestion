@@ -92,7 +92,7 @@
 1. Existencia del usuario administrador con su fila en `perfiles` y **Allow new users to sign up** desactivado (runbook §1).
 2. Secretos de `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional` (`ALLOWED_ORIGINS`; opcional `INVITE_REDIRECT_TO`).
 3. MFA para el equipo Neumet: pasa a obligatorio en un PR propio (docs/17 PR 12b); hasta entonces, opcional.
-4. Asistente LLM: diseño en `docs/24` (rama `feat/reportes-ia`, en revisión, sin código). Proveedor decidido: OpenRouter, Nemotron 3 Ultra gratis y DeepSeek V4.1 Flash de respaldo. Datos sin anonimizar (riesgo aceptado por el dueño, `docs/24` §6). Falta la clave de OpenRouter y las decisiones de `docs/24` §11.
+4. Asistente LLM: diseño en `docs/24` (rama `feat/reportes-ia`, en revisión, sin código). Proveedor decidido: OpenRouter, Nemotron 3 Ultra gratis y DeepSeek V4.1 Flash de respaldo. Datos sin anonimizar (riesgo aceptado por el dueño, `docs/24` §6). Decisiones del dueño en `docs/24` §11 (sucursal sí, 30 preguntas por día, respaldo DeepSeek). Falta que el dueño cargue la clave de OpenRouter.
 
 ### Desarrollo
 - Ola 2 de F8, ajustes menores de la revisión (no bloquean; la ola 3 resolvió el filtro del trigger como guarda, el prefijo `t_104` y la prueba SQL de CA-31): las alertas que no son de límite de vehículos inactivos no se cierran solas (ya pasaba con `limite`); `km_por_mm_revision` sin parámetro en `alerta_configurar`; posible flaky de Stock en el modo cliente del smoke.

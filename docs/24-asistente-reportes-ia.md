@@ -8,7 +8,7 @@ La vista Reportes pasa a tener como bloque principal un asistente conversacional
 
 Lo que se busca para el negocio:
 
-- Que el administrador de empresa y el perfil global obtengan los reportes de la reunión con Agencia Central (RN-22, RN-23, RN-24 y RN-27) sin armar filtros.
+- Que el administrador de empresa, el perfil global y el de sucursal obtengan los reportes de la reunión con Agencia Central (RN-22, RN-23, RN-24 y RN-27) sin armar filtros.
 - Que el operario, que tiene pocos conocimientos de tecnología, llegue al reporte con un clic (un reporte listo) o con una pregunta y Enter ([14](14-guia-de-textos.md) §5).
 - Que las cifras sean las mismas que calcula la base: el modelo no calcula por su cuenta lo que ya resuelve una RPC.
 
@@ -112,11 +112,22 @@ Proveedor: **OpenRouter** (API compatible con OpenAI, `https://openrouter.ai/api
 | Principal | NVIDIA Nemotron 3 Ultra | `nvidia/nemotron-3-ultra-550b-a55b:free` | Gratis, con límite de peticiones |
 | Respaldo | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | Por token, bajo (verificar en la página del modelo) |
 
-- Identificadores verificados el 2026-11-27 en catálogos públicos. El sufijo `:free` es obligatorio: sin él, el modelo es de pago. La etapa de código los confirma con `GET /api/v1/models` y deja los dos en variables de entorno (`ASISTENTE_MODELO`, `ASISTENTE_MODELO_RESPALDO`), para cambiarlos sin desplegar código.
+- Identificadores verificados el 2026-11-27 con la documentación de OpenRouter que pasó el dueño (`https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b/llms.txt`) y catálogos públicos. El sufijo `:free` es obligatorio: `nvidia/nemotron-3-ultra-550b-a55b` sin sufijo es la variante de pago (de 0,25 a 0,75 USD por millón de tokens de entrada, según el proveedor) y **no se usa**; ante un fallo se pasa a DeepSeek, no a esa variante. La etapa de código los confirma con `GET /api/v1/models` y deja los dos en variables de entorno (`ASISTENTE_MODELO`, `ASISTENTE_MODELO_RESPALDO`), para cambiarlos sin desplegar código.
 - **Respaldo**: se pide con el campo `models: [principal, respaldo]` de OpenRouter, que pasa al segundo si el primero falla, está saturado o devuelve 429. El respaldo se usa solo en ese caso. La respuesta informa qué modelo respondió y queda en el registro (§9).
-- Los dos modelos tienen que soportar `tools` y `tool_choice`. Si el principal no los soporta en el endpoint gratuito, la etapa de código lo detecta en la evaluación (§8.4) y se avisa al dueño antes de seguir.
+- La documentación de OpenRouter confirma que Nemotron 3 Ultra acepta `tools`, `tool_choice`, `temperature`, `seed`, `max_tokens` y `reasoning`. Se usa `temperature` baja (0,2) y `max_tokens` acotado para respuestas estables. DeepSeek V4.1 Flash también acepta `tools` y `tool_choice`. Si alguno no los respeta en el endpoint gratuito, la etapa de código lo detecta en la evaluación (§8.4) y se avisa al dueño antes de seguir.
+- **Errores de OpenRouter** (`{"error": {"code", "message"}}`):
+
+  | Código | Significado | Qué hace la función |
+  |---|---|---|
+  | 429 | Límite de peticiones | Pasa a DeepSeek |
+  | 502 | Falló el proveedor (no se cobra) | Pasa a DeepSeek |
+  | 404 | Modelo desconocido o sin proveedor (por ejemplo, si retiran el gratuito) | Pasa a DeepSeek y queda registrado para avisar al dueño |
+  | 400 | Petición mal armada | No reintenta; es un error de código y queda en el registro |
+  | 401, 402, 403 | Clave inválida, sin créditos o tope de gasto alcanzado | No reintenta; el panel muestra «El asistente no está disponible en este momento» |
+
+- **Gasto**: el tope lo controla el dueño en OpenRouter (decisión del 2026-11-27). La función guarda en el registro el campo `usage.cost` de cada respuesta (§9).
 - **Límites de uso**: los modelos gratuitos tienen un tope diario de peticiones por cuenta. Cada pregunta gasta de 2 a 7 peticiones (una por vuelta del bucle de tools). Con el tope agotado responde el respaldo, que es de pago.
-- **Cuota propia**: 30 preguntas por usuario y por día (valor inicial, ajustable por el dueño), en una tabla `asistente_uso`. Es la única migración del asistente.
+- **Cuota propia**: 30 preguntas por usuario y por día (decisión del dueño, 2026-11-27), en una tabla `asistente_uso`. Es la única migración del asistente.
 
 ## 8. Prompt del sistema
 
@@ -164,7 +175,7 @@ Se corre con los dos modelos antes de cada cambio del prompt o de modelo, y el r
 
 ## 9. Registro y costos
 
-- Una fila por pregunta en `asistente_uso`: usuario, cliente, fecha, tools usadas, modelo que respondió, tokens de entrada y salida, duración, `PROMPT_VERSION` y resultado (ok, error o cuota). **No se guarda el texto** de la pregunta ni de la respuesta.
+- Una fila por pregunta en `asistente_uso`: usuario, cliente, fecha, tools usadas, modelo que respondió, tokens de entrada y salida, costo (`usage.cost`), duración, `PROMPT_VERSION` y resultado (ok, error o cuota). **No se guarda el texto** de la pregunta ni de la respuesta.
 - RLS: el usuario ve sus filas; `admin` ve todas. La escribe solo la función.
 - Logs de la función con el mismo contenido, sin datos de la flota.
 
@@ -183,9 +194,10 @@ Antes de empezar: `git fetch` y merge de `origin/main` en `feat/reportes-ia`. Lo
 - **Compuerta**: no se aplica la migración, no se despliega la función ni se fusiona a `main` hasta que el dueño confirme que cerró la ola de compra por lote y renovaciones. Antes del PR, otra vez `git fetch` y merge de `origin/main`.
 - Docs del PR de código: apéndice nuevo en [08](08-esquema-datos.md), [10](10-tablero.md), runbook [11](11-runbook-operacion.md) (secreto y variables de modelo) y este documento.
 
-## 11. Decisiones abiertas para el dueño
+## 11. Decisiones del dueño (2026-11-27)
 
-1. **Perfil de sucursal**: ¿usa el asistente? La propuesta es que sí, sin costos (la base ya los oculta).
-2. **Cuota diaria**: 30 preguntas por usuario, ¿sirve?
-3. **Sin modelo gratuito**: si Nemotron gratis deja de estar disponible o agota el tope a diario, ¿se acepta que responda siempre DeepSeek (de pago, bajo costo) o se corta el asistente hasta el día siguiente? Propuesta: aceptar el respaldo con un tope de gasto mensual en la cuenta de OpenRouter.
-4. **Clave de OpenRouter**: la crea el dueño y la carga como secreto de la función en el dashboard de Supabase.
+1. **Perfil de sucursal**: usa el asistente. Ve solo su sucursal y sin costos, porque la base ya los oculta (§4).
+2. **Cuota diaria**: 30 preguntas por usuario y por día.
+3. **Respaldo**: Nemotron 3 Ultra gratis es el principal; si no responde, responde DeepSeek V4.1 Flash. El gasto está controlado con el tope de la cuenta de OpenRouter.
+4. **Datos**: se envían sin anonimizar (§6).
+5. **Clave de OpenRouter**: la crea el dueño y la carga como secreto `OPENROUTER_API_KEY` de la función en el dashboard de Supabase, antes del despliegue. Nunca se pega en la conversación ni en el repo.
