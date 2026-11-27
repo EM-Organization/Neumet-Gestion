@@ -81,7 +81,7 @@
 - Ola 2 de F8, revisión del TL: el comentario de cabecera de `20261126030000` (punto 3) dice que el servicio lo fija el administrador, pero la sucursal también puede fijarlo, igual que la distribución: ajustar el texto o confirmar la regla.
 - Ola 2 de F8, revisión del TL: las alertas no-límite de vehículos inactivos no se cierran solas (ya pasaba con `limite`).
 - Ola 2 de F8: al aplicar `20261126030000`, el relleno de `alerta_sincronizar` (D6) abre de golpe alertas `irregular`, de dirección y `swap` en flotas reales. Es esperado; avisar antes de aplicar.
-- Ola 2 de F8, tarea T1: prefijo `t_104` repetido (`t_104_auxilio_tramos_km.sql` y `t_104_ola2_alertas.sql`) `tests/e2e/.cache` sin ignorar, y un comentario de la migración que cita W.2 también para la falta de medición (W.2 solo trata la posición 99).
+- Ola 2 de F8, tarea T1: prefijo `t_104` repetido (`t_104_auxilio_tramos_km.sql` y `t_104_ola2_alertas.sql`), `tests/e2e/.cache` sin ignorar, y un comentario de la migración que cita W.2 también para la falta de medición (W.2 solo trata la posición 99).
 - Contradicción de estados: este tablero (sección «Hecho» y ola 1) da por aplicadas `20261126010000` (PR 156) y `20261126020000` (PR 159); los apéndices Z.7 y AA.9 de `docs/08` dicen que no están aplicadas. Confirmar con `supabase migration list --remote` antes del próximo despliegue y corregir el documento que esté mal (apéndice AB.1).
 
 ### Acciones del dueño (dashboard de Supabase) **[confirmar]**
