@@ -81,6 +81,7 @@ export async function preludio(
   allowedOrigins: string[],
   log: (level: string, event: string, extra?: Record<string, unknown>) => void,
   getUser: (token: string) => Promise<{ id: string } | null>,
+  maxBytes = MAX_BODY_BYTES,
 ): Promise<Response | Entrada> {
   const origin = req.headers.get('origin');
   const cors: Record<string, string> = {
@@ -108,7 +109,7 @@ export async function preludio(
   }
 
   const raw = await req.text();
-  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return fail('Solicitud demasiado grande', 413, cors);
+  if (new TextEncoder().encode(raw).length > maxBytes) return fail('Solicitud demasiado grande', 413, cors);
   let body: Record<string, unknown>;
   try {
     const p = JSON.parse(raw);
