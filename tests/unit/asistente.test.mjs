@@ -68,7 +68,7 @@ describe('mensajeError', () => {
     assert.deepEqual(mensajeError(403), { texto: 'Este perfil no tiene acceso al asistente.', reintentar: false });
   });
   test('401: sesión vencida, sin reintentar', () => {
-    assert.deepEqual(mensajeError(401), { texto: 'La sesión venció. Volver a ingresar.', reintentar: false });
+    assert.deepEqual(mensajeError(401), { texto: 'La sesión venció. Volver a iniciar sesión.', reintentar: false });
   });
   test('400 con cliente_requerido: elegir cliente, sin reintentar', () => {
     assert.deepEqual(mensajeError(400, 'cliente_requerido'), { texto: 'Elegir un cliente.', reintentar: false });

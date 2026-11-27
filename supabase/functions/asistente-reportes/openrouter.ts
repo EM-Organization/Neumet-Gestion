@@ -5,8 +5,6 @@ import type { DefTool } from './contrato.ts';
 export const URL_OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
 export const MODELO_PRINCIPAL_DEFECTO = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const MODELO_RESPALDO_DEFECTO = 'deepseek/deepseek-v4.1-flash';
-// Variante de pago: nunca se usa, ni como principal ni como respaldo (docs/24 §7).
-const MODELO_DE_PAGO = 'nvidia/nemotron-3-ultra-550b-a55b';
 
 export interface PeticionModelo {
   mensajes: unknown[];
@@ -153,9 +151,15 @@ function numero(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
+// Las variantes nvidia/nemotron sin `:free` son de pago: no se usan ni como principal ni como respaldo (docs/24 §7).
+// Se cubre toda la familia por prefijo, no solo el identificador exacto, para que otra variante de pago no se cuele.
+function esNemotronDePago(modelo: string): boolean {
+  return modelo.startsWith('nvidia/nemotron') && !modelo.endsWith(':free');
+}
+
 /**
- * Modelos a usar según el entorno. Un principal sin `:free` se ignora (se usa el de por defecto y se avisa): la variante
- * de pago no se usa nunca. Un respaldo que sea la variante de pago también cae al de por defecto.
+ * Modelos a usar según el entorno. Un principal sin `:free` se ignora (se usa el de por defecto y se avisa). Un respaldo
+ * de la familia nvidia/nemotron de pago también cae al de por defecto con aviso.
  */
 export function elegirModelos(env: (nombre: string) => string | undefined): {
   principal: string;
@@ -171,6 +175,11 @@ export function elegirModelos(env: (nombre: string) => string | undefined): {
     avisos.push({ event: 'modelo_principal_sin_free', modelo: pedidoPrincipal });
   }
   const pedidoRespaldo = env('ASISTENTE_MODELO_RESPALDO')?.trim() ?? '';
-  const respaldo = pedidoRespaldo && pedidoRespaldo !== MODELO_DE_PAGO ? pedidoRespaldo : MODELO_RESPALDO_DEFECTO;
+  let respaldo = MODELO_RESPALDO_DEFECTO;
+  if (pedidoRespaldo && !esNemotronDePago(pedidoRespaldo)) {
+    respaldo = pedidoRespaldo;
+  } else if (pedidoRespaldo) {
+    avisos.push({ event: 'modelo_respaldo_sin_free', modelo: pedidoRespaldo });
+  }
   return { principal, respaldo, avisos };
 }

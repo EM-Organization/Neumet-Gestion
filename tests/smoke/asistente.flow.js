@@ -26,6 +26,9 @@ window.asistenteFlow = async function (w, d, sleep, fail, log, quien) {
   if (listo('alertas').textContent !== 'Alertas de la flota') fail(pref + 'título del reporte listo: ' + listo('alertas').textContent);
   // El selector de cliente solo lo ve el equipo Neumet
   if (visible($('#rep-asistente .asis-cliente')) !== EQUIPO) fail(pref + 'el selector de cliente del asistente debe verse solo para el equipo Neumet');
+  // El ejemplo del campo no menciona costos cuando el perfil no los ve (sucursal)
+  var ejemplo = $('#asis-pregunta').placeholder;
+  if ((ejemplo.indexOf('costo por km') !== -1) === (quien === 'sucursal')) fail(pref + 'el ejemplo del campo no corresponde al perfil: ' + ejemplo);
 
   if (EQUIPO) {
     if (!$('#asis-pregunta').disabled || estado().indexOf('Elegir un cliente.') === -1) fail(pref + 'sin cliente elegido debe pedir «Elegir un cliente.»');
@@ -125,5 +128,23 @@ window.asistenteFlow = async function (w, d, sleep, fail, log, quien) {
     enviar('Con el cliente dos');
     await esperar(fin, 'respuesta con el cliente dos');
     if (ultimo().cliente_id !== 2 || ultimo().historial.length !== 0) fail(pref + 'tras cambiar: cliente_id=' + ultimo().cliente_id + ', historial=' + ultimo().historial.length);
+
+    // Volver a Reportes con una respuesta en vuelo: load() reinicia el selector, así que la conversación se vacía, la
+    // respuesta que llegue después no se pinta y lo escrito en el campo se conserva
+    if (texto().indexOf('Con el cliente dos') === -1) fail(pref + 'antes de volver, la conversación debe tener la pregunta anterior');
+    fx.cola.push({ demoraMs: 400 });
+    var antesVolver = fx.pedidos.length;
+    enviar('En vuelo al volver');
+    await esperar(function () { return fx.pedidos.length > antesVolver; }, 'pedido en vuelo al volver');
+    // Preguntar vacía el campo al enviar: lo escrito sin enviar se pone con la petición en vuelo
+    $('#asis-pregunta').value = 'Texto sin enviar';
+    $('.nav-item[data-view="stock"]').click();
+    await sleep(100);
+    $('.nav-item[data-view="reportes"]').click();
+    await sleep(100);
+    if (texto().trim() !== '') fail(pref + 'al volver a Reportes la conversación debe vaciarse: ' + texto().slice(0, 60));
+    await sleep(600);
+    if (texto().trim() !== '') fail(pref + 'la respuesta en vuelo se pintó después de volver a Reportes');
+    if ($('#asis-pregunta').value !== 'Texto sin enviar') fail(pref + 'al volver a Reportes el campo debe conservar lo escrito');
   }
 };
