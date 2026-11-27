@@ -51,6 +51,15 @@ test('rutaOdometro: quién puede bajar el kilometraje (docs/17 §4.1)', () => {
   assert.match(AVISO_ODOMETRO_SUCURSAL(1200), /1200 km.*administrador de empresa/);
 });
 
+test('TIPO_LABEL: eventos de stock, traslado y recauchutado (check de eventos_neumatico_tipo_ck)', () => {
+  assert.equal(TIPO_LABEL.alta_stock, 'Alta en stock');
+  assert.equal(TIPO_LABEL.traslado, 'Traslado');
+  assert.equal(TIPO_LABEL.cambio_condicion, 'Cambio de condición');
+  assert.equal(TIPO_LABEL.envio_recauchutado, 'Envío a recauchutar');
+  assert.equal(TIPO_LABEL.dictamen_recauchutado, 'Dictamen de recauchutado');
+  assert.equal(TIPO_LABEL.rechazo_recauchutado, 'Rechazo de recauchutado');
+});
+
 test('TIPOS_EVENTO y TIPO_LABEL: rotación en disco y alineación', () => {
   assert.ok(TIPOS_EVENTO.includes('rotacion_disco'));
   assert.ok(TIPOS_EVENTO.includes('alineacion'));
