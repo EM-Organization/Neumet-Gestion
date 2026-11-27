@@ -44,7 +44,7 @@
     return q;
   }
   // ultimas_mediciones (Inicio): una fila por posición de la última visita; mm_antes null = neumático sin medición previa.
-  // El vehículo 11 trae un desgaste alto (1,4 mm) y una lectura mayor que la anterior; el 12 trae un neumático nuevo.
+  // El vehículo 11 trae un desgaste alto (1,8 mm) en la rueda en buen estado, no en la de desgaste límite; el 12, en la de mayor caída.
   function u(vid, nom, pat, num, dias, pos, ahora, antes){
     return {vehiculo_id:vid,nombre:nom,patente:pat,numero:num,medido_at:D(dias),posicion:pos,idneumatico:'UM-'+vid+'-'+pos,
       mm_ahora:ahora,mm_antes:antes,antes_at:antes===null?null:D(dias+7)};
@@ -52,7 +52,7 @@
   var ultimas = [
     u(10,'101','AB123CD','101',1,1,12.6,13.0), u(10,'101','AB123CD','101',1,2,11.8,12.1), u(10,'101','AB123CD','101',1,3,15.5,null),
     u(12,'Unidad <Crítica>','CR0001','112',2,1,2.9,3.4), u(12,'Unidad <Crítica>','CR0001','112',2,2,2.8,5.2),
-    u(11,'102','XY987ZZ','102',4,1,2.7,7.3), u(11,'102','XY987ZZ','102',4,2,9.2,9.0),
+    u(11,'102','XY987ZZ','102',4,1,2.7,3.1), u(11,'102','XY987ZZ','102',4,2,9.2,11.0),
     // RN-01 (regresión): el vehículo 15 no tiene filas en v_estado_neumaticos (ninguna huella); su visita trae promedio 3,67.
     u(15,'205','SAB-1234','205',9,1,3.67,null)
   ];
