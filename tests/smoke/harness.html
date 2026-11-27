@@ -15,6 +15,7 @@
 <script src="/tests/smoke/calidad.flow.js"></script>
 <script src="/tests/smoke/seccionales.flow.js"></script>
 <script src="/tests/smoke/empresa.flow.js"></script>
+<script src="/tests/smoke/asistente.flow.js"></script>
 <script src="/tests/smoke/inicio.flow.js"></script>
 <script src="/tests/smoke/sinacceso.flow.js"></script>
 <script src="/tests/smoke/arranque.flow.js"></script>
@@ -30,7 +31,7 @@
   var cliMode=/[?&]cliente=1/.test(location.search);
   try{
     var src=await (await fetch('/adminpanel/index.html')).text();
-    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script><script src="/tests/smoke/empresa.fixture.js"><\/script><script src="/tests/smoke/arranque.fixture.js"><\/script>')
+    src=src.replace(/<script[^>]*supabase[^>]*><\/script>/,'<script src="/tests/smoke/stub.js"><\/script><script src="/tests/smoke/clientes.fixture.js"><\/script><script src="/tests/smoke/salud.fixture.js"><\/script><script src="/tests/smoke/ciclo.fixture.js"><\/script><script src="/tests/smoke/flota.fixture.js"><\/script><script src="/tests/smoke/seccionales.fixture.js"><\/script><script src="/tests/smoke/vehiculo.fixture.js"><\/script><script src="/tests/smoke/trazas.fixture.js"><\/script><script src="/tests/smoke/stock.fixture.js"><\/script><script src="/tests/smoke/montar.fixture.js"><\/script><script src="/tests/smoke/privilegios.fixture.js"><\/script><script src="/tests/smoke/empresa.fixture.js"><\/script><script src="/tests/smoke/arranque.fixture.js"><\/script><script src="/tests/smoke/asistente.fixture.js"><\/script>')
            .replace('<head>','<head><base href="/adminpanel/">');
     // Escena sinmodulos: sin el módulo principal (main.js) no hay JS del panel: solo corre el HTML y la CSS de index.html.
     if(/[?&]escena=sinmodulos/.test(location.search)) src=src.replace(/<script type="module"[^>]*><\/script>/g,'');
@@ -77,6 +78,12 @@
     if(shotName){
       // Modo capturas (tests/visual/run.sh): deja la vista pedida en pantalla; el PNG lo saca Chrome (tests/visual/scenes.js)
       await window.visualScene(shotName,w,d,sleep,fail,log,cliMode);
+      throw new Error('__done');
+    }
+    if(/[?&]asistente=1/.test(location.search)){
+      // Asistente de reportes (docs/24 §2): administrador de empresa (?cliente=1), usuario de sucursal (?cliente=1&secuser=1) y equipo Neumet (sin cliente): tests/smoke/asistente.flow.js
+      nav('reportes');
+      await window.asistenteFlow(w,d,sleep,fail,log,!cliMode?'neumet':(/[?&]secuser=1/.test(location.search)?'sucursal':'cliente'));
       throw new Error('__done');
     }
     if(/[?&]reportes=1/.test(location.search)){

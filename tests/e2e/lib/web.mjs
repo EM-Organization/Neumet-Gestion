@@ -19,6 +19,9 @@ export async function startWeb({ postgrestBase }) {
   const reemplazos = new Map();
   // Demoras (ruta de PostgREST -> ms) para reproducir un orden de llegada concreto de las peticiones. Se restauran con restaurar().
   const demoras = new Map();
+  // Origen del servidor de la Edge Function `asistente-reportes` (lo levanta el spec con deno, contrato C4). Sin fijar, la ruta
+  // responde 503: un spec que olvide levantarla falla con un mensaje claro y no se cuelga esperando.
+  let funciones = null;
   // Cabeceras de vercel.json: cada bloque cuyo `source` (una expresión regular de ruta) coincide, en orden; el último gana.
   const bloques = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')).headers
     .map(b => ({ re: new RegExp(`^${b.source}$`), headers: b.headers }));
@@ -33,6 +36,7 @@ export async function startWeb({ postgrestBase }) {
       return ms ? setTimeout(() => proxy(req, res, url), ms) : proxy(req, res, url);
     }
     if (url.pathname === '/__e2e/supabase.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); return res.end(supabaseUmd); }
+    if (url.pathname.startsWith('/functions/v1/asistente-reportes')) return funcion(req, res, url);
     if (url.pathname.startsWith('/auth/v1/')) return auth(req, res, url);
     if (url.pathname === '/__e2e/config.js') {
       res.writeHead(200, { 'content-type': MIME['.js'] });
@@ -62,6 +66,28 @@ export async function startWeb({ postgrestBase }) {
     }
     res.writeHead(200, { 'cache-control': 'no-store', ...cabecerasDe(pathname), 'content-type': MIME[extname(file)] || 'application/octet-stream' });
     res.end(body);
+  }
+
+  // Reenvía /functions/v1/asistente-reportes tal cual (método, cabeceras, cuerpo y ruta) al servidor de la función. Solo POST y
+  // OPTIONS, como la Edge Function de verdad: otro método es un 405 de la propia función, no de este proxy.
+  function funcion(req, res, url) {
+    if (!['POST', 'OPTIONS'].includes(req.method)) { res.writeHead(405, { 'content-type': 'application/json' }); return res.end('{"ok":false,"error":"Método no permitido"}'); }
+    if (!funciones) { res.writeHead(503, { 'content-type': 'application/json' }); return res.end('{"ok":false,"error":"funcion_e2e_no_fijada"}'); }
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      const destino = new URL(funciones);
+      const headers = { ...req.headers, host: destino.host, 'content-length': String(body.length) };
+      delete headers['transfer-encoding'];
+      const up = httpRequest({ host: destino.hostname, port: destino.port, path: url.pathname + url.search, method: req.method, headers }, r => {
+        const out = [];
+        r.on('data', c => out.push(c));
+        r.on('end', () => { res.writeHead(r.statusCode, r.headers); res.end(Buffer.concat(out)); });
+      });
+      up.on('error', e => { res.writeHead(502); res.end(String(e)); });
+      up.end(body);
+    });
   }
 
   // GoTrue mínimo. El JWT de la sesión de prueba ya viene firmado por el arnés; aquí solo se devuelve lo que supabase-js pide.
@@ -108,6 +134,8 @@ export async function startWeb({ postgrestBase }) {
     origin, peticiones,
     setTag: t => { server.tag = t; },
     reemplazar: (ruta, cuerpo) => reemplazos.set(ruta, cuerpo),
+    // URL del servidor de la Edge Function (null para dejar de enrutarla y volver al 503).
+    fijarFunciones: url => { funciones = url; },
     demorar: (ruta, ms) => demoras.set(ruta, ms),
     restaurar: () => { reemplazos.clear(); demoras.clear(); },
     stop: () => new Promise(ok => { server.closeAllConnections?.(); server.close(ok); })

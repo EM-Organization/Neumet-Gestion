@@ -21,6 +21,7 @@ Punto de partida: el [README](../README.md) de la raíz (qué es NEUMET, arquite
 | [21 · Especificación de la interfaz web](21-spec-ui-web.md) | Spec de UI del panel (W-01..W-10, criterios de aceptación y casos de prueba); el detalle de vehículo la cumple, el resto del panel se alinea en PR posteriores |
 | [22 · Tokens de la interfaz web](22-tokens-ui-web.json) | Tokens de diseño de esa spec (colores por estado, bandera, chips, gráfico); manda sobre la spec en caso de conflicto |
 | [23 · Reglas de negocio](23-reglas-negocio.md) | Reglas de negocio vigentes (RN-01 a RN-32): estado por ola, criterio de aceptación y decisiones del 2026-11-25 (P-01 a P-12) |
+| [24 · Asistente de reportes con IA](24-asistente-reportes-ia.md) | Diseño en revisión (2026-11-27, sin código): asistente conversacional en Reportes con OpenRouter, tools de solo lectura con el JWT del usuario, reportes listos (RN-22 a RN-27) y prompt del sistema |
 | [03 · Despliegue Vercel + Supabase](03-despliegue-vercel-supabase.md) | Plan de despliegue y decisiones de la CSP (la sección final está al día) |
 | [06 · Identidad visual](06-identidad-visual.md) | Paleta, contraste, logos y tipografía (assets en [`assets/brand/`](../assets/brand/README.md)) |
 

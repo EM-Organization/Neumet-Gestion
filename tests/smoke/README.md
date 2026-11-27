@@ -17,6 +17,9 @@ tests/smoke/run.sh secuser    # sesión de cliente con perfil de SUCURSAL (sin s
 tests/smoke/run.sh empresa   # administrador de empresa: menú Empresa, usuarios (alta con Enter, quitar, reponer y los 502/403/409/400), umbrales y dispositivos de solo lectura (empresa.fixture.js, empresa.flow.js)
 tests/smoke/run.sh empresa-sucursal  # usuario de sucursal: sin menú Empresa, el router lo devuelve a Inicio y no hay llamadas
 tests/smoke/run.sh empresa-admin     # equipo Neumet (admin): igual que el anterior
+tests/smoke/run.sh asistente         # asistente de reportes como administrador de empresa: Enter, doble envío, 429/500 con reintento, historial, escape, CSV, reporte listo (asistente.fixture.js, asistente.flow.js)
+tests/smoke/run.sh asistente-sucursal  # igual, como usuario de sucursal (sin selector de cliente)
+tests/smoke/run.sh asistente-admin   # equipo Neumet: pide elegir cliente y cambiarlo con una respuesta en vuelo descarta la vieja
 tests/smoke/run.sh detalle    # Vehículos como cliente: buscador (patente/número) y detalle con diagrama de ruedas (vehiculo.fixture.js)
 tests/smoke/run.sh sinperfil  # sesión sin perfil: solo «Sin acceso», sin menú ni consultas de datos (sinacceso.flow.js)
 tests/smoke/run.sh api        # perfil de rol 'api': igual que sinperfil

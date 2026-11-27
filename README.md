@@ -40,7 +40,7 @@ Calibre digital ──Bluetooth──► App de medición (DAC) ──HTTPS─�
 | Base de datos | PostgreSQL con RLS, RPC, vistas y auditoría | `supabase/migrations/` |
 | Panel (`/adminpanel`) | SPA en módulos ES nativos, sin bundler; usa `supabase-js` y consulta bajo demanda (sin Realtime) | `adminpanel/index.html`, `assets/js/` |
 | Sitio público (`/`) | Landing estática con formulario de contacto | `index.html`, `assets/js/landing.js` |
-| Edge Functions auxiliares | Alta de clientes, usuarios de sucursal y cuentas de API (solo administrador); formulario de contacto | `supabase/functions/` |
+| Edge Functions auxiliares | Alta de clientes, usuarios de sucursal y cuentas de API (solo administrador); formulario de contacto; asistente de reportes con IA (solo lectura) | `supabase/functions/` |
 | Hosting | Vercel sirve el sitio estático con CSP y cabeceras de seguridad | `vercel.json` |
 
 Proyecto Supabase vigente: `kootszosdejmawanfxug`. El proyecto anterior (`dqgrlflrjcarxlfetvoj`) quedó fuera de uso tras el cutover y ya no figura en el código ni en la CSP; solo se menciona de forma histórica en la documentación.
@@ -134,7 +134,7 @@ Otras pruebas, con sus propios lanzadores:
 
 | Prueba | Comando | Cubre |
 |---|---|---|
-| Smoke | `scripts/smoke-modos.sh` (33 modos; el CI los corre todos) o `tests/smoke/run.sh <modo>` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
+| Smoke | `scripts/smoke-modos.sh` (36 modos; el CI los corre todos) o `tests/smoke/run.sh <modo>` | Recorrido de vistas y modales con un Supabase simulado; cualquier `console.error` o «Acción desconocida» falla ([`README`](tests/smoke/README.md)) |
 | Visual | `tests/visual/run.sh` | Capturas de escritorio y móvil para revisión a ojo ([`README`](tests/visual/README.md)) |
 | SQL | `tests/sql/run.sh` | Todas las migraciones (aplicadas dos veces) y pruebas por rol en un Postgres desechable |
 | Rendimiento (fuera del CI) | `tests/perf/gen.sql` y `tests/perf/bench.sh` | Datos sintéticos y tiempos de `v_estado_neumaticos`; exige `PERF_PG_URL` apuntando a un Postgres local desechable, nunca a producción |
@@ -149,7 +149,7 @@ La integración continua (`.github/workflows/ci.yml`) ejecuta: `secrets` (gitlea
 **Supabase.**
 
 - Migraciones: `supabase/migrations/`, idempotentes; se revisan en el PR, se aplican antes de fusionar el front que las usa, con `supabase db push --remote` (no con el MCP `apply_migration`: registra la versión por fecha y desalinea el historial) y se verifican con `get_advisors` y `supabase/audit/rls_audit.sql`.
-- Edge Functions: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto`; todas con `verify_jwt = false` en `supabase/config.toml` (cada handler valida el JWT y el rol por su cuenta).
+- Edge Functions: `api-proveedor`, `asistente-reportes`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional` y `contacto`; todas con `verify_jwt = false` en `supabase/config.toml` (cada handler valida el JWT y el rol por su cuenta).
 - Secretos necesarios (nombres, sin valores):
 
 | Función | Secretos |

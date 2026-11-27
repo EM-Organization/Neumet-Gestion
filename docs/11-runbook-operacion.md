@@ -66,13 +66,13 @@ Los dos flags empiezan en `false` y la migración no cambia ninguno. Los cambia 
 5. Para volver atrás, poner el flag en `false`. Vuelve a aceptar movimientos sin odómetro y no reescribe datos.
 
 ### 3.3 Desplegar funciones
-Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario`, `reponer-acceso-usuario` y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
+Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario`, `reponer-acceso-usuario`, `asistente-reportes` (sección 9) y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
 
 **Todas tienen `verify_jwt = false`** en `supabase/config.toml`: `api-proveedor` (el Bearer se valida dentro del handler), `contacto` (formulario público), `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario` y `reponer-acceso-usuario` (validan el JWT dentro del handler y el rol: solo el administrador de empresa en `crear-usuario-seccional` (el equipo Neumet recibe 403), y la RPC con el JWT del llamante en las otras dos; el preflight CORS no lleva token). Con el CLI el valor sale de `config.toml`; con el MCP (`deploy_edge_function`) pasar `verify_jwt` en `false` de forma explícita, y comprobarlo después en `list_edge_functions`. Desplegar con `verify_jwt` activo rompe el preflight CORS y el login de la app de medición.
 
 1. Cargar antes los secrets (acción del dueño o `supabase secrets set`):
    - `contacto`: `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`, `ALLOWED_ORIGINS`, opcional `TURNSTILE_SECRET` (ver `supabase/functions/contacto/README.md`).
-   - `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver sus README). `quitar-acceso-usuario` y `reponer-acceso-usuario`: solo `ALLOWED_ORIGINS` (no invitan). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.
+   - `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver sus README). `quitar-acceso-usuario` y `reponer-acceso-usuario`: solo `ALLOWED_ORIGINS` (no invitan). `asistente-reportes`: `ALLOWED_ORIGINS` y `OPENROUTER_API_KEY` (cargada el 2026-11-27), opcionales `ASISTENTE_MODELO` y `ASISTENTE_MODELO_RESPALDO` (§9). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.
    - `api-proveedor`: usa `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, que provee Supabase. Otros secrets: **[pendiente]** confirmar.
 2. Antes de desplegar: `deno test --config supabase/functions/deno.json supabase/functions/<funcion>`.
 3. Desplegar con `supabase functions deploy <funcion>` o el MCP (`deploy_edge_function`), siempre con `verify_jwt = false`.
@@ -139,3 +139,14 @@ npm run verificar:rapido       # lint + check + unitarias, test:front y el smoke
 - Si el smoke falla con `window.xFlow is not a function` o `reading 'closest'`: antes del servidor Node era, con casi total seguridad, un `<script>` del arnés que no
   llegaba (cola de conexiones del servidor de un hilo; no se reprodujo a voluntad); `reading 'closest'` era el síntoma secundario de una sección de Inicio
   ausente (ahora el flujo se detiene tras el primer mensaje). Con el servidor Node no reapareció en decenas de corridas seguidas y en paralelo; si vuelve, mirar primero el primer mensaje de `SMOKE:FAIL`.
+
+## 9. Asistente de reportes (IA)
+
+El asistente responde preguntas sobre la flota con la Edge Function `asistente-reportes`, que llama a un modelo a través de OpenRouter. El diseño y las decisiones están en [`docs/24`](24-asistente-reportes-ia.md). Solo lee datos: no escribe nada en la base.
+
+- **Clave**: el secreto `OPENROUTER_API_KEY` de la función, ya cargado. Se carga en el dashboard de Supabase o con `supabase secrets set OPENROUTER_API_KEY`, sin pegar el valor en la conversación. Nunca va al repo ni al navegador.
+- **Modelos**: dos variables opcionales de la función, `ASISTENTE_MODELO` (principal) y `ASISTENTE_MODELO_RESPALDO`. Los valores de referencia son los de [`docs/24` §7](24-asistente-reportes-ia.md): principal `nvidia/nemotron-3-ultra-550b-a55b:free` y respaldo `deepseek/deepseek-v4.1-flash`. Para cambiar de modelo sin desplegar: `supabase secrets set ASISTENTE_MODELO=<identificador>` (y lo mismo con `ASISTENTE_MODELO_RESPALDO`).
+- **Apagar**: `supabase secrets unset OPENROUTER_API_KEY`. Sin la clave, la función responde 503. Para volver a encenderlo, cargar la clave de nuevo.
+- **Evaluación**: el juego de 20 preguntas (`supabase/functions/asistente-reportes/evaluacion/preguntas.json`) se corre a pedido con `deno run --allow-net --allow-env --allow-read supabase/functions/asistente-reportes/evaluacion/evaluar.ts`. Las variables necesarias están en el encabezado del archivo. Usar solo el demo de NEUMET: gasta cuota de OpenRouter, no es determinista y nunca va en CI.
+- **Orden de despliegue**: primero se aplica la migración `20261126090000` con el CLI (dry-run antes y verificación después, ver 3.2). Después se fusiona el front y se despliega `asistente-reportes` con `supabase functions deploy asistente-reportes`, siempre con `verify_jwt = false`. Antes de darla por disponible, revisar los logs y hacer una llamada de humo.
+- **Herramientas de la ola 7** (`reporte_periodo` y `rendimiento_descartadas`): no se declaran hasta que su migración esté en `main`. Hasta entonces, las respuestas que dependen de ellas no están disponibles.
