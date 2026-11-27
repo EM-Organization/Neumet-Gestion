@@ -2,7 +2,7 @@
 // posición por posición («Cargar neumáticos»); «Retirar neumático» deja la posición libre y corrige un montaje equivocado.
 // Toda la escritura pasa por las RPC atómicas neumatico_montar y neumatico_desmontar (la autorización se verifica en la
 // base: otro cliente u otra sucursal reciben «permiso denegado»).
-// Acciones: neumatico-montar (vehiculoId, posicion opcional), neumatico-retirar (vehiculoId, posicion).
+// Acciones: neumatico-montar (vehiculoId, posicion opcional), neumatico-retirar (vehiculoId, posicion, enLimite opcional).
 // Al terminar emite el evento DOM «neumet:neumatico-cambiado» y recarga la vista activa, igual que el cambio de neumático.
 import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
@@ -16,7 +16,7 @@ import { fmtNum } from '../domain/formato.js';
 import { etiquetaCondicion, nombreUbicacion, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
 import {
   DESTINOS_RETIRO, MAX_LISTA, posicionesLibres, siguienteLibre, etiquetaPosicion, resumenLibres, cubiertasParaMontar,
-  validarMontaje, validarRetiro, traducirErrorMontaje, traducirErrorRetiro,
+  destinoRetiroInicial, validarMontaje, validarRetiro, traducirErrorMontaje, traducirErrorRetiro,
 } from '../domain/montaje.js';
 import { POS_AUXILIO } from '../domain/vehiculo-diagrama.js';
 import { MOTIVO_OTRO, motivosDelTipo, tipoMotivoRetiro } from '../domain/motivos.js';
@@ -256,7 +256,7 @@ function actualizarRetirar() {
   return r;
 }
 
-async function abrirRetirar(vehiculoId, posicion) {
+async function abrirRetirar(vehiculoId, posicion, enLimite) {
   if (!Number.isInteger(vehiculoId) || !Number.isInteger(posicion)) { showToast('Elegir el neumático a retirar', true); return; }
   const puedeStock = puedeUsarStock();
   const [rv, rn] = await Promise.all([
@@ -275,14 +275,15 @@ async function abrirRetirar(vehiculoId, posicion) {
   ret = { veh: rv.data, neum, sucursales: rs.error ? [] : (rs.data || []), puedeStock,
     catalogo: motivos.catalogo, odometroObligatorio: motivos.odometroObligatorio };
   const destinos = DESTINOS_RETIRO.filter(d => puedeStock || d.id !== 'almacenado');
+  const inicial = destinoRetiroInicial(destinos, enLimite);
   $('ret-sub').textContent = etiquetaCoche(rv.data.nombre);
   setHtml($('ret-actual'), html`<div>Neumático en <strong>${nombrePos(posicion, tipoLayout(rv.data))}</strong>:
     <strong>${[neum.marca, neum.modelo].filter(Boolean).join(' ') || 'Sin marca'}</strong>${neum.numero_quema ? html` · quema ${neum.numero_quema}` : ''}${neum.vida ? html` · recauchutado ${neum.vida}` : ''}</div>`);
-  setHtml($('ret-destinos'), joinHtml(destinos.map((d, i) => html`<label class="cambio-op"><input type="radio" name="ret-destino" value="${d.id}" ${i === 0 ? 'checked' : ''}
+  setHtml($('ret-destinos'), joinHtml(destinos.map(d => html`<label class="cambio-op"><input type="radio" name="ret-destino" value="${d.id}" ${d.id === inicial ? 'checked' : ''}
     data-change="neumatico-retirar-resumen"/> <span>${d.label}</span></label>`)));
   setHtml($('ret-suc'), joinHtml([html`<option value="">${SIN_SUCURSAL}</option>`, ret.sucursales.map(s => html`<option value="${s.id}">${s.nombre}</option>`)]));
   for (const id of ['ret-motivo-texto', 'ret-quema', 'ret-odo']) $(id).value = '';
-  pintarMotivosRetiro(tipoMotivoRetiro(destinos[0].id), MOTIVO_PREDETERMINADO); // el primer destino viene marcado
+  pintarMotivosRetiro(tipoMotivoRetiro(inicial), MOTIVO_PREDETERMINADO); // el destino inicial viene marcado (Baja si la rueda está en límite)
   pintarOdometro('ret-odo-opt', 'ret-odo-hint', rv.data.odometro_km, ret.odometroObligatorio, 'Lectura actual del vehículo.');
   $('ret-confirmar').disabled = false;
   actualizarRetirar();
@@ -331,7 +332,7 @@ ACTIONS['neumatico-montar-tab'] = function (origen) {
   actualizarMontar();
 };
 
-ACTIONS['neumatico-retirar'] = async function (vehiculoId, posicion) { if (esAdmin()) return; await abrirRetirar(Number(vehiculoId), Number(posicion)); };
+ACTIONS['neumatico-retirar'] = async function (vehiculoId, posicion, enLimite) { if (esAdmin()) return; await abrirRetirar(Number(vehiculoId), Number(posicion), enLimite === true); };
 ACTIONS['neumatico-retirar-cerrar'] = function () { cerrarRetirar(); };
 ACTIONS['neumatico-retirar-resumen'] = function () { if (ret) actualizarRetirar(); };
 ACTIONS['neumatico-retirar-confirmar'] = confirmarRetirar;

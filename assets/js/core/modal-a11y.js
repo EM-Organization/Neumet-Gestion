@@ -48,7 +48,7 @@ function alTeclear(e) {
   const top = abiertos[abiertos.length - 1];
   if (!top) return;
   if (e.key === 'Escape') {
-    e.preventDefault();
+    e.preventDefault(); // señal de «Esc ya atendido» para las vistas: no deben cerrar nada más con este mismo Esc
     const accion = top.bd.dataset.backdropClose;
     if (accion) runAction(accion, []);
     else document.getElementById('confirm-cancel')?.click();

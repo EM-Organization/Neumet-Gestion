@@ -41,8 +41,15 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(txt('#vd-panel').indexOf('Sin neumático montado en esta posición') === -1) fail('montar: el panel de una rueda vacía: ' + txt('#vd-panel'));
   var bm = $('#vd-panel [data-action="neumatico-montar"]');
   if(!bm || bm.dataset.posicion !== '3' || bm.textContent.trim() !== 'Montar neumático') { fail('montar: falta «Montar neumático» en el panel'); return; }
-  bm.click();
+  // H4 con «Montar»: Esc cierra el modal, deja el panel de la posición vacía y el foco vuelve a «Montar neumático».
+  bm.focus(); bm.click();
   if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'el modal de montar')) return;
+  d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true})); await sleep(200);
+  if($('#modal-montar').classList.contains('show')) fail('montar: Esc no cerró el modal de montar');
+  if(txt('#vd-panel').indexOf('Sin neumático montado en esta posición') === -1 || !$('#vd-panel').classList.contains('abierto')) fail('montar: Esc en el modal de montar no debe cerrar el panel de la posición vacía');
+  if(d.activeElement !== bm) fail('montar: al cerrar el modal de montar con Esc el foco debe volver a «Montar neumático»');
+  bm.focus(); bm.click();
+  if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'reabrir el modal de montar tras Esc')) return;
   if($('#mont-pos').value !== '3') fail('montar: la posición inicial debe ser la 3: ' + $('#mont-pos').value);
   // Sin «P3» (docs/14 §3): nombres como en Alertas; el subtítulo cuenta ruedas y el auxilio aparte, como el diagrama.
   if(/\bP\d/.test(txt('#mont-pos')) || txt('#mont-pos option[value="3"]') !== 'Eje 2 izquierda exterior') fail('montar: nombres de posición: ' + txt('#mont-pos'));
@@ -156,6 +163,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   br.click();
   if(!await esperar(function(){ return $('#modal-retirar').classList.contains('show'); }, 'el modal de retirar')) return;
   if(Array.prototype.map.call(all('input[name="ret-destino"]'), function(i){ return i.value; }).join() !== 'almacenado,reparacion,baja') fail('montar: destinos del retiro');
+  // Sin desgaste límite (P4 no está en límite) el destino inicial sigue siendo Stock
+  if(!$('input[name="ret-destino"][value="almacenado"]').checked) fail('montar: sin desgaste límite, Retirar debe venir con Stock marcado');
   if(!/quema N-77/.test(txt('#ret-actual')) || !visible('#ret-stock-wrap') || visible('#ret-quema-wrap')) fail('montar: el neumático con quema vuelve al stock sin pedir quema: ' + txt('#ret-actual'));
   d.querySelector('input[name="ret-destino"][value="baja"]').click(); await sleep(100);
   if(visible('#ret-stock-wrap') || !/obligatorio/.test(txt('#ret-motivo-opt'))) fail('montar: la baja pide motivo y oculta el stock');
