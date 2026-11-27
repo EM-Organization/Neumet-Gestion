@@ -1473,7 +1473,7 @@ Implementa RN-05 (cierre por rotación en disco), RN-15, RN-16 y RN-17 (docs/23)
 - `vehiculo_alinear(p_vehiculo_id, p_odometro_km, p_motivo_codigo, p_motivo_texto)` → `{vehiculo_id, neumaticos, duplicada}`. Registra un evento `alineacion` por cada cubierta montada, sin el auxilio (posición 99). Motivos: `desgaste_lateral`, `control`, `reparacion_tren` y `otro` (con texto).
 - Concurrencia: cada RPC toma `for update` sobre el neumático (o el vehículo) y aplica una ventana de 30 s. Una segunda llamada igual dentro de esa ventana devuelve `duplicada: true` y no escribe nada.
 - Catálogo: `rotacion_disco` y `alineacion` en el catálogo de motivos (RN-14: motivo obligatorio).
-- Errores: 22023 (posición fuera de rango, sin cubiertas montadas en el vehículo, motivo fuera del catálogo, «otro» sin texto, `swap_20000` en alineación), 22004 (posición nula), P0002 (sin cubierta en la posición), 23514 (odómetro negativo o menor al del vehículo; sin odómetro si el cliente lo exige).
+- Errores: 22023 (rotar en disco el auxilio, sin cubiertas montadas en el vehículo, motivo fuera del catálogo, «otro» sin texto, `swap_20000` en alineación, sin odómetro si el cliente lo exige), 22004 (posición nula), P0002 (sin cubierta en la posición), 23514 (posición fuera de 1 a 99, cubierta dada de baja, odómetro negativo o menor al del vehículo), 42501 (vehículo ajeno).
 - La rotación en disco no cambia `neumaticos` ni corta el tramo de km (`v_km_cubierta.km_tramo_actual` no cambia).
 
 ## AC.3 Cierres
