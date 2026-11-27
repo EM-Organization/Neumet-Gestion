@@ -84,7 +84,7 @@ export function registrar(env) {
         // Recuadro de RN-20: «cambiar» es el desgaste límite (color rojo de la base) y «revisar» el resto; las silenciadas no cuentan.
         const r = json(env, `select count(*) filter (where x.color = 'rojo')::int as cambiar, count(*) filter (where x.color <> 'rojo')::int as revisar from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${ALCANCE[rol].veh} and (x.silenciada_hasta is null or x.silenciada_hasta <= now())`)[0];
         // Sin ceros: «× 2 cambiar» si no hay nada por revisar (RN-20).
-        const esperadoRecuadro = [r.cambiar && `× ${r.cambiar} cambiar`, r.revisar && `◆ ${r.revisar} revisar`].filter(Boolean).join(' · ');
+        const esperadoRecuadro = [r.cambiar && `× ${r.cambiar} cambiar`, r.revisar && `◎ ${r.revisar} revisar`].filter(Boolean).join(' · ');
         assert.equal(l.recuadro, esperadoRecuadro, `recuadro de alertas (${rol}): ${l.recuadro}`);
         assert.equal(l.linea.startsWith(`Dispositivos: ${e.dispActivos} de ${e.dispTotal} activos`), true, `línea de dispositivos: ${l.linea}`);
         if (e.dispTotal > e.dispActivos) assert.match(l.linea, new RegExp(`${e.dispTotal - e.dispActivos} sin actividad`));

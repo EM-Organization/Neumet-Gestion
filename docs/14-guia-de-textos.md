@@ -55,10 +55,10 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |
-| **Símbolos de estado** (`ESTADOS.<id>.simbolo`, siempre con el texto): ✓ Buen estado, ▲ Poco desgaste, ◆ Mayor desgaste (naranja), × Desgaste límite (rojo, lo crítico) | un mismo símbolo en dos estados (× es solo de Desgaste límite; ◆ es solo de Mayor desgaste) |
+| **Símbolos de estado** (`ESTADOS.<id>.simbolo`, siempre con el texto): ✓ Buen estado, ▲ Poco desgaste, ◆ Mayor desgaste (naranja), × Desgaste límite (rojo, lo crítico) | un mismo símbolo en dos estados (× es solo de Desgaste límite; ◆ es solo de Mayor desgaste; ◎ es solo de la alerta «Revisar») |
 | **Vocabulario único de estado** (se toma de `domain/estado-desgaste.js`, nunca se duplica): Buen estado, Poco desgaste, Mayor desgaste, Desgaste límite, Sin datos; y la bandera independiente «Desgaste acelerado» (velocidad, no profundidad) | «Nuevo» ni «Desconocido» como estado, «Desgaste mayor al normal», rojo, amarillo, verde. «Buen estado o poco desgaste» nombra la suma de los dos primeros (no «en buen estado» a secas) |
 | Requieren atención | Urgentes, en problemas |
-| × Cambiar (alerta roja, neumático en desgaste límite); ◆ Revisar (alerta amarilla: pide mirar, no cambiar); Pasar atrás y Pasar atrás ya (dirección, con los umbrales de cada empresa); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar»; ▲ como símbolo de una alerta (▲ es «Poco desgaste»); rojo en una alerta amarilla; «Retirar» o «Cambiar» en dirección |
+| × Cambiar (alerta roja, neumático en desgaste límite); ◎ Revisar (alerta amarilla: pide mirar, no cambiar); Pasar atrás y Pasar atrás ya (dirección, con los umbrales de cada empresa); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar»; ▲ o ◆ como símbolo de una alerta (▲ es «Poco desgaste», ◆ es «Mayor desgaste»); rojo en una alerta amarilla; «Retirar» o «Cambiar» en dirección |
 | Próximos cambios | Pronósticos, predicciones |
 | Montar neumático (poner uno en una posición vacía), Cargar neumáticos (montar varios en un vehículo sin ellos), Retirar neumático (sin reemplazo) | Colocar, instalar, sacar |
 | posición vacía (rueda punteada: sin neumático montado) | rueda libre, hueco; no confundir con «sin datos» (neumático montado sin mediciones) |
