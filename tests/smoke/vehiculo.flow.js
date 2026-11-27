@@ -239,6 +239,17 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!/Retirar ya/.test($('#vd-panel').textContent)) fail('detalle RN-08: bajo retiro falta el aviso «Retirar ya»');
   if(!/Alertas/.test($('#vd-panel').textContent)) fail('detalle: la posición 4 tiene una alerta y el panel debe mostrar «Alertas»');
   if(!$('#vd-panel [data-action="neumatico-retirar"]')) fail('detalle RN-08: bajo retiro falta el botón Retirar neumático');
+  // H2: en desgaste límite «Retirar» abre con Baja marcada (no Stock, que devolvería la cubierta gastada al stock).
+  $('#vd-panel [data-action="neumatico-retirar"]').click(); await sleep(700);
+  if(!$('#modal-retirar').classList.contains('show')) fail('detalle RN-08: Retirar no abrió el diálogo');
+  else {
+    var destinoRet = $('input[name="ret-destino"]:checked');
+    if(!destinoRet || destinoRet.value !== 'baja') fail('detalle RN-08: en desgaste límite Retirar debe venir con Baja marcada: '+(destinoRet && destinoRet.value));
+    if($('#ret-motivo').dataset.tipo !== 'baja') fail('detalle RN-08: el motivo debe ser del catálogo de baja: '+$('#ret-motivo').dataset.tipo);
+    if($('#ret-stock-wrap').style.display !== 'none') fail('detalle RN-08: con Baja no debe mostrarse el retorno a stock');
+    if(!/obligatorio/.test($('#ret-motivo-opt').textContent)) fail('detalle RN-08: el motivo de baja debe figurar como obligatorio');
+    $('#modal-retirar [data-action="neumatico-retirar-cerrar"]').click(); await sleep(300);
+  }
   // Móvil (390 px): el encabezado visible de la última columna es «Prom.»; «Promedio» queda como nombre accesible.
   // El promedio ya no es columna de la tabla de mediciones: va en «Ver datos» del gráfico (la tabla decide por el mínimo).
   var thMM = $('#vd-panel .vd-mm-tabla thead');
@@ -432,8 +443,40 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if($('#toast-msg').textContent !== 'No disponible') fail('detalle: sin accion registrada deberia decir "No disponible"');
   }
 
-  // Escape cierra el panel y devuelve el foco a la rueda
-  d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await sleep(200);
+  // H4: con la rueda 3 elegida, un Esc que cierra algo encima (menú «Más», modal) no debe cerrar también el panel.
+  // Se despacha como una tecla real: cancelable y sobre el elemento con foco.
+  var escTecla = function(){ (d.activeElement || d).dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})); };
+  if(!$('#vd-diagrama .vd-rueda.sel[data-pos="3"]')) { r3.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400); }
+  $('#vd-cab [data-menu-mas-btn]').click(); await sleep(200);
+  escTecla(); await sleep(200);
+  if(!$('#vd-cab .menu-mas-lista').hidden) fail('detalle: Esc en «Más» debe cerrar el menú');
+  if(!$('#vd-panel').classList.contains('abierto') || !$('#vd-diagrama .vd-rueda.sel[data-pos="3"]') || /Elegir una rueda/.test($('#vd-panel').textContent)) fail('detalle: Esc en «Más» no debe cerrar el panel de la rueda');
+  if(d.activeElement !== $('#vd-cab [data-menu-mas-btn]')) fail('detalle: Esc en «Más» debe devolver el foco a «Más»');
+  // El foco va al botón antes de abrir: el modal devuelve el foco a quien lo tenía (click() por sí solo no lo mueve).
+  var abreModal = async function(boton, modal){
+    if(!boton) { fail('detalle: no hay botón para abrir '+modal+' (el panel no está abierto)'); return false; }
+    boton.focus(); boton.click(); await sleep(700);
+    if(!$(modal).classList.contains('show')) { fail('detalle: no abrió '+modal+' para probar Esc'); return false; }
+    return true;
+  };
+  var vuelveAlPanel = function(boton, modal){
+    if($(modal).classList.contains('show')) fail('detalle: Esc no cerró '+modal);
+    if(!$('#vd-panel').classList.contains('abierto') || !$('#vd-diagrama .vd-rueda.sel[data-pos="3"]')) fail('detalle: Esc con '+modal+' abierto no debe cerrar el panel de la rueda 3');
+    if(d.activeElement !== boton) fail('detalle: al cerrar '+modal+' con Esc el foco debe volver a su botón, está en '+(d.activeElement && (d.activeElement.dataset.action || d.activeElement.tagName)));
+  };
+  if(await abreModal($('#vd-panel [data-action="neumatico-retirar"]'), '#modal-retirar')) {
+    var btnRetirar = $('#vd-panel [data-action="neumatico-retirar"]');
+    escTecla(); await sleep(200);
+    vuelveAlPanel(btnRetirar, '#modal-retirar');
+  }
+  if(await abreModal($('#vd-panel [data-action="neumatico-cambiar"]'), '#modal-cambio')) {
+    var btnCambiar = $('#vd-panel [data-action="neumatico-cambiar"]');
+    escTecla(); await sleep(200);
+    vuelveAlPanel(btnCambiar, '#modal-cambio');
+  }
+
+  // Escape cierra el panel y devuelve el foco a la rueda (sin nada encima)
+  escTecla(); await sleep(200);
   if($('#vd-panel').classList.contains('abierto') || $('#vd-diagrama .vd-rueda.sel')) fail('detalle: Escape no cerro el panel');
   if(!d.activeElement || d.activeElement.dataset.pos !== '3') fail('detalle: el foco no volvio a la rueda');
 

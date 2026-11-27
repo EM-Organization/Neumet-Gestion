@@ -176,9 +176,9 @@
   /* MODAL */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
   .modal-backdrop.show { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 440px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06); animation: modalIn .2s ease; }
-  .modal.modal-wide { width: 720px; max-height: 88vh; display: flex; flex-direction: column; }
-  .modal.modal-wide .modal-body { overflow-y: auto; flex: 1; }
+  /* Todo modal cabe en la ventana: el cuerpo desplaza y el encabezado y el pie quedan a la vista (ola 6 T1) */
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 440px; max-width: 90vw; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06); animation: modalIn .2s ease; }
+  .modal.modal-wide { width: 720px; max-height: 88vh; }
   .modal-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .label-opt { color: var(--text-tertiary); font-weight: 400; }
@@ -200,11 +200,11 @@
   .ndp-clear:hover { border-color: var(--danger); color: var(--danger); }
   .ndp-btn { width: 100%; margin-top: 8px; }
   @keyframes modalIn { from { transform: scale(0.97) translateY(4px); opacity: 0 } to { transform: scale(1) translateY(0); opacity: 1 } }
-  .modal-header { padding: 20px 22px 0; }
+  .modal-header { padding: 20px 22px 0; flex-shrink: 0; }
   .modal-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }
   .modal-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-  .modal-body { padding: 16px 22px; }
-  .modal-footer { padding: 0 22px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-body { padding: 16px 22px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .modal-footer { padding: 0 22px 18px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
   .field { margin-bottom: 12px; }
   .field:last-child { margin-bottom: 0; }
   .field label { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
@@ -445,15 +445,14 @@
   .alert-chip { display:inline-flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:999px; padding:5px 12px 5px 6px; font:inherit; font-size:14px; font-weight:600; color:var(--text-primary); cursor:pointer; }
   .alert-chip.active { border-color:var(--accent-dark); box-shadow:0 0 0 3px var(--accent-light); }
   /* Odómetro y ciclo de vida */
-  .ciclo-modal { max-height: 90vh; overflow-y: auto; }
+  .ciclo-modal { max-height: 90vh; }
   .ciclo-odo { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
   .ciclo-odo-val { font-size: 26px; font-weight: 600; color: var(--text-primary); }
   .ciclo-odo-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
   .ciclo-odo-form .field { margin: 0; }
   .ciclo-sub { font-size: 12px; color: var(--text-tertiary); }
   /* Cambio de neumático (taller) */
-  .cambio-modal { width: 560px; max-height: 90vh; display: flex; flex-direction: column; }
-  .cambio-modal .modal-body { overflow-y: auto; flex: 1; }
+  .cambio-modal { width: 560px; max-height: 90vh; }
   .cambio-actual { background: var(--bg, #f6f5f1); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 14px; }
   .cambio-actual strong { font-weight: 600; }
   .cambio-grupo { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
@@ -521,7 +520,7 @@
   .inicio-enlace, .inicio-linea .inicio-enlace, .inicio-aviso .inicio-enlace { min-height:44px; display:inline-flex; align-items:center; padding-top:0; padding-bottom:0; }
   .toolbar { flex-wrap:wrap; }
   .toolbar .search, .toolbar select, .flota-select, .select-filter { flex:1 1 100%; max-width:100%; }
-  .modal, .modal.modal-wide { width:100%; max-width:calc(100vw - 16px); max-height:92vh; overflow-y:auto; }
+  .modal, .modal.modal-wide { width:100%; max-width:calc(100vw - 16px); max-height:92vh; }
   .field-row { grid-template-columns:1fr; }
   .toast { left:12px; right:12px; bottom:12px; }
   .topbar { padding:0 12px; }
