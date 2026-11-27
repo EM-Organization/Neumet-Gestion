@@ -1312,7 +1312,7 @@ Implementa RN-13 y G-13 (sección 4.5 del spec de reglas de negocio): la rueda d
 - Regresión: la prueba falla con la implementación anterior (CA-13 devuelve 100.000 en vez de 50.000) y con dos mutaciones controladas (rotación a 99 que no cierra; `sin_medir` sin excepción del auxilio). Las mutaciones se restauraron con verificación de checksum.
 
 ### Z.7 Migración sin aplicar
-- `20261126010000_auxilio_tramos_km.sql` **no está aplicada en producción**. Su aplicación es un paso aparte con `supabase db push --dry-run` y luego el CLI, después de la compuerta de calidad.
+- `20261126010000_auxilio_tramos_km.sql` **aplicada en producción** (confirmada con `supabase migration list --remote`).
 - Depende de `20261126000000_huella_minima.sql`, que ya es la última de `main`.
 
 ### Z.8 Clics y CPK por vida
@@ -1384,7 +1384,7 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 - La migración corre dos veces en `tests/sql/run.sh` (idempotencia).
 
 ### AA.9 Migración sin aplicar
-- `20261126020000_odometro_motivos.sql` **no está aplicada en producción**. Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), que tampoco está aplicada: se aplican en ese orden, con `supabase db push --dry-run` y luego el CLI, tras la compuerta de calidad.
+- `20261126020000_odometro_motivos.sql` **aplicada en producción** (confirmada con `supabase migration list --remote`). Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), también aplicada.
 
 ### AA.10 Interfaz: clics y pruebas (rotar y cambiar)
 - Rotar: antes, 2 acciones (elegir la posición y «Rotar»). Ahora, 4 (posición, «Rotar», motivo y Enter), más el odómetro tecleado cuando el cliente lo exige. El aumento lo pide RN-14 (motivo obligatorio) y RN-12 (odómetro). «Rotar» abre el diálogo con el motivo enfocado y sin elegir, para que el operario lo decida; al cancelar, el foco vuelve al botón «Rotar».
@@ -1412,7 +1412,7 @@ Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el 
 ### AB.1 Estado y orden de despliegue
 - **Pendiente de aplicar.** `20261126030000_ejes_direccion_alertas.sql` no está aplicada en producción. No se aplicó nada desde dev al redactar este apéndice.
 - Depende de `20261126020000` (AA) y, en cadena, de `20261126010000` (Z), `20261126000000` (Y), `20261125500000`, `20261123000000` y `20261120500000`, cuyas definiciones reemplaza.
-- **Contradicción sin resolver:** AA.9 y Z.7 dicen que `20261126020000` y `20261126010000` no están aplicadas; docs/10 las da por aplicadas. Antes de aplicar AB, confirmarlo en la base (`supabase migration list` y el dry-run) y corregir el documento que esté mal.
+- **Contradicción resuelta:** `20261126020000` y `20261126010000` están aplicadas en producción (confirmado con `supabase migration list --remote`); AA.9 y Z.7 ya lo dicen.
 - Orden: (1) confirmar la cadena; (2) `supabase db push --dry-run` limpio; (3) aplicar con el CLI, nunca con el MCP `apply_migration`; (4) verificar con la API real y el JWT de cada rol; (5) recién después fusionar dev → main. Fusionar antes rompe el panel: el diálogo llama a `vehiculo_fijar_servicio` y la vista de alertas pide `color` y `umbral_km` a `v_alertas`, que solo existen con la migración aplicada.
 
 ### AB.2 Decisiones
@@ -1445,11 +1445,11 @@ Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el 
 
 ### AB.6 Pendientes
 - (TL R1) `trg_alerta_neumaticos_upd` perdió el `WHEN (old.x is distinct from new.x …)`: solo rendimiento; reponerlo en una migración futura.
-- (TL R1) El comentario de la sección 3 dice que el servicio lo fija el administrador; la sucursal también puede (igual que la distribución). Ajustar el texto o confirmar la regla.
+- (TL R1) Resuelto: el comentario de la sección 3 dice que el servicio lo fija el administrador de empresa o la sucursal (igual que la distribución).
 - (TL R1) Las alertas no-límite de vehículos inactivos no se cierran solas; ya pasaba con `limite`.
 - (TL R1) Relleno D6: ver AB.5.
-- Comentarios de la migración a corregir: la cabecera y D3 citan RN-07 para dirección, pero RN-07 en docs/23 es `km_por_mm`; la sección 2 dice que `alerta_configurar` cambia las cuatro columnas nuevas y no cambia `km_por_mm_revision`; la cita a `tests/unit/rol-eje-sql.test.mjs` apunta a un archivo que no existe.
-- El comentario de la sección 3 de la migración cita el Apéndice W.2 también para la falta de medición; W.2 solo trata la posición 99 (la regla de la medición está en D2).
+- Comentarios de la migración: corregidos (RN-07 quitada de la cabecera, la sección 4 y D3, porque RN-07 en docs/23 es `km_por_mm`; la cita de la prueba pasa a `tests/unit/rol-eje.test.mjs`). Resuelto: la sección 2 de la migración dice que `alerta_configurar` cambia los tres umbrales de dirección y swap, no `km_por_mm_revision` (D4).
+- Resuelto: el comentario de la sección 3 cita el Apéndice W.2 solo para la posición 99; la falta de medición va a D2.
 - **Abierto (negocio):** la regla «simple antes del primer doble = dirección» (igual en `rol_eje_posicion` y en `rolEjePosicion`) da dirección al segundo eje simple delantero de un 8x4 (`SSDD`). Confirmar si en camión ese eje dirige; si no, las alertas de dirección lo evalúan igual.
 - Contradicción de estados de migraciones: ver AB.1.
 

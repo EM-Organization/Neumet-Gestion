@@ -1,4 +1,4 @@
--- F8 · Ola 2, brief 1 (base): ejes, umbrales de dirección y alertas con tipo (RN-02, RN-05, RN-06, RN-07, RN-31).
+-- F8 · Ola 2, brief 1 (base): ejes, umbrales de dirección y alertas con tipo (RN-02, RN-05, RN-06, RN-31).
 -- Requiere 20261126020000_odometro_motivos.sql (y sus antecesores).
 -- Reemplaza definiciones vigentes de 20261126010000, 20261126000000, 20261125500000, 20261123000000 y 20261120500000.
 -- Cada decisión (D1 a D8) está en el apéndice AB de docs/08, con los riesgos de despliegue.
@@ -6,7 +6,7 @@
 
 -- 1. Ejes y rol de cada posición (CA-31). El catálogo da los ejes de adelante hacia atrás (S simple de 2 ruedas,
 --    D doble de 4). El rol sale del eje: simple antes del primer doble es dirección, doble es tracción y simple después
---    es eje loco. La posición 99 es auxilio. Espejo de assets/js/domain/rol-eje.js (tests/unit/rol-eje-sql.test.mjs).
+--    es eje loco. La posición 99 es auxilio. Espejo de assets/js/domain/rol-eje.js (tests/unit/rol-eje.test.mjs).
 create or replace function public.distribucion_ejes(p_id text)
 returns text
 language sql
@@ -64,7 +64,7 @@ alter table public.clientes
   add column if not exists swap_km integer not null default 20000,
   add column if not exists km_por_mm_revision integer;
 -- Privilegios por columna: t_96 exige que toda columna nueva de clientes se otorgue a propósito. Son configuración,
--- no sensibles: v_estado_neumaticos las lee con security_invoker. authenticated no las escribe; las cambia alerta_configurar.
+-- no sensibles: v_estado_neumaticos las lee con security_invoker. authenticated no las escribe; las cambia alerta_configurar (los tres umbrales de dirección y swap; km_por_mm_revision no, D4).
 grant select (direccion_aviso_mm, direccion_limite_mm, swap_km, km_por_mm_revision) on public.clientes to authenticated;
 alter table public.clientes drop constraint if exists clientes_direccion_umbrales_ck;
 alter table public.clientes add constraint clientes_direccion_umbrales_ck
@@ -75,7 +75,7 @@ alter table public.clientes drop constraint if exists clientes_km_por_mm_ck;
 alter table public.clientes add constraint clientes_km_por_mm_ck
   check (km_por_mm_revision is null or km_por_mm_revision > 0);
 
--- 3. Servicio del vehículo (D5): camión o bus. Lo fija el administrador con la RPC, con el mismo permiso que la
+-- 3. Servicio del vehículo (D5): camión o bus. Lo fija el administrador de empresa o la sucursal con la RPC, con el mismo permiso que la
 --    distribución (neumatico_autorizar_vehiculo). Vacío o nulo deja el servicio sin definir.
 alter table public.vehiculos add column if not exists servicio text;
 alter table public.vehiculos drop constraint if exists vehiculos_servicio_ck;
@@ -103,7 +103,7 @@ $$;
 revoke all on function public.vehiculo_fijar_servicio(bigint, text) from public, anon;
 grant execute on function public.vehiculo_fijar_servicio(bigint, text) to authenticated;
 
--- 4. Alertas con tipo (RN-02, RN-05, RN-06, RN-07). Una abierta por cubierta y tipo. Los mm dejan de ser obligatorios
+-- 4. Alertas con tipo (RN-02, RN-05, RN-06). Una abierta por cubierta y tipo. Los mm dejan de ser obligatorios
 --    en swap, que mide km. Motivos nuevos: 'rotacion' (D2) y 'reemplazada' (D3).
 alter table public.alertas drop constraint if exists alertas_tipo_ck;
 alter table public.alertas add constraint alertas_tipo_ck
@@ -279,7 +279,7 @@ b as (
     s.umbral_bajo_mm, s.umbral_critico_mm, s.umbral_retiro_mm, s.dias_sin_medir_alerta
   from s
 )
--- Dirección (D3, RN-07): solo en el eje de dirección, con huella medida y no bajo el retiro (RN-08: bajo el retiro
+-- Dirección (D3): solo en el eje de dirección, con huella medida y no bajo el retiro (RN-08: bajo el retiro
 -- manda la roja). El límite se mira antes que el aviso, porque el rango del aviso incluye al límite.
 select y.*,
   case when y.rol_eje = 'direccion' and y.minimo >= y.umbral_retiro_mm then
@@ -576,9 +576,9 @@ begin
    where c.neumatico_id not in (select neumatico_id from reabre)
   on conflict (neumatico_id, tipo) where estado <> 'resuelta' do nothing;
 
-  -- 3. Dirección (D2, D3, RN-07). Una alerta por cubierta: cambia su tipo al cambiar de nivel, sin abrir otra.
+  -- 3. Dirección (D2, D3). Una alerta por cubierta: cambia su tipo al cambiar de nivel, sin abrir otra.
   --    Cierre por rotación solo si cambió la posición (D2); si no, reemplazada bajo el retiro, o recuperada.
-  --    sin_datos va primero (Apéndice W.2): la 99 o una falta de medición válida no son una rotación, aunque
+  --    sin_datos va primero: la 99 (Apéndice W.2) o una falta de medición válida (D2) no son una rotación, aunque
   --    la cubierta haya cambiado de posición.
   update public.alertas a
      set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,

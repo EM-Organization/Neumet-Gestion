@@ -12,13 +12,17 @@ export const LEER_INICIO = `(() => {
   const cifras = [...c.querySelectorAll('.inicio-cifra strong')].map(num);
   const frase = (c.querySelector('#inicio-h-resumen') || {}).textContent || '';
   const alertas = c.querySelector('[data-action="irA"][data-args=\\'["alertas"]\\']');
-  const linea = (c.querySelector('.inicio-linea') || {}).textContent || '';
+  // Hay dos líneas con esa clase: el recuadro de alertas (en «Requieren atención») y la de dispositivos. Se separan por el texto.
+  const lineas = [...c.querySelectorAll('.inicio-linea')].map(e => e.textContent.replace(/\\s+/g, ' ').trim());
+  const recuadro = lineas.find(t => /cambiar|revisar/.test(t)) || '';
+  const linea = lineas.find(t => !/cambiar|revisar/.test(t)) || '';
   const atencion = [...c.querySelectorAll('#inicio-h-atencion ~ ul .inicio-fila')].map(f => ({
     patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', limite: !!f.querySelector('.inicio-punto.limite'), mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
   const proximos = [...c.querySelectorAll('#inicio-h-proximos ~ ul .inicio-fila')].map(f => ({ patente: (f.querySelector('.dash-fleet-pat') || {}).textContent || '', mini: !!f.querySelector('.mini-veh .mv-dest'), ver: (f.querySelector('.inicio-ver') || {}).textContent || '' }));
-  return { cifras, frase: frase.replace(/\\s+/g, ' ').trim(), alertas: alertas ? alertas.textContent : '', linea: linea.replace(/\\s+/g, ' ').trim(),
+  return { cifras, frase: frase.replace(/\\s+/g, ' ').trim(), alertas: alertas ? alertas.textContent : '', linea, recuadro,
            atencion, proximos, texto: c.innerText, titulo: document.querySelector('#inicio-title').textContent,
-           segmentos: c.querySelectorAll('.inicio-seg').length, cardsRojas: c.querySelectorAll('.badge.red').length };
+           segmentos: c.querySelectorAll('.inicio-seg').length, cardsRojas: c.querySelectorAll('.badge.red').length,
+           rojosFueraRecuadro: [...c.querySelectorAll('.badge.red')].filter(b => !b.closest('.inicio-linea')).length };
 })()`;
 
 // Últimas mediciones tal como se ven: una entrada por vehículo con sus neumáticos.
@@ -75,6 +79,10 @@ export function registrar(env) {
         assert.ok(l.segmentos >= 3, 'barra segmentada');
         // Alertas y dispositivos.
         assert.equal(Number(l.alertas.replace(/\D/g, '')), e.alertas, 'alertas activas en "Ver todas las alertas"');
+        // Recuadro de RN-20: «cambiar» es el desgaste límite (color rojo de la base) y «revisar» el resto; las silenciadas no cuentan.
+        const r = json(env, `select count(*) filter (where x.color = 'rojo')::int as cambiar, count(*) filter (where x.color <> 'rojo')::int as revisar from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${ALCANCE[rol].veh} and (x.silenciada_hasta is null or x.silenciada_hasta <= now())`)[0];
+        const esperadoRecuadro = r.cambiar + r.revisar ? `× ${r.cambiar} cambiar · ◆ ${r.revisar} revisar` : '';
+        assert.equal(l.recuadro, esperadoRecuadro, `recuadro de alertas (${rol}): ${l.recuadro}`);
         assert.equal(l.linea.startsWith(`Dispositivos: ${e.dispActivos} de ${e.dispTotal} activos`), true, `línea de dispositivos: ${l.linea}`);
         if (e.dispTotal > e.dispActivos) assert.match(l.linea, new RegExp(`${e.dispTotal - e.dispActivos} sin actividad`));
         // Requieren atención: solo vehículos del alcance; primero los que tienen desgaste límite, hasta el máximo de 6.
@@ -91,7 +99,9 @@ export function registrar(env) {
         assert.equal(l.proximos.length, Math.min(5, e.proximos), 'próximos cambios');
         for (const f of l.proximos) assert.ok(visibles.has(f.patente), `${f.patente} (próximos cambios) fuera del alcance de ${rol}`);
         assert.ok(!/Sin vehículos registrados/.test(l.texto), 'no debe decir "sin datos" teniendo datos');
-        assert.equal(l.cardsRojas, 0, 'sin chips rojos en Inicio');
+        // Rojo solo para lo que hay que cambiar (RN-20): el chip «cambiar» del recuadro, y solo si hay desgaste límite.
+        assert.equal(l.cardsRojas, r.cambiar ? 1 : 0, 'rojo solo para el recuadro «cambiar»');
+        assert.equal(l.rojosFueraRecuadro, 0, 'ningún chip rojo fuera del recuadro');
         if (rol === 'admin') {
           // Solo figuran los clientes con neumáticos críticos o alertas críticas (según v_resumen_flota_cliente).
           const conUrgencias = json(env, `select nombre from public.v_resumen_flota_cliente where n_critico + n_alertas_sev3 > 0 order by nombre`).map(c => c.nombre);
