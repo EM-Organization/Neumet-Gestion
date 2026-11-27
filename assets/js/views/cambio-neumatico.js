@@ -1,7 +1,8 @@
 // Cambio de neumático en el taller: el gomero (cliente global o de sucursal) o el admin registra, en una sola
 // pantalla, qué pasó con el neumático viejo y cuál entró. Toda la escritura pasa por la RPC atómica neumatico_cambiar
 // (la autorización se verifica en la base: otro cliente u otra sucursal reciben "permiso denegado").
-// Acciones: neumatico-cambiar (vehiculoId, posicion), neumatico-rotar-pos (vehiculoId, posA, posB: abre el diálogo de rotar).
+// Acciones: neumatico-cambiar (vehiculoId, posicion), neumatico-rotar-pos (vehiculoId, posA, posB: abre el diálogo de rotar;
+// posB «disco» abre el de rotar en disco), vehiculo-alinear (vehiculoId: abre el de registrar alineación).
 // Al terminar emite el evento DOM "neumet:neumatico-cambiado" y recarga la vista activa (flota/vehículo/inicio/alertas).
 import { tipoLayout } from '../domain/distribucion.js';
 import { db } from '../core/supabase.js';
@@ -13,7 +14,8 @@ import { etiquetaCoche } from '../domain/coche.js';
 import { reloadActiveView } from '../core/nav.js';
 import {
   DESTINOS, nombrePos, etiquetaVida, stockDisponible, etiquetaStock, validarCambio, traducirErrorCambio, validarRotacion, avisoRotacion,
-  validarDatosRotacion, traducirErrorRotacion
+  validarDatosRotacion, traducirErrorRotacion, validarRotacionDisco, avisoRotacionDisco, validarDatosRotacionDisco,
+  validarAlineacion, avisoAlineacion, validarDatosAlineacion, traducirErrorAlineacion
 } from '../domain/cambio-neumatico.js';
 import { motivosDelTipo, tipoMotivoCambio, TIPO_MOTIVO, MOTIVO_OTRO } from '../domain/motivos.js';
 import { cargarMotivosCliente } from '../core/motivos.js';
@@ -213,9 +215,29 @@ ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   } finally { ocupado = false; }
 };
 
-// Rotar entre dos posiciones (RN-12, RN-14). «Rotar» abre un diálogo con el motivo de la lista de rotación y el odómetro
-// (con la última lectura de referencia). La base vuelve a validar todo. Es reversible (rotar de nuevo la deshace): el aviso
-// nombra el intercambio. Una operación a la vez (`rotando`): cubre la carga del diálogo y el envío.
+// Rotar entre dos posiciones (RN-12, RN-14), rotar en disco (RN-15) y registrar alineación (RN-16) comparten el diálogo
+// #modal-rotar. El modo va en rotCtx.modo: 'posicion' | 'disco' | 'alineacion'. Cada modo tiene su tipo de motivo del
+// catálogo, su llamada a la base y su aviso; el resto (odómetro, motivo, Enter) es el mismo.
+const MODO = Object.freeze({ posicion: 'posicion', disco: 'disco', alineacion: 'alineacion' });
+// Valor del select «Rotar con la posición» que elige la rotación en disco (no es una posición).
+const DESTINO_DISCO = 'disco';
+const TEXTO_MODO = Object.freeze({
+  posicion: { titulo: 'Rotar neumáticos', boton: 'Rotar', nombre: 'la rotación', sub: 'Rotación entre posiciones del vehículo' },
+  disco: { titulo: 'Rotar en disco', boton: 'Rotar', nombre: 'la rotación' },
+  alineacion: { titulo: 'Registrar alineación', boton: 'Registrar alineación', nombre: 'la alineación', sub: 'Alineación del vehículo' }
+});
+const TIPO_MOTIVO_MODO = Object.freeze({ posicion: TIPO_MOTIVO.rotar, disco: TIPO_MOTIVO.rotarDisco, alineacion: TIPO_MOTIVO.alinear });
+const VALIDAR_MODO = Object.freeze({ posicion: validarDatosRotacion, disco: validarDatosRotacionDisco, alineacion: validarDatosAlineacion });
+
+// Una operación a la vez (`rotando`), para los tres modos: una sola variable del módulo, no una por modo.
+// Diseño de concurrencia (docs/13 §1.b), con la prueba que lo cubre en tests/smoke/vehiculo.flow.js:
+//   - Doble envío (dos Enter, Enter y clic): la guarda `rotando` deja salir una sola llamada a la RPC. La base también
+//     es idempotente 30 s (duplicada: true).
+//   - Enter mantenido (e.repeat): se ignora en el formulario, como en Montar.
+//   - Operaciones distintas: abrir otra (p. ej. «Registrar alineación») con un disco en vuelo avisa y no toca rotCtx.
+//   - Fallo a mitad (22023, 23514, red): el diálogo sigue abierto con el error en línea, un solo toast, y el botón vuelve.
+//   - Respuesta que nunca llega: conLimite corta; el botón queda habilitado tras la recarga del detalle.
+//   - Cerrar sesión en vuelo: la respuesta tardía solo toca el diálogo que la originó (rotCtx === mio).
 function estadoRotar() {
   return {
     catalogo: rotCtx ? rotCtx.catalogo : [], motivoCodigo: val('rotar-motivo'), motivoTexto: val('rotar-motivo-texto'),
@@ -224,37 +246,49 @@ function estadoRotar() {
   };
 }
 
+// Aviso del resumen (antes de confirmar): lo que va a pasar con la base todavía sin responder.
+function resumenRotar() {
+  const c = rotCtx;
+  if (c.modo === MODO.disco) return avisoRotacionDisco(c.posA, c.tipo);
+  if (c.modo === MODO.alineacion) return avisoAlineacion(c.cantidad);
+  return avisoRotacion(c.posA, c.posB, c.tipo, !!c.intercambio);
+}
+
 function actualizarRotar() {
   const f = estadoRotar();
   $('rotar-motivo-texto-wrap').style.display = f.motivoCodigo === MOTIVO_OTRO ? '' : 'none';
-  const r = validarDatosRotacion(f);
-  $('rotar-resumen').textContent = r.ok ? avisoRotacion(rotCtx.posA, rotCtx.posB, rotCtx.tipo, !!rotCtx.intercambio) : 'Completar los datos para ver el resumen';
+  const r = VALIDAR_MODO[rotCtx.modo](f);
+  $('rotar-resumen').textContent = r.ok ? resumenRotar() : 'Completar los datos para ver el resumen';
   $('rotar-error').textContent = '';
   return r;
 }
 
 function pintarRotar() {
-  const { catalogo, odometroObligatorio, veh } = rotCtx;
+  const { modo, catalogo, odometroObligatorio, veh, posA, tipo, coche } = rotCtx;
+  const texto = TEXTO_MODO[modo];
+  $('rotar-title').textContent = texto.titulo;
+  $('rotar-confirmar').textContent = texto.boton;
+  $('rotar-sub').textContent = modo === MODO.disco ? `${nombrePos(posA, tipo)}: se invierten interior y exterior` : (coche || texto.sub);
   setHtml($('rotar-motivo'), joinHtml([
     html`<option value="">Elegir motivo</option>`,
-    motivosDelTipo(catalogo, TIPO_MOTIVO.rotar).map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
+    motivosDelTipo(catalogo, TIPO_MOTIVO_MODO[modo]).map(m => html`<option value="${m.codigo}">${m.etiqueta}</option>`)
   ]));
-  // Sin preselección: el motivo de una rotación lo elige el operario (RN-14).
+  // Sin preselección: el motivo de una rotación o una alineación lo elige el operario (RN-14).
   $('rotar-motivo').value = '';
   $('rotar-motivo-texto').value = '';
   $('rotar-odo').value = '';
-  $('rotar-sub').textContent = rotCtx.coche || 'Rotación entre posiciones del vehículo';
   $('rotar-odo-opt').textContent = odometroObligatorio ? '(obligatorio)' : '(opcional)';
   $('rotar-odo-hint').textContent = pistaOdometro(veh.odometro_km, odometroObligatorio);
   $('rotar-confirmar').disabled = false;
   actualizarRotar();
 }
 
-ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
+// Abre el diálogo en su modo. La base vuelve a validar todo al enviar; aquí solo se evita abrir con datos que no sirven.
+async function abrirRotar(modo, vehiculoId, posA, posB) {
   if (esAdmin()) return;
   if (rotando) { showToast('Esperar a que termine la rotación', true); return; }
   rotando = true;
-  const btn = $('vd-rotar-btn');
+  const btn = $(modo === MODO.alineacion ? 'vd-alinear-btn' : 'vd-rotar-btn');
   if (btn) btn.disabled = true;
   try {
     const vid = Number(vehiculoId);
@@ -267,47 +301,87 @@ ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
     // es «No hay neumático en …» (como antes del diálogo) y no se abre nada ni se llama a la base.
     const veh = rv.data;
     const tipo = veh ? tipoLayout(veh) : null;
-    const r = validarRotacion(rn.data || [], vid, posA, posB, tipo);
-    if (!r.ok) { showToast(r.error, true); return; }
+    const neums = rn.data || [];
+    const d = { modo, vehiculoId: vid, posA: null, posB: null, intercambio: null, cantidad: 0 };
+    if (modo === MODO.posicion) {
+      const r = validarRotacion(neums, vid, posA, posB, tipo);
+      if (!r.ok) { showToast(r.error, true); return; }
+      Object.assign(d, { posA: r.params.p_pos_a, posB: r.params.p_pos_b, intercambio: r.intercambio });
+    } else if (modo === MODO.disco) {
+      const r = validarRotacionDisco(neums, vid, posA, tipo);
+      if (!r.ok) { showToast(r.error, true); return; }
+      d.posA = Number(posA);
+    } else {
+      const r = validarAlineacion(neums, vid);
+      if (!r.ok) { showToast(r.error, true); return; }
+      d.cantidad = r.cantidad;
+    }
     if (!veh) { showToast('No se encontró el vehículo. Actualizar la pantalla', true); return; }
     const motivos = await cargarMotivosCliente(veh.cliente_id);
     if (!motivos) { showToast('No se pudieron cargar los motivos. Reintentar', true); return; }
     rotCtx = {
-      vehiculoId: vid, posA: r.params.p_pos_a, posB: r.params.p_pos_b, veh, tipo,
-      coche: veh.nombre ? etiquetaCoche(veh.nombre) : '', intercambio: r.intercambio,
+      ...d, veh, tipo, coche: veh.nombre ? etiquetaCoche(veh.nombre) : '',
       catalogo: motivos.catalogo, odometroObligatorio: motivos.odometroObligatorio
     };
     pintarRotar();
     // El foco inicial lo pone modal-a11y (data-foco-inicial="rotar-motivo" en index.html). Enfocar aquí un campo lo dejaría
-    // como «previo» y, al cerrar, el foco no volvería al botón Rotar que abrió el diálogo.
+    // como «previo» y, al cerrar, el foco no volvería al botón que abrió el diálogo.
     $('modal-rotar').classList.add('show');
   } finally { rotando = false; if (btn && btn.isConnected) btn.disabled = false; }
-};
+}
 
-// Envío desde el diálogo (Enter o clic en «Rotar»). La base manda: odómetro, motivo y posiciones se vuelven a validar allí.
+ACTIONS['neumatico-rotar-pos'] = async function (vehiculoId, posA, posB) {
+  if (posB === DESTINO_DISCO) return abrirRotar(MODO.disco, vehiculoId, posA);
+  return abrirRotar(MODO.posicion, vehiculoId, posA, posB);
+};
+// «Registrar alineación» (cabecera del vehículo): un solo lugar, sin motivo preseleccionado.
+ACTIONS['vehiculo-alinear'] = function (vehiculoId) { return abrirRotar(MODO.alineacion, vehiculoId); };
+
+// Llamada a la base de cada modo. El odómetro y el motivo vienen de validarDatos* y se pasan tal cual.
+function llamadaRotar(c, p) {
+  if (c.modo === MODO.disco) return { rpc: 'neumatico_rotar_disco', args: { p_vehiculo_id: c.vehiculoId, p_posicion: c.posA, ...p } };
+  if (c.modo === MODO.alineacion) return { rpc: 'vehiculo_alinear', args: { p_vehiculo_id: c.vehiculoId, ...p } };
+  return { rpc: 'neumatico_rotar', args: { p_vehiculo_id: c.vehiculoId, p_pos_a: c.posA, p_pos_b: c.posB, ...p } };
+}
+
+// Aviso del resultado. La base manda: la alineación cuenta los neumáticos que informa, y una respuesta «duplicada»
+// muestra el mismo aviso (para el operario la operación ya quedó registrada).
+function avisoExito(c, data) {
+  const coche = c.coche ? ` en ${c.coche}` : '';
+  if (c.modo === MODO.disco) return `${avisoRotacionDisco(c.posA, c.tipo)}${coche}`;
+  if (c.modo === MODO.alineacion) return `${avisoAlineacion(data && Number.isInteger(data.neumaticos) ? data.neumaticos : c.cantidad)}${coche}`;
+  const hubo = data && typeof data.intercambio === 'boolean' ? data.intercambio : !!c.intercambio;
+  return `Rotación registrada${coche}: ${avisoRotacion(c.posA, c.posB, c.tipo, hubo)}`;
+}
+
+// Qué recarga el detalle y dónde cae el foco (vehiculo-detalle lee rotacion o posicion del evento).
+const detalleCambio = c => (c.modo === MODO.disco ? { vehiculoId: c.vehiculoId, posicion: c.posA }
+  : c.modo === MODO.alineacion ? { vehiculoId: c.vehiculoId } : { vehiculoId: c.vehiculoId, rotacion: [c.posA, c.posB] });
+
+// Envío desde el diálogo (Enter o clic en el botón). La base manda: odómetro, motivo y posiciones se vuelven a validar allí.
 ACTIONS['neumatico-rotar-confirmar'] = async function () {
   if (!rotCtx || rotando || esAdmin()) return;
   const r = actualizarRotar();
   if (!r.ok) { $('rotar-error').textContent = r.error; showToast(r.error, true); return; }
   rotando = true; $('rotar-confirmar').disabled = true;
-  const mio = rotCtx; // la respuesta solo toca el diálogo de la rotación que la originó
+  const mio = rotCtx; // la respuesta solo toca el diálogo de la operación que la originó
   const coche = mio.coche ? ` en ${mio.coche}` : '';
+  const { rpc, args } = llamadaRotar(mio, r.params);
   try {
-    const res = await conLimite(db.rpc('neumatico_rotar', { p_vehiculo_id: mio.vehiculoId, p_pos_a: mio.posA, p_pos_b: mio.posB, ...r.params }));
+    const res = await conLimite(db.rpc(rpc, args));
     if (res === TARDE) {
       if (rotCtx === mio) ACTIONS['neumatico-rotar-cerrar']();
-      showToast(`No se pudo confirmar la rotación${coche}. Revisar el vehículo antes de reintentar`, true);
+      showToast(`No se pudo confirmar ${TEXTO_MODO[mio.modo].nombre}${coche}. Revisar el vehículo antes de reintentar`, true);
       try { reloadActiveView(); } catch (e) { console.error(e); }
       return;
     }
     if (res.error) throw res.error;
     if (rotCtx === mio) ACTIONS['neumatico-rotar-cerrar']();
-    const hubo = res.data && typeof res.data.intercambio === 'boolean' ? res.data.intercambio : !!mio.intercambio;
-    showToast(`Rotación registrada${coche}: ${avisoRotacion(mio.posA, mio.posB, mio.tipo, hubo)}`);
-    notificarCambio({ vehiculoId: mio.vehiculoId, rotacion: [mio.posA, mio.posB] });
+    showToast(avisoExito(mio, res.data));
+    notificarCambio(detalleCambio(mio));
   } catch (e) {
     console.error(e);
-    const msg = traducirErrorRotacion(e);
+    const msg = mio.modo === MODO.alineacion ? traducirErrorAlineacion(e) : traducirErrorRotacion(e);
     if (rotCtx === mio) $('rotar-error').textContent = msg;
     showToast(msg, true);
     if (rotCtx === mio) $('rotar-confirmar').disabled = false;

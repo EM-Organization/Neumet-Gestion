@@ -34,6 +34,7 @@ import { registrar as stockLotesSucursal } from './specs/stock-lotes-sucursal.mj
 import { registrar as eliminarVehiculo } from './specs/eliminar-vehiculo.mjs';
 import { registrar as motivosOdometro } from './specs/motivos-odometro.mjs';
 import { registrar as ola2AlertasServicio } from './specs/ola2-alertas-servicio.mjs';
+import { registrar as ola3DiscoAlineacion } from './specs/ola3-disco-alineacion.mjs';
 
 const env = await iniciarEntorno();
 after(async () => { await env.cerrar(); });
@@ -69,4 +70,5 @@ stockLotesSucursal(env);
 eliminarVehiculo(env);
 motivosOdometro(env);
 ola2AlertasServicio(env);
+ola3DiscoAlineacion(env);
 contrato(env);

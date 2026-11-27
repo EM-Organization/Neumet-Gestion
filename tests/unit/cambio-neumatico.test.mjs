@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validarCambio, traducirErrorCambio, traducirErrorRotacion, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida,
-  validarRotacionDisco, avisoRotacionDisco, validarDatosRotacion, validarDatosRotacionDisco, validarDatosAlineacion, validarAlineacion, avisoAlineacion } from '../../assets/js/domain/cambio-neumatico.js';
+  validarRotacionDisco, avisoRotacionDisco, traducirErrorAlineacion, validarDatosRotacion, validarDatosRotacionDisco, validarDatosAlineacion, validarAlineacion, avisoAlineacion } from '../../assets/js/domain/cambio-neumatico.js';
 
 const neum = { id: 5, vehiculo_id: 10, posicion: 3, marca: 'Michelin', modelo: 'X', estado: 'montado', vida: 0 };
 const stock = [{ id: 1, marca: 'Pirelli', modelo: 'FR', cantidad: 2 }, { id: 2, marca: 'Vacio', cantidad: 0 }];
@@ -333,3 +333,14 @@ test('traducirErrorRotacion: los errores nuevos de la base se traducen a sus tex
   assert.equal(traducirErrorRotacion({ code: '22023', message: 'el vehículo no tiene neumáticos montados' }), 'El vehículo no tiene neumáticos montados');
 });
 
+
+test('traducirErrorAlineacion: el respaldo habla de alineación, no de rotación (RN-16)', () => {
+  assert.equal(traducirErrorAlineacion({ code: '22023', message: 'el vehículo no tiene neumáticos montados' }), 'El vehículo no tiene neumáticos montados');
+  assert.equal(traducirErrorAlineacion({ code: '22023', message: 'motivo inválido para este movimiento' }), 'Elegir un motivo de la lista. Con «otro», escribirlo (máx. 300 caracteres)');
+  assert.equal(traducirErrorAlineacion({ code: '23514', message: 'odometro negativo' }), 'Odómetro del vehículo inválido: no puede ser negativo ni menor al actual');
+  assert.equal(traducirErrorAlineacion({ code: '23514', message: 'el odómetro del vehículo no puede ser menor al actual (1200 km)' }),
+    'El odómetro del vehículo no puede ser menor al actual (1200 km)');
+  assert.equal(traducirErrorAlineacion({ code: '42501', message: 'permission denied' }), 'Sin permiso para registrar alineaciones en este vehículo');
+  assert.equal(traducirErrorAlineacion({ code: 'XX000', message: 'boom' }), 'No se pudo registrar la alineación. No se guardó nada');
+  assert.doesNotMatch(traducirErrorAlineacion({ code: 'XX000', message: 'boom' }), /rotación/);
+});
