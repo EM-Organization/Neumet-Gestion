@@ -42,6 +42,7 @@ export const PRESENTACION_ALERTA = Object.freeze({
   direccion_aviso: { etiqueta: 'Pasar atrás', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   direccion_limite: { etiqueta: 'Pasar atrás ya', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   irregular: { etiqueta: 'Desgaste irregular', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  lateral: { etiqueta: 'Desgaste lateral', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   swap: { etiqueta: 'Swap', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
 });
@@ -59,12 +60,17 @@ export function presentacionAlerta(a) {
   return { etiqueta: 'Revisar', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
 }
 
-// La columna Mensaje ya muestra el tipo en el chip: el prefijo «<etiqueta>:» que trae la base se quita para no repetirlo.
+// La columna Mensaje ya muestra el tipo en el chip: el prefijo que trae la base se quita para no repetirlo.
+// El prefijo es la etiqueta del tipo, salvo en `lateral`: la base lo escribe «Revisar alineación:» (su nombre en la
+// base, no la etiqueta «Desgaste lateral»), así que hay que quitar también ese.
 // Sin prefijo, el texto queda igual; sin mensaje, da cadena vacía.
+const PREFIJO_MENSAJE_BASE = Object.freeze({ lateral: 'Revisar alineación' });
 export function detalleAlerta(a) {
   const mensaje = String((a && a.mensaje) ?? '');
-  const prefijo = `${presentacionAlerta(a).etiqueta}:`;
-  return mensaje.startsWith(prefijo) ? mensaje.slice(prefijo.length).trim() : mensaje;
+  const prefijos = [`${presentacionAlerta(a).etiqueta}:`];
+  if (a && PREFIJO_MENSAJE_BASE[a.tipo]) prefijos.push(`${PREFIJO_MENSAJE_BASE[a.tipo]}:`);
+  const prefijo = prefijos.find(p => mensaje.startsWith(p));
+  return prefijo ? mensaje.slice(prefijo.length).trim() : mensaje;
 }
 
 // Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).

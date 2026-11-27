@@ -1,8 +1,8 @@
 // Lógica pura del odómetro y del ciclo de vida del neumático (sin DOM ni red). docs/08 apéndice A.
-export const TIPOS_EVENTO = ['montaje','desmontaje','rotacion','reparacion','reencauche','baja','inspeccion'];
+export const TIPOS_EVENTO = ['montaje','desmontaje','rotacion','reparacion','reencauche','baja','inspeccion','rotacion_disco','alineacion'];
 export const TIPO_LABEL = {
   montaje:'Montaje', desmontaje:'Desmontaje', rotacion:'Rotación', reparacion:'Reparación',
-  reencauche:'Recauchutado', baja:'Baja', inspeccion:'Inspección'
+  reencauche:'Recauchutado', baja:'Baja', inspeccion:'Inspección', rotacion_disco:'Rotación en disco', alineacion:'Alineación'
 };
 export const VIDA_MAX = 3;
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg } from '../../assets/js/domain/ciclo-vida.js';
+import { validarOdometro, rutaOdometro, AVISO_ODOMETRO_SUCURSAL, ordenarEventos, parseEnteroNoNeg, parseMontoNoNeg, TIPOS_EVENTO, TIPO_LABEL } from '../../assets/js/domain/ciclo-vida.js';
 
 test('parseEnteroNoNeg y parseMontoNoNeg', () => {
   assert.equal(parseEnteroNoNeg('0'), 0);
@@ -50,3 +50,11 @@ test('rutaOdometro: quién puede bajar el kilometraje (docs/17 §4.1)', () => {
   assert.deepEqual(rutaOdometro({ cliente: false, baja: false }), { accion: 'solo_lectura', rpc: null });
   assert.match(AVISO_ODOMETRO_SUCURSAL(1200), /1200 km.*administrador de empresa/);
 });
+
+test('TIPOS_EVENTO y TIPO_LABEL: rotación en disco y alineación', () => {
+  assert.ok(TIPOS_EVENTO.includes('rotacion_disco'));
+  assert.ok(TIPOS_EVENTO.includes('alineacion'));
+  assert.equal(TIPO_LABEL.rotacion_disco, 'Rotación en disco');
+  assert.equal(TIPO_LABEL.alineacion, 'Alineación');
+});
+

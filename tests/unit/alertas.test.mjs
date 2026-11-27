@@ -168,3 +168,19 @@ describe('orden de la lista (ordenarAlertas, sin tocarlo)', () => {
     assert.deepEqual(orden, ['limite', 'swap', 'direccion_aviso']);
   });
 });
+
+describe('desgaste lateral (tipo lateral: «Revisar alineación» en la base)', () => {
+  test('presentacionAlerta: etiqueta «Desgaste lateral», ◆ y amarillo; nunca rojo', () => {
+    assert.deepEqual(presentacionAlerta({ tipo: 'lateral' }), { etiqueta: 'Desgaste lateral', simbolo: '◆', color: 'orange', accion: 'Revisar' });
+  });
+  test('detalleAlerta quita el prefijo «Revisar alineación:» que trae la base', () => {
+    assert.equal(detalleAlerta({ tipo: 'lateral', mensaje: 'Revisar alineación: 2,5 mm entre bordes (umbral 2 mm)' }), '2,5 mm entre bordes (umbral 2 mm)');
+  });
+  test('detalleAlerta sigue quitando la etiqueta de los demás tipos', () => {
+    assert.equal(detalleAlerta({ tipo: 'irregular', mensaje: 'Desgaste irregular: diferencia de 2,5 mm' }), 'diferencia de 2,5 mm');
+  });
+  test('el lateral cuenta como «revisar» en el recuadro, no como «cambiar»', () => {
+    assert.deepEqual(conteoRecuadro([{ tipo: 'lateral', color: 'amarillo', estado: 'abierta' }]), { cambiar: 0, revisar: 1 });
+  });
+});
+
