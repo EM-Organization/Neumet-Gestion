@@ -48,7 +48,7 @@ flowchart TD
   I -->|Ver coche en Requieren atención| VD
   I -->|Ver coche en Próximos cambios| VD
   I -->|Ver coche en Últimas mediciones| VD
-  I -->|Ver todas las alertas| A
+  I -->|Ver alertas abiertas| A
   V -->|buscador de la lista| VD
   V -->|fila de vehículo| VD
   A -->|Ver vehículo| VD
@@ -81,9 +81,9 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Inicio | Buscador | Detalle (una coincidencia) o lista de resultados | Inicio → Vehículos |
 | Inicio | «Ver coche N» de «Requieren atención» | Detalle de vehículo (rueda señalada seleccionada) | Vehículos |
 | Inicio | «Ver coche N» de «Próximos cambios» | Detalle de vehículo (rueda seleccionada) | Vehículos |
-| Inicio | «Ver todas las alertas» | Alertas | Alertas |
+| Inicio | «Ver alertas abiertas (N)» | Alertas, con el filtro «Abiertas» | Alertas |
 | Inicio | «Ver coche N» de «Últimas mediciones» | Detalle de vehículo | Vehículos |
-| Alertas | «Ver vehículo» | Detalle de vehículo (rueda de la alerta seleccionada) | Vehículos |
+| Alertas | Clic en la fila o en el nombre del vehículo | Detalle de vehículo (rueda de la alerta seleccionada); «Ver vehículo» también está en el menú «Más» | Vehículos |
 | Vehículos | Fila de vehículo | Detalle de vehículo | Vehículos |
 | Vehículos | «Agregar vehículo» (solo administrador de empresa) | Diálogo de alta (número, matrícula, **distribución de neumáticos obligatoria**, sucursal; «Otra distribución» pide además el tipo de ruedas); al guardar, la lista se recarga | Vehículos |
 | Reportes | «Ver vehículo» (con un vehículo elegido) | Detalle de vehículo | Vehículos |
@@ -97,7 +97,7 @@ Una visita es el conjunto de mediciones de un vehículo en el mismo día (hora d
 | Inicio | Ver el estado de la flota, qué requiere atención y cómo cambió el desgaste en las últimas visitas | Buscar un vehículo, abrir uno de las listas, ir a Alertas |
 | Vehículos | Encontrar un camión | Buscar por matrícula o número de coche, abrir el detalle |
 | Detalle de vehículo | Ver el estado de cada rueda | Elegir una rueda, ver mediciones y gráfico, cambiar neumático, rotar, registrar odómetro |
-| Alertas | Lista de problemas activos | Filtrar por estado con los chips (un solo mecanismo; otro clic quita el filtro), abrir el vehículo («Ver vehículo»). El administrador de empresa tiene «Reconocer» a la vista y «Silenciar» y «Resolver» en el menú «Más» de la fila. «Abierta» va en naranja con ●, el estado siempre en texto y símbolo |
+| Alertas | Lista de problemas activos | Abre con las abiertas. Cinco columnas: vehículo y posición, problema (chip con su texto y el dato del desgaste), abierta hace, «Reconocer» (solo en abiertas no silenciadas) y «Más». Los chips Todas, Abiertas, Reconocidas y Silenciadas cambian el filtro con un clic. Clic en la fila abre la ficha. El menú «Más» tiene «Silenciar» o «Quitar silencio», «Resolver» y «Ver vehículo»; silenciar y resolver solo los ve la empresa, no el equipo Neumet. El umbral se explica una vez, sobre la tabla. «Abierta» va en naranja con ●, el estado siempre en texto y símbolo |
 | Neumáticos › Stock (administrador de empresa) | Cubiertas disponibles, su condición y dónde están | Buscar por quema, marca o modelo; filtrar por sucursal y condición; agregar, editar, cambiar sucursal, enviar a recauchutar (por fila, a la vista) y, en el menú «Más» de la fila, editar, cambiar sucursal y eliminar cubiertas que nunca se usaron. «Enviar a recauchutar» también está en la pestaña Recauchutado: se ofrece en los dos lugares a propósito, porque desde la fila de Stock la tarea baja de 4 clics a 2 (sin recorrer el menú ni elegir la cubierta de nuevo). Debajo, los lotes anteriores (solo lectura) |
 | Neumáticos › Stock (usuario de sucursal) | No ve el stock | Pantalla vacía: el stock lo gestiona el administrador de empresa. Es la única pestaña que ve: Recauchutado no se le muestra y, si se intenta abrir, vuelve a Stock |
 | Reportes | Sacar informes | Exportar CSV o versión imprimible; abrir el vehículo elegido |

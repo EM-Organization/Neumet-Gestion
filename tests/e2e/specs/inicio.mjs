@@ -11,7 +11,7 @@ export const LEER_INICIO = `(() => {
   const num = e => Number(e.textContent.replace(/\\D/g, ''));
   const cifras = [...c.querySelectorAll('.inicio-cifra strong')].map(num);
   const frase = (c.querySelector('#inicio-h-resumen') || {}).textContent || '';
-  const alertas = c.querySelector('[data-action="irA"][data-args=\\'["alertas"]\\']');
+  const alertas = c.querySelector('[data-action="alertasVerAbiertas"]');
   // Hay dos líneas con esa clase: el recuadro de alertas (en «Requieren atención») y la de dispositivos. Se separan por el texto.
   const lineas = [...c.querySelectorAll('.inicio-linea')].map(e => e.textContent.replace(/\\s+/g, ' ').trim());
   const recuadro = lineas.find(t => /cambiar|revisar/.test(t)) || '';
@@ -78,10 +78,13 @@ export function registrar(env) {
         if (m[1]) assert.equal(Number(m[1].replace(/\D/g, '')), buenos, 'neumáticos en buen estado');
         assert.ok(l.segmentos >= 3, 'barra segmentada');
         // Alertas y dispositivos.
-        assert.equal(Number(l.alertas.replace(/\D/g, '')), e.alertas, 'alertas activas en "Ver todas las alertas"');
+        // Enlace «Ver alertas abiertas (N)»: N son las abiertas y no silenciadas, lo que cuenta Inicio.
+        const abiertas = json(env, `select count(*)::int as n from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${ALCANCE[rol].veh} and x.estado = 'abierta' and (x.silenciada_hasta is null or x.silenciada_hasta <= now())`)[0].n;
+        assert.equal(Number(l.alertas.replace(/\D/g, '')), abiertas, 'enlace «Ver alertas abiertas (N)»');
         // Recuadro de RN-20: «cambiar» es el desgaste límite (color rojo de la base) y «revisar» el resto; las silenciadas no cuentan.
         const r = json(env, `select count(*) filter (where x.color = 'rojo')::int as cambiar, count(*) filter (where x.color <> 'rojo')::int as revisar from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${ALCANCE[rol].veh} and (x.silenciada_hasta is null or x.silenciada_hasta <= now())`)[0];
-        const esperadoRecuadro = r.cambiar + r.revisar ? `× ${r.cambiar} cambiar · ◆ ${r.revisar} revisar` : '';
+        // Sin ceros: «× 2 cambiar» si no hay nada por revisar (RN-20).
+        const esperadoRecuadro = [r.cambiar && `× ${r.cambiar} cambiar`, r.revisar && `◆ ${r.revisar} revisar`].filter(Boolean).join(' · ');
         assert.equal(l.recuadro, esperadoRecuadro, `recuadro de alertas (${rol}): ${l.recuadro}`);
         assert.equal(l.linea.startsWith(`Dispositivos: ${e.dispActivos} de ${e.dispTotal} activos`), true, `línea de dispositivos: ${l.linea}`);
         if (e.dispTotal > e.dispActivos) assert.match(l.linea, new RegExp(`${e.dispTotal - e.dispActivos} sin actividad`));

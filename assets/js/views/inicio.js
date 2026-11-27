@@ -91,8 +91,7 @@ function bloqueResumen(rs, ult) {
 }
 
 function bloqueAtencion(at, alertas, porVeh) {
-  const nAlertas = alertas.length;
-  const nuevas = sinReconocer(alertas);
+  const abiertas = sinReconocer(alertas);
   const recuadro = partesRecuadro(alertas).map((p, i) => html`${i ? ' · ' : ''}${chip(p.color, p.texto, p.simbolo)}`);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
@@ -100,8 +99,7 @@ function bloqueAtencion(at, alertas, porVeh) {
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
-    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta sin reconocer', 'alertas sin reconocer')}.</p>` : ''}
-    <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
+    <button type="button" class="inicio-enlace" data-action="alertasVerAbiertas">Ver alertas abiertas (${fmtNum(abiertas)}) ›</button>
   </section>`;
 }
 

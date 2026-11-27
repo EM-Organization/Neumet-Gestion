@@ -144,7 +144,7 @@ export function registrar(env) {
     await flujo(env, 'detalle-miga-alertas', 'global', async p => {
       await irA(p, 'alertas');
       await p.esperar(`document.querySelectorAll('#alert-tbody tr[data-severidad]').length > 0`, { que: 'lista de alertas' });
-      await p.click('#alert-tbody tr[data-severidad="3"] [data-action="verVehiculo"]');
+      await p.click('#alert-tbody tr[data-severidad] .alert-veh');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active')`, { que: 'detalle desde Alertas' });
       assert.match(await texto(p, '#breadcrumb-parent'), /Alertas/, 'la miga nombra Alertas');
       await p.click('#breadcrumb-parent');
