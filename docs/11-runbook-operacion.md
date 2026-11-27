@@ -66,13 +66,13 @@ Los dos flags empiezan en `false` y la migración no cambia ninguno. Los cambia 
 5. Para volver atrás, poner el flag en `false`. Vuelve a aceptar movimientos sin odómetro y no reescribe datos.
 
 ### 3.3 Desplegar funciones
-Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario`, `reponer-acceso-usuario` y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
+Funciones en `supabase/functions/`: `api-proveedor`, `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario`, `reponer-acceso-usuario`, `asistente-reportes` (sección 9) y `contacto` (esta última ya desplegada en el proyecto vigente, con sus secretos cargados). Antes de dar una función por disponible, comprobar con `list_edge_functions`.
 
 **Todas tienen `verify_jwt = false`** en `supabase/config.toml`: `api-proveedor` (el Bearer se valida dentro del handler), `contacto` (formulario público), `crear-cliente`, `crear-cuenta-api`, `crear-usuario-seccional`, `quitar-acceso-usuario` y `reponer-acceso-usuario` (validan el JWT dentro del handler y el rol: solo el administrador de empresa en `crear-usuario-seccional` (el equipo Neumet recibe 403), y la RPC con el JWT del llamante en las otras dos; el preflight CORS no lleva token). Con el CLI el valor sale de `config.toml`; con el MCP (`deploy_edge_function`) pasar `verify_jwt` en `false` de forma explícita, y comprobarlo después en `list_edge_functions`. Desplegar con `verify_jwt` activo rompe el preflight CORS y el login de la app de medición.
 
 1. Cargar antes los secrets (acción del dueño o `supabase secrets set`):
    - `contacto`: `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`, `ALLOWED_ORIGINS`, opcional `TURNSTILE_SECRET` (ver `supabase/functions/contacto/README.md`).
-   - `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver sus README). `quitar-acceso-usuario` y `reponer-acceso-usuario`: solo `ALLOWED_ORIGINS` (no invitan). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.
+   - `crear-cliente`, `crear-cuenta-api` y `crear-usuario-seccional`: `ALLOWED_ORIGINS`, opcional `INVITE_REDIRECT_TO` (ver sus README). `quitar-acceso-usuario` y `reponer-acceso-usuario`: solo `ALLOWED_ORIGINS` (no invitan). `asistente-reportes`: `ALLOWED_ORIGINS` y `OPENROUTER_API_KEY` (cargada el 2026-11-27), opcionales `ASISTENTE_MODELO` y `ASISTENTE_MODELO_RESPALDO` (§9). Sin `ALLOWED_ORIGINS` se deniega todo origen de navegador.
    - `api-proveedor`: usa `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`, que provee Supabase. Otros secrets: **[pendiente]** confirmar.
 2. Antes de desplegar: `deno test --config supabase/functions/deno.json supabase/functions/<funcion>`.
 3. Desplegar con `supabase functions deploy <funcion>` o el MCP (`deploy_edge_function`), siempre con `verify_jwt = false`.

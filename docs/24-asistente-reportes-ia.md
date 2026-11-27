@@ -119,7 +119,7 @@ Proveedor: **OpenRouter** (API compatible con OpenAI, `https://openrouter.ai/api
 | Respaldo | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | Por token, bajo (verificar en la página del modelo) |
 
 - Identificadores verificados el 2026-11-27 con la documentación de OpenRouter que pasó el dueño (`https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b/llms.txt`) y catálogos públicos. El sufijo `:free` es obligatorio: `nvidia/nemotron-3-ultra-550b-a55b` sin sufijo es la variante de pago (de 0,25 a 0,75 USD por millón de tokens de entrada, según el proveedor) y **no se usa**; ante un fallo se pasa a DeepSeek, no a esa variante. La etapa de código los confirma con `GET /api/v1/models` y deja los dos en variables de entorno (`ASISTENTE_MODELO`, `ASISTENTE_MODELO_RESPALDO`), para cambiarlos sin desplegar código.
-- **Respaldo**: lo hace la función, no el campo `models` de OpenRouter. Ante 404, 429, 502, 503 o un error de red, vuelve a pedir la vuelta con `ASISTENTE_MODELO_RESPALDO`. Ante 400, 401, 402 o 403 no reintenta: son errores de código o de cuenta, y el respaldo los taparía. La respuesta informa qué modelo respondió y queda en el registro (§9).
+- **Respaldo**: lo hace la función, no el campo `models` de OpenRouter. Ante 404, 408, 429, 500, 502, 503, 504, otro código no listado, una respuesta vacía o un error de red, vuelve a pedir la vuelta con `ASISTENTE_MODELO_RESPALDO`. Ante 400, 401, 402 o 403 no reintenta: son errores de código o de cuenta, y el respaldo los taparía. La respuesta informa qué modelo respondió y queda en el registro (§9).
 - La documentación de OpenRouter confirma que Nemotron 3 Ultra acepta `tools`, `tool_choice`, `temperature`, `seed`, `max_tokens` y `reasoning`. Se usa `temperature` baja (0,2) y `max_tokens` acotado para respuestas estables. DeepSeek V4.1 Flash también acepta `tools` y `tool_choice`. Si alguno no los respeta en el endpoint gratuito, la etapa de código lo detecta en la evaluación (§8.4) y se avisa al dueño antes de seguir.
 - **Errores de OpenRouter** (`{"error": {"code", "message"}}`):
 
@@ -127,9 +127,12 @@ Proveedor: **OpenRouter** (API compatible con OpenAI, `https://openrouter.ai/api
   |---|---|---|
   | 429 | Límite de peticiones | Pasa a DeepSeek |
   | 502, 503 | Falló el proveedor (no se cobra) | Pasa a DeepSeek |
+  | 408, 500, 504, otro código no listado o respuesta vacía | Error o demora del proveedor | Pasa a DeepSeek |
   | 404 | Modelo desconocido o sin proveedor (por ejemplo, si retiran el gratuito) | Pasa a DeepSeek y queda registrado para avisar al dueño |
   | 400 | Petición mal armada | No reintenta; es un error de código y queda en el registro |
   | 401, 402, 403 | Clave inválida, sin créditos o tope de gasto alcanzado | No reintenta; el panel muestra «El asistente no está disponible en este momento» |
+
+  Si falla una vuelta con el principal, el resto de esa pregunta sigue con DeepSeek. Si tras 8 vueltas el modelo no da una respuesta de texto, la función devuelve 502. Cualquier `nvidia/nemotron*` que no termine en `:free` se rechaza como modelo.
 
 - **Gasto**: el tope lo controla el dueño en OpenRouter (decisión del 2026-11-27). La función guarda en el registro el campo `usage.cost` de cada respuesta (§9).
 - **Límites de uso**: los modelos gratuitos tienen un tope diario de peticiones por cuenta. Cada pregunta gasta de 2 a 7 peticiones (una por vuelta del bucle de tools). Con el tope agotado responde el respaldo, que es de pago.
@@ -146,7 +149,7 @@ El prompt vive en el repo (`supabase/functions/asistente-reportes/prompt.ts`), v
 3. **Reglas de negocio que el modelo debe respetar al explicar**:
    - El desgaste y las alertas usan la huella mínima de las tres mediciones (RN-01). Retiro a 3 mm; en dirección, «Pasar atrás» a 8 mm o menos y «Pasar atrás ya» bajo 6 mm (RN-02).
    - El rendimiento se mide por km con odómetro; el tiempo es solo un respaldo y se aclara cuando se usa (RN-04).
-   - No promediar CPK individuales: usar el CPK ponderado que devuelve la tool e indicar siempre el tamaño de la muestra. Un grupo con menos de 5 cubiertas (`MUESTRA_MINIMA`) se informa como «muestra chica».
+   - No promediar CPK individuales: usar el CPK ponderado que devuelve la tool e indicar siempre el tamaño de la muestra. Un grupo con menos de 5 cubiertas (`MUESTRA_MINIMA`) se informa como «muestra baja» ([14](14-guia-de-textos.md)).
    - No sumar montos en monedas distintas (RN-28): informar por moneda.
    - El ahorro es precio de referencia menos costo del recauchutado; si falta el precio de referencia, no se calcula (RN-24).
    - Michelin y Bridgestone se renuevan hasta 3 veces (RN-25).
