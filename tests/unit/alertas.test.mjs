@@ -73,19 +73,17 @@ describe('presentación de cada tipo', () => {
     assert.deepEqual([PRESENTACION_ALERTA.limite.accion, PRESENTACION_ALERTA.limite.simbolo, PRESENTACION_ALERTA.limite.color], ['Cambiar', '×', 'red']);
     assert.equal(PRESENTACION_ALERTA.limite.etiqueta, ESTADOS.limite.texto);
   });
-  test('los amarillos llevan ◆, color naranja y «Revisar»', () => {
+  test('los amarillos llevan ◎, color naranja y «Revisar»', () => {
     for (const t of ['direccion_aviso', 'direccion_limite', 'irregular', 'swap', 'km_por_mm']) {
       assert.deepEqual([PRESENTACION_ALERTA[t].simbolo, PRESENTACION_ALERTA[t].color, PRESENTACION_ALERTA[t].accion], [SIMBOLO_REVISAR, 'orange', 'Revisar'], t);
     }
   });
-  test('◆ no se usa en otro estado, la bandera ni los chips de alerta (▲ tampoco entra en las alertas)', () => {
-    // ◆ es «Mayor desgaste» (estado) y «Revisar» (alerta): dos significados que comparten símbolo. Esta prueba solo
-    // impide un tercero; la decisión sobre el doble uso está abierta (ver el informe de la ronda).
-    assert.equal(SIMBOLO_REVISAR, '◆');
-    const otrosEstados = Object.entries(ESTADOS).filter(([id]) => id !== 'mayor').map(([, e]) => e.simbolo);
-    const usados = [...otrosEstados, BANDERA.simbolo, ...Object.values(CHIP_ESTADO_ALERTA).map(c => c[1])];
+  test('◎ (revisar) no coincide con ningún estado, la bandera ni los chips de alerta; ▲ y ◆ no entran en las alertas', () => {
+    // Un símbolo, un significado (docs/14 §3): ◆ es «Mayor desgaste» y ▲ «Poco desgaste»; antes ◆ también era «Revisar».
+    assert.equal(SIMBOLO_REVISAR, '◎');
+    const usados = [...Object.values(ESTADOS).map(e => e.simbolo), BANDERA.simbolo, ...Object.values(CHIP_ESTADO_ALERTA).map(c => c[1])];
     assert.ok(!usados.includes(SIMBOLO_REVISAR));
-    assert.ok(!Object.values(PRESENTACION_ALERTA).some(p => p.simbolo === '▲'));
+    assert.ok(!Object.values(PRESENTACION_ALERTA).some(p => p.simbolo === '▲' || p.simbolo === ESTADOS.mayor.simbolo));
   });
   test('dirección: «Pasar atrás» y «Pasar atrás ya»', () => {
     assert.equal(PRESENTACION_ALERTA.direccion_aviso.etiqueta, 'Pasar atrás');
@@ -96,11 +94,11 @@ describe('presentación de cada tipo', () => {
   });
   test('un tipo desconocido se muestra en amarillo como «Revisar», nunca en rojo', () => {
     const p = presentacionAlerta({ tipo: 'critico', mensaje: 'Neumático en desgaste límite' });
-    assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Revisar', '◆', 'orange', 'Revisar']);
+    assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Revisar', '◎', 'orange', 'Revisar']);
     assert.equal(presentacionAlerta({ tipo: 'limite' }).color, 'red');
   });
   test('swap: la etiqueta nombra el umbral de la base con formato de miles; sin dato, «Primera rotación» a secas', () => {
-    assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Primera rotación a 30.000 km', simbolo: '◆', color: 'orange', accion: 'Revisar' });
+    assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Primera rotación a 30.000 km', simbolo: '◎', color: 'orange', accion: 'Revisar' });
     assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: null }).etiqueta, 'Primera rotación');
     assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: 0 }).etiqueta, 'Primera rotación');
     assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Primera rotación');
@@ -162,7 +160,7 @@ describe('recuadro «cambiar» y «revisar»', () => {
       { tipo: 'swap', estado: 'abierta', silenciada_hasta: '2026-06-12T00:00:00Z' },
     ], AHORA), [
       { color: 'red', simbolo: '×', texto: '2 cambiar' },
-      { color: 'orange', simbolo: '◆', texto: '2 revisar' },
+      { color: 'orange', simbolo: '◎', texto: '2 revisar' },
     ]);
   });
   test('partesRecuadro no muestra las cifras en cero', () => {
@@ -170,14 +168,14 @@ describe('recuadro «cambiar» y «revisar»', () => {
       { color: 'red', simbolo: '×', texto: '2 cambiar' },
     ]);
     assert.deepEqual(partesRecuadro([{ tipo: 'irregular' }], AHORA), [
-      { color: 'orange', simbolo: '◆', texto: '1 revisar' },
+      { color: 'orange', simbolo: '◎', texto: '1 revisar' },
     ]);
     assert.deepEqual(partesRecuadro([{ tipo: 'limite' }], AHORA), [
       { color: 'red', simbolo: '×', texto: '1 cambiar' },
     ]);
     assert.deepEqual(partesRecuadro([{ tipo: 'limite' }, { tipo: 'swap' }, { tipo: 'swap' }, { tipo: 'swap' }], AHORA), [
       { color: 'red', simbolo: '×', texto: '1 cambiar' },
-      { color: 'orange', simbolo: '◆', texto: '3 revisar' },
+      { color: 'orange', simbolo: '◎', texto: '3 revisar' },
     ]);
   });
   test('tiempoRelativo: minutos, horas, días; sin fecha, «–»', () => {
@@ -202,8 +200,8 @@ describe('orden de la lista (ordenarAlertas, sin tocarlo)', () => {
 });
 
 describe('desgaste lateral (tipo lateral: «Revisar alineación» en la base)', () => {
-  test('presentacionAlerta: etiqueta «Desgaste lateral», ◆ y amarillo; nunca rojo', () => {
-    assert.deepEqual(presentacionAlerta({ tipo: 'lateral' }), { etiqueta: 'Desgaste lateral', simbolo: '◆', color: 'orange', accion: 'Revisar' });
+  test('presentacionAlerta: etiqueta «Desgaste lateral», ◎ y amarillo; nunca rojo', () => {
+    assert.deepEqual(presentacionAlerta({ tipo: 'lateral' }), { etiqueta: 'Desgaste lateral', simbolo: '◎', color: 'orange', accion: 'Revisar' });
   });
   test('detalleAlerta quita el prefijo «Revisar alineación:» que trae la base', () => {
     assert.equal(detalleAlerta({ tipo: 'lateral', mensaje: 'Revisar alineación: 2,5 mm entre bordes (umbral 2 mm)' }), '2,5 mm entre bordes (umbral 2 mm)');

@@ -6,7 +6,7 @@
 // (umbral_bajo/critico/retiro_mm); aquí solo se les da el nombre de la especificación: { buen, poco, mayor }.
 // Colores (decisión del 2026-11-27, que revierte la del 2026-11-21): «Mayor desgaste» es naranja con ◆ y «Desgaste
 // límite» es rojo con ×. Antes compartían rojo y ×, así que no se distinguían entre sí. El rojo queda solo para lo
-// crítico (lo que hay que cambiar ya), y el ◆ naranja es el mismo símbolo que usan las alertas de «revisar».
+// crítico (lo que hay que cambiar ya). ◆ es solo de este estado: las alertas de «revisar» llevan ◎ (domain/alertas.js).
 import { fmtNum, plural } from './formato.js';
 import { TOKENS } from './tokens-detalle.js';
 import { esAuxilio } from './auxilio.js';
