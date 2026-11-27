@@ -216,6 +216,10 @@ echo "== migración ejes, dirección y alertas (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126030000_ejes_direccion_alertas.sql"
 echo "== migración ejes, dirección y alertas (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126030000_ejes_direccion_alertas.sql"
+echo "== migración disco, alineación y desgaste lateral (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126040000_disco_alineacion.sql"
+echo "== migración disco, alineación y desgaste lateral (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126040000_disco_alineacion.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

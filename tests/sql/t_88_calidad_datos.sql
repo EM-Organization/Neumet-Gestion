@@ -364,8 +364,9 @@ select test.eq('C4: regla 3, todas invalidadas: la posición desaparece (no hay 
 -- C5. Las vistas conservan columnas y tipos (los tests existentes lo cubren; aquí, la lista)
 -- La ola 2 (20261126030000) añade seis columnas al final de v_estado_neumaticos: distribucion, servicio, rol_eje,
 -- direccion_aviso_mm, direccion_limite_mm, estado_direccion. Nombres y tipos exactos: t_55.
-select test.eq('C5: v_estado_neumaticos tiene 37 columnas: 31 previas (con minimo, 20261126000000) más 6 de la ola 2',
-  (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'v_estado_neumaticos'), 37::bigint);
+-- La ola 3 (20261126040000) añade asimetria_lateral_mm y desgaste_lateral al final.
+select test.eq('C5: v_estado_neumaticos tiene 39 columnas: 31 previas (con minimo, 20261126000000), 6 de la ola 2 y 2 de la ola 3',
+  (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'v_estado_neumaticos'), 39::bigint);
 select test.eq('C5: v_mediciones_neumatico conserva sus 16 columnas',
   (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'v_mediciones_neumatico'), 16::bigint);
 

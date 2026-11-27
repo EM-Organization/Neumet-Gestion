@@ -62,7 +62,8 @@ select test.eq('catálogo: las siete tablas conservan su política de lectura pa
 -- ---------------------------------------------------------------------------------------------
 create temp table _grp96 (grupo text, f text);
 insert into _grp96 values
-  -- las 26 que pierden la rama de admin (docs/17 §4.1)
+  -- las 26 que pierden la rama de admin (docs/17 §4.1) y las 2 de la ola 3 (20261126040000), que nacen sin ella
+  ('recorta', 'neumatico_rotar_disco'), ('recorta', 'vehiculo_alinear'),
   ('recorta', 'alerta_configurar'), ('recorta', 'alerta_reconocer'), ('recorta', 'alerta_silenciar'), ('recorta', 'alerta_resolver'),
   ('recorta', 'neumatico_cambiar'), ('recorta', 'neumatico_montar'), ('recorta', 'neumatico_desmontar'), ('recorta', 'neumatico_rotar'),
   ('recorta', 'vehiculo_crear'), ('recorta', 'vehiculo_mover_sucursal'), ('recorta', 'vehiculo_registrar_odometro'),
@@ -87,11 +88,11 @@ select test.eq('catálogo: toda función SECURITY DEFINER ejecutable por authent
   (select coalesce(string_agg(p.proname, ',' order by p.proname), '') from pg_proc p
     where p.pronamespace = 'public'::regnamespace and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute')
       and p.proname not in (select f from _grp96)), '');
-select test.eq('catálogo: las 26 RPC recortadas existen y son SECURITY DEFINER con search_path vacío',
+select test.eq('catálogo: las 28 RPC recortadas existen y son SECURITY DEFINER con search_path vacío',
   (select count(distinct p.proname) from pg_proc p join _grp96 g on g.f = p.proname and g.grupo = 'recorta'
-    where p.pronamespace = 'public'::regnamespace and p.prosecdef and p.proconfig @> array['search_path=""']), 26::bigint);
+    where p.pronamespace = 'public'::regnamespace and p.prosecdef and p.proconfig @> array['search_path=""']), 28::bigint);
 -- Ningún cuerpo de las funciones que pierden la rama contiene ya la rama de admin (los helpers tampoco).
-select test.eq('catálogo: ni las 26 RPC ni sus helpers consultan is_admin() ni el rol admin',
+select test.eq('catálogo: ni las 28 RPC ni sus helpers consultan is_admin() ni el rol admin',
   (select coalesce(string_agg(p.proname, ',' order by p.proname), '') from pg_proc p
     where p.pronamespace = 'public'::regnamespace
       and (p.proname in (select f from _grp96 where grupo = 'recorta')
@@ -134,7 +135,7 @@ select p.proname,
  where p.pronamespace = 'public'::regnamespace
    and p.proname in ('vehiculo_corregir_odometro', 'usuario_empresa_quitar_acceso', 'usuario_empresa_reponer_acceso');
 grant select on _llamadas96 to public;
-select test.eq('la matriz cubre las 26 RPC recortadas y las 3 del plan de roles', (select count(*) from _llamadas96), 29::bigint);
+select test.eq('la matriz cubre las 28 RPC recortadas y las 3 del plan de roles', (select count(*) from _llamadas96), 31::bigint);
 
 create or replace function pg_temp.matriz96(p_rol text) returns void language plpgsql as $$
 declare

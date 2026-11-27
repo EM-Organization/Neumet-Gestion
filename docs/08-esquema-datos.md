@@ -1434,7 +1434,7 @@ Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el 
 - **Triggers:** `trg_alerta_neumaticos_ins` (after insert) y `trg_alerta_neumaticos_upd` (after update de `estado`, `posicion`, `vehiculo_id`, `idneumatico` y `vida`), diferidos (`deferrable initially deferred`), llaman a `trg_alerta_neumaticos()`, que viene de `20261118500000_alerta_critica.sql` y no se redefine aquí. `trg_alerta_vehiculos` (after update de `distribucion` y `odometro_km`), diferido. `trg_alerta_clientes` (after update de los umbrales, histéresis, irregularidad, dirección y swap; no incluye `km_por_mm_revision`, por D4).
 
 ### AB.4 Pruebas
-- SQL: `tests/sql/t_104_ola2_alertas.sql` (de T1, en dev): cierres en orden de prioridad (dirección y swap; la posición 99 cierra con `sin_datos`), desparejo, `v_alertas`, `vehiculo_fijar_servicio` y roles (admin de empresa, sucursal, sin perfil). Sin prueba SQL todavía: `rol_eje_posicion` (paridad con el JS). Lo existente sobre tramos de km es `tests/sql/t_104_auxilio_tramos_km.sql`.
+- SQL: `tests/sql/t_106_ola2_alertas.sql` (de T1, en dev): cierres en orden de prioridad (dirección y swap; la posición 99 cierra con `sin_datos`), desparejo, `v_alertas`, `vehiculo_fijar_servicio` y roles (admin de empresa, sucursal, sin perfil). Sin prueba SQL todavía: `rol_eje_posicion` (paridad con el JS). Lo existente sobre tramos de km es `tests/sql/t_104_auxilio_tramos_km.sql`.
 - Unitarias: `tests/unit/rol-eje.test.mjs` (espejo JS de `rol_eje_posicion`).
 - E2E: `tests/e2e/specs/ola2-alertas-servicio.mjs` (color, severidad y umbral por tipo con el JWT del rol global; servicio con `vehiculo_fijar_servicio`, que el diálogo muestra al reabrir; aviso de umbrales para el administrador de empresa). `alertas-dispositivos.mjs` ya existía y pasó 1/1 en Postgres 17 local con esta base.
 
@@ -1456,3 +1456,54 @@ Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el 
 ### AB.7 Interfaz
 - El diálogo «Distribución y servicio» guarda con dos RPC: la distribución con `vehiculo_cambiar_distribucion` y el servicio con `vehiculo_fijar_servicio`. Sigue en tres clics (abrir, elegir, guardar; Enter guarda).
 - El aviso de umbrales en Alertas nombra «Empresa > Umbrales» y solo lo ve el administrador de empresa.
+
+# Apéndice AC · Ola 3: rotación en disco, alineación y desgaste lateral (`20261126040000_disco_alineacion.sql`)
+
+Implementa RN-05 (cierre por rotación en disco), RN-15, RN-16 y RN-17 (docs/23). Depende de `20261126030000` (apéndice AB) y de `20261126020000` (apéndice AA, motivos y odómetro). **Pendiente de aplicar:** no está aplicada en producción; se aplica con el CLI (`neumet-aplicar-migracion`).
+
+## AC.1 Desgaste lateral (R1)
+- `lateral = round(|mm1 − mm3|, 1) >= irregularidad_mm` (2,0). Es la diferencia entre la huella interna y la externa, distinta del rango de las tres huellas de RN-06.
+- `irregular` sigue siendo el rango de las tres huellas (`max − min >= irregularidad_mm`). Lateral e irregular son excluyentes: una cubierta tiene como mucho un aviso abierto. `alerta_desgaste_tipo(p_lat, p_dif, p_irr)` devuelve un único tipo (`lateral` primero, luego `irregular`).
+- Cambio de tipo en la misma fila: si el tipo cambia entre dos sincronizaciones, es la misma fila (mismo `alerta_id`), vuelve a `abierta` con `reconocida_at` nulo y `abierta_at` nuevo. No se crea una segunda fila ni se silencia la alerta.
+- Tipo `lateral` añadido al CHECK de `alertas`. `alerta_estado_tiros` cambia de forma (columnas `lat`, `rota`, `rotada_at`, `alineada_at`), así que se recrea con drop y create.
+- `v_estado_neumaticos` suma `asimetria_lateral_mm` y `desgaste_lateral` al final. `v_alertas` (security_invoker) muestra «Revisar alineación: …» para `lateral`.
+
+## AC.2 Rotación en disco y alineación: diseño
+- `neumatico_rotar_disco(p_vehiculo_id, p_posicion, p_odometro_km, p_motivo_codigo, p_motivo_texto)` → `{vehiculo_id, neumatico_id, posicion, duplicada}`. Invierte interior y exterior de una cubierta sin cambiar su eje. Motivos admitidos: `desgaste_lateral`, `swap_20000` y `otro` (con texto).
+- `vehiculo_alinear(p_vehiculo_id, p_odometro_km, p_motivo_codigo, p_motivo_texto)` → `{vehiculo_id, neumaticos, duplicada}`. Registra un evento `alineacion` por cada cubierta montada, sin el auxilio (posición 99). Motivos: `desgaste_lateral`, `control`, `reparacion_tren` y `otro` (con texto).
+- Concurrencia: cada RPC toma `for update` sobre el neumático (o el vehículo) y aplica una ventana de 30 s. Una segunda llamada igual dentro de esa ventana devuelve `duplicada: true` y no escribe nada.
+- Catálogo: `rotacion_disco` y `alineacion` en el catálogo de motivos (RN-14: motivo obligatorio).
+- Errores: 22023 (posición fuera de rango, sin cubiertas montadas en el vehículo, motivo fuera del catálogo, «otro» sin texto, `swap_20000` en alineación), 22004 (posición nula), P0002 (sin cubierta en la posición), 23514 (odómetro negativo o menor al del vehículo; sin odómetro si el cliente lo exige).
+- La rotación en disco no cambia `neumaticos` ni corta el tramo de km (`v_km_cubierta.km_tramo_actual` no cambia).
+
+## AC.3 Cierres
+| Acción | swap | lateral | irregular | motivo |
+|---|---|---|---|---|
+| Rotación de posición (`neumatico_rotar`) | cierra | cierra | cierra | `rotacion` |
+| Rotación en disco (`neumatico_rotar_disco`) | cierra | cierra | cierra | `rotacion` |
+| Alineación (`vehiculo_alinear`) | no | cierra | no | `alineacion` |
+
+- No se reabre sin medición posterior: el cierre queda hasta que una medición nueva, posterior a la atención, vuelva a cumplir la regla. Sincronizar sin medición nueva no reabre.
+- `neumatico_rotar` solo mueve las posiciones; el cierre lo hace la sincronización del trigger al confirmar la transacción. Las pruebas llaman a `alerta_sincronizar` a mano porque el trigger no corre dentro de la transacción de prueba.
+
+## AC.4 Trigger: guarda en lugar de WHEN
+- `CREATE CONSTRAINT TRIGGER` no admite `WHEN` en Postgres. El filtro es la guarda al inicio de `trg_alerta_neumaticos`: sale sin sincronizar si el `UPDATE` no cambia estado, posición, vehículo, identificador ni vida. `set constraints all immediate` antes de tocar `updated_at` evita que el sync pendiente lo pise.
+
+## AC.5 Pruebas
+- SQL: `tests/sql/t_107_ola3_disco_alineacion.sql` (R1 por bandas T04 a T07 y bordes; cambio de tipo en la misma fila; rotación en disco con sus errores, odómetro, duplicada y tramo de km; alineación; rotación de posición; catálogo; guarda del trigger; `rol_eje_posicion`; roles y visibilidad por sucursal).
+- Actualizadas por la ola: `t_55` (columnas de `v_estado_neumaticos`), `t_60` (tipos del demo: `direccion_aviso,direccion_limite,lateral,limite`), `t_88` (conteo de columnas), `t_96` (dos RPC nuevas en el grupo `recorta`), `t_105` (catálogo de motivos con `rotacion_disco`).
+- `t_104_ola2_alertas.sql` renombrado a `t_106_ola2_alertas.sql` (sin cambios de contenido).
+- E2E: `tests/e2e/specs/ola2-alertas-servicio.mjs` acepta el tipo `lateral`.
+
+## AC.6 Consulta de conteo tras aplicar
+```sql
+select tipo, estado, count(*) from public.alertas where tipo in ('irregular','lateral') group by 1, 2;
+```
+
+## AC.7 Riesgos de despliegue
+- **Cambio de tipo en el relleno.** El relleno `alerta_sincronizar(c.id, null)` de todos los clientes reevalúa la flota con la regla nueva. Las cubiertas cuya diferencia entre huella interna y externa es de 2 mm o más pasan de `irregular` a `lateral` en la misma fila. Es el efecto esperado; conviene avisarlo antes de aplicar y comparar con la consulta del AC.6.
+- **Demo.** Las tres cubiertas «irregular» del seed (diferencia de 3 mm entre huellas) aparecen ahora como `lateral`, y el demo ya no muestra `irregular`. Cambio de comportamiento aceptado en la ola.
+
+## AC.8 Desviaciones y pendientes
+- Desviación de T1 (punto 8): `WHEN` en `CREATE CONSTRAINT TRIGGER` sustituido por la guarda del AC.4.
+- Resuelto (AB.6): el filtro que faltaba (sin `WHEN` desde la ola 2) queda cubierto por la guarda del AC.4 dentro de la función del trigger.

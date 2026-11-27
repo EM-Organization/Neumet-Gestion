@@ -78,9 +78,9 @@ select test.eq('hay un neumático desconocido', (select count(*) from public.v_e
 select test.eq('hay neumáticos sin medir hace >30 días', (select count(*) > 0 from public.v_estado_neumaticos where cliente_id = 50 and sin_medir and dias_desde_medicion > 30), true);
 select test.eq('hay desgaste irregular', (select count(*) >= 3 from public.v_estado_neumaticos where cliente_id = 50 and desgaste_irregular), true);
 select test.eq('hay tasas de desgaste calculadas', (select count(*) > 40 from public.v_estado_neumaticos where cliente_id = 50 and tasa_mm_semana > 0), true);
--- Ola 2: el demo abre también dirección e irregular (el desgaste irregular ya se afirma arriba).
-select test.eq('tipos de alerta del demo: dirección, irregular y límite',
-  (select coalesce(string_agg(distinct tipo, ','), 'sin alertas') from public.v_alertas where cliente_id = 50), 'direccion_aviso,direccion_limite,irregular,limite');
+-- Ola 3: la diferencia entre mm1 y mm3 del demo irregular (3 mm) supera el umbral: son desgaste lateral (R1), no irregular.
+select test.eq('tipos de alerta del demo: dirección, lateral y límite',
+  (select coalesce(string_agg(distinct tipo, ','), 'sin alertas') from public.v_alertas where cliente_id = 50), 'direccion_aviso,direccion_limite,lateral,limite');
 select test.eq('una alerta abierta por cada neumático en desgaste límite del demo (consistencia con v_estado_neumaticos)',
   (select count(*) from public.v_alertas a join public.v_estado_neumaticos e on e.neumatico_id = a.neumatico_id
     where a.cliente_id = 50 and a.tipo = 'limite' and e.estado = 'desgaste_limite'),
