@@ -91,6 +91,8 @@
 4. Asistente LLM: proveedor y clave, pendiente del dueño (ola 7 de F8; diseño en `docs/24`, sin crear).
 
 ### Desarrollo
+- Ola 2 de F8, ajustes menores de la revisión (no bloquean): reponer el `WHEN (old.x is distinct from new.x …)` en `trg_alerta_neumaticos_upd` (solo rendimiento); las alertas que no son de límite de vehículos inactivos no se cierran solas (ya pasaba con `limite`); prefijo `t_104` repetido en `tests/sql` (`t_104_auxilio_tramos_km.sql` y `t_104_ola2_alertas.sql`); CA-31 (`rol_eje_posicion`) sin prueba SQL; `km_por_mm_revision` sin parámetro en `alerta_configurar`; posible flaky de Stock en el modo cliente del smoke.
+- **[confirmar]** Ola 2 de F8: con «el primer eje simple es dirección», un 8x4 con dos simples delanteros (SSDD) da dirección a los dos ejes (docs/08 AB.6).
 - Ola 1 de F8, tras el PR 159: activar `odometro_obligatorio` para Agencia Central después de verificar el panel (director). Coordinar con DAC el campo `odometro_km` antes de activar `odometro_obligatorio_api`.
 - Nota de moneda de los datos ya cargados: no se convierten; su revisión queda pendiente (USD por defecto para clientes nuevos y Agencia Central; [23](23-reglas-negocio.md) §4).
 - Ola 2 de F8, en `dev`: `ejeDePosicion` por distribución en 8x2 y 8x4, y `distribucion` en `v_estado_neumaticos` (migración `20261126030000`, pendiente de aplicar; luego fusionar `dev` → `main`). El desparejo del panel lee el flag de la base cuando faltan `mm1` o `mm3`.
