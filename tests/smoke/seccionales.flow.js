@@ -235,6 +235,18 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   var elegirNvDist = function(v){ var r = $('#veh-nuevo-distribucion input[value="' + v + '"]'); if (r) r.click(); else d.querySelectorAll('#veh-nuevo-distribucion input').forEach(function(x){ x.checked = false; }); };
   $('#btn-veh-agregar').click(); await sleep(200);
   if (!$('#modal-veh-nuevo').classList.contains('show')) { fail('vehiculos: «Agregar vehículo» no abrió el diálogo'); return; }
+  // Alto de portátil (1280x720): «Agregar vehículo» debe verse entero, con el cuerpo desplazable (ola 6 T1)
+  var fr = w.frameElement, altoPrevio = fr.style.height; fr.style.height = '720px'; await sleep(150);
+  var rect = function(s){ var e = $(s); if (!e) return 'ausente'; var r = e.getBoundingClientRect(); return Math.round(r.top) + '..' + Math.round(r.bottom); };
+  var dentro = function(s){ var e = $(s); if (!e) return false; var r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= w.innerHeight; };
+  var mb = $('#modal-veh-nuevo .modal-body');
+  var detalle = 'alto=' + w.innerHeight + ' modal=' + rect('#modal-veh-nuevo .modal') + ' titulo=' + rect('#modal-veh-nuevo .modal-title') + ' cancelar=' + rect('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]') + ' guardar=' + rect('#veh-nuevo-guardar');
+  if (w.innerHeight !== 720) fail('vehiculos: la ventana de prueba no quedó a 720 px: ' + w.innerHeight);
+  if (!dentro('#modal-veh-nuevo .modal') || !dentro('#modal-veh-nuevo .modal-title') || !dentro('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]') || !dentro('#veh-nuevo-guardar')) fail('vehiculos: a 720 px «Agregar vehículo» debe verse entero (título y botones): ' + detalle);
+  if (!mb || !(mb.scrollHeight > mb.clientHeight) || w.getComputedStyle(mb).overflowY !== 'auto') fail('vehiculos: a 720 px el cuerpo de «Agregar vehículo» debe desplazarse (overflow-y auto): ' + detalle);
+  // Todo modal tiene altura máxima: si falta, en una pantalla baja el pie queda fuera
+  d.querySelectorAll('.modal').forEach(function(m){ if (w.getComputedStyle(m).maxHeight === 'none') fail('vehiculos: el modal de ' + (m.parentNode.id || m.className) + ' no tiene altura máxima'); });
+  fr.style.height = altoPrevio; await sleep(150);
   if (d.activeElement !== nv('numero')) fail('vehiculos: el foco no quedó en el número de coche');
   var ops = Array.prototype.map.call(nv('sucursal').options, function(o){ return o.textContent; });
   if (ops[0] !== 'Sin sucursal' || ops.length !== 3) fail('vehiculos: opciones de sucursal del alta: ' + ops.join('|'));
