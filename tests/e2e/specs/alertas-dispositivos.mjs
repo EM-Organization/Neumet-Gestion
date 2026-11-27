@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, irA, dormir } from '../lib/flujo.mjs';
 import { ALCANCE, json } from '../lib/verdad.mjs';
+import { PRESENTACION_ALERTA, presentacionAlerta } from '../../../assets/js/domain/alertas.js';
 
 export function registrar(env) {
   for (const rol of ['admin', 'global', 'salto', 'montevideo']) {
@@ -10,7 +11,9 @@ export function registrar(env) {
       const a = ALCANCE[rol];
       const filas = json(env, `select x.estado, x.silenciada_hasta, x.tipo, v.patente, x.posicion from public.v_alertas x join public.vehiculos v on v.id = x.vehiculo_id where ${a.veh}`);
       assert.ok(filas.length > 0, 'el demo debe generar alertas de desgaste límite');
-      assert.ok(filas.every(f => f.tipo === 'limite'), 'una sola categoría de alerta: desgaste límite');
+      // Desde la ola 2 hay varios tipos (límite, dirección, irregular, swap): cada uno tiene su presentación, y el límite está.
+      assert.ok(filas.every(f => Object.hasOwn(PRESENTACION_ALERTA, f.tipo)), 'todo tipo de alerta tiene presentación en la interfaz');
+      assert.ok(filas.some(f => f.tipo === 'limite'), 'el demo debe tener desgaste límite');
       const porEstado = e => filas.filter(f => f.estado === e && !f.silenciada_hasta).length;
       await flujo(env, 'alertas', rol, async p => {
         await irA(p, 'alertas');
@@ -28,7 +31,11 @@ export function registrar(env) {
         for (const pat of new Set(json(env, `select patente from public.vehiculos`).map(v => v.patente).filter(Boolean))) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
-        assert.ok(tabla.every(t => /Desgaste límite/.test(t)), 'solo desgaste límite');
+        // Cada alerta muestra la etiqueta de su tipo junto a su matrícula (el swap lleva sus km: se compara por «Swap»).
+        for (const f of filas) {
+          const etiqueta = presentacionAlerta({ tipo: f.tipo }).etiqueta.replace(/^Swap .*/, 'Swap');
+          assert.ok(tabla.some(t => t.includes(f.patente) && t.includes(etiqueta)), `la alerta de ${f.patente} (${f.tipo}) no muestra «${etiqueta}»`);
+        }
         // Cada alerta lleva al vehículo (acción). Resolver, reconocer y silenciar son de la empresa: el equipo Neumet (admin)
         // no los ve (F10 PR 10; la RPC sigue permitida para admin hasta C2, por eso aquí solo se mira la interfaz).
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);

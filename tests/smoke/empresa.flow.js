@@ -171,7 +171,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
 
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
-  if (all('#emp-umb-campos [data-umbral]').length !== 6) fail('empresa: faltan campos de umbrales');
+  if (all('#emp-umb-campos [data-umbral]').length !== 9) fail('empresa: faltan campos de umbrales');
   var grupos = {};
   Array.prototype.forEach.call(all('#emp-umb-campos .field'), function (f) {
     var key = Math.round(f.getBoundingClientRect().top);
@@ -187,12 +187,13 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   var textoUmb = $('#view-empresa-umbrales').textContent;
   if (/\((naranja|rojo)\)|[<"]/i.test(textoUmb.replace(/\s+/g, ' ')) ) fail('empresa: textos de umbrales fuera de la guía: ' + textoUmb.replace(/\s+/g, ' '));
   var upd0 = (w.__saludFx && w.__saludFx.updates.length) || 0;
-  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2' };
+  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '7,5', direccion_limite_mm: '6,5', swap_km: '15000' };
   var llenar = function () { Object.keys(valores).forEach(function (k) { $('#eu-' + k).value = valores[k]; }); };
   llenar();
   $('#emp-umb-form').requestSubmit(); await sleep(500);
   var cfg = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).pop();
   if (!cfg || cfg.args.p_cliente_id !== 1 || cfg.args.p_umbral_bajo_mm !== 9 || cfg.args.p_histeresis_mm !== 1.2) fail('empresa: alerta_configurar ' + JSON.stringify(cfg));
+  if (!cfg || cfg.args.p_direccion_aviso_mm !== 7.5 || cfg.args.p_direccion_limite_mm !== 6.5 || cfg.args.p_swap_km !== 15000) fail('empresa: pasar atrás y swap no llegan a alerta_configurar ' + JSON.stringify(cfg));
   if (!/Umbrales actualizados/.test(toast())) fail('empresa: sin aviso al guardar umbrales: ' + toast());
   if (d.activeElement !== $('#emp-umb-guardar')) fail('empresa: tras guardar umbrales el foco debe volver a Guardar, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   // Si el operario ya puso el foco en otro campo mientras guardaba, no se le quita

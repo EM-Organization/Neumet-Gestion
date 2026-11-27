@@ -57,7 +57,7 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | dispositivo, medidor | sensor, calibre |
 | **Vocabulario único de estado** (se toma de `domain/estado-desgaste.js`, nunca se duplica): Buen estado, Poco desgaste, Mayor desgaste, Desgaste límite, Sin datos; y la bandera independiente «Desgaste acelerado» (velocidad, no profundidad) | «Nuevo» ni «Desconocido» como estado, «Desgaste mayor al normal», rojo, amarillo, verde. «Buen estado o poco desgaste» nombra la suma de los dos primeros (no «en buen estado» a secas) |
 | Requieren atención | Urgentes, en problemas |
-| alerta de desgaste límite (única alerta); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar» |
+| × Cambiar (alerta roja, neumático en desgaste límite); ◆ Revisar (alerta amarilla: pide mirar, no cambiar); Pasar atrás y Pasar atrás ya (dirección, con los umbrales de cada empresa); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar»; ▲ como símbolo de una alerta (▲ es «Poco desgaste»); rojo en una alerta amarilla; «Retirar» o «Cambiar» en dirección |
 | Próximos cambios | Pronósticos, predicciones |
 | Montar neumático (poner uno en una posición vacía), Cargar neumáticos (montar varios en un vehículo sin ellos), Retirar neumático (sin reemplazo) | Colocar, instalar, sacar |
 | posición vacía (rueda punteada: sin neumático montado) | rueda libre, hueco; no confundir con «sin datos» (neumático montado sin mediciones) |

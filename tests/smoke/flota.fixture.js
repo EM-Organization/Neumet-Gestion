@@ -28,7 +28,8 @@
   var fx = window.__flotaFx = { queries: [], vacio: false };
 
   function VQ(table){
-    var rows = T[table].slice(), rng = null;
+    // fx.alertasExtra añade alertas de otros tipos solo para la prueba de Alertas (flota.flow.js); las de arriba no cambian.
+    var rows = (table === 'v_alertas' ? alertas.concat(fx.alertasExtra || []) : T[table]).slice(), rng = null;
     var q = {
       select:function(){ return q; }, order:function(){ return q; },
       eq:function(c,v){ rows = rows.filter(function(r){ return String(r[c])===String(v); }); return q; },

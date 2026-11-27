@@ -37,7 +37,7 @@ Pantalla maestro-detalle de un vehículo:
 | W-06 | «Mayor desgaste» (nivel de profundidad) y «Desgaste mayor al normal» (velocidad) suenan igual y son cosas distintas | La segunda pasa a «Desgaste acelerado» (`TODO-STATUS-NAMES`) | 4.4 |
 | W-07 | La insignia «!» flota sobre el neumático sin anclaje claro y el neumático ya tiene su propio símbolo | Insignia de 16 anclada al borde superior, igual en todos | 5.2 |
 | W-08 | La tarjeta del esquema se desplaza con la página y sale de la vista (en Coche 179 los chips quedan cortados bajo la barra superior). Bajo la leyenda queda un hueco | Tarjeta fija al hacer scroll | 6 |
-| W-09 | «Cambiar distribución» queda pegado al título y «Eliminar vehículo» no se diferencia de otras acciones | Grupo de acciones a la derecha; la destructiva en rojo con diálogo de confirmación | 5.7 |
+| W-09 | «Cambiar distribución» (hoy «Distribución y servicio») queda pegado al título y «Eliminar vehículo» no se diferencia de otras acciones | Grupo de acciones a la derecha; la destructiva en rojo con diálogo de confirmación | 5.7 |
 | W-10 | «Interno / Externo» (la app dice «Interna / Externa»); la unidad aparece solo en «Promedio»; «distribución» en la web y «configuración» en la app | Vocabulario y formatos unificados | 7 |
 
 **Por qué estados discretos y no degradado.** Los umbrales son configurables y disparan alertas, así que el estado es una decisión, no una magnitud. Con un degradado, dos neumáticos de estados distintos pueden verse iguales y uno solo puede verse de un color que no corresponde a su estado. La magnitud sigue visible: cada neumático muestra sus milímetros y el gráfico muestra la evolución.
@@ -215,14 +215,14 @@ Interacción y accesibilidad:
 
 ### 5.7 Acciones del encabezado (`page-actions`)
 
-- Grupo alineado a la derecha del título, gap 12, alto 40: «Cambiar distribución» (secundario: borde 1.5 `NeumetOliveDark`, texto `NeumetDeepOlive`) y «Eliminar vehículo» (destructivo: borde 1.5 `NeumetError`, texto `NeumetErrorOnWhite`). La destructiva va **última** y separada visualmente (gap 24 respecto de la anterior).
+- Grupo alineado a la derecha del título, gap 12, alto 40: «Distribución y servicio» (secundario: borde 1.5 `NeumetOliveDark`, texto `NeumetDeepOlive`) y «Eliminar vehículo» (destructivo: borde 1.5 `NeumetError`, texto `NeumetErrorOnWhite`). La destructiva va **última** y separada visualmente (gap 24 respecto de la anterior).
 - «Eliminar vehículo» abre `ConfirmDialog` (`delete-vehicle-dialog`). No elimina con un solo toque. Si ya existía una confirmación, se ajusta a esta.
 
 **ConfirmDialog**: `role="alertdialog"`, ancho 440, radio 16, padding 24, fondo blanco, fondo atenuado `NeumetScrim`.
 - Título: «¿Eliminar {Coche N}?». Texto: qué se pierde (`TODO-DELETE-CONSEQUENCES`).
 - Botones: «Cancelar» (secundario) y «Eliminar vehículo» (relleno `NeumetError`, texto blanco).
 - Foco inicial en «Cancelar». El foco queda atrapado en el diálogo. Escape y tocar el fondo cierran. Durante la eliminación: botón con progreso y deshabilitado. Si falla, mensaje dentro del diálogo y el diálogo no se cierra.
-- «Cambiar distribución» conserva su flujo actual. Si la web debe ofrecer el mismo selector visual con miniaturas de la app: `TODO-DISTRIBUTION-PICKER`.
+- «Distribución y servicio» conserva su flujo actual. Si la web debe ofrecer el mismo selector visual con miniaturas de la app: `TODO-DISTRIBUTION-PICKER`.
 
 ## 6. Layout
 
@@ -275,7 +275,7 @@ Interacción y accesibilidad:
 | meas.col.externa | Externa |
 | meas.col.promedio | Promedio |
 | meas.date | Medido el {fecha} |
-| actions.changeLayout | Cambiar distribución |
+| actions.changeLayout | Distribución y servicio |
 | actions.delete | Eliminar vehículo |
 | dialog.delete.title | ¿Eliminar {Coche N}? |
 | dialog.delete.text | [POR DEFINIR: `TODO-DELETE-CONSEQUENCES`] |
@@ -310,7 +310,7 @@ Interacción y accesibilidad:
 | TODO-CHART-SERIES | Qué serie se grafica hoy (se asume el promedio) y si deben verse las tres zonas |
 | TODO-NEW-DEPTH | Si existe la profundidad de neumático nuevo por neumático, para dibujar una referencia |
 | TODO-DELETE-CONSEQUENCES | Qué se elimina junto con el vehículo (neumáticos, mediciones, historial) y textos de error |
-| TODO-DISTRIBUTION-PICKER | Si «Cambiar distribución» usará el selector visual con miniaturas de la especificación de la app |
+| TODO-DISTRIBUTION-PICKER | Si «Distribución y servicio» usará el selector visual con miniaturas de la especificación de la app |
 | TODO-BREAKPOINTS | Ancho a partir del cual la pantalla pasa a una columna |
 | TODO-TOOLTIP-FOCUS | Tooltip visible al enfocar una rueda con teclado (§5.2). Hoy el `<title>` SVG solo aparece con el mouse y el `aria-label` anuncia lo mismo a los lectores de pantalla; un tooltip propio al enfocar no está definido en la spec |
 | TODO-TERM-DISTRIBUCION, TODO-AXLE-NAMES-WEB, TODO-SIDE-GENDER, TODO-DECIMAL-FORMAT | Unificación de vocabulario y formatos con la app (sección 7) |
@@ -347,7 +347,7 @@ Formato: dado / cuando / entonces.
 14. **Tarjeta fija.** Con la página desplazada 600 de alto, el esquema y los chips siguen visibles. El panel del neumático no contiene ningún elemento con scroll interno.
 15. **Selección.** Al elegir otro neumático, el panel vuelve al inicio y el neumático elegido muestra el trazo de 3.
 16. **Eliminar.** «Eliminar vehículo» abre el diálogo y no elimina con un solo toque. Foco inicial en «Cancelar», Escape cierra, el foco queda atrapado.
-17. **Acciones.** «Cambiar distribución» y «Eliminar vehículo» están agrupadas a la derecha del título, la destructiva en rojo y última.
+17. **Acciones.** «Distribución y servicio» y «Eliminar vehículo» están agrupadas a la derecha del título, la destructiva en rojo y última.
 18. **Vocabulario.** La tabla de última medición dice «Interna», «Centro», «Externa» y «Promedio», con coma decimal y sin «mm» en las celdas. El título dice «Última medición (mm)».
 19. **Accesibilidad.** Cada neumático tiene etiqueta con posición, milímetros y estado. Los contrastes cumplen la sección 9.
 20. **Alcance.** No se modificaron los elementos de la sección 11.

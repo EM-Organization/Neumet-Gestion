@@ -52,8 +52,11 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   }
   var rpcs = (w.__flotaFx && w.__flotaFx.rpcs) || [];
   if(!rpcs.length || rpcs[0][1].p_limite !== 8) fail('inicio('+rol+'): no pidió ultimas_mediciones con p_limite 8');
-  // El rojo solo como punto de neumáticos críticos: ni tarjetas ni chips rojos en Inicio
-  if(cont.querySelector('.badge.red')) fail('inicio('+rol+'): chip rojo en Inicio');
+  // El rojo solo para lo crítico: el punto de neumáticos en límite y «× N cambiar» del recuadro; ni tarjetas ni otros chips rojos en Inicio
+  all('#inicio-contenido .badge.red').forEach(function(b){ if(!b.closest('.inicio-linea')) fail('inicio('+rol+'): chip rojo en Inicio fuera del recuadro: '+b.textContent.trim()); });
+  // Con el fixture de flota hay neumáticos en desgaste límite: el recuadro lleva un único chip rojo, «× N cambiar»
+  var rojoRec = all('#inicio-contenido .inicio-linea .badge.red');
+  if(rojoRec.length !== 1 || !/×/.test(rojoRec[0].textContent) || !/cambiar/.test(rojoRec[0].textContent)) fail('inicio('+rol+'): el recuadro debe tener un único chip rojo «× N cambiar»');
   all('#inicio-contenido .inicio-card').forEach(function(c){
     var cs = w.getComputedStyle(c);
     if(/rgb\(192, 57, 43\)/.test(cs.borderLeftColor+cs.backgroundColor)) fail('inicio('+rol+'): tarjeta con borde o fondo rojo');

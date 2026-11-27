@@ -12,7 +12,7 @@ import { registerView, switchView } from '../core/nav.js';
 import { contextoListo, filtrarFilas, filtrarConsulta, hayFiltroSeccional, sucursalSeleccionada, nombreSucursal } from '../core/seccional.js';
 import { registerActions } from '../core/actions.js';
 import { enSucursal, AYUDA_TODAS_SUCURSALES } from '../domain/seccional.js';
-import { estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../core/componentes.js';
+import { chip, estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../core/componentes.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
@@ -22,7 +22,7 @@ import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { nombrePosicion, resumenPosiciones, modeloMini, agruparPorVehiculo } from '../domain/posicion.js';
 import { textoAvisoInicio } from '../domain/calidad.js';
-import { sinReconocer } from '../domain/alertas.js';
+import { sinReconocer, partesRecuadro } from '../domain/alertas.js';
 
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
@@ -93,12 +93,14 @@ function bloqueResumen(rs, ult) {
 function bloqueAtencion(at, alertas, porVeh) {
   const nAlertas = alertas.length;
   const nuevas = sinReconocer(alertas);
+  const recuadro = partesRecuadro(alertas).map((p, i) => html`${i ? ' · ' : ''}${chip(p.color, p.texto, p.simbolo)}`);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
+    ${recuadro.length ? html`<p class="inicio-linea">${recuadro}</p>` : ''}
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
-    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta de desgaste límite sin reconocer', 'alertas de desgaste límite sin reconocer')}.</p>` : ''}
+    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta sin reconocer', 'alertas sin reconocer')}.</p>` : ''}
     <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
   </section>`;
 }
