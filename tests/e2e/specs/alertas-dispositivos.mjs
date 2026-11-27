@@ -31,9 +31,9 @@ export function registrar(env) {
         for (const pat of new Set(json(env, `select patente from public.vehiculos`).map(v => v.patente).filter(Boolean))) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
-        // Cada alerta muestra la etiqueta de su tipo junto a su matrícula (el swap lleva sus km: se compara por «Swap»).
+        // Cada alerta muestra la etiqueta de su tipo junto a su matrícula (la primera rotación lleva sus km: se compara por «Primera rotación»).
         for (const f of filas) {
-          const etiqueta = presentacionAlerta({ tipo: f.tipo }).etiqueta.replace(/^Swap .*/, 'Swap');
+          const etiqueta = presentacionAlerta({ tipo: f.tipo }).etiqueta.replace(/^Primera rotación .*/, 'Primera rotación');
           assert.ok(tabla.some(t => t.includes(f.patente) && t.includes(etiqueta)), `la alerta de ${f.patente} (${f.tipo}) no muestra «${etiqueta}»`);
         }
         // Cada alerta lleva al vehículo (acción). Resolver, reconocer y silenciar son de la empresa: el equipo Neumet (admin)

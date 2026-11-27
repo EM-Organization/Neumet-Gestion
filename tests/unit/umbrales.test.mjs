@@ -1,7 +1,7 @@
 // Tests de domain/umbrales.js (puro). Ejecutar: npm test
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { CAMPOS_UMBRAL, validarUmbrales, validarHisteresis, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
+import { CAMPOS_UMBRAL, camposBasicos, camposAvanzados, validarUmbrales, validarHisteresis, resumenFlota, aNumero } from '../../assets/js/domain/umbrales.js';
 
 const OK = { umbral_bajo_mm: '8', umbral_critico_mm: '5', alerta_histeresis_mm: '0,5', umbral_retiro_mm: '3', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '8', direccion_limite_mm: '6', caida_brusca_mm: '5', swap_km: '20000' };
 
@@ -57,6 +57,12 @@ describe('histéresis', () => {
     assert.equal(validarHisteresis('-1').ok, false);
     assert.equal(validarHisteresis('0,55').ok, false);
     assert.equal(validarHisteresis('').ok, false);
+  });
+  test('el error nombra el margen con la etiqueta nueva (la regex de smoke y e2e la sigue)', () => {
+    const v = validarUmbrales({ ...OK, alerta_histeresis_mm: '4' });
+    assert.equal(v.ok, false); assert.equal(v.campo, 'alerta_histeresis_mm');
+    assert.ok(v.error.startsWith('Margen para cerrar la alerta (mm)'), v.error);
+    assert.equal(validarHisteresis('4').error, 'Margen para cerrar la alerta (mm): va de 0 a 3 mm, con un decimal');
   });
   test('validarUmbrales la incluye: 0 vale; fuera de rango o vacía se rechaza con el campo', () => {
     assert.equal(validarUmbrales({ ...OK, alerta_histeresis_mm: '0' }).valores.alerta_histeresis_mm, 0);
@@ -119,6 +125,7 @@ describe('pasar atrás y swap (direccion_aviso_mm, direccion_limite_mm, swap_km)
       assert.equal(v.ok, false, s); assert.equal(v.campo, 'swap_km');
     }
     assert.match(validarUmbrales({ ...OK, swap_km: '999' }).error, /entero entre 1000 y 200000/);
+    assert.ok(validarUmbrales({ ...OK, swap_km: '999' }).error.startsWith('Primera rotación a los (km): entero entre 1000 y 200000'));
     assert.equal(validarUmbrales({ ...OK, swap_km: '1000' }).ok, true);
     assert.equal(validarUmbrales({ ...OK, swap_km: '200000' }).ok, true);
     assert.equal(validarUmbrales({ ...OK, swap_km: '' }).campo, 'swap_km');
@@ -129,8 +136,8 @@ describe('pasar atrás y swap (direccion_aviso_mm, direccion_limite_mm, swap_km)
     assert.equal(c('direccion_aviso_mm').ayuda, 'Cubiertas de dirección con esta huella mínima o menos');
     assert.equal(c('direccion_limite_mm').lbl, 'Pasar atrás ya bajo (mm)');
     assert.equal(c('direccion_limite_mm').ayuda, 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya');
-    assert.equal(c('swap_km').lbl, 'Swap a los (km)');
-    assert.equal(c('swap_km').ayuda, 'Primera rotación de una cubierta nueva');
+    assert.equal(c('swap_km').lbl, 'Primera rotación a los (km)');
+    assert.equal(c('swap_km').ayuda, 'Kilómetros desde el montaje de una cubierta nueva');
     assert.equal(CAMPOS_UMBRAL.some(x => x.key === 'km_por_mm_revision'), false);
   });
 });
@@ -148,7 +155,13 @@ describe('textos y orden de los campos (docs/14)', () => {
       assert.doesNotMatch(t, /"/, t);
       assert.doesNotMatch(t, /[<>]/, t);
     }
-    assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').lbl, 'Histéresis de alerta (mm)');
+    assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').lbl, 'Margen para cerrar la alerta (mm)');
+  });
+  test('ni etiqueta ni ayuda usan la jerga técnica (histéresis, swap)', () => {
+    for (const c of CAMPOS_UMBRAL) {
+      assert.doesNotMatch(c.lbl, /hist[eé]resis|swap/i, c.lbl);
+      assert.doesNotMatch(c.ayuda, /hist[eé]resis|swap/i, c.ayuda);
+    }
   });
   test('días sin medir es indicador, no alerta', () => {
     const c = CAMPOS_UMBRAL.find(c => c.key === 'dias_sin_medir_alerta');
@@ -165,6 +178,17 @@ describe('textos y orden de los campos (docs/14)', () => {
     assert.ok(labels.some(t => /Buen estado desde/.test(t)));
     assert.ok(labels.some(t => /Poco desgaste/.test(t)));
     assert.ok(labels.some(t => /Mayor desgaste/.test(t)));
+  });
+});
+
+describe('a la vista y ajustes avanzados (T5)', () => {
+  test('a la vista solo los tres umbrales de desgaste, en orden de mayor a menor', () => {
+    assert.deepEqual(camposBasicos().map(c => c.key), ['umbral_bajo_mm', 'umbral_critico_mm', 'umbral_retiro_mm']);
+  });
+  test('los demás campos van en avanzados, y el conjunto suma todos los campos', () => {
+    assert.equal(camposAvanzados().length, 7);
+    assert.deepEqual(camposAvanzados().map(c => c.key), ['alerta_histeresis_mm', 'dias_sin_medir_alerta', 'irregularidad_mm', 'direccion_aviso_mm', 'direccion_limite_mm', 'caida_brusca_mm', 'swap_km']);
+    assert.equal(camposBasicos().length + camposAvanzados().length, CAMPOS_UMBRAL.length);
   });
 });
 
