@@ -3,14 +3,14 @@
 // el costo de la vista y «Registrar costo» escribe por la RPC y se refleja. Crea un vehículo propio y lo borra.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, irA, dormir, abrirDetallePorMatricula } from '../lib/flujo.mjs';
+import { flujo, irA, dormir, abrirDetallePorMatricula, abrirVerMas } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
 
 const get = (p, tabla, query = '') => p.eval(`fetch('/rest/v1/${tabla}?${query}&limit=1000', { headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x' } })
   .then(async r => ({ status: r.status, filas: r.ok ? await r.json() : [] }))`);
 const sinAuth = (p, tabla) => p.eval(`fetch('/rest/v1/${tabla}?select=neumatico_id', { headers: { apikey: 'x' } }).then(r => r.status)`);
 const rpc = (p, nombre, args) => p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.rpc('${nombre}', ${JSON.stringify(args)})).then(r => ({ data: r.data, code: r.error && r.error.code }))`);
-const panel = p => p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
+const panel = async p => { await abrirVerMas(p); return p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`); };
 
 export function registrar(env) {
   test('Costos y CPK: cada rol ve en la API solo lo permitido; sucursal, otro cliente, sin perfil, api y anon, nada', async () => {

@@ -34,27 +34,28 @@ export function filtrarPorEstadoAlerta(alertas, estado = '', ahora = Date.now())
 export const sinReconocer = (alertas, ahora = Date.now()) => contarPorEstadoAlerta(alertas, ahora).abierta;
 
 // Presentación de cada tipo de v_alertas (columnas tipo y color). La alerta roja es `limite`: así lo fija alertas_tipo_ck en la base.
-// Rojo solo para lo crítico (neumático en desgaste límite); lo demás es amarillo y lleva ◆. Nunca ▲: ya significa «Poco
-// desgaste» y «N bajos» (docs/14 §3).
-export const SIMBOLO_REVISAR = '◆';
+// Rojo solo para lo crítico (neumático en desgaste límite); lo demás es amarillo y lleva ◎. Nunca ▲ («Poco desgaste»,
+// «N bajos») ni ◆ («Mayor desgaste»): un símbolo, un significado (docs/14 §3).
+export const SIMBOLO_REVISAR = '◎';
 export const PRESENTACION_ALERTA = Object.freeze({
   limite: { etiqueta: ESTADOS.limite.texto, simbolo: ESTADOS.limite.simbolo, color: 'red', accion: 'Cambiar' },
   direccion_aviso: { etiqueta: 'Pasar atrás', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   direccion_limite: { etiqueta: 'Pasar atrás ya', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   irregular: { etiqueta: 'Desgaste irregular', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   lateral: { etiqueta: 'Desgaste lateral', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
-  swap: { etiqueta: 'Swap', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  // `swap` es el valor guardado en la base (alertas_tipo_ck): no se renombra. En pantalla es «Primera rotación» (docs/14 §3).
+  swap: { etiqueta: 'Primera rotación', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
 });
 
 // Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo como «Revisar». El mensaje no va en
 // la etiqueta: la columna Mensaje ya lo muestra al lado (detalleAlerta), y como etiqueta se repetía.
-// El swap nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Swap» a secas, sin inventar una cifra.
+// La primera rotación nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Primera rotación» a secas, sin inventar una cifra.
 export function presentacionAlerta(a) {
   if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) {
     const p = PRESENTACION_ALERTA[a.tipo];
     const km = Number(a.umbral_km);
-    if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Swap a ${fmtNum(km)} km` };
+    if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Primera rotación a ${fmtNum(km)} km` };
     return p;
   }
   return { etiqueta: 'Revisar', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
@@ -66,6 +67,12 @@ export function presentacionAlerta(a) {
 // Sin prefijo, el texto queda igual; sin mensaje, da cadena vacía.
 const PREFIJO_MENSAJE_BASE = Object.freeze({ lateral: 'Revisar alineación' });
 export function detalleAlerta(a) {
+  // El mensaje de la base para la primera rotación es jerga («Hacer el swap: …») y repite el umbral que ya dice el chip:
+  // el detalle se compone con los km del tramo, o queda vacío si no hay dato.
+  if (a && a.tipo === 'swap') {
+    const km = a.km_actual == null || a.km_actual === '' ? NaN : Number(a.km_actual);
+    return Number.isFinite(km) ? `${fmtNum(km)} km desde el montaje` : '';
+  }
   const mensaje = String((a && a.mensaje) ?? '');
   const prefijos = [`${presentacionAlerta(a).etiqueta}:`];
   if (a && PREFIJO_MENSAJE_BASE[a.tipo]) prefijos.push(`${PREFIJO_MENSAJE_BASE[a.tipo]}:`);
@@ -73,7 +80,7 @@ export function detalleAlerta(a) {
   return prefijo ? mensaje.slice(prefijo.length).trim() : mensaje;
 }
 
-// Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
+// Recuadro de Inicio y del detalle: «× N cambiar · ◎ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
 // «Cambiar» es el neumático en desgaste límite (tipo `limite` o color rojo de la base); el resto, «revisar».
 export function conteoRecuadro(alertas, ahora = Date.now()) {
   const c = { cambiar: 0, revisar: 0 };
@@ -85,17 +92,30 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
   return c;
 }
 
-// Partes del recuadro «× N cambiar · ◆ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
-// (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero va en gris, así el rojo queda para
-// lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
+// Partes del recuadro «× N cambiar · ◎ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
+// (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero no se muestra: «× 2 cambiar» sin
+// «0 revisar», y el rojo queda para lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
 export function partesRecuadro(alertas, ahora = Date.now()) {
   const { cambiar, revisar } = conteoRecuadro(alertas, ahora);
-  if (!cambiar && !revisar) return [];
   const { simbolo, accion, color } = presentacionAlerta({ tipo: 'limite' });
-  return [
-    { color: cambiar ? color : 'gray', simbolo, texto: `${cambiar} ${accion.toLowerCase()}` },
-    { color: revisar ? 'orange' : 'gray', simbolo: SIMBOLO_REVISAR, texto: `${revisar} revisar` },
-  ];
+  const partes = [];
+  if (cambiar) partes.push({ color, simbolo, texto: `${cambiar} ${accion.toLowerCase()}` });
+  if (revisar) partes.push({ color: 'orange', simbolo: SIMBOLO_REVISAR, texto: `${revisar} revisar` });
+  return partes;
+}
+
+// Tiempo desde que la alerta quedó abierta, en español («hace 3 días»). `ahora` va como parámetro para probarlo sin el reloj.
+// Sin fecha, «–».
+export function tiempoRelativo(iso, ahora = Date.now()) {
+  const t = ts(iso);
+  if (t === null) return '–';
+  const min = Math.floor((ahora - t) / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'hace 1 día' : `hace ${d} días`;
 }
 
 export function hastaSilencio(dias = DIAS_SILENCIO, ahora = Date.now()) {

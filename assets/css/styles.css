@@ -550,45 +550,42 @@
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
 .vd-cab { margin-bottom: 18px; }
 .vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-/* Acciones de la cabecera (docs/21 §5.7): grupo a la derecha del título, alto 40; la destructiva va última, en rojo y separada.
-   Solo CSS (no se tocan los botones del markup): «Distribución y servicio» empuja el grupo a la derecha; Eliminar, si lo sigue, deja 24 px. */
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"], .vd-cab-titulo > .vd-cab-eliminar { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] { margin-left: auto; }
-.vd-cab-titulo > .vd-cab-eliminar { margin-left: auto; border-color: var(--err); color: var(--err-on-white); }
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] + .vd-cab-eliminar { margin-left: 12px; }
-.vd-cab-titulo > .vd-cab-eliminar:hover:not(:disabled) { background: var(--err-tint); }
-.vd-cab-titulo > .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
+/* Acciones de la cabecera (docs/21 §5.7): «Registrar alineación» y el menú «Más», a la derecha de la fila del título. Ningún botón destructivo aquí: eso va en el menú. */
+.vd-cab-acciones { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.vd-cab-acciones .btn { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
+.vd-cab-titulo .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
 .vd-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
 .vd-datos dt { font-size: 12px; color: var(--text-secondary); }
 .vd-datos dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.vd-layout { display: grid; grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.vd-layout { display: grid; grid-template-columns: minmax(300px, 432px) minmax(300px, 1fr); gap: 20px; align-items: start; }
 .vd-layout > * { min-width: 0; }
 /* Tarjeta fija bajo la barra superior (docs/21 §6); solo si no cabe, su propio contenido se desplaza. */
 .vd-diagrama-card { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); overflow-y: auto; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .vd-panel { scroll-margin-top: calc(var(--vd-topbar) + 16px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
-.vd-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.vd-resumen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 /* Chips de estado: leyenda y filtro a la vez (docs/21 §5.1). Alto 32, radio 16, borde 1,5; el estado lo dicen símbolo y texto, no el color. */
-.vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.vd-chip .vd-chip-rango { font-weight: 400; color: var(--n-oliva); }
+.vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .vd-chip .vd-chip-sim { font-weight: 800; }
+/* Leyenda en dos filas de tres chips dentro de la columna del diagrama (1280x720). */
+#vd-resumen .vd-chip { font-size: 12px; padding: 0 6px; gap: 4px; }
 .vd-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--n-oscuro); }
 .vd-chip-flag { border-color: var(--n-oscuro); }
 .vd-chip:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
 .est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
-.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); } .est-limite { background: var(--est-limite-fill); border-color: var(--est-limite-stroke); }
 .est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
 .vd-chip.est-bueno .vd-chip-sim, .vd-tag.est-bueno .vd-chip-sim { color: var(--est-bueno-sym); }
 .vd-chip.est-poco .vd-chip-sim, .vd-tag.est-poco .vd-chip-sim { color: var(--est-poco-sym); }
-.vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); }
+.vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); } .vd-chip.est-limite .vd-chip-sim, .vd-tag.est-limite .vd-chip-sim { color: var(--est-limite-sym); }
 .vd-chip-rayas { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: repeating-linear-gradient(45deg, var(--est-sinDatos-fill) 0 5px, var(--est-hatch) 5px 6px); border: 1px dashed var(--est-sinDatos-stroke); }
 .vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: var(--n-blanco); font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
 /* Etiqueta de estado (panel y título): mismo estilo que el chip, alto 28, sin conteo ni rango. */
 .vd-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); font-size: 13px; font-weight: 600; color: var(--n-oscuro); background: var(--surface); }
 .vd-tag.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
 .vd-tag.est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
-.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); } .vd-tag.est-limite { background: var(--est-limite-fill); border-color: var(--est-limite-stroke); }
 .vd-tag.est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
 .vd-tag.vd-tag-flag { border-color: var(--n-oscuro); background: var(--surface); }
 .vd-tag .vd-chip-sim { font-weight: 800; }
@@ -604,11 +601,11 @@
 .vd-rueda rect.vd-goma { stroke-width: 2; }
 .vd-rueda.est-bueno rect.vd-goma { fill: var(--est-bueno-fill); stroke: var(--est-bueno-stroke); }
 .vd-rueda.est-poco rect.vd-goma { fill: var(--est-poco-fill); stroke: var(--est-poco-stroke); }
-.vd-rueda.est-mayor rect.vd-goma { fill: var(--est-mayor-fill); stroke: var(--est-mayor-stroke); }
+.vd-rueda.est-mayor rect.vd-goma { fill: var(--est-mayor-fill); stroke: var(--est-mayor-stroke); } .vd-rueda.est-limite rect.vd-goma { fill: var(--est-limite-fill); stroke: var(--est-limite-stroke); }
 .vd-rueda.est-sinDatos rect.vd-goma { fill: url(#vd-sin-datos); stroke: var(--est-sinDatos-stroke); stroke-dasharray: 4 3; }
 .vd-rueda.est-bueno .vd-sim { fill: var(--est-bueno-sym); }
 .vd-rueda.est-poco .vd-sim { fill: var(--est-poco-sym); }
-.vd-rueda.est-mayor .vd-sim { fill: var(--est-mayor-sym); }
+.vd-rueda.est-mayor .vd-sim { fill: var(--est-mayor-sym); } .vd-rueda.est-limite .vd-sim { fill: var(--est-limite-sym); }
 .vd-rueda.est-sinDatos .vd-sim { fill: var(--est-sinDatos-sym); }
 .vd-rueda:hover rect.vd-goma { stroke-width: 2.6; }
 .vd-rueda:focus-visible rect.vd-goma { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
@@ -641,6 +638,9 @@
 .vd-p-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .vd-p-estado { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
 .vd-p-razon { font-size: 13px; background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--text-primary); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.vd-p-linea { display: block; margin-top: 2px; }
+.vd-mas { margin-top: 8px; }
+.vd-mas > summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 36px; display: flex; align-items: center; }
 .vd-panel h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin: 16px 0 6px; }
 .vd-mm-tabla { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
 .vd-mm-tabla th, .vd-mm-tabla td { padding: 4px 2px; overflow-wrap: anywhere; text-align: center; font-variant-numeric: tabular-nums; }
@@ -654,12 +654,12 @@
 .vd-g-grid { stroke: rgba(56,52,36,0.10); stroke-width: 1; }
 .vd-g-eje { fill: var(--n-oliva); font-size: 11px; font-family: var(--font); }
 .vd-g-banda { fill-opacity: 0.55; stroke: none; }
-.vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }
+.vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }  .vd-g-banda.est-limite { fill: var(--est-limite-fill); }
 .vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }
+.vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }  .vd-g-rotulo.est-limite { fill: var(--est-limite-sym); }
 .vd-g-serie { fill: none; stroke: var(--n-oscuro); stroke-width: 2; stroke-linejoin: round; }
 .vd-g-punto { stroke: var(--n-blanco); stroke-width: 2; }
-.vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
+.vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); }  .vd-g-punto.est-limite { fill: var(--est-limite-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
 .vd-datos-det { margin-top: 8px; font-size: 13px; }
 .vd-datos-scroll { max-width: 100%; overflow-x: auto; }
 .vd-datos-det summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
@@ -669,6 +669,18 @@
 .vd-p-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .vd-pie { flex: none; background: var(--surface); margin: 12px -20px -20px; padding: 12px 20px 16px; border-top: 1px solid var(--border); }
 .vd-panel-backdrop { display: none; }
+/* Escritorio: el panel se queda a la vista al desplazar la ficha, con las acciones en un pie fijo (fuera del desplazamiento).
+   Solo desde 861 px: en móvil el panel es la hoja inferior de la regla de abajo. */
+@media (min-width: 861px) {
+  .vd-panel { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); display: flex; flex-direction: column; }
+  #vd-panel-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .vd-p-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  /* La ficha ocupa lo que queda bajo la barra superior (28 px de margen arriba y 28 abajo, el padding de la página):
+     el pie del panel queda a la vista sin desplazar la página. El desplazamiento lo lleva el panel, no la página. */
+  #view-vehiculo-detalle.active { display: flex; flex-direction: column; height: calc(100vh - var(--vd-topbar) - 56px); }
+  #view-vehiculo-detalle.active > .vd-layout { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  #view-vehiculo-detalle.active .vd-diagrama-card { max-height: 100%; }
+}
 @media (max-width: 860px) {
   .vd-layout { grid-template-columns: 1fr; }
   .vd-diagrama-card { position: static; align-self: auto; }
@@ -732,7 +744,7 @@
 .inicio-punto.mayor { background: var(--warning); }
 .inicio-punto.critico { background: var(--danger); }
 .inicio-punto.limite { background: var(--danger); }
-.inicio-punto.sin, .inicio-punto.cero { background: #d3cfbd; }
+.inicio-punto.sin { background: #d3cfbd; }
 .inicio-punto.neutral { background: #d3cfbd; }
 .inicio-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .inicio-cols { margin-bottom: 16px; }
@@ -761,19 +773,22 @@
 .busq input:focus { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); }
 .busq-atajo { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 12px var(--font-mono); color: var(--text-tertiary); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; pointer-events: none; }
 .busq input:focus ~ .busq-atajo { display: none; }
-.busq-grande { flex: none; width: 100%; max-width: 640px; margin: 0 auto; }
-.busq-grande input { font-size: 18px; padding: 16px 16px 16px 48px; border-radius: 12px; border-color: var(--border-strong); box-shadow: 0 1px 2px rgba(56,52,36,0.08); }
-.busq-grande > svg { left: 16px; width: 20px; height: 20px; }
-/* Buscador de Inicio: bloque propio, centrado y más alto que las tarjetas que siguen */
-.inicio-hero { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 16px; padding: 28px 24px 32px; margin: 4px 0 32px; text-align: center; }
-.inicio-hero-tit { display: block; font-size: 15px; font-weight: 600; color: var(--text-secondary); margin: 0 0 12px; }
-@media (max-width: 760px) { .inicio-hero { padding: 18px 12px 20px; margin-bottom: 24px; } .busq-grande input { font-size: 15px; padding: 14px 10px 14px 40px; } .busq-grande > svg { left: 13px; width: 18px; height: 18px; } }
 .busq-resultados { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 50; list-style: none; margin: 0; padding: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(56,52,36,0.16); max-height: 360px; overflow-y: auto; }
 .busq-resultados[hidden] { display: none; }
 .ficha-card[hidden] { display: none; }
 .alert-acciones { display:flex; gap:6px; flex-wrap:wrap; }
 /* Seis columnas con acciones: con el relleno general (16 px) la tabla mide ~700 px y a 940 px de pantalla las acciones se salían de la tarjeta (con la barra lateral quedan 656 px). */
 .alert-tabla th, .alert-tabla td { padding-left: 8px; padding-right: 8px; }
+/* La fila entera abre la ficha de su vehículo (views/alertas.js, abrirFila): el cursor lo dice. */
+.alert-tabla tbody tr { cursor: pointer; }
+.alert-tabla td { padding-top: 8px; padding-bottom: 8px; }
+/* Vehículo y posición en dos líneas: el mini va a la izquierda y más bajo, así la fila no apila tres renglones. */
+.alert-vp { gap: 8px; }
+.alert-tabla .alert-vp .mini-veh { height: 36px; }
+.alert-pos { font-size: 13px; color: var(--text-secondary); }
+/* El vehículo abre su ficha: se ve como enlace, no como botón con el borde del navegador, y conserva el foco visible. */
+.alert-veh { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.alert-veh:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; border-radius: 2px; }
 /* El chip de tipo va en .alerta-tipo: sin salto, «Desgaste límite» no se parte en dos líneas en el móvil. Va aquí y no en .badge, que es de todas las vistas. */
 .alerta-tipo { white-space: nowrap; }
 @media (max-width: 640px) {
@@ -794,7 +809,7 @@
 .busq-msg { padding: 10px; font-size: 13px; color: var(--text-secondary); }
 .busq-reintentar { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent-dark); text-decoration: underline; cursor: pointer; }
 /* En Inicio y en Vehículos el buscador propio de la pantalla reemplaza al de la barra */
-#contenido[data-vista="inicio"] .busq-barra, #contenido[data-vista="vehiculos"] .busq-barra { display: none; }
+#contenido[data-vista="vehiculos"] .busq-barra { display: none; }
 .topbar { gap: 12px; }
 .topbar .busq-barra { margin-left: auto; }
 .sec-selector { flex: none; }
@@ -817,15 +832,6 @@
   .breadcrumb-parent, .breadcrumb-sep { display: none; }
 }
 
-/* ── Inicio: últimas mediciones (comparativa por neumático; color solo de apoyo, siempre con el número) ── */
-.um-neus { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 20px; }
-.inicio-lista .um-neu + .um-neu { border-top: 0; }
-.um-neu { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 0; }
-.um-pos { flex: 1 1 150px; color: var(--text-secondary); }
-.um-mm { color: var(--text-primary); white-space: nowrap; }
-.um-dif { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
-.um-dif.alto { color: var(--warning); }
-.um-sin { color: var(--text-secondary); }
 
 /* ── Mini vehículo (reemplaza las etiquetas «P1, P2…»): ruedas por desgaste, la señalada con trazo oscuro ── */
 .mini-veh { height: 84px; width: auto; flex: none; display: block; }
@@ -834,16 +840,15 @@
 .mv-sd { fill: #e4e1d2; }
 .mv-aus { fill: none; stroke: #c9c5b0; stroke-width: 2; stroke-dasharray: 5 4; }
 .mv-dest { stroke: #383424; stroke-width: 7; }
-.inicio-fila-mini { gap: 8px 14px; flex-wrap: wrap; padding: 12px 4px; cursor: default; }
+.inicio-fila-mini { gap: 8px 14px; flex-wrap: wrap; padding: 8px 4px; cursor: default; }
+/* En las listas de Inicio el mini acompaña al texto (tres renglones): a la altura de este, la fila no pasa de ~72 px y entra más de lo urgente. */
+.inicio-fila-mini .mini-veh { height: 56px; }
 .inicio-fila-mini:hover { background: none; }
 .inicio-fila-mini .inicio-fila-txt { flex: 1 1 160px; }
 .inicio-fila-pos { font-size: 13px; color: var(--text-primary); }
 .inicio-ver { flex: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-dark); cursor: pointer; white-space: nowrap; }
 .inicio-ver:hover { background: var(--surface-2); }
 .inicio-ver:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
-.um-fila { padding: 12px 4px; }
-.um-cab { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
-.um-cab .inicio-fila-txt { flex: 1 1 160px; }
 .pos-mini { display: flex; align-items: center; gap: 10px; }
 .pos-mini .mini-veh { height: 52px; }
 @media (max-width: 480px) { .inicio-fila-mini .inicio-ver { margin-left: 0; } }
@@ -944,7 +949,6 @@
 .menu-mas-item:focus-visible, .menu-mas-btn:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
 .menu-mas-item.menu-mas-del { color: var(--text-secondary); }
 .menu-mas-item.menu-mas-del:hover, .menu-mas-item.menu-mas-del:focus-visible { background: var(--danger-bg); color: var(--danger); }
-.alert-ver { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
 /* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
 .th-natural th { text-transform: none; letter-spacing: normal; }
 

@@ -1,9 +1,10 @@
-// Inicio: panel de decisión. Buscador de vehículos, proporciones de la flota, vehículos que requieren atención y
-// próximos cambios y últimas mediciones, con enlace directo al detalle de cada vehículo. Usa las vistas SQL v_estado_neumaticos,
+// Inicio: panel de decisión. Lo urgente arriba (requieren atención, próximos cambios), el resumen de la flota, las últimas
+// mediciones y enlace directo al detalle de cada vehículo. El buscador de vehículos es el de la barra superior. Usa las vistas SQL v_estado_neumaticos,
 // v_alertas y v_salud_dispositivos y la función ultimas_mediciones (security invoker: la RLS decide qué ve cada rol; la
 // sucursal elegida se aplica además aquí). Los dispositivos solo se gestionan desde administración.
 import { tipoLayout } from '../domain/distribucion.js';
-import { ESTADOS } from '../domain/estado-desgaste.js';
+import { ESTADOS, estadoDeBase } from '../domain/estado-desgaste.js';
+import { estadoContable } from '../domain/auxilio.js';
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, relDate, setStatus } from '../core/ui.js';
@@ -16,7 +17,7 @@ import { chip, estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../co
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
-  clientesConUrgencias, textoSemanas, ultimasMediciones, MAX_ULTIMAS,
+  clientesConUrgencias, textoSemanas, ultimasMediciones, MAX_ULTIMAS, cifrasVisibles, peorCambio, desgasteAlto, ruedaParaVer,
 } from '../domain/inicio.js';
 import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -27,12 +28,11 @@ import { sinReconocer, partesRecuadro } from '../domain/alertas.js';
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
 
-const verVehiculo = id => JSON.stringify([id]);
 const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '');
 
 // Botón «Ver coche 106»: abre el detalle del vehículo y, si se indica, deja seleccionada esa rueda.
 const textoVer = nombre => { const t = etiquetaCoche(nombre); return /^Coche /.test(t) ? `Ver coche ${t.slice(6)}` : 'Ver vehículo'; };
-const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-action="verVehiculo" data-args="${JSON.stringify(pos == null ? [v.vehiculo_id] : [v.vehiculo_id, pos])}">${textoVer(v.nombre)}</button>`;
+const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-action="verVehiculo" data-args="${JSON.stringify(pos === null || pos === undefined ? [v.vehiculo_id] : [v.vehiculo_id, pos])}">${textoVer(v.nombre)}</button>`;
 
 // Mini vehículo de un vehículo con sus ruedas coloreadas; `filas` = v_estado_neumaticos de ese vehículo.
 // tipo_ruedas por vehículo (el estado de neumáticos no lo trae): define el chasis dibujado y el nombre de la posición.
@@ -76,23 +76,33 @@ const cifra = (cls, n, etiqueta) => html`<li class="inicio-cifra"><span class="i
 
 const bajo = e => e.texto.toLowerCase();
 
+// Una cifra por estado, por clave de resumenNeumaticos. Las que valen 0 no se dibujan (cifrasVisibles, domain/inicio.js).
+const cifrasDe = rs => ({
+  nuevo: cifra('ok', rs.nuevo, bajo(ESTADOS.bueno)),
+  poco_desgaste: cifra('bajo', rs.poco_desgaste, bajo(ESTADOS.poco)),
+  mayor_desgaste: cifra('mayor', rs.mayor_desgaste, bajo(ESTADOS.mayor)),
+  desgaste_limite: cifra('limite', rs.desgaste_limite, bajo(ESTADOS.limite)),
+  desconocido: cifra('neutral', rs.desconocido, bajo(ESTADOS.sinDatos)),
+});
+
 function bloqueResumen(rs, ult) {
   const buenos = rs.nuevo + rs.poco_desgaste;
   // «en buen estado o con poco desgaste»: la suma lleva «con» antes del segundo nombre.
   const buenoOPoco = `${ESTADOS.bueno.texto.toLowerCase()} o con ${ESTADOS.poco.texto.toLowerCase()}`;
   const frase = buenos === rs.total ? `Los ${fmtNum(rs.total)} neumáticos están en ${buenoOPoco}` : `${fmtNum(buenos)} de ${fmtNum(rs.total)} neumáticos están en ${buenoOPoco}`;
+  const { claves, vacio } = cifrasVisibles(rs);
+  const cifras = cifrasDe(rs);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-resumen">
     <div class="inicio-resumen-cab"><h3 id="inicio-h-resumen" class="inicio-h">${frase}</h3>
       ${ult ? html`<span class="inicio-meta">Última medición ${relDate(ult)}</span>` : ''}</div>
     <div class="inicio-barra" role="img" aria-label="${`${ESTADOS.bueno.texto} ${rs.nuevo}, ${bajo(ESTADOS.poco)} ${rs.poco_desgaste}, ${bajo(ESTADOS.mayor)} ${rs.mayor_desgaste}, ${bajo(ESTADOS.limite)} ${rs.desgaste_limite}, ${bajo(ESTADOS.sinDatos)} ${rs.desconocido}`}">
       ${segmento('ok', rs.pct.nuevo, ESTADOS.bueno.texto)}${segmento('bajo', rs.pct.poco_desgaste, ESTADOS.poco.texto)}${segmento('mayor', rs.pct.mayor_desgaste, ESTADOS.mayor.texto)}${segmento('limite', rs.pct.desgaste_limite, ESTADOS.limite.texto)}${segmento('neutral', rs.pct.desconocido, ESTADOS.sinDatos.texto)}</div>
-    <ul class="inicio-cifras">${cifra('ok', rs.nuevo, bajo(ESTADOS.bueno))}${cifra('bajo', rs.poco_desgaste, bajo(ESTADOS.poco))}${cifra('mayor', rs.mayor_desgaste, bajo(ESTADOS.mayor))}${cifra(rs.desgaste_limite ? 'limite' : 'cero', rs.desgaste_limite, bajo(ESTADOS.limite))}${cifra('neutral', rs.desconocido, bajo(ESTADOS.sinDatos))}</ul>
+    ${vacio ? html`<p class="inicio-linea">Sin neumáticos medidos</p>` : html`<ul class="inicio-cifras">${joinHtml(claves.map(k => cifras[k]))}</ul>`}
   </section>`;
 }
 
 function bloqueAtencion(at, alertas, porVeh) {
-  const nAlertas = alertas.length;
-  const nuevas = sinReconocer(alertas);
+  const abiertas = sinReconocer(alertas);
   const recuadro = partesRecuadro(alertas).map((p, i) => html`${i ? ' · ' : ''}${chip(p.color, p.texto, p.simbolo)}`);
   return html`<section class="inicio-card" aria-labelledby="inicio-h-atencion">
     <h3 id="inicio-h-atencion" class="inicio-h">Requieren atención</h3>
@@ -100,8 +110,7 @@ function bloqueAtencion(at, alertas, porVeh) {
     ${at.items.length
       ? html`<ul class="inicio-lista">${joinHtml(at.items.map(v => filaAtencion(v, porVeh)))}</ul>${at.total > at.items.length ? html`<p class="inicio-meta">${at.total - at.items.length} más en Alertas.</p>` : ''}`
       : estadoVacio('Ningún vehículo requiere atención.')}
-    ${nuevas ? html`<p class="inicio-meta">${plural(nuevas, 'alerta sin reconocer', 'alertas sin reconocer')}.</p>` : ''}
-    <button type="button" class="inicio-enlace" data-action="irA" data-args='["alertas"]'>Ver todas las alertas${nAlertas ? ` (${fmtNum(nAlertas)})` : ''} ›</button>
+    <button type="button" class="inicio-enlace" data-action="alertasVerAbiertas">Ver alertas abiertas (${fmtNum(abiertas)}) ›</button>
   </section>`;
 }
 
@@ -125,25 +134,38 @@ function lineaDispositivos(d, cliente) {
 const signo = dif => (dif > 0 ? '+' : dif < 0 ? '\u2212' : '');
 const textoDif = dif => `${signo(dif)}${fmtNum(Math.abs(dif), 1)}`;
 
-function neumaticoMedido(n, id) {
-  const c = n.comparativa;
-  return html`<li class="um-neu"><span class="um-pos">${nombrePosicion(n.posicion, tipoDe(id))}</span>${c
-    ? html`<span class="um-mm">Promedio ${fmtNum(c.antes, 1)} → ${fmtNum(c.ahora, 1)} mm (informativo)</span><span class="um-dif ${c.nivel}">${c.nivel === 'alto' ? html`<span class="sr-only">Desgaste alto: </span>` : ''}${textoDif(c.dif)}</span>`
-    : html`<span class="um-mm">Promedio ${fmtNum(n.mm, 1)} mm (informativo)</span><span class="um-sin">Sin previa</span>`}</li>`;
+// Una fila por vehículo: su peor cambio (posición, estado y caída en mm), el desgaste alto si lo hubo y la fecha de la medición.
+// «Ver coche N» abre la ficha con la rueda de ruedaParaVer seleccionada. Los mm son promedios de la visita, no huellas: por eso el bloque lleva el «(informativo)».
+const textoPeorCambio = (p, tipo) => [
+  nombrePosicion(p.posicion, tipo), ESTADOS[p.estado].texto,
+  p.comparativa ? `${textoDif(p.comparativa.dif)} mm` : 'Sin medición previa',
+].join(' · ');
+
+// Desgaste alto escrito, nunca solo con color: en la misma rueda del peor cambio basta la marca; en otra, se nombra con su caída.
+function textoAlto(a, peor, tipo) {
+  const mas = n => `${n} ${n === 1 ? 'rueda' : 'ruedas'} más`;
+  if (peor && a.posicion === peor.posicion) return `Desgaste alto${a.otras ? `, también en ${mas(a.otras)}` : ''}`;
+  return `Desgaste alto en ${nombrePosicion(a.posicion, tipo)} (${textoDif(-a.caida)} mm)${a.otras ? ` y ${mas(a.otras)}` : ''}`;
 }
 
 function filaMedida(v, porVeh) {
   // Colores del estado actual del vehículo (v_estado_neumaticos, con las tres huellas). Si el vehículo no tiene filas ahí,
   // solo se conoce la posición: no hay huellas, así que no hay mínimo ni estado y el mini sale sin color (RN-01).
-  // El valor de la visita (ultimas_mediciones.mm_ahora) es un promedio: se muestra rotulado como informativo, nunca como huella.
-  const filas = porVeh.get(v.vehiculo_id) || v.neumaticos.map(n => ({ posicion: n.posicion }));
+  const filasEstado = porVeh.get(v.vehiculo_id) || [];
+  const filas = filasEstado.length ? filasEstado : v.neumaticos.map(n => ({ posicion: n.posicion }));
+  const estadoDe = pos => {
+    const f = filasEstado.find(x => Number(x.posicion) === Number(pos));
+    return f ? estadoDeBase(estadoContable(f)) : 'sinDatos';
+  };
+  const peor = peorCambio(v.neumaticos.map(n => ({ posicion: n.posicion, estado: estadoDe(n.posicion), comparativa: n.comparativa })));
+  const alto = desgasteAlto(v.neumaticos);
+  const tipo = tipoDe(v.vehiculo_id);
+  const detalle = [peor ? textoPeorCambio(peor, tipo) : '', alto ? textoAlto(alto, peor, tipo) : ''].filter(Boolean).join(' · ');
+  // La primera destacada es la que «Ver vehículo» preselecciona (ruedaParaVer).
+  const ver = ruedaParaVer(peor, alto);
+  const destacadas = ver === null ? [] : [...new Set([ver, peor ? peor.posicion : ver])];
   const coche = v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : '';
-  return html`<li class="um-fila">
-    <div class="um-cab">${miniDe(filas, [], v.vehiculo_id)}
-      <div class="inicio-fila-txt"><span class="inicio-fila-nom">${etiquetaCoche(v.nombre)} ${matricula(v.patente)}</span>
-        <span class="inicio-fila-causa">${coche}${fmtFecha(v.medido_at)}</span></div>
-      ${botonVer(v, null)}</div>
-    <ul class="um-neus">${joinHtml(v.neumaticos.map(n => neumaticoMedido(n, v.vehiculo_id)))}</ul></li>`;
+  return filaMini(v, filas, { destacadas, detalle, pos: `${coche}${fmtFecha(v.medido_at)}` });
 }
 
 // `ultimas` = filas de ultimas_mediciones; null si la consulta falló (el resto de Inicio sigue mostrándose).
@@ -158,7 +180,7 @@ function bloqueUltimas(ultimas, porVeh) {
     <h3 id="inicio-h-ultimas" class="inicio-h">Últimas mediciones</h3>
     ${ultimas === null ? estadoError('', 'loadInicio')
       : lista.length ? html`<ul class="inicio-lista">${joinHtml(lista.map(v => filaMedida(v, porVeh)))}</ul>
-        <p class="inicio-meta">Medición anterior → última · diferencia en mm.</p>`
+        <p class="inicio-meta">Peor cambio de cada vehículo frente a su medición anterior, en mm de promedio (informativo).</p>`
       : vacioFiltrado('Sin mediciones registradas')}
   </section>`;
 }
@@ -169,34 +191,41 @@ function avisoRevision(n) {
   return t ? html`<p class="inicio-aviso" role="status">${t}. <button type="button" class="inicio-enlace" data-action="irA" data-args='["calidad"]'>Revisar ›</button></p>` : '';
 }
 
+// Orden: Requieren atención (todo el ancho), aviso de revisión, Próximos cambios y resumen de la flota (dos columnas),
+// Últimas mediciones y, al final, clientes y dispositivos.
 export function render(datos) {
-  return html`${avisoRevision(datos.revision)}${renderContenido(datos)}`;
+  tipos = datos.tiposRuedas || new Map();
+  filtroSucursal = datos.sucursal || '';
+  const estado = estadoInicio(datos);
+  if (estado !== 'con_datos') return html`${avisoRevision(datos.revision)}${estadoSinFlota(datos, estado)}`;
+  return contenidoFlota(datos);
 }
 
-function renderContenido({ estadoRows, alertas, salud, resumen, vehiculosTotal = 0, ultimas = [], tiposRuedas = new Map(), sucursal = '' }) {
-  tipos = tiposRuedas;
-  filtroSucursal = sucursal;
+// Estados sin neumáticos que mostrar: sin vehículos, o con vehículos pero sin mediciones.
+function estadoSinFlota({ vehiculosTotal = 0 }, estado) {
   const cliente = isClienteMode();
-  const estado = estadoInicio({ vehiculosTotal, estadoRows, alertas, salud });
   if (estado === 'vacio') {
     if (filtroSucursal) return vacioFiltrado('Sin vehículos registrados');
     return estadoVacio('Sin vehículos registrados',
       cliente ? 'Los vehículos aparecerán aquí cuando se registren y se midan.' : 'Registrar un cliente, cargar sus vehículos y asignar un dispositivo.',
       cliente ? null : { label: 'Ir a Clientes', action: 'irA', args: ['clientes'], primaria: true });
   }
-  if (estado === 'sin_mediciones') {
-    if (filtroSucursal && !vehiculosTotal) return vacioFiltrado('Sin mediciones registradas');
-    return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones` : 'Sin mediciones registradas',
-      'El estado de los neumáticos se muestra desde la primera medición.',
-      cliente ? null : { label: 'Ver dispositivos', action: 'irA', args: ['dispositivos'], primaria: true });
-  }
+  if (filtroSucursal && !vehiculosTotal) return vacioFiltrado('Sin mediciones registradas');
+  return estadoVacio(vehiculosTotal ? `${plural(vehiculosTotal, 'vehículo registrado', 'vehículos registrados')}, sin mediciones` : 'Sin mediciones registradas',
+    'El estado de los neumáticos se muestra desde la primera medición.',
+    cliente ? null : { label: 'Ver dispositivos', action: 'irA', args: ['dispositivos'], primaria: true });
+}
+
+function contenidoFlota({ estadoRows, alertas, salud, resumen, ultimas = [], revision }) {
+  const cliente = isClienteMode();
   const rs = resumenNeumaticos(estadoRows);
   const at = requierenAtencion(estadoRows);
   const px = proximosCambios(estadoRows);
   const clientes = !cliente ? clientesConUrgencias(resumen) : [];
   const porVeh = agruparPorVehiculo(estadoRows);
-  return html`<div class="inicio-cols">${bloqueAtencion(at, alertas, porVeh)}${bloqueProximos(px, porVeh)}</div>
-    ${bloqueResumen(rs, ultimaMedicion(estadoRows))}
+  return html`${bloqueAtencion(at, alertas, porVeh)}
+    ${avisoRevision(revision)}
+    <div class="inicio-cols">${bloqueProximos(px, porVeh)}${bloqueResumen(rs, ultimaMedicion(estadoRows))}</div>
     ${bloqueUltimas(ultimas, porVeh)}
     ${clientes.length ? html`<section class="inicio-card" aria-labelledby="inicio-h-clientes"><h3 id="inicio-h-clientes" class="inicio-h">Clientes con más urgencias</h3><ul class="inicio-lista">${joinHtml(clientes.map(filaCliente))}</ul></section>` : ''}
     ${lineaDispositivos(resumenDispositivos(salud), cliente)}`;

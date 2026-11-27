@@ -19,27 +19,34 @@ export function registrar(env) {
         await irA(p, 'alertas');
         await p.esperar(`/${filas.length} alertas?/.test(document.querySelector('#alert-count').textContent)`, { que: `${filas.length} alertas` });
         const chips = await p.eval(`[...document.querySelectorAll('#alert-chips > *')].map(c => c.innerText.replace(/\\s+/g, ' ').trim())`);
-        assert.deepEqual(chips.map(c => Number(c.replace(/\D/g, ''))), [porEstado('abierta'), porEstado('reconocida'), filas.filter(f => f.silenciada_hasta).length], `chips de estado: ${chips}`);
+        // Cuatro chips: Todas, Abiertas, Reconocidas y Silenciadas. Al entrar, la lista muestra solo las abiertas.
+        assert.deepEqual(chips.map(c => Number(c.replace(/\D/g, ''))), [filas.length, porEstado('abierta'), porEstado('reconocida'), filas.filter(f => f.silenciada_hasta).length], `chips de estado: ${chips}`);
+        const abiertas = filas.filter(f => f.estado === 'abierta' && !f.silenciada_hasta);
         // Un solo mecanismo de estado (los chips) y sin rojo: el rojo queda para lo crítico.
         assert.equal(await p.eval(`!document.querySelector('#alert-estado')`), true, 'sin select de estado junto a los chips');
-        assert.equal(await p.eval(`document.querySelectorAll('#alert-chips .badge.red, #alert-tbody td[data-label="Estado"] .badge.red').length`), 0, 'el estado de la alerta no usa rojo');
+        // El rojo del tipo (desgaste límite) es lo crítico; el chip de estado (reconocida, silenciada) no usa rojo.
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-chips .badge.red, #alert-tbody .alerta-estado .badge.red').length`), 0, 'el estado de la alerta no usa rojo');
         const tabla = await p.eval(`[...document.querySelectorAll('#alert-tbody tr')].map(r => r.innerText.replace(/\\s+/g, ' ').trim())`);
-        assert.equal(tabla.length, filas.length, 'una fila por alerta');
-        // Cada alerta aparece con su matrícula; ninguna de otro alcance.
+        assert.equal(tabla.length, abiertas.length, 'una fila por alerta abierta');
+        // Cada alerta abierta aparece con su matrícula; ninguna de otro alcance.
         const vistas = tabla.join('\n');
-        for (const f of filas) assert.ok(vistas.includes(f.patente), `falta una alerta de ${f.patente}`);
+        for (const f of abiertas) assert.ok(vistas.includes(f.patente), `falta una alerta de ${f.patente}`);
         for (const pat of new Set(json(env, `select patente from public.vehiculos`).map(v => v.patente).filter(Boolean))) {
           if (!filas.some(f => f.patente === pat)) assert.ok(!vistas.includes(pat), `${pat} no debería aparecer en las alertas de ${rol}`);
         }
-        // Cada alerta muestra la etiqueta de su tipo junto a su matrícula (el swap lleva sus km: se compara por «Swap»).
-        for (const f of filas) {
-          const etiqueta = presentacionAlerta({ tipo: f.tipo }).etiqueta.replace(/^Swap .*/, 'Swap');
+        // Cada alerta muestra la etiqueta de su tipo junto a su matrícula (la primera rotación lleva sus km: se compara por «Primera rotación»).
+        for (const f of abiertas) {
+          const etiqueta = presentacionAlerta({ tipo: f.tipo }).etiqueta.replace(/^Primera rotación .*/, 'Primera rotación');
           assert.ok(tabla.some(t => t.includes(f.patente) && t.includes(etiqueta)), `la alerta de ${f.patente} (${f.tipo}) no muestra «${etiqueta}»`);
         }
-        // Cada alerta lleva al vehículo (acción). Resolver, reconocer y silenciar son de la empresa: el equipo Neumet (admin)
-        // no los ve (F10 PR 10; la RPC sigue permitida para admin hasta C2, por eso aquí solo se mira la interfaz).
-        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="verVehiculo"]').length`), filas.length);
-        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), rol === 'admin' ? 0 : filas.length);
+        // Cada alerta lleva al vehículo (el nombre, botón para teclado; la fila entera también abre la ficha). Resolver, reconocer
+        // y silenciar son de la empresa: el equipo Neumet (admin) no los ve (F10 PR 10; la RPC sigue permitida para admin hasta C2,
+        // por eso aquí solo se mira la interfaz). Resolver y silenciar van en el menú «Más» de cada fila.
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr .alert-veh').length`), abiertas.length);
+        assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody tr [data-action="alertasResolver"]').length`), rol === 'admin' ? 0 : abiertas.length);
+        // «Todas» muestra también las reconocidas y las silenciadas.
+        await p.click('#alert-chips [data-action="alertasEstado"]');
+        await p.esperar(`document.querySelectorAll('#alert-tbody tr').length === ${filas.length}`, { que: `${filas.length} alertas con el filtro Todas` });
         assert.equal(await p.eval(`document.querySelectorAll('#alert-tbody [data-action="alertasReconocer"], #alert-tbody [data-action="alertasSilenciar"], #alert-tbody [data-action="alertasQuitarSilencio"]').length`) > 0, rol !== 'admin');
         // El aviso hacia Empresa > Umbrales solo lo ve el administrador de empresa (cliente global).
         assert.equal(await p.eval(`!document.querySelector('#alert-umbral-aviso').hidden`), rol === 'global', 'aviso solo para el administrador de empresa');

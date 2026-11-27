@@ -45,7 +45,7 @@ export function registrar(env) {
           const dibujadas = await p.eval(`[...document.querySelectorAll('#vd-diagrama .vd-rueda')].map(g => ({
             pos: Number(g.dataset.pos), clase: g.getAttribute('class'), vacia: g.classList.contains('vd-vacia'),
             fill: getComputedStyle(g.querySelector('rect.vd-goma')).fill,
-            token: ['bueno', 'poco', 'mayor', 'sinDatos'].reduce((o, k) => ({ ...o, [k]: getComputedStyle(document.documentElement).getPropertyValue('--est-' + k + '-fill').trim() }), {}),
+            token: ['bueno', 'poco', 'mayor', 'limite', 'sinDatos'].reduce((o, k) => ({ ...o, [k]: getComputedStyle(document.documentElement).getPropertyValue('--est-' + k + '-fill').trim() }), {}),
             mm: (g.querySelector('.vd-mm') || {}).textContent, aria: g.getAttribute('aria-label') }))`);
           const esperadas = ruedasEsperadas(env, v.id);
           assert.deepEqual(dibujadas.map(r => r.pos).sort((a, b) => a - b), esperadas.map(r => r.pos), `[${v.patente}] posiciones dibujadas`);
@@ -72,7 +72,7 @@ export function registrar(env) {
             const est = estadoUi(e.nivel);
             assert.equal(d.mm, e.mm, `${quien} mm (truncado a 1 decimal)`);
             assert.ok(d.aria.includes(`${e.mm} milímetros, ${est.texto.toLowerCase()}`), `${quien} etiqueta accesible: ${d.aria}`);
-            // «Desgaste límite» tiene nombre propio pero usa el estilo (tokens) de «Mayor desgaste»
+            // Cada estado usa sus propios tokens (--est-<estilo>-*): «Desgaste límite» es rojo, «Mayor desgaste» naranja
             assert.match(d.clase, new RegExp(`\\best-${est.estilo}\\b`), `${quien} clase de estado`);
             assert.equal(d.fill.replace(/\s/g, '').toLowerCase(), hexARgb(d.token[est.estilo]), `${quien} color = token --est-${est.estilo}-fill`);
             if (e.nivel === 'desgaste_limite') criticas++;
@@ -144,7 +144,7 @@ export function registrar(env) {
     await flujo(env, 'detalle-miga-alertas', 'global', async p => {
       await irA(p, 'alertas');
       await p.esperar(`document.querySelectorAll('#alert-tbody tr[data-severidad]').length > 0`, { que: 'lista de alertas' });
-      await p.click('#alert-tbody tr[data-severidad="3"] [data-action="verVehiculo"]');
+      await p.click('#alert-tbody tr[data-severidad] .alert-veh');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active')`, { que: 'detalle desde Alertas' });
       assert.match(await texto(p, '#breadcrumb-parent'), /Alertas/, 'la miga nombra Alertas');
       await p.click('#breadcrumb-parent');

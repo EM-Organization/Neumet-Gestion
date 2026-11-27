@@ -127,8 +127,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var cab = $('#vd-cab').textContent;
   log.push('detalle-cab='+cab.replace(/\s+/g,' ').slice(0,120));
   ['Camión 01','AB123CD','07','123.456 km','Última medición'].forEach(function(t){ if(cab.indexOf(t) === -1) fail('detalle: cabecera sin "'+t+'"'); });
-  etiquetaPinta($('#vd-cab .vd-tag'), 'mayor', 'Desgaste límite de la cabecera');
-  if(!$('#vd-cab .vd-tag.est-mayor')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de mayor desgaste');
+  etiquetaPinta($('#vd-cab .vd-tag'), 'limite', 'Desgaste límite de la cabecera');
+  // «Eliminar vehículo» (solo admin de empresa) vive en el menú «Más» de la cabecera, nunca como botón suelto.
+  if(Array.prototype.some.call(all('#vd-cab .btn'), function(b){ return b.textContent.trim() === 'Eliminar vehículo'; })) fail('detalle: «Eliminar vehículo» no debe ser un botón suelto en la cabecera');
+  var menuCab = $('#vd-cab [data-menu-mas]');
+  if(!menuCab || !/Eliminar vehículo/.test(menuCab.textContent)) fail('detalle: el menú «Más» de la cabecera debe contener «Eliminar vehículo»');
+  if(!$('#vd-cab .vd-tag.est-limite')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de desgaste límite');
 
   // Diagrama: 10 ruedas con una clase por estado, mm y símbolo (el color nunca va solo)
   var ruedas = all('#vd-diagrama .vd-rueda');
@@ -136,7 +140,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(ruedas.length !== 10) fail('detalle: se esperaban 10 ruedas, hay '+ruedas.length);
   var estilos = {};
   Array.prototype.forEach.call(ruedas, function(g){
-    var m = /est-(bueno|poco|mayor|sinDatos)/.exec(g.getAttribute('class')); if(!m) { fail('detalle: rueda sin clase de estado'); return; }
+    var m = /est-(bueno|poco|mayor|limite|sinDatos)/.exec(g.getAttribute('class')); if(!m) { fail('detalle: rueda sin clase de estado'); return; }
     estilos[m[1]] = (estilos[m[1]] || 0) + 1;
     if(!g.querySelector('.vd-mm').textContent) fail('detalle: rueda sin mm');
     if(m[1] !== 'sinDatos' && !g.querySelector('.vd-sim').textContent) fail('detalle: rueda sin símbolo');
@@ -144,7 +148,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(g.querySelector('rect.vd-goma').hasAttribute('fill')) fail('detalle: el relleno de la rueda debe venir del CSS, no de un atributo');
   });
   log.push('estilos='+JSON.stringify(estilos));
-  if(estilos.bueno !== 5 || estilos.poco !== 2 || estilos.mayor !== 2 || estilos.sinDatos !== 1) fail('detalle: estilos de las ruedas: '+JSON.stringify(estilos));
+  if(estilos.bueno !== 5 || estilos.poco !== 2 || estilos.mayor !== 1 || estilos.limite !== 1 || estilos.sinDatos !== 1) fail('detalle: estilos de las ruedas: '+JSON.stringify(estilos));
   if(all('#vd-diagrama .vd-bandera').length < 1) fail('detalle: falta la insignia de desgaste acelerado');
   var r4 = $('#vd-diagrama .vd-rueda[data-pos="4"]'), r5 = $('#vd-diagrama .vd-rueda[data-pos="5"]');
   if(!/^Posición P4, .+, 2,5 milímetros, desgaste límite$/.test(r4.getAttribute('aria-label'))) fail('detalle: aria-label de la rueda 4: '+r4.getAttribute('aria-label'));
@@ -155,15 +159,16 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var cuenta = {}; Array.prototype.forEach.call(chips, function(c){ cuenta[c.dataset.filtro] = c.textContent.replace(/\s+/g,' ').trim(); });
   log.push('chips='+JSON.stringify(cuenta));
   if(!/^.*1 Desgaste límite/.test(cuenta.limite || '') || !/1 Mayor desgaste/.test(cuenta.mayor || '') || !/2 Poco desgaste/.test(cuenta.poco || '') || !/5 Buen estado/.test(cuenta.bueno || '') || !/1 Sin datos/.test(cuenta.sinDatos || '')) fail('detalle: chips de estado: '+JSON.stringify(cuenta));
-  if($('#vd-resumen .vd-chip-total').textContent.trim() !== '10 neumáticos') fail('detalle: chip total: '+$('#vd-resumen .vd-chip-total').textContent);
+  if($('#vd-resumen .vd-chip-total')) fail('detalle: no debe haber chip del total: el total va en la cabecera');
+  if(!/10 neumáticos/.test($('#vd-cab').textContent.replace(/\s+/g, ' '))) fail('detalle: la cabecera debe mostrar «10 neumáticos»');
   if(/Desconocido|Nuevo|mayor al normal/.test($('#vd-resumen').textContent)) fail('detalle: texto viejo en los chips');
   // Filtrar atenúa sin cambiar la selección; las atenuadas siguen siendo tocables; el total limpia.
   chips[0].click(); await sleep(100);
   if(chips[0].getAttribute('aria-pressed') !== 'true') fail('detalle: el chip filtro no marca aria-pressed');
   if(all('#vd-diagrama .vd-rueda.dim').length !== 9) fail('detalle: el filtro debe atenuar las ruedas que no coinciden: '+all('#vd-diagrama .vd-rueda.dim').length);
   if($('#vd-diagrama .vd-rueda.dim').getAttribute('tabindex') !== '0') fail('detalle: una rueda atenuada debe seguir siendo tocable');
-  $('#vd-resumen .vd-chip-total').click(); await sleep(100);
-  if(all('#vd-diagrama .vd-rueda.dim').length !== 0 || all('#vd-resumen [aria-pressed="true"]').length) fail('detalle: el chip total debe limpiar el filtro');
+  chips[0].click(); await sleep(100);
+  if(all('#vd-diagrama .vd-rueda.dim').length !== 0 || all('#vd-resumen [aria-pressed="true"]').length) fail('detalle: tocar el chip activo debe limpiar el filtro');
   if($('#vd-leyenda')) fail('detalle: la leyenda de la escala continua ya no existe');
 
 
@@ -181,21 +186,28 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if($('#vd-panel').getBoundingClientRect().top < $('.topbar, #topbar, header').getBoundingClientRect().bottom - 1) fail('detalle: el panel quedó bajo la barra superior');
   // En el arnés el desplazamiento suave no avanza, así que además se mide la llamada: no hubo ningún scrollIntoView del panel.
   if(llamadasScroll.length) fail('detalle: elegir P3 con el panel a la vista no debe desplazar nada, llamadas: ' + JSON.stringify(llamadasScroll));
-  // Si el inicio del panel quedó fuera de la vista (la persona había bajado la página), sí se desplaza, con block «start».
+  // Escritorio: el panel va pegado (sticky, styles.css) y sigue a la vista al bajar la página, así que elegir otra rueda no desplaza nada.
   d.scrollingElement.scrollTop = 700; await sleep(200);
-  if($('#vd-panel').getBoundingClientRect().top >= 0) fail('detalle: el escenario de U1 no dejó el panel arriba de la ventana');
+  if($('#vd-panel').getBoundingClientRect().top < $('.topbar, #topbar, header').getBoundingClientRect().bottom - 1) fail('detalle: el panel pegado quedó bajo la barra superior al bajar la página');
   $('#vd-diagrama .vd-rueda[data-pos="1"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(300);
-  if(llamadasScroll.length !== 1 || llamadasScroll[0].block !== 'start') fail('detalle: con el panel fuera de la vista debe desplazar a «start»: ' + JSON.stringify(llamadasScroll));
+  if(llamadasScroll.length) fail('detalle: con el panel pegado elegir otra rueda no debe desplazar: ' + JSON.stringify(llamadasScroll));
   d.scrollingElement.scrollTop = 0; llamadasScroll.length = 0;
   $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
   // U2: las etiquetas de estado del panel pintan los tokens de su estado (mayor desgaste en P3, límite en P4).
   etiquetaPinta($('#vd-panel .vd-p-estado .vd-tag'), 'mayor', 'Mayor desgaste del panel');
-  ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste acelerado','Interna','4,2','Alertas','Desgaste límite','Rotación'].forEach(function(t){
+  // P3 no tiene alertas en el fixture (la alerta es de P4): el panel no muestra la sección «Alertas» aquí.
+  ['Eje 2 izquierda exterior','P3','Mayor desgaste','Desgaste acelerado','Interna','4,2','Desgaste límite','Rotación'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(panel.indexOf('1,20 mm por semana') === -1) fail('detalle: panel sin tasa');
+  // Aviso de P3 (desgaste acelerado): la etiqueta y el aviso dicen lo mismo una sola vez; sin «RN-» ni «Sin alertas activas».
+  if(panel.split('Desgaste acelerado').length !== 2) fail('detalle: «Desgaste acelerado» debe aparecer exactamente una vez en el panel: '+(panel.split('Desgaste acelerado').length - 1));
+  if(/RN-/.test(panel)) fail('detalle: el panel no debe llevar códigos de regla (RN-)');
+  if(/Sin alertas activas/.test(panel)) fail('detalle: el panel no muestra «Sin alertas activas» cuando hay alertas en la posición');
+  // «Ver más» (datos de la rueda) arranca cerrado.
+  if(!$('#vd-panel .vd-mas') || $('#vd-panel .vd-mas').open !== false) fail('detalle: «Ver más» debe arrancar cerrado');
   // Número de quema y km del neumático (v_km_cubierta): previos 20.000 + tramo actual 3.456 (123.456 - 120.000 del montaje) = 23.456
-  ['Número de quema','Q-0103','Km que ya traía','20.000 km','Km recorridos','3.456 km','En el tramo actual','Km totales','23.456 km'].forEach(function(t){
+  ['Quema Q-0103','Km que ya traía','20.000 km','Km recorridos','3.456 km','En el tramo actual','Km totales','23.456 km'].forEach(function(t){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'"');
   });
   if(/Estimado|Sin dato/.test(panel)) fail('detalle: km confiables no deberían llevar nota: '+panel.replace(/\s+/g,' ').slice(0,300));
@@ -204,6 +216,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(panel.indexOf(t) === -1) fail('detalle: panel sin "'+t+'" (costo)');
   });
   if(d.body.innerHTML.indexOf('<programada>') !== -1) fail('detalle: evento sin escapar');
+  // El gráfico se carga al abrir «Ver más» (cerrado por defecto): se abre y se espera el dibujo.
+  var masC = $('#vd-panel .vd-mas'); if(masC) masC.open = true;
   for(var t = 0; t < 40 && !$('#vd-chart-wrap svg'); t++) await sleep(50);
   var ch = $('#vd-chart-wrap svg');
   if(!ch) fail('detalle: no se dibujo el grafico');
@@ -223,10 +237,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   r4s.dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
   if($('#vd-rotar-destino') || $('#vd-panel [data-action="neumatico-rotar-pos"]')) fail('detalle RN-08: bajo retiro no debe ofrecerse rotar a otro eje');
   if(!/Retirar ya/.test($('#vd-panel').textContent)) fail('detalle RN-08: bajo retiro falta el aviso «Retirar ya»');
+  if(!/Alertas/.test($('#vd-panel').textContent)) fail('detalle: la posición 4 tiene una alerta y el panel debe mostrar «Alertas»');
   if(!$('#vd-panel [data-action="neumatico-retirar"]')) fail('detalle RN-08: bajo retiro falta el botón Retirar neumático');
   // Móvil (390 px): el encabezado visible de la última columna es «Prom.»; «Promedio» queda como nombre accesible.
-  var thProm = $('#vd-panel .vd-mm-tabla thead th:last-child');
-  if(!thProm || thProm.textContent.trim() !== 'Prom.' || thProm.getAttribute('aria-label') !== 'Promedio') fail('detalle: el encabezado de promedio debe ser «Prom.» visible y «Promedio» accesible: '+(thProm && thProm.textContent));
+  // El promedio ya no es columna de la tabla de mediciones: va en «Ver datos» del gráfico (la tabla decide por el mínimo).
+  var thMM = $('#vd-panel .vd-mm-tabla thead');
+  if(!thMM || /Prom/.test(thMM.textContent)) fail('detalle: la tabla de mediciones no debe tener columna de promedio: '+(thMM && thMM.textContent));
   $('#vd-diagrama .vd-rueda[data-pos="3"]').dispatchEvent(new w.MouseEvent('click', {bubbles: true})); await sleep(500);
 
   // Contrato con el taller: botones presentes con data-*; handlers REALES de cambio-neumatico.js (no un stub)
@@ -356,6 +372,9 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     var bAl = $('#vd-alinear-btn');
     if(!bAl) fail('alinear: falta el botón «Registrar alineación» en la cabecera');
     else {
+      // «Ver más» abierto antes de registrar la alineación: la recarga del vehículo repinta el panel y debe conservarlo abierto.
+      var masPanel = $('#vd-panel .vd-mas'); if(masPanel){ masPanel.open = true; await sleep(50); }
+      var nodoMas = $('#vd-panel .vd-mas');
       bAl.click(); await esperarRotar();
       if($('#rotar-title').textContent !== 'Registrar alineación') fail('alinear: título del diálogo: '+$('#rotar-title').textContent);
       if(motivosDe() !== '|desgaste_lateral|control|reparacion_tren|otro') fail('alinear: motivos de alineación: '+motivosDe());
@@ -368,6 +387,10 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
       if(ra.length !== nAl + 1) fail('alinear: una sola llamada a vehiculo_alinear ('+(ra.length - nAl)+')');
       else if(ra[nAl].args.p_vehiculo_id !== 10 || ra[nAl].args.p_motivo_codigo !== 'control' || ra[nAl].args.p_odometro_km !== null) fail('alinear: args de vehiculo_alinear: '+JSON.stringify(ra[nAl].args));
       if($('#toast-msg').textContent !== 'Alineación registrada en 2 neumáticos en Camión 01') fail('alinear: aviso de éxito: '+$('#toast-msg').textContent);
+      // Tras recargar el vehículo el panel se repinta (nodo nuevo) y «Ver más» sigue abierto.
+      for(var u2 = 0; u2 < 40 && $('#vd-panel .vd-mas') === nodoMas; u2++) await sleep(50);
+      var masTras = $('#vd-panel .vd-mas');
+      if(!masTras || masTras === nodoMas || !masTras.open) fail('detalle: tras recargar el vehículo «Ver más» debe seguir abierto (repintado: '+(masTras !== nodoMas)+', abierto: '+(!!masTras && masTras.open)+')');
     }
     // Cambiar: abre el modal real del taller con el neumatico de P3
     r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
@@ -416,7 +439,8 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
 
   // Click en la rueda sin datos (5) y en una rueda normal
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
-  if($('#vd-panel').textContent.indexOf('Sin registrar') === -1 || $('#vd-panel').textContent.indexOf('Sin dato: faltan lecturas de odómetro') === -1) fail('detalle: rueda sin quema ni odómetro deberia decirlo');
+  // El neumático 1005 tiene km previos en 0 (no es «Sin registrar»: null y 0 son cosas distintas) y sin odómetro: la nota lo dice.
+  if(!/Km que ya traía0 km/.test($('#vd-panel').textContent) || $('#vd-panel').textContent.indexOf('Sin dato: faltan lecturas de odómetro') === -1) fail('detalle: rueda sin odómetro debe mostrar «0 km» de km previos y la nota de odómetro');
   if(/(^|[^\d.])0 km/.test($('#vd-panel-body').textContent.split('Km recorridos')[1] || '')) fail('detalle: sin lecturas no debe mostrar 0 km: '+$('#vd-panel-body').textContent.replace(/\s+/g,' ').slice(0,300));
   // Estimado (falta un tramo) y odómetro decreciente: nota sobria con el motivo, el valor conocido se muestra
   $('#vd-diagrama .vd-rueda[data-pos="6"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
@@ -472,12 +496,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var rAux = $('#vd-diagrama .vd-rueda[data-pos="99"]');
   if(rAux.querySelector('.vd-mm').textContent !== '2,0' || !/desgaste límite/.test(rAux.getAttribute('aria-label'))) fail('detalle: el auxilio debe dibujarse con su estado real: '+rAux.getAttribute('aria-label'));
   if($('#vd-resumen [data-filtro="limite"]') || $('#vd-resumen [data-filtro="mayor"]')) fail('detalle: el auxilio cuenta como advertencia en los chips: '+$('#vd-resumen').textContent);
-  if(!/3 neumáticos/.test($('#vd-resumen .vd-chip-total').textContent) || !/1 Buen estado/.test($('#vd-resumen [data-filtro="bueno"]').textContent) || !/2 Poco desgaste/.test($('#vd-resumen [data-filtro="poco"]').textContent)) fail('detalle: chips del auxilio: '+$('#vd-resumen').textContent.replace(/\s+/g,' '));
+  if(!/3 neumáticos/.test($('#vd-cab').textContent.replace(/\s+/g, ' ')) ||!/1 Buen estado/.test($('#vd-resumen [data-filtro="bueno"]').textContent) || !/2 Poco desgaste/.test($('#vd-resumen [data-filtro="poco"]').textContent)) fail('detalle: chips del auxilio: '+$('#vd-resumen').textContent.replace(/\s+/g,' '));
   // R3: el auxilio irregular no lleva insignia ni cuenta en «Desgaste acelerado» (una sola regla para chip, insignia y filtro).
   if($('#vd-diagrama .vd-bandera[data-pos="99"]') || $('#vd-resumen [data-filtro="acelerado"]')) fail('detalle: el auxilio lleva insignia o cuenta como acelerado');
   $('#vd-resumen [data-filtro="poco"]').click(); await sleep(100);
   if(all('#vd-diagrama .vd-rueda.dim').length !== 1) fail('detalle: el filtro «Poco desgaste» debe atenuar solo P1: P3 y el auxilio (que cuenta como poco) coinciden con el chip');
-  $('#vd-resumen .vd-chip-total').click(); await sleep(100);
+  $('#vd-resumen [data-filtro="poco"]').click(); await sleep(100);
   if(!/Poco desgaste/.test($('#vd-cab .vd-tag').textContent)) fail('detalle: la cabecera cuenta el auxilio como advertencia: '+$('#vd-cab .vd-tag').textContent);
 
   // Buscador global: matrícula, número de coche y número de quema abren el vehículo (la quema, el de su neumático montado)
@@ -497,10 +521,10 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var q = w.__vehFx.queries.join(',');
   if(q.indexOf('v_estado_neumaticos') === -1 || q.indexOf('v_alertas') === -1) fail('detalle: no consulto las vistas SQL');
   // Recuadro de la cabecera: el camión 01 tiene una alerta de desgaste límite abierta (vehiculo.fixture).
-  if(!/× 1 cambiar · ◆ 0 revisar/.test($('#vd-cab').textContent.replace(/\s+/g, ' '))) fail('detalle: falta el recuadro «× 1 cambiar · ◆ 0 revisar» en la cabecera');
-  // Color (RN-20): «cambiar» en rojo (hay uno) y «revisar» en gris (cero).
-  var recD = $('#vd-cab .vd-p-nota');
-  if(!recD || !recD.querySelector('.badge.red') || !recD.querySelector('.badge.gray') || recD.querySelector('.badge.orange')) fail('detalle: el recuadro de la cabecera debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
+  if(!/× 1 cambiar/.test($('#vd-cab').textContent.replace(/\s+/g, ' ')) || /0 revisar/.test($('#vd-cab').textContent)) fail('detalle: el recuadro de la cabecera debe ser «× 1 cambiar», sin «0 revisar»');
+  // Color (RN-20): «cambiar» en rojo (hay uno); sin «revisar», porque es cero y no se muestra.
+  var recD = $('#vd-cab .vd-cab-titulo');
+  if(!recD || !recD.querySelector('.badge.red') || recD.querySelector('.badge.orange')) fail('detalle: el recuadro de la cabecera debe ser solo «cambiar», en rojo');
   // El historial de la rueda sale del neumático montado (vista), no de mediciones por posición.
   if(q.indexOf('v_mediciones_neumatico') === -1 || /(^|,)mediciones(,|$)/.test(q)) fail('detalle: las mediciones deben leerse de v_mediciones_neumatico, no de mediciones por posicion');
   $('#breadcrumb-parent').click(); await sleep(400);

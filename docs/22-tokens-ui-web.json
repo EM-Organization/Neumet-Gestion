@@ -2,7 +2,7 @@
   "$description": "Tokens de la pantalla web «Detalle de vehículo» (arreglos de estado de desgaste). Extiende neumet-tokens.json: la paleta base (NeumetLightGrey, NeumetGoldBeige, NeumetOliveDark, NeumetDeepOlive y derivados) se toma de ese archivo. Si hay conflicto, manda este archivo en lo que esté definido aquí.",
   "extends": "neumet-tokens.json",
   "wearStatus": {
-    "_nota": "Cuatro estados discretos. Un estado = relleno + trazo + símbolo + texto. Nunca solo color. El valor que muestra el neumático es el valor con el que se decide el estado.",
+    "_nota": "Cinco estados discretos: los cuatro de la especificación y «Desgaste límite» (decisión del 2026-11-27: mayor naranja con ◆; límite rojo con ×, el rojo solo para lo crítico). Un estado = relleno + trazo + símbolo + texto. Nunca solo color. El valor que muestra el neumático es el valor con el que se decide el estado.",
     "bueno": {
       "id": "bueno",
       "name": "Buen estado",
@@ -26,6 +26,14 @@
     "mayor": {
       "id": "mayor",
       "name": "Mayor desgaste",
+      "symbol": "◆",
+      "fill": "#FDE3CF",
+      "stroke": "#C2570C",
+      "symbolColor": "#8A3A00"
+    },
+    "limite": {
+      "id": "limite",
+      "name": "Desgaste límite",
       "symbol": "×",
       "fill": "#F7E3E0",
       "stroke": "#B3362A",
@@ -150,6 +158,12 @@
       "textoOliveDarkSobreRelleno": 5.51
     },
     "mayor": {
+      "trazoSobreBlanco": 4.50,
+      "simboloSobreRelleno": 6.35,
+      "textoDeepOliveSobreRelleno": 10.1,
+      "textoOliveDarkSobreRelleno": 5.6
+    },
+    "limite": {
       "trazoSobreBlanco": 6.04,
       "simboloSobreRelleno": 7.04,
       "textoDeepOliveSobreRelleno": 10.1,

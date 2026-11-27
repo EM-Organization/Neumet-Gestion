@@ -2,6 +2,7 @@
 // En la BD existe el check umbral_retiro_mm < umbral_critico_mm < umbral_bajo_mm; aquí se valida igual para avisar antes
 // de enviar. Tests: tests/unit/umbrales.test.mjs
 // Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
+// Solo los tres umbrales de desgaste van a la vista (camposBasicos); el resto, en «Ajustes avanzados» (camposAvanzados).
 // Los textos hablan de las categorías de producto; los nombres técnicos de las columnas no se muestran (docs/14).
 import { ESTADOS } from './estado-desgaste.js';
 import { fmtNum } from './formato.js';
@@ -15,19 +16,24 @@ export const CAMPOS_UMBRAL = [
   { key: 'umbral_retiro_mm', lbl: `${ESTADOS.mayor.texto} desde (mm)`, ayuda: `Desde este valor hasta el anterior: «${bajo(ESTADOS.mayor)}». Por debajo: «${bajo(ESTADOS.limite)}»`, mm: true },
   // Margen de la alerta (columna alerta_histeresis_mm): puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los
   // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
-  { key: 'alerta_histeresis_mm', lbl: 'Histéresis de alerta (mm)', ayuda: 'Margen sobre el umbral de retiro para resolver la alerta (0 a 3 mm)', mm: false, hist: true },
-  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para indicador', ayuda: 'Indicador «sin medir» pasado este plazo (solo en la vista de estado)', mm: false },
-  { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true },
+  // La base (alerta_sincronizar, 20261126040000) cierra con minimo >= umbral_retiro_mm + margen: «llega a», no «supera».
+  { key: 'alerta_histeresis_mm', lbl: 'Margen para cerrar la alerta (mm)', ayuda: `La alerta de desgaste límite se cierra cuando la huella mínima llega a «${ESTADOS.mayor.texto} desde» más este margen (0 a 3 mm)`, mm: false, hist: true, avanzado: true },
+  { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para indicador', ayuda: 'Indicador «sin medir» pasado este plazo (solo en la vista de estado)', mm: false, avanzado: true },
+  { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true, avanzado: true },
   // Pasar atrás (cubiertas de dirección) va en mm, pero fuera de las reglas de los umbrales de desgaste: mm: false y dirMm: true
   // (mayor que 0 y hasta 99,9, igual que el check de la base; ver validarUmbrales). Se mide en la huella mínima, como el resto (RN-01).
-  { key: 'direccion_aviso_mm', lbl: 'Pasar atrás desde (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos', mm: false, dirMm: true },
-  { key: 'direccion_limite_mm', lbl: 'Pasar atrás ya bajo (mm)', ayuda: 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya', mm: false, dirMm: true },
+  { key: 'direccion_aviso_mm', lbl: 'Pasar atrás desde (mm)', ayuda: 'Cubiertas de dirección con esta huella mínima o menos', mm: false, dirMm: true, avanzado: true },
+  { key: 'direccion_limite_mm', lbl: 'Pasar atrás ya bajo (mm)', ayuda: 'Cubiertas de dirección por debajo de esta huella mínima: pasarlas atrás ya', mm: false, dirMm: true, avanzado: true },
   // Caída brusca (RN-09): baja de la huella mínima entre dos mediciones que deja la nueva como sospechosa. Va en mm, de 0 a 30
   // (el check de la base), pero fuera de las reglas de los umbrales de desgaste: mm: false y caida: true (ver validarUmbrales).
-  { key: 'caida_brusca_mm', lbl: 'Caída brusca desde (mm)', ayuda: 'Baja de la huella mínima entre dos mediciones que deja la nueva como sospechosa', mm: false, caida: true },
+  { key: 'caida_brusca_mm', lbl: 'Caída brusca desde (mm)', ayuda: 'Baja de la huella mínima entre dos mediciones que deja la nueva como sospechosa', mm: false, caida: true, avanzado: true },
   // Swap: kilómetros de la primera rotación de una cubierta nueva (RN-05, 20.000 por defecto). Entero, no mm.
-  { key: 'swap_km', lbl: 'Swap a los (km)', ayuda: 'Primera rotación de una cubierta nueva', mm: false }
+  { key: 'swap_km', lbl: 'Primera rotación a los (km)', ayuda: 'Kilómetros desde el montaje de una cubierta nueva', mm: false, avanzado: true }
 ];
+
+// Los tres umbrales de desgaste (a la vista) y el resto de ajustes («Ajustes avanzados», cerrado al cargar).
+export const camposBasicos = () => CAMPOS_UMBRAL.filter(c => !c.avanzado);
+export const camposAvanzados = () => CAMPOS_UMBRAL.filter(c => c.avanzado);
 
 const MM_MAX = 99.9; // numeric(3,1)
 const CAIDA_MAX = 30; // clientes.caida_brusca_mm: check (> 0 and <= 30)
@@ -45,7 +51,7 @@ export function aNumero(v) {
 // Margen de la alerta (histéresis) en mm: de 0 a 3 con un decimal (acepta coma). Es la regla que tenía la tarjeta de Alertas antes del PR 9c.
 export function validarHisteresis(raw) {
   const s = String(raw ?? '').trim().replace(',', '.');
-  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: 'El margen para resolver la alerta va de 0 a 3 mm, con un decimal' };
+  if (!/^\d+(\.\d)?$/.test(s) || Number(s) > 3) return { ok: false, error: `${lblDe('alerta_histeresis_mm')}: va de 0 a 3 mm, con un decimal` };
   return { ok: true, valor: Number(s) };
 }
 

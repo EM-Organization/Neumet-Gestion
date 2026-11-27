@@ -175,22 +175,19 @@ describe('escala de color', () => {
     assert.equal(nivelDesgaste(null, u), 'sin_datos');
     assert.equal(nivelDesgaste('', u), 'sin_datos');
   });
-  test('>= bajo: verde pleno, siempre el mismo; < retiro: rojo intenso', () => {
-    assert.equal(colorDesgaste(8, u).hex, colorDesgaste(20, u).hex);
-    assert.equal(colorDesgaste(2.99, u).hex, colorDesgaste(0.5, u).hex);
-    assert.equal(colorDesgaste(8, u).hex, '#9cbea0');
-    assert.equal(colorDesgaste(2.99, u).hex, '#8c3e46');
-    assert.equal(colorDesgaste(3, u).hex, '#d4766a', '3,0 mm es mayor desgaste: color intermedio, no rojo intenso');
+  test('un color por tramo (decisión del 2026-11-27): bueno verde, poco ámbar, mayor naranja, límite rojo', () => {
+    assert.equal(colorDesgaste(20, u).hex, '#4F6B26');
+    assert.equal(colorDesgaste(8, u).hex, '#4F6B26');
+    assert.equal(colorDesgaste(7.999, u).hex, '#B9791A');
+    assert.equal(colorDesgaste(5, u).hex, '#B9791A');
+    assert.equal(colorDesgaste(4.9, u).hex, '#C2570C');
+    assert.equal(colorDesgaste(3, u).hex, '#C2570C', '3,0 mm es mayor desgaste: naranja, no rojo');
+    assert.equal(colorDesgaste(2.99, u).hex, '#B3362A', '2,99 mm ya es desgaste límite: rojo');
+    assert.equal(colorDesgaste(0.5, u).hex, '#B3362A');
   });
-  test('tramos: amarillo bajo el umbral bajo, naranja en crítico, rojo cerca del retiro', () => {
-    assert.equal(colorDesgaste(7.999, u).hex, '#eed082');
-    assert.equal(colorDesgaste(5, u).hex, '#e6a578');
-    assert.equal(colorDesgaste(3.0001, u).hex, '#d4766a');
-  });
-  test('continua dentro de cada tramo (sin saltos) y sin dato = hex null', () => {
-    const paso = (a, b) => colorDesgaste(a, u).rgb.reduce((s, c, i) => s + Math.abs(c - colorDesgaste(b, u).rgb[i]), 0);
-    assert.ok(paso(6.5, 6.4) < 12);
-    assert.ok(paso(4.05, 4.0) < 12);
+  test('sin degradé: todo el tramo tiene el mismo color; sin dato = hex null', () => {
+    assert.equal(colorDesgaste(6.5, u).hex, colorDesgaste(6.4, u).hex);
+    assert.equal(colorDesgaste(4.05, u).hex, colorDesgaste(4.0, u).hex);
     assert.equal(colorDesgaste(null, u).hex, null);
   });
   test('respeta umbrales personalizados del cliente', () => {
@@ -224,12 +221,12 @@ describe('escala de color', () => {
   });
 });
 
-test('panel de alertas del detalle usa la severidad «Alta» del dominio, no «Crítica»', async () => {
+test('panel de alertas del detalle: el tipo sale de presentacionAlerta (domain/alertas.js), no «Crítica» ni severidades a mano', async () => {
   assert.equal(severidadLabel(3), 'Alta');
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../../assets/js/views/vehiculo-detalle.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /Crítica/);
-  assert.match(src, /severidadLabel/);
+  assert.match(src, /presentacionAlerta\(a\)/);
 });
 
 describe('desgaste mayor al normal', () => {
@@ -300,14 +297,16 @@ describe('detalle del vehículo: una sola fuente de estado (docs/21)', () => {
   test('la vista no lleva colores sueltos ni la escala continua vieja', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');
     assert.doesNotMatch(src, /#[0-9a-fA-F]{3,8}\b/, 'sin hex en la vista: los colores salen de variables CSS');
-    assert.doesNotMatch(src, /colorDesgaste|NIVEL_INFO|vd-leyenda|proyeccion/);
+    // «proyeccion» como nombre suelto era la vieja función de la vista; el campo aviso.proyeccion (domain/panel-rueda.js) sí puede estar.
+    assert.doesNotMatch(src, /colorDesgaste|NIVEL_INFO|vd-leyenda|(?<!\.)proyeccion\b/);
     assert.match(src, /wearStatus/);
   });
-  test('los chips filtran por una acción con aria-pressed y el total la limpia', async () => {
+  test('los chips filtran por una acción con aria-pressed; no hay chip del total y tocar el activo limpia el filtro', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');
     assert.match(src, /data-action="detalleFiltro"/);
     assert.match(src, /aria-pressed="\$\{filtro === clave\}"/);
-    assert.match(src, /data-args="\[null\]"/);
+    assert.doesNotMatch(src, /vd-chip-total/);
+    assert.match(src, /clave && clave !== filtro \? clave : null/);
   });
   test('los textos nuevos del detalle: Desgaste acelerado, Ver datos, Última medición (mm)', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');

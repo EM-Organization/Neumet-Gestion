@@ -37,6 +37,20 @@ test('ningún módulo repite un nombre de estado como literal fuera de las excep
   assert.deepEqual(fallos, [], 'estos módulos duplican un nombre de estado: tomarlo de ESTADOS');
 });
 
+// Los símbolos de estado salen de ESTADOS (docs/14 §3). «■» ya no es de ningún estado; «✕» solo es de desgaste en
+// un módulo de desgaste: calidad.js («invalidada») y dispositivos.js («caído») lo usan para otra cosa.
+test('ningún módulo define a mano ■, ni ✕ en una línea de desgaste (el símbolo sale de ESTADOS)', () => {
+  const fallos = [];
+  for (const f of walk(join(raiz, 'assets/js')).filter(x => x.endsWith('.js'))) {
+    const rel = relative(raiz, f);
+    readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;
+      if (/['"]■['"]/.test(l) || (/['"]✕['"]/.test(l) && /desgaste/i.test(l))) fallos.push(`${rel}:${i + 1}: ${l.trim().slice(0, 110)}`);
+    });
+  }
+  assert.deepEqual(fallos, [], 'símbolo de desgaste escrito a mano: usar ESTADOS.<id>.simbolo');
+});
+
 test('la suma de buen estado y poco desgaste tiene una sola redacción y los umbrales usan los nombres de ESTADOS', () => {
   assert.equal(BUENO_O_POCO, 'Buen estado o poco desgaste');
   assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'umbral_bajo_mm').lbl, `${ESTADOS.bueno.texto} desde (mm)`);

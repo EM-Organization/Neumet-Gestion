@@ -1,12 +1,12 @@
 import { db } from '../core/supabase.js';
-import { html, setHtml, joinHtml } from '../core/html.js';
+import { html, setHtml, joinHtml, raw } from '../core/html.js';
 import { showToast, userError } from '../core/ui.js';
 import { currentClienteId, onLogout } from '../core/auth.js';
 import { devolverFoco } from '../core/foco.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
 import { comaDecimal } from '../domain/formato.js';
-import { CAMPOS_UMBRAL, validarUmbrales } from '../domain/umbrales.js';
+import { CAMPOS_UMBRAL, camposBasicos, camposAvanzados, validarUmbrales } from '../domain/umbrales.js';
 import { argsAlertaConfigurar, mensajeErrorConfigurar } from '../domain/empresa.js';
 import { opcionesMoneda, validarMoneda, traducirErrorMoneda, monedaInicial } from '../domain/costos.js';
 
@@ -20,12 +20,28 @@ const errMoneda = msg => { const el = $('emp-moneda-error'); el.textContent = ms
 // Códigos que traducirErrorMoneda explica; cualquier otro es un fallo inesperado y se registra en consola.
 const CODIGOS_MONEDA = ['42501', '23514'];
 
-function render(c) {
-  setHtml($('emp-umb-campos'), joinHtml(CAMPOS_UMBRAL.map(f => html`<div class="field">
+const campoHtml = (c, f) => html`<div class="field">
     <label for="eu-${f.key}">${f.lbl}</label>
     <input type="text" inputmode="decimal" id="eu-${f.key}" data-umbral="${f.key}" value="${comaDecimal(c[f.key] ?? '')}"/>
     <div class="ficha-ayuda">${f.ayuda}</div>
-  </div>`)));
+  </div>`;
+
+// Los tres umbrales de desgaste a la vista; el resto de ajustes, en un desplegable cerrado. abrirAvanzados solo lo pide el
+// guardado (la recarga repinta y no debe cerrar lo que el operario abrió).
+function render(c, abrirAvanzados = false) {
+  setHtml($('emp-umb-campos'), joinHtml([
+    ...camposBasicos().map(f => campoHtml(c, f)),
+    html`<details class="umb-avanzados"${raw(abrirAvanzados ? ' open' : '')}><summary>Ajustes avanzados</summary>${joinHtml(camposAvanzados().map(f => campoHtml(c, f)))}</details>`
+  ]));
+}
+
+// Abre el desplegable si el campo está dentro, y enfoca el campo, para que el error se vea donde hay que corregir.
+function mostrarCampoAvanzado(key) {
+  if (!camposAvanzados().some(f => f.key === key)) return;
+  const det = document.querySelector('#emp-umb-campos details.umb-avanzados');
+  if (det) det.open = true;
+  const campo = $('eu-' + key);
+  if (campo) campo.focus();
 }
 
 // Sin moneda guardada, la lista muestra USD (el respaldo de los formularios de costo).
@@ -35,13 +51,15 @@ function renderMoneda(actual) {
   $('emp-moneda').value = valor;
 }
 
-export async function loadEmpresaUmbrales() {
+async function cargarUmbrales(abrirAvanzados) {
   err('');
   const { data, error } = await db.from('clientes').select('id,moneda_default,' + COLS).eq('id', currentClienteId).maybeSingle();
   if (error || !data) { if (error) userError(error); err('No se pudieron cargar los umbrales. Actualizar para reintentar.'); return; }
-  render(data);
+  render(data, abrirAvanzados);
   renderMoneda(data.moneda_default);
 }
+
+export function loadEmpresaUmbrales() { return cargarUmbrales(false); }
 
 async function guardarMoneda() {
   const v = validarMoneda($('emp-moneda').value);
@@ -66,7 +84,7 @@ async function guardar() {
   const raw = {};
   document.querySelectorAll('#emp-umb-campos [data-umbral]').forEach(i => { raw[i.dataset.umbral] = i.value; });
   const v = validarUmbrales(raw);
-  if (!v.ok) { err(v.error); return; }
+  if (!v.ok) { mostrarCampoAvanzado(v.campo); err(v.error); return; }
   err('');
   const btn = $('emp-umb-guardar');
   const enfocado = document.activeElement && document.activeElement.id; // campo desde el que se guardó (Enter) o el botón
@@ -75,7 +93,8 @@ async function guardar() {
     const { error } = await db.rpc('alerta_configurar', argsAlertaConfigurar(currentClienteId, v.valores));
     if (error) { err(mensajeErrorConfigurar(error)); return; }
     showToast('Umbrales actualizados');
-    await loadEmpresaUmbrales();
+    const abierto = !!document.querySelector('#emp-umb-campos details.umb-avanzados')?.open;
+    await cargarUmbrales(abierto);
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar umbrales';
     // La recarga repinta los campos: el foco vuelve al mismo campo (o al botón) para seguir con el teclado.

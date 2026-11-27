@@ -2,15 +2,22 @@
 // Entradas: filas de v_estado_neumaticos (una por neumático), v_salud_dispositivos y v_resumen_flota_cliente.
 import { referenciaTasas, evaluarDesgaste } from './desgaste-flota.js';
 import { esAuxilio, estadoContable } from './auxilio.js';
-import { BANDERA } from './estado-desgaste.js';
+import { BANDERA, ORDEN_ESTADOS } from './estado-desgaste.js';
 import { huellaMinima } from './desgaste.js';
+import { semanasHasta } from './panel-rueda.js';
 
 export const SEMANAS_ATENCION = 4;   // "cruza el límite en ~N semanas" entra en Requieren atención (igual que la alerta de la base)
 export const SEMANAS_PROXIMOS = 12;  // horizonte de Próximos cambios
 export const MAX_ATENCION = 6;
 export const MAX_PROXIMOS = 5;
+// Estados con plazo hasta el desgaste límite (los que aún no lo alcanzaron).
+const EN_CAMINO = ['nuevo', 'poco_desgaste', 'mayor_desgaste'];
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
+
+// Semanas hasta el desgaste límite de un neumático. Sale de la huella mínima (RN-01: el mínimo decide el estado), no del
+// promedio que proyecta v_estado_neumaticos.semanas_hasta_retiro: esa columna sobrestima el plazo (G-04, pendiente en docs/08).
+export const semanasRetiroDe = f => semanasHasta(huellaMinima(f), f.umbral_retiro_mm, f.tasa_mm_semana);
 
 // El estado "sin datos" solo corresponde cuando NO hay vehículos registrados ni ninguna fila en las vistas derivadas
 // (neumáticos, alertas, dispositivos). Un cliente con vehículos pero sin neumáticos medidos NO está "sin datos":
@@ -43,6 +50,14 @@ export function resumenNeumaticos(rows) {
   return { ...r, pct };
 }
 
+// Cifras del resumen que se muestran: solo las que tienen valor, en el orden de siempre (de buen estado a sin datos).
+// Un 0 no aporta y solo ocupa lugar. Si no queda ninguna, `vacio` avisa para decir «Sin neumáticos medidos».
+const CIFRAS = ['nuevo', 'poco_desgaste', 'mayor_desgaste', 'desgaste_limite', 'desconocido'];
+export function cifrasVisibles(rs) {
+  const claves = CIFRAS.filter(k => Number(rs?.[k]) > 0);
+  return { claves, vacio: claves.length === 0 };
+}
+
 // "~1 semana", "~6 semanas", "menos de 1 semana".
 export function textoSemanas(s) {
   const n = num(s);
@@ -62,11 +77,13 @@ function causaDe(filas, ref) {
   const limite = filas.filter(f => estadoContable(f) === 'desgaste_limite');
   if (limite.length) return { nivel: 'limite', rango: 0, n: limite.length, posiciones: posiciones(limite), causa: plural(limite.length, 'neumático en desgaste límite', 'neumáticos en desgaste límite') };
   const cruza = filas
-    .filter(f => !esAuxilio(f) && (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= SEMANAS_ATENCION)
-    .sort((a, b) => num(a.semanas_hasta_retiro) - num(b.semanas_hasta_retiro));
+    .filter(f => !esAuxilio(f) && EN_CAMINO.includes(f.estado))
+    .map(f => ({ f, s: semanasRetiroDe(f) }))
+    .filter(x => x.s !== null && x.s <= SEMANAS_ATENCION)
+    .sort((a, b) => a.s - b.s);
   if (cruza.length) {
-    const s = num(cruza[0].semanas_hasta_retiro);
-    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(cruza[0].posicion)], causa: `Cruza el desgaste límite en ${textoSemanas(s)}` };
+    const { f, s } = cruza[0];
+    return { nivel: 'cruza', rango: 1, n: cruza.length, semanas: s, posiciones: [Number(f.posicion)], causa: `Cruza el desgaste límite en ${textoSemanas(s)}` };
   }
   const mayor = filas.filter(f => estadoContable(f) === 'mayor_desgaste');
   if (mayor.length) return { nivel: 'mayor_desgaste', rango: 2, n: mayor.length, posiciones: posiciones(mayor), causa: plural(mayor.length, 'neumático con mayor desgaste', 'neumáticos con mayor desgaste') };
@@ -109,10 +126,12 @@ export function requierenAtencion(rows, { max = MAX_ATENCION } = {}) {
 // Neumáticos que cruzarán el desgaste límite dentro del horizonte (aún no en límite), el más cercano primero.
 export function proximosCambios(rows, { max = MAX_PROXIMOS, semanas = SEMANAS_PROXIMOS } = {}) {
   const lista = (rows || [])
-    .filter(f => !esAuxilio(f) && (f.estado === 'nuevo' || f.estado === 'poco_desgaste' || f.estado === 'mayor_desgaste') && num(f.semanas_hasta_retiro) !== null && num(f.semanas_hasta_retiro) <= semanas)
-    .map(f => ({
+    .filter(f => !esAuxilio(f) && EN_CAMINO.includes(f.estado))
+    .map(f => ({ f, s: semanasRetiroDe(f) }))
+    .filter(x => x.s !== null && x.s <= semanas)
+    .map(({ f, s }) => ({
       vehiculo_id: f.vehiculo_id, nombre: f.vehiculo_nombre || '', patente: f.patente || '', posicion: f.posicion,
-      semanas: num(f.semanas_hasta_retiro), mm: huellaMinima(f),
+      semanas: s, mm: huellaMinima(f),
     }))
     .sort((a, b) => a.semanas - b.semanas || String(a.nombre).localeCompare(String(b.nombre), 'es') || a.posicion - b.posicion);
   return { items: lista.slice(0, max), total: lista.length };
@@ -177,3 +196,29 @@ export function ultimasMediciones(rows, { max = MAX_ULTIMAS } = {}) {
   for (const v of lista) v.neumaticos.sort((a, b) => a.posicion - b.posicion);
   return lista;
 }
+
+// Peor cambio de un vehículo: el único neumático que su fila de Últimas mediciones muestra. Criterio en orden:
+// 1. peor estado (ORDEN_ESTADOS); 2. a igual estado, mayor caída en mm; 3. a igual caída, la primera posición.
+// Entrada: { posicion, estado (clave de ORDEN_ESTADOS), comparativa (de comparativaDesgaste) }. Sin neumáticos, null.
+export function peorCambio(neumaticos) {
+  const rangoEstado = e => { const i = ORDEN_ESTADOS.indexOf(e); return i === -1 ? ORDEN_ESTADOS.length : i; };
+  const lista = (neumaticos || []).map(n => ({ ...n, caida: n.comparativa && n.comparativa.dif < 0 ? -n.comparativa.dif : 0 }));
+  if (!lista.length) return null;
+  lista.sort((a, b) => rangoEstado(a.estado) - rangoEstado(b.estado) || b.caida - a.caida || a.posicion - b.posicion);
+  return lista[0];
+}
+
+// Desgaste alto de una visita: las ruedas que perdieron más de DESGASTE_ALTO_MM frente a su medición anterior (nivel 'alto' de
+// comparativaDesgaste). La fila de Últimas mediciones muestra el peor cambio por estado; esta marca va aparte para que una
+// caída fuera de lo común en otra rueda no quede oculta. Devuelve la de mayor caída (a igual caída, la primera posición)
+// y cuántas más hay, o null.
+export function desgasteAlto(neumaticos) {
+  const altos = (neumaticos || []).filter(n => n.comparativa && n.comparativa.nivel === 'alto')
+    .sort((a, b) => a.comparativa.dif - b.comparativa.dif || a.posicion - b.posicion);
+  if (!altos.length) return null;
+  return { posicion: altos[0].posicion, caida: -altos[0].comparativa.dif, otras: altos.length - 1 };
+}
+
+// Rueda que «Ver vehículo» deja seleccionada en la ficha. Con desgaste alto, la de mayor caída: es lo que solo este bloque
+// revela (el peor estado ya lo listan Requieren atención y los colores del mini). Si no, la del peor cambio. Sin ninguna, null.
+export const ruedaParaVer = (peor, alto) => (alto ? alto.posicion : peor ? peor.posicion : null);

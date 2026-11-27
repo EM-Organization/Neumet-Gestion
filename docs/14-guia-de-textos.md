@@ -55,15 +55,18 @@ Reglas para todo texto visible: títulos, botones, estados vacíos, placeholders
 | vehículo | camión, unidad (el vehículo se identifica por «Coche 106») |
 | medición | lectura |
 | dispositivo, medidor | sensor, calibre |
+| **Símbolos de estado** (`ESTADOS.<id>.simbolo`, siempre con el texto): ✓ Buen estado, ▲ Poco desgaste, ◆ Mayor desgaste (naranja), × Desgaste límite (rojo, lo crítico) | un mismo símbolo en dos estados (× es solo de Desgaste límite; ◆ es solo de Mayor desgaste; ◎ es solo de la alerta «Revisar») |
 | **Vocabulario único de estado** (se toma de `domain/estado-desgaste.js`, nunca se duplica): Buen estado, Poco desgaste, Mayor desgaste, Desgaste límite, Sin datos; y la bandera independiente «Desgaste acelerado» (velocidad, no profundidad) | «Nuevo» ni «Desconocido» como estado, «Desgaste mayor al normal», rojo, amarillo, verde. «Buen estado o poco desgaste» nombra la suma de los dos primeros (no «en buen estado» a secas) |
 | Requieren atención | Urgentes, en problemas |
-| × Cambiar (alerta roja, neumático en desgaste límite); ◆ Revisar (alerta amarilla: pide mirar, no cambiar); Pasar atrás y Pasar atrás ya (dirección, con los umbrales de cada empresa); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar»; ▲ como símbolo de una alerta (▲ es «Poco desgaste»); rojo en una alerta amarilla; «Retirar» o «Cambiar» en dirección |
+| × Cambiar (alerta roja, neumático en desgaste límite); ◎ Revisar (alerta amarilla: pide mirar, no cambiar); Pasar atrás y Pasar atrás ya (dirección, con los umbrales de cada empresa); Abierta, Reconocida, Silenciada; Reconocer, Silenciar 7 días, Resolver; «Umbral de desgaste límite» (mm) | alarma, incidente, ticket, «cerrar»; ▲ o ◆ como símbolo de una alerta (▲ es «Poco desgaste», ◆ es «Mayor desgaste»); rojo en una alerta amarilla; «Retirar» o «Cambiar» en dirección |
 | Próximos cambios | Pronósticos, predicciones |
 | Montar neumático (poner uno en una posición vacía), Cargar neumáticos (montar varios en un vehículo sin ellos), Retirar neumático (sin reemplazo) | Colocar, instalar, sacar |
 | posición vacía (rueda punteada: sin neumático montado) | rueda libre, hueco; no confundir con «sin datos» (neumático montado sin mediciones) |
 | medición con observaciones, En revisión, Invalidar, Marcar como válida | medición rara, errónea, borrar medición |
 | Cambiar neumático (acción del taller) | Reemplazar, sustituir |
 | Rotar | Permutar, intercambiar |
+| Primera rotación (el primer cambio de posición de un neumático nuevo; «Primera rotación a 20.000 km» con el umbral de la empresa) | swap, «Swap» |
+| Margen para cerrar la alerta (sobre el umbral de retiro, de 0 a 3 mm) | histéresis |
 
 El buscador de la barra superior y el de Inicio usan el texto «Matrícula, número de coche o quema» (la quema abre el vehículo donde está montado el neumático o, si es una cubierta en stock, la pantalla Stock filtrada por esa quema). El filtro de la lista de Vehículos usa «Matrícula o número de coche».
 
@@ -79,6 +82,8 @@ El revisor busca en el diff: segunda persona («-á», «-és» en imperativos y
 
 ## 5. Simplicidad para el operario
 
+**El panel se usa solo en escritorio** (decisión del usuario, 2026-11-27): se diseña y se revisa a 1280x720. No se invierte en móvil, pero no se rompe lo que ya funciona ni sus pruebas.
+
 Decisión del 2026-11-13, confirmada con un cliente: el operario tiene pocos conocimientos de tecnología. La plataforma debe ser intuitiva, con flujos claros, pocos clics y «enter», sin pasos innecesarios ni confusos. Este principio rige cada decisión de UX/UI y se revisa en cada PR que toca la interfaz (casilla en `docs/13`). Reglas verificables:
 
 1. **Un camino principal por pantalla**: una sola acción primaria, visible sin desplazarse, con el botón primario claramente distinguible. Las acciones secundarias no compiten con ella.
@@ -89,3 +94,10 @@ Decisión del 2026-11-13, confirmada con un cliente: el operario tiene pocos con
 6. **Sin pasos ni campos que el sistema pueda deducir**: no se pide un dato que ya está en el contexto (salvo los datos medidos, regla 4), y los campos opcionales no estorban el camino principal.
 7. **Lenguaje llano**: mensajes y etiquetas sin jerga técnica ni códigos internos; el error dice qué pasó y qué hacer (regla 5 de la sección 1).
 8. **Una pantalla, una tarea**: no se exige entender la estructura de datos (tablas, vidas, eventos) para completar una tarea.
+9. **Acción principal a la vista**: la acción principal de cada pantalla se ve a 1280x720 sin desplazarse.
+10. **Como máximo 5 columnas por tabla**; el resto va al detalle o a «Más».
+11. **Una acción visible por fila**; las demás van en «Más».
+12. **Cada dato una sola vez por pantalla**, y los contadores en cero se ocultan.
+13. **Como máximo 5 bloques abiertos por panel**; el resto va en «Ver más».
+14. **Sin códigos internos ni jerga**: nada de códigos como RN-xx ni nombres de columnas; sin «swap» ni «histéresis» (ver §3).
+15. **Las acciones destructivas van fuera de la cabecera**, separadas de la acción principal.

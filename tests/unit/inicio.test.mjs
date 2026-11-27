@@ -2,15 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
-  clientesConUrgencias, textoSemanas, ultimasMediciones, comparativaDesgaste,
+  clientesConUrgencias, textoSemanas, ultimasMediciones, comparativaDesgaste, semanasRetiroDe, cifrasVisibles, peorCambio, desgasteAlto, ruedaParaVer,
 } from '../../assets/js/domain/inicio.js';
 
 // Fila de v_estado_neumaticos con los campos que usa Inicio.
 const fila = (vid, pos, estado, extra = {}) => ({
   cliente_id: 1, vehiculo_id: vid, vehiculo_nombre: `Camión ${vid}`, patente: `P${vid}`, posicion: pos, estado,
   mm1: estado === 'desconocido' ? null : 10, mm2: estado === 'desconocido' ? null : 10, mm3: estado === 'desconocido' ? null : 10, promedio: estado === 'desconocido' ? null : 10, sin_medir: false, desgaste_irregular: false, dias_desde_medicion: 2,
-  semanas_hasta_critico: null, semanas_hasta_retiro: null, tasa_mm_semana: null, ultima_medicion_at: '2026-06-10T10:00:00Z', ...extra,
+  semanas_hasta_critico: null, semanas_hasta_retiro: null, umbral_retiro_mm: 3, tasa_mm_semana: null, ultima_medicion_at: '2026-06-10T10:00:00Z', ...extra,
 });
+// Neumático cuya huella mínima es `minimo` (las otras dos quedan por encima) y con la tasa de desgaste dada.
+const enHuella = (vid, pos, estado, minimo, tasa, extra = {}) => fila(vid, pos, estado, { mm1: minimo, mm2: 9, mm3: 9, tasa_mm_semana: tasa, ...extra });
+// Semanas son un número flotante: se compara con tolerancia (3,2 − 3 no es exacto en coma flotante).
+const aprox = (a, b) => assert.ok(a !== null && Math.abs(a - b) < 1e-9, `esperaba ${b}, dio ${a}`);
 
 test('sin vehiculos ni filas: vacio', () => {
   assert.equal(estadoInicio({}), 'vacio');
@@ -72,7 +76,7 @@ test('requierenAtencion: sin mediciones en toda la flota es "sin medir", no lím
 test('requierenAtencion: orden por urgencia y una frase de causa por vehículo', () => {
   const rows = [
     fila(1, 1, 'nuevo', { sin_medir: true, dias_desde_medicion: 19 }),                       // sin medir
-    fila(2, 1, 'nuevo', { semanas_hasta_retiro: 2.4 }),                                      // cruza pronto
+    enHuella(2, 1, 'nuevo', 3.6, 0.25),                                                       // cruza pronto (2,4 semanas)
     fila(3, 1, 'desgaste_limite', { mm1: 3, mm2: 3, mm3: 3 }), fila(3, 2, 'desgaste_limite', { mm1: 4, mm2: 4, mm3: 4 }),        // 2 límite
     fila(4, 1, 'desgaste_limite', { mm1: 2, mm2: 2, mm3: 2 }),                                                // 1 límite
     fila(5, 1, 'mayor_desgaste'),                                                                    // mayor desgaste
@@ -103,16 +107,25 @@ test('requierenAtencion: respeta el máximo y devuelve el total real; un solo ve
 });
 
 test('requierenAtencion: cruza más allá de 4 semanas no cuenta; el límite no se mezcla con cruza', () => {
-  assert.equal(requierenAtencion([fila(1, 1, 'nuevo', { semanas_hasta_retiro: 9 })]).total, 0);
-  const r = requierenAtencion([fila(1, 1, 'desgaste_limite', { semanas_hasta_retiro: 0 }), fila(1, 2, 'nuevo', { semanas_hasta_retiro: 1 })]);
+  assert.equal(requierenAtencion([enHuella(1, 1, 'nuevo', 3.9, 0.1)]).total, 0);   // 9 semanas
+  const r = requierenAtencion([fila(1, 1, 'desgaste_limite', { mm1: 3, mm2: 3, mm3: 3 }), enHuella(1, 2, 'nuevo', 3.25, 0.25)]);
   assert.equal(r.items[0].nivel, 'limite');
+});
+
+test('requierenAtencion: un neumático nuevo cuyo mínimo da 2 semanas cruza, aunque semanas_hasta_retiro (promedio) diga 30', () => {
+  const r = requierenAtencion([fila(1, 1, 'nuevo', { mm1: 3.5, mm2: 9, mm3: 9, tasa_mm_semana: 0.25, semanas_hasta_retiro: 30 })]);
+  assert.equal(r.items[0].nivel, 'cruza');
+  assert.equal(r.items[0].causa, 'Cruza el desgaste límite en ~2 semanas');
 });
 
 test('proximosCambios: solo neumáticos aún no en límite dentro del horizonte, el más cercano primero', () => {
   const rows = [
-    fila(1, 1, 'nuevo', { semanas_hasta_retiro: 9 }), fila(1, 2, 'mayor_desgaste', { semanas_hasta_retiro: 3.2 }),
-    fila(2, 1, 'desgaste_limite', { semanas_hasta_retiro: 0 }), fila(3, 1, 'nuevo', { semanas_hasta_retiro: 30 }),
-    fila(4, 1, 'nuevo'), fila(5, 1, 'nuevo', { semanas_hasta_retiro: 0.5 }),
+    enHuella(1, 1, 'nuevo', 3.9, 0.1),                  // 9 semanas
+    enHuella(1, 2, 'mayor_desgaste', 4.6, 0.5),        // 3,2 semanas
+    fila(2, 1, 'desgaste_limite', { mm1: 3, mm2: 3, mm3: 3, tasa_mm_semana: 0.1 }), // ya en límite: no entra
+    enHuella(3, 1, 'nuevo', 6, 0.1),                    // 30 semanas
+    fila(4, 1, 'nuevo'),                                // sin tasa: sin plazo
+    enHuella(5, 1, 'nuevo', 3.05, 0.1),                 // 0,5 semanas
   ];
   const r = proximosCambios(rows);
   assert.deepEqual(r.items.map(x => [x.vehiculo_id, x.posicion]), [[5, 1], [1, 2], [1, 1]]);
@@ -120,6 +133,101 @@ test('proximosCambios: solo neumáticos aún no en límite dentro del horizonte,
   assert.deepEqual(proximosCambios([]), { items: [], total: 0 });
   assert.equal(proximosCambios(rows, { max: 1 }).items.length, 1);
   assert.equal(proximosCambios(rows, { max: 1 }).total, 3);
+});
+
+test('semanasRetiroDe: sale de la huella mínima (RN-01), no del promedio de la vista', () => {
+  // Mínimo 3,2, promedio 6,4, retiro 3 y tasa 0,1: el plazo es 2 semanas; la vista sugeriría 30.
+  const f = fila(1, 1, 'nuevo', { mm1: 3.2, mm2: 8, mm3: 8, umbral_retiro_mm: 3, tasa_mm_semana: 0.1, semanas_hasta_retiro: 30 });
+  aprox(semanasRetiroDe(f), 2);
+  assert.equal(semanasRetiroDe(fila(1, 1, 'nuevo', { tasa_mm_semana: 0 })), null);   // sin tasa positiva: sin plazo
+  assert.equal(semanasRetiroDe(fila(1, 1, 'nuevo', { tasa_mm_semana: null })), null);
+  assert.equal(semanasRetiroDe(fila(1, 1, 'nuevo', { mm3: null, tasa_mm_semana: 0.1 })), null); // falta una huella
+  assert.equal(semanasRetiroDe(fila(1, 1, 'nuevo', { mm1: 2.5, tasa_mm_semana: 0.1 })), 0);     // bajo el retiro: 0
+});
+
+test('proximosCambios: el plazo que cuenta es el de la huella mínima aunque la vista diga 30 semanas', () => {
+  const r = proximosCambios([fila(1, 1, 'nuevo', { mm1: 3.2, mm2: 8, mm3: 8, tasa_mm_semana: 0.1, semanas_hasta_retiro: 30 })]);
+  assert.equal(r.items.length, 1);
+  aprox(r.items[0].semanas, 2);
+  // Al revés: promedio que da 20 semanas pero mínimo que da 3: entra.
+  const r2 = proximosCambios([enHuella(2, 1, 'nuevo', 4.5, 0.5, { semanas_hasta_retiro: 20 })]);
+  assert.equal(r2.items.length, 1);
+  aprox(r2.items[0].semanas, 3);
+});
+
+test('proximosCambios: con el mínimo, 5 semanas entra y 13 no', () => {
+  const r = proximosCambios([enHuella(1, 1, 'nuevo', 4, 0.2), enHuella(2, 1, 'nuevo', 5.6, 0.2)]);
+  assert.deepEqual(r.items.map(x => x.vehiculo_id), [1]);
+});
+
+test('cifrasVisibles: solo las cifras con valor, en el orden de siempre', () => {
+  const r = cifrasVisibles({ nuevo: 10, poco_desgaste: 5, mayor_desgaste: 0, desgaste_limite: 2, desconocido: 0 });
+  assert.deepEqual(r.claves, ['nuevo', 'poco_desgaste', 'desgaste_limite']);
+  assert.equal(r.vacio, false);
+});
+
+test('cifrasVisibles: todo en 0 (o sin datos) deja la lista vacía y avisa', () => {
+  assert.deepEqual(cifrasVisibles({ nuevo: 0, poco_desgaste: 0, mayor_desgaste: 0, desgaste_limite: 0, desconocido: 0 }), { claves: [], vacio: true });
+  assert.deepEqual(cifrasVisibles(null), { claves: [], vacio: true });
+});
+
+test('peorCambio: el peor estado manda aunque la caída sea menor', () => {
+  const p = peorCambio([
+    { posicion: 1, estado: 'bueno', comparativa: comparativaDesgaste(9.5, 10) },   // caída 0,5
+    { posicion: 2, estado: 'mayor', comparativa: comparativaDesgaste(9.8, 10) },   // caída 0,2
+  ]);
+  assert.equal(p.posicion, 2);
+});
+
+test('peorCambio: a igual estado, la mayor caída', () => {
+  const p = peorCambio([
+    { posicion: 1, estado: 'mayor', comparativa: comparativaDesgaste(9.0, 9.3) },  // caída 0,3
+    { posicion: 2, estado: 'mayor', comparativa: comparativaDesgaste(8.2, 9.0) },  // caída 0,8
+  ]);
+  assert.equal(p.posicion, 2);
+  assert.equal(p.caida, 0.8);
+});
+
+test('peorCambio: lectura que sube no cuenta como caída', () => {
+  const p = peorCambio([
+    { posicion: 1, estado: 'bueno', comparativa: comparativaDesgaste(9.6, 9.0) },  // sube
+    { posicion: 2, estado: 'bueno', comparativa: comparativaDesgaste(9.0, 9.0) },  // sin caída
+  ]);
+  assert.equal(p.posicion, 1);
+  assert.equal(p.caida, 0);
+});
+
+test('peorCambio: empate total gana la primera posición, venga como venga; sin neumáticos, null', () => {
+  const c = comparativaDesgaste(9, 10);
+  assert.equal(peorCambio([{ posicion: 2, estado: 'bueno', comparativa: c }, { posicion: 1, estado: 'bueno', comparativa: c }]).posicion, 1);
+  assert.equal(peorCambio([{ posicion: 3, estado: 'bueno', comparativa: null }, { posicion: 1, estado: 'bueno', comparativa: null }]).posicion, 1);
+  assert.equal(peorCambio([]), null);
+  assert.equal(peorCambio(null), null);
+});
+
+// Regresión (revisión de T6): con una fila por vehículo, una caída de más de 1 mm en una rueda que no es la del peor estado
+// quedaba oculta. desgasteAlto la recupera y «Ver vehículo» abre esa rueda.
+test('desgasteAlto: la caída fuera de lo común no se pierde aunque otra rueda tenga peor estado', () => {
+  const neus = [
+    { posicion: 1, estado: 'mayor', comparativa: comparativaDesgaste(6.0, 6.2) },   // peor estado, caída 0,2
+    { posicion: 2, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.6) }, // caída 1,6: alto
+    { posicion: 3, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.2) }, // caída 1,2: alto
+    { posicion: 4, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.0) }, // caída 1,0: no es alto (más de 1 mm)
+  ];
+  const peor = peorCambio(neus);
+  assert.equal(peor.posicion, 1);
+  assert.deepEqual(desgasteAlto(neus), { posicion: 2, caida: 1.6, otras: 1 });
+  assert.equal(ruedaParaVer(peor, desgasteAlto(neus)), 2);
+});
+
+test('desgasteAlto: empate en caída gana la primera posición; sin alto, null y se ve la rueda del peor cambio', () => {
+  const c = comparativaDesgaste(8, 9.5);
+  assert.deepEqual(desgasteAlto([{ posicion: 3, comparativa: c }, { posicion: 2, comparativa: c }]), { posicion: 2, caida: 1.5, otras: 1 });
+  const sinAlto = [{ posicion: 1, estado: 'bueno', comparativa: comparativaDesgaste(9.6, 9.0) }, { posicion: 2, estado: 'bueno', comparativa: null }];
+  assert.equal(desgasteAlto(sinAlto), null);
+  assert.equal(desgasteAlto(null), null);
+  assert.equal(ruedaParaVer(peorCambio(sinAlto), null), 1);
+  assert.equal(ruedaParaVer(null, null), null);
 });
 
 test('resumenDispositivos y ultimaMedicion', () => {

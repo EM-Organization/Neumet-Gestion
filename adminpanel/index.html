@@ -176,14 +176,6 @@
           </div>
           <button type="button" class="btn ghost" data-action="loadInicio">Actualizar</button>
         </div>
-        <section class="inicio-hero" aria-label="Buscador de vehículos">
-          <label class="inicio-hero-tit" for="busq-inicio-input">Buscar vehículo</label>
-          <form class="busq busq-grande" id="busq-inicio" role="search" data-buscador autocomplete="off">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input id="busq-inicio-input" type="search" placeholder="Matrícula, número de coche o quema" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" aria-controls="busq-inicio-res" aria-expanded="false"/>
-            <ul class="busq-resultados" id="busq-inicio-res" hidden></ul>
-          </form>
-        </section>
         <div id="inicio-contenido" aria-live="polite">
           <div class="loading-state" role="status"><div class="spinner" aria-hidden="true"></div>Cargando…</div>
         </div>
@@ -828,6 +820,7 @@
           <button class="btn ghost" data-action="loadAlertas">Actualizar</button>
         </div>
         <div class="ficha-sub" id="alert-umbral-aviso" hidden>Los umbrales de las alertas se ajustan en Empresa &gt; Umbrales.</div>
+        <div class="ficha-sub" id="alert-ayuda">Desgaste límite: la huella mínima está bajo el umbral de retiro de la empresa (Empresa &gt; Umbrales).</div>
         <div class="alert-chips" id="alert-chips"></div>
         <div class="toolbar">
           <select id="alert-cliente" class="flota-select" data-admin-only aria-label="Cliente"><option value="">Todos los clientes</option></select>
@@ -836,7 +829,7 @@
         <div class="rep-progress" id="alert-msg" role="status" aria-live="polite"></div>
         <div class="table-wrap">
           <table class="alert-tabla">
-            <thead><tr><th scope="col">Estado</th><th scope="col">Mensaje</th><th scope="col">Vehículo</th><th scope="col">Posición</th><th scope="col">Última medición</th><th scope="col">Acciones</th></tr></thead>
+            <thead><tr><th scope="col">Vehículo y posición</th><th scope="col">Problema</th><th scope="col">Abierta hace</th><th scope="col">Reconocer</th><th scope="col">Más</th></tr></thead>
             <tbody id="alert-tbody"></tbody>
           </table>
         </div>

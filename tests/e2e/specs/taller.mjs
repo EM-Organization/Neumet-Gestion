@@ -3,7 +3,7 @@
 // Estas pruebas MODIFICAN la base de prueba: cada una usa un camión distinto y corren después de las de solo lectura.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, abrirDetallePorMatricula, irA, dormir, texto } from '../lib/flujo.mjs';
+import { flujo, abrirDetallePorMatricula, irA, dormir, texto, abrirVerMas } from '../lib/flujo.mjs';
 import { json } from '../lib/verdad.mjs';
 import { confirmarRotacionEnDialogo } from '../lib/rotacion.mjs';
 import { nombrePos, avisoRotacion } from '../../../assets/js/domain/cambio-neumatico.js';
@@ -93,6 +93,7 @@ export function registrar(env) {
     await flujo(env, 'historial-tras-rotar', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO010');
       await seleccionarRueda(p, 1);
+      await abrirVerMas(p);
       assert.match(await texto(p, '#vd-panel'), /Rotación/);
       assert.doesNotMatch(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="1"]').getAttribute('aria-label')`), /desgaste límite/);
       assert.match(await p.eval(`document.querySelector('#vd-diagrama .vd-rueda[data-pos="5"]').getAttribute('aria-label')`), /desgaste límite/);
@@ -239,14 +240,14 @@ export function registrar(env) {
     assert.equal(foto(env, id), antes);
   });
 
-  // ---- Número de quema y km que ya traía el neumático ------------------------------------------------------------
+  // ---- Quema y km que ya traía el neumático ------------------------------------------------------------
   test('Taller (global): cambio con 0 km previos, quema y sin odómetro; la quema se busca y abre el vehículo', async () => {
     const id = vehId(env, 'DEMO013');
     const odoAntes = env.sql(`select odometro_km from public.vehiculos where id = ${id}`);
     await flujo(env, 'cambiar-con-quema', 'global', async p => {
       await abrirDetallePorMatricula(p, 'DEMO013');
       await seleccionarRueda(p, 4);
-      assert.match(await texto(p, '#vd-panel'), /Número de quema Q13-04/, 'el panel muestra la quema del neumático montado');
+      assert.match(await texto(p, '#vd-panel'), /Quema Q13-04/, 'el panel muestra la quema del neumático montado');
       await p.click('#vd-panel [data-action="neumatico-cambiar"]');
       await p.esperar(`document.querySelector('#modal-cambio').classList.contains('show') && document.querySelector('#cambio-actual').textContent.includes(${JSON.stringify('Neumático actual en ' + posDe(env, id, 4))})`, { que: 'modal de cambio de la posición 4' });
       assert.equal(await p.eval(`document.querySelector('#cambio-km-previos').value`), '0', 'los km previos empiezan en 0');
@@ -258,7 +259,8 @@ export function registrar(env) {
       await p.esperar(`document.querySelector('#toast-msg').textContent === ${JSON.stringify('Cambio registrado en ' + cocheDe(env, id) + ', ' + posDe(env, id, 4) + ': el neumático nuevo ya figura montado')} && !document.querySelector('#modal-cambio').classList.contains('show')`, { que: 'cambio registrado' });
       // El panel de la rueda muestra la quema nueva y 0 km previos
       await seleccionarRueda(p, 4);
-      await p.esperar(`/Número de quema\\s+E2E-001/.test(document.querySelector('#vd-panel').innerText)`, { que: 'quema nueva en el panel' });
+      await p.esperar(`/Quema\\s+E2E-001/.test(document.querySelector('#vd-panel').innerText)`, { que: 'quema nueva en el panel' });
+      await abrirVerMas(p);
       assert.match(await texto(p, '#vd-panel'), /Km que ya traía 0 km/);
       // Buscador global: la quema abre el vehículo donde está montado (sin distinguir mayúsculas ni guion)
       await irA(p, 'alertas');
@@ -336,7 +338,7 @@ export function registrar(env) {
 
   test('Taller (global): tras los cambios, la interfaz sigue sin errores en Inicio y Alertas', async () => {
     await flujo(env, 'post-taller', 'global', async p => {
-      await p.esperar(`document.querySelectorAll('#inicio-contenido .inicio-cifra').length === 5`);
+      await p.esperar(`!!document.querySelector('#inicio-h-resumen')`, { que: 'Inicio pintado' });
       await p.click('.nav-item[data-view="alertas"]');
       await p.esperar(`/\\d+ alertas?/.test(document.querySelector('#alert-count').textContent)`);
       assert.ok((await texto(p, '#alert-count')).length > 0);
