@@ -38,6 +38,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'detalle-calidad': async function(){ await abrirDetalle(); var sm = $('#vd-calidad summary'); if(sm) sm.click(); else fail('escena '+name+': sin indicador de calidad'); await sleep(300); var c = $('#vd-calidad'); if(c) c.scrollIntoView(); await sleep(200); },
     'detalle-rueda-calidad': async function(){ await abrirDetalle(); rueda3(); await sleep(800); var h = Array.prototype.filter.call(d.querySelectorAll('#vd-panel h4'), function(x){ return /Calidad/.test(x.textContent); })[0]; if(h) h.scrollIntoView(); else fail('escena '+name+': sin sección de calidad'); await sleep(300); },
     'calidad-lista': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); },
+    'calidad-corregir': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); click('#cal-contenido [data-action="calidad-corregir"]'); await sleep(500); },
     'calidad-invalidar': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); click('#cal-contenido [data-action="calidad-invalidar"]'); await sleep(600); },
     'detalle-vacio': async function(){ await abrirVacio(); },
     'detalle-vacio-rueda': async function(){ await abrirVacio(); var r = $('#vd-diagrama .vd-rueda[data-pos="4"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 4'); await sleep(700); },
@@ -74,6 +75,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
       Array.prototype.forEach.call(v.querySelectorAll('table, input, select, button'), function(e){ if(e.offsetParent && e.getBoundingClientRect().right > ancho + 1) fail('escena '+name+': '+e.tagName+' sale del ancho visible ('+Math.round(e.getBoundingClientRect().right)+' > '+ancho+')'); });
     },
     'empresa-umbrales': async function(){ nav('empresa-umbrales'); await sleep(800); },
+    'empresa-moneda': async function(){ nav('empresa-umbrales'); await sleep(800); var f = d.getElementById('emp-moneda-form'); if(f) f.scrollIntoView(); await sleep(200); },
     'reportes': async function(){ nav('reportes'); await sleep(800); },
     'reportes-cpk': async function(){ nav('reportes'); await sleep(900); var c = $('#rep-cpk-card'); if(!c || c.hidden) fail('escena '+name+': sin Costo por km'); else c.scrollIntoView(); await sleep(300); },
     'mediciones': async function(){ nav('mediciones'); await sleep(800); },
