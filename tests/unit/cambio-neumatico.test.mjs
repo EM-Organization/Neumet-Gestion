@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarCambio, traducirErrorCambio, traducirErrorRotacion, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida } from '../../assets/js/domain/cambio-neumatico.js';
+import { validarCambio, traducirErrorCambio, traducirErrorRotacion, stockDisponible, validarRotacion, avisoRotacion, DESTINOS, nombrePos, etiquetaVida,
+  validarRotacionDisco, avisoRotacionDisco, validarDatosRotacion, validarDatosRotacionDisco, validarDatosAlineacion, validarAlineacion, avisoAlineacion } from '../../assets/js/domain/cambio-neumatico.js';
 
 const neum = { id: 5, vehiculo_id: 10, posicion: 3, marca: 'Michelin', modelo: 'X', estado: 'montado', vida: 0 };
 const stock = [{ id: 1, marca: 'Pirelli', modelo: 'FR', cantidad: 2 }, { id: 2, marca: 'Vacio', cantidad: 0 }];
@@ -256,3 +257,79 @@ test('traducirErrorRotacion: mensajes del diálogo de rotar (RN-12, RN-14)', () 
   assert.equal(traducirErrorRotacion({ code: '53400', message: 'no hay posición libre para intercambiar' }),
     'No se pudo registrar la rotación. No se guardó nada');
 });
+
+// Montaje de prueba: 10 cubiertas en la ruta (1..10), una dada de baja en la 5, y el auxilio (99) montado.
+const RUTA = Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, vehiculo_id: 10, posicion: i + 1, estado: i === 4 ? 'baja' : 'montado' }));
+const AUXILIO = { id: 200, vehiculo_id: 10, posicion: 99, estado: 'montado' };
+const MONTADOS = [...RUTA, AUXILIO];
+
+test('validarRotacionDisco: posiciones fuera de 1 a 98 y el auxilio', () => {
+  assert.equal(validarRotacionDisco(MONTADOS, 10, 99, 10).error, 'El auxilio no se rota en disco');
+  for (const p of [0, 100, 'abc', '', null]) {
+    assert.equal(validarRotacionDisco(MONTADOS, 10, p, 10).error, 'Posiciones válidas: 1 a 98', `posición ${String(p)}`);
+  }
+});
+
+test('validarRotacionDisco: posición libre y neumático dado de baja', () => {
+  assert.equal(validarRotacionDisco(MONTADOS, 10, 12, 10).error, 'No hay neumático en ' + nombrePos(12, 10));
+  assert.equal(validarRotacionDisco(MONTADOS, 10, 5, 10).error, 'El neumático de ' + nombrePos(5, 10) + ' está dado de baja');
+});
+
+test('validarRotacionDisco: caso válido con params exactos y aviso «<posición>: rotada en disco»', () => {
+  const r = validarRotacionDisco(MONTADOS, 10, '1', 10);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.params, { p_vehiculo_id: 10, p_posicion: 1 });
+  assert.equal(r.aviso, 'Delantera izquierda: rotada en disco');
+  assert.equal(r.aviso, avisoRotacionDisco(1, 10), 'la duplicada usa el mismo aviso que el éxito');
+});
+
+test('validarRotacionDisco: la posición 98 es válida aunque no tenga neumático hoy', () => {
+  assert.equal(validarRotacionDisco(MONTADOS, 10, 98, 10).error, 'No hay neumático en ' + nombrePos(98, 10));
+});
+
+const CAT_DISCO = [
+  { tipo: 'rotacion_disco', codigo: 'desgaste_lateral', etiqueta: 'Desgaste lateral', orden: 1, activo: true },
+  { tipo: 'rotacion_disco', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'alineacion', codigo: 'desvio', etiqueta: 'Desvío', orden: 1, activo: true },
+];
+const baseDisco = { catalogo: CAT_DISCO, motivoCodigo: 'desgaste_lateral', motivoTexto: null, odometro: '', odometroActual: 1000, odometroObligatorio: false };
+
+test('validarDatosRotacionDisco: solo motivos de tipo rotacion_disco; odómetro obligatorio y que no baje', () => {
+  assert.deepEqual(validarDatosRotacionDisco(baseDisco).params, { p_odometro_km: null, p_motivo_codigo: 'desgaste_lateral', p_motivo_texto: null });
+  assert.match(validarDatosRotacionDisco({ ...baseDisco, motivoCodigo: 'swap_20000' }).error, /Elegir un motivo de la lista/, 'el código de rotación no sirve en disco');
+  assert.match(validarDatosRotacionDisco({ ...baseDisco, motivoCodigo: 'otro' }).error, /Escribir el motivo/);
+  assert.match(validarDatosRotacionDisco({ ...baseDisco, odometroObligatorio: true }).error, /Indicar la lectura/);
+  assert.match(validarDatosRotacionDisco({ ...baseDisco, odometro: '900' }).error, /no puede ser menor/);
+});
+
+test('validarDatosAlineacion: motivo de tipo alineacion, no el de rotación', () => {
+  assert.deepEqual(validarDatosAlineacion({ ...baseDisco, motivoCodigo: 'desvio' }).params, { p_odometro_km: null, p_motivo_codigo: 'desvio', p_motivo_texto: null });
+  assert.match(validarDatosAlineacion({ ...baseDisco, motivoCodigo: 'desgaste_lateral' }).error, /Elegir un motivo de la lista/);
+});
+
+test('validarDatosRotacion sigue igual con la validación común', () => {
+  const base = { catalogo: CAT_DISCO, motivoCodigo: 'swap_20000', motivoTexto: null, odometro: '', odometroActual: 1000, odometroObligatorio: false };
+  assert.deepEqual(validarDatosRotacion(base).params, { p_odometro_km: null, p_motivo_codigo: 'swap_20000', p_motivo_texto: null });
+  assert.match(validarDatosRotacion({ ...base, motivoCodigo: 'desgaste_lateral' }).error, /lista/);
+});
+
+test('validarAlineacion: solo el auxilio montado no alcanza; con diez en ruta, ok', () => {
+  assert.deepEqual(validarAlineacion([AUXILIO], 10), { ok: false, error: 'El vehículo no tiene neumáticos montados' });
+  assert.deepEqual(validarAlineacion([], 10), { ok: false, error: 'El vehículo no tiene neumáticos montados' });
+  const r = validarAlineacion(MONTADOS, 10);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.params, { p_vehiculo_id: 10 });
+  assert.equal(r.cantidad, 10);
+});
+
+test('avisoAlineacion: cuenta los neumáticos y usa singular para uno', () => {
+  assert.equal(avisoAlineacion(10), 'Alineación registrada en 10 neumáticos');
+  assert.equal(avisoAlineacion(1), 'Alineación registrada en 1 neumático');
+});
+
+test('traducirErrorRotacion: los errores nuevos de la base se traducen a sus textos', () => {
+  assert.equal(traducirErrorRotacion({ code: '22023', message: 'el auxilio no se rota en disco' }), 'El auxilio no se rota en disco');
+  assert.equal(traducirErrorRotacion({ code: '22023', message: 'el vehículo no tiene neumáticos montados' }), 'El vehículo no tiene neumáticos montados');
+});
+

@@ -187,6 +187,8 @@ export function traducirErrorRotacion(err) {
   if (msg.includes('motivo')) return `Elegir un motivo de la lista. Con «otro», escribirlo (máx. ${MAX_MOTIVO_TEXTO} caracteres)`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja. Actualizar la pantalla';
   if (msg.includes('no hay neumático')) return 'Ya no hay neumático en una de las posiciones. Actualizar la pantalla';
+  if (msg.includes('el auxilio no se rota en disco')) return 'El auxilio no se rota en disco';
+  if (msg.includes('el vehículo no tiene neumáticos montados')) return 'El vehículo no tiene neumáticos montados';
   return 'No se pudo registrar la rotación. No se guardó nada';
 }
 
@@ -213,12 +215,55 @@ export function avisoRotacion(a, b, tipo, huboIntercambio) {
   return huboIntercambio ? `${nombrePos(a, tipo)} ↔ ${nombrePos(b, tipo)}` : `neumático movido de ${nombrePos(a, tipo)} a ${nombrePos(b, tipo)}`;
 }
 
-// Odómetro y motivo de una rotación (diálogo «Rotar»). RN-12: obligatorio con el flag; RN-14: motivo de tipo «rotacion».
-// Devuelve {ok, params} con los argumentos p_odometro_km, p_motivo_codigo y p_motivo_texto de neumatico_rotar.
-export function validarDatosRotacion(f) {
-  const mot = validarMotivo(f.catalogo, TIPO_MOTIVO.rotar, f.motivoCodigo, f.motivoTexto);
+// Rotación en disco (RN-15): la cubierta cambia de lado sin cambiar de posición, así que basta la posición. El auxilio
+// (99) no se rota: no tiene un lado de la ruta que compartir. El límite 98 es el último de la ruta (docs/08).
+const POSICION_AUXILIO = 99;
+const POSICION_RUTA_MAX = 98;
+export function validarRotacionDisco(neumaticos, vehiculoId, pos, tipo) {
+  const p = Number(pos);
+  if (p === POSICION_AUXILIO) return { ok: false, error: 'El auxilio no se rota en disco' };
+  if (!Number.isInteger(p) || p < 1 || p > POSICION_RUTA_MAX) return { ok: false, error: `Posiciones válidas: 1 a ${POSICION_RUTA_MAX}` };
+  const n = (neumaticos || []).find(x => x.vehiculo_id === vehiculoId && x.posicion === p);
+  if (!n) return { ok: false, error: `No hay neumático en ${nombrePos(p, tipo)}` };
+  if (n.estado === 'baja') return { ok: false, error: `El neumático de ${nombrePos(p, tipo)} está dado de baja` };
+  return { ok: true, params: { p_vehiculo_id: vehiculoId, p_posicion: p }, aviso: avisoRotacionDisco(p, tipo) };
+}
+
+// El mismo aviso sirve si la base informa duplicada: para el operario la rotación ya quedó registrada.
+export const avisoRotacionDisco = (pos, tipo) => `${nombrePos(pos, tipo)}: rotada en disco`;
+
+// Alineación por vehículo (decisión 4 de la ola 3): un evento para todo el vehículo, sobre las cubiertas montadas en la
+// ruta (1..98). Sin ninguna, no hay nada que alinear. `cantidad` es la lectura local; el aviso final usa la que informa la base.
+export function validarAlineacion(neumaticos, vehiculoId) {
+  const cantidad = (neumaticos || []).filter(n => n.vehiculo_id === vehiculoId && n.posicion >= 1 && n.posicion <= POSICION_RUTA_MAX).length;
+  if (!cantidad) return { ok: false, error: 'El vehículo no tiene neumáticos montados' };
+  return { ok: true, params: { p_vehiculo_id: vehiculoId }, cantidad };
+}
+
+// Singular para una sola cubierta: «en 1 neumático», no «en 1 neumáticos».
+export const avisoAlineacion = n => `Alineación registrada en ${n} ${n === 1 ? 'neumático' : 'neumáticos'}`;
+
+// Odómetro y motivo de un movimiento (RN-12 y RN-14): iguales para rotar, rotar en disco y alinear; cambia solo el tipo
+// de catálogo del motivo. Devuelve {ok, params} con p_odometro_km, p_motivo_codigo y p_motivo_texto.
+function validarDatosMovimiento(f, tipoMotivo) {
+  const mot = validarMotivo(f.catalogo, tipoMotivo, f.motivoCodigo, f.motivoTexto);
   if (!mot.ok) return mot;
   const od = validarOdometroObligatorio(f.odometro, f.odometroActual, !!f.odometroObligatorio);
   if (!od.ok) return { ok: false, error: od.error };
   return { ok: true, params: { p_odometro_km: od.valor, p_motivo_codigo: mot.codigo, p_motivo_texto: mot.texto } };
+}
+
+// Odómetro y motivo de una rotación (diálogo «Rotar»): motivo de tipo «rotacion».
+export function validarDatosRotacion(f) {
+  return validarDatosMovimiento(f, TIPO_MOTIVO.rotar);
+}
+
+// Diálogo «Rotar en disco»: motivo de tipo «rotacion_disco».
+export function validarDatosRotacionDisco(f) {
+  return validarDatosMovimiento(f, TIPO_MOTIVO.rotarDisco);
+}
+
+// Diálogo «Registrar alineación»: motivo de tipo «alineacion».
+export function validarDatosAlineacion(f) {
+  return validarDatosMovimiento(f, TIPO_MOTIVO.alinear);
 }
