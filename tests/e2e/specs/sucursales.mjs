@@ -26,6 +26,8 @@ async function abrirSucursales(p, { filasVeh } = {}) {
   await p.esperar(`document.querySelectorAll('#suc-lista tr[data-sucursal], #suc-lista .salud-muted').length > 0 && ${filasVeh === undefined ? 'true' : `document.querySelectorAll('#suc-vehiculos tr[data-vehiculo]').length === ${filasVeh}`}`, { que: 'vista Sucursales cargada' });
 }
 const elegir = (p, sel, valor) => p.eval(`(() => { const s = document.querySelector(${JSON.stringify(sel)}); s.value = ${JSON.stringify(String(valor))}; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+// Distribución: tarjetas de radio. Elegir es un clic en la tarjeta del código.
+const elegirDistribucion = (p, codigo) => p.eval(`document.querySelector('#veh-nuevo-distribucion input[value=${JSON.stringify(codigo)}]').click()`);
 const confirmar = async (p, titulo) => {
   await p.esperar(`document.querySelector('#modal-confirm').classList.contains('show') && document.querySelector('#confirm-title').textContent === ${JSON.stringify(titulo)}`, { que: `confirmación «${titulo}»` });
   return p;
@@ -111,11 +113,11 @@ export function registrar(env) {
       await p.escribir('#veh-nuevo-patente', 'e2e 0777');
       await elegir(p, '#veh-nuevo-sucursal', Number(env.sql(`select ${sucDemo('salto')}`)));
       // Sin distribución no se crea: elegirla es obligatorio y no hay valor por defecto
-      assert.equal(await p.eval(`document.querySelector('#veh-nuevo-distribucion').value`), '', 'sin distribución preseleccionada');
+      assert.equal(await p.eval(`(document.querySelector('#veh-nuevo-distribucion input[name="distribucion"]:checked') || { value: '' }).value`), '', 'sin distribución preseleccionada');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/distribución de neumáticos/.test(document.querySelector('#veh-nuevo-error').textContent)`, { que: 'aviso de distribución obligatoria' });
       assert.equal(Number(env.sql(`select count(*) from public.vehiculos where numero = '777'`)), 0);
-      await elegir(p, '#veh-nuevo-distribucion', '8x4');
+      await elegirDistribucion(p, '8x4');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/Vehículo agregado/.test(document.querySelector('#toast-msg').textContent)`, { que: 'vehículo agregado' });
       const v = filas(env, `select cliente_id, nombre, numero, patente, patente_norm, tipo_ruedas, distribucion, activo, sucursal_id from public.vehiculos where numero = '777'`);
@@ -124,13 +126,13 @@ export function registrar(env) {
       // Número repetido: el diálogo queda abierto con el mensaje
       await p.click('#btn-veh-agregar');
       await p.escribir('#veh-nuevo-numero', '777');
-      await elegir(p, '#veh-nuevo-distribucion', '6x2');
+      await elegirDistribucion(p, '6x2');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/número de coche/.test(document.querySelector('#veh-nuevo-error').textContent)`, { que: 'aviso de número repetido' });
       assert.equal(Number(env.sql(`select count(*) from public.vehiculos where numero = '777'`)), 1);
       // «Otra distribución» (fuera del catálogo): pide el tipo de ruedas y el vehículo queda sin distribución definida
       await p.escribir('#veh-nuevo-numero', '778');
-      await elegir(p, '#veh-nuevo-distribucion', 'otra');
+      await elegirDistribucion(p, 'otra');
       assert.equal(await p.eval(`document.querySelector('#veh-nuevo-tipo-campo').hidden`), false, 'pide el tipo de ruedas');
       await elegir(p, '#veh-nuevo-ruedas', 16);
       await p.click('#veh-nuevo-guardar');

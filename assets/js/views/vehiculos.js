@@ -13,7 +13,8 @@ import { buscarVehiculos, coincidenciaExacta } from '../domain/vehiculo-busqueda
 import { plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { validarVehiculoNuevo, mensajeErrorGestion } from '../domain/sucursales.js';
-import { DISTRIBUCIONES, OTRA_DISTRIBUCION, textoOpcion, textoRuedas } from '../domain/distribucion.js';
+import { OTRA_DISTRIBUCION, textoRuedas } from '../domain/distribucion.js';
+import { pintarDistribucion, valorDistribucion, marcarDistribucion } from '../core/distribucion-tarjetas.js';
 import { abrirDetalle } from './vehiculo-detalle.js';
 import { ESTADOS } from '../domain/estado-desgaste.js';
 
@@ -148,17 +149,14 @@ function renderVehiculos(){
 const $=id=>document.getElementById(id);
 const errNuevo=msg=>{ $('veh-nuevo-error').textContent=msg||''; };
 // El tipo de ruedas solo se pide para «Otra»: con una distribución del catálogo la base lo deriva.
-const mostrarTipoRuedas=()=>{ $('veh-nuevo-tipo-campo').hidden=$('veh-nuevo-distribucion').value!==OTRA_DISTRIBUCION; };
+const mostrarTipoRuedas=()=>{ $('veh-nuevo-tipo-campo').hidden=valorDistribucion($('veh-nuevo-distribucion'))!==OTRA_DISTRIBUCION; };
 
 registerActions({
   vehiculoAgregarAbrir(){
     if(!esAdminEmpresa()) return;
     ['veh-nuevo-numero','veh-nuevo-patente'].forEach(id=>{ $(id).value=''; });
     // Sin distribución preseleccionada: elegirla es obligatorio, y un valor por defecto llevaría a medir el neumático equivocado.
-    setHtml($('veh-nuevo-distribucion'), joinHtml([html`<option value="">Elegir distribución…</option>`,
-      DISTRIBUCIONES.map(d=>html`<option value="${d.id}">${textoOpcion(d)}</option>`),
-      html`<option value="${OTRA_DISTRIBUCION}">Otra distribución</option>`]));
-    $('veh-nuevo-distribucion').value=''; $('veh-nuevo-ruedas').value='10'; mostrarTipoRuedas();
+    marcarDistribucion($('veh-nuevo-distribucion'),''); $('veh-nuevo-ruedas').value='10'; mostrarTipoRuedas();
     $('veh-nuevo-cargar').checked=true; // lo habitual es cargar los neumáticos al crear el vehículo
     errNuevo('');
     // Sucursal por defecto: la que está elegida en la barra superior (si hay una).
@@ -171,7 +169,7 @@ registerActions({
   async vehiculoAgregarGuardar(){
     if(!esAdminEmpresa()) return; // defensa en profundidad: el botón no se ofrece y la RPC rechaza igual
     const r=validarVehiculoNuevo({ numero:$('veh-nuevo-numero').value, patente:$('veh-nuevo-patente').value,
-      distribucion:$('veh-nuevo-distribucion').value, tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
+      distribucion:valorDistribucion($('veh-nuevo-distribucion')), tipoRuedas:$('veh-nuevo-ruedas').value, sucursalId:$('veh-nuevo-sucursal').value });
     if(!r.ok){ errNuevo(r.error); return; }
     const btn=$('veh-nuevo-guardar'), txt=btn.textContent;
     if(btn.disabled) return; // Enter repetido mientras se guarda: sin doble alta
@@ -212,7 +210,15 @@ export function init(){
     if(v){ e.preventDefault(); abrirDetalle(v.id); }
   });
   document.getElementById('filter-cliente-veh').addEventListener('change',renderVehiculos);
+  // Las tarjetas son radios: el catálogo es fijo, así que se pintan una sola vez.
+  pintarDistribucion($('veh-nuevo-distribucion'));
   $('veh-nuevo-distribucion').addEventListener('change',()=>{ mostrarTipoRuedas(); errNuevo(''); });
+  // Enter sobre una tarjeta guarda, como en los campos de texto. Se anula el envío implícito del radio y el repetido del teclado no guarda.
+  $('veh-nuevo-distribucion').addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    e.preventDefault();
+    if(!e.repeat) ACTIONS.vehiculoAgregarGuardar();
+  });
   // Enter en cualquier campo de texto del alta guarda (sin buscar el botón).
   $('veh-nuevo-body').addEventListener('keydown',e=>{
     if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type==='text'){ e.preventDefault(); ACTIONS.vehiculoAgregarGuardar(); }
