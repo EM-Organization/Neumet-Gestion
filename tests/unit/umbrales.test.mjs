@@ -157,6 +157,11 @@ describe('textos y orden de los campos (docs/14)', () => {
     }
     assert.equal(CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').lbl, 'Margen para cerrar la alerta (mm)');
   });
+  test('la ayuda del margen dice lo que hace la base: huella mínima que llega (>=) al umbral de «Mayor desgaste desde» más el margen', () => {
+    const ayuda = CAMPOS_UMBRAL.find(c => c.key === 'alerta_histeresis_mm').ayuda;
+    assert.match(ayuda, /huella mínima llega a «Mayor desgaste desde» más este margen/, ayuda);
+    assert.doesNotMatch(ayuda, /supera|promedio/i, ayuda);
+  });
   test('ni etiqueta ni ayuda usan la jerga técnica (histéresis, swap)', () => {
     for (const c of CAMPOS_UMBRAL) {
       assert.doesNotMatch(c.lbl, /hist[eé]resis|swap/i, c.lbl);

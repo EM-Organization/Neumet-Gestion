@@ -16,7 +16,8 @@ export const CAMPOS_UMBRAL = [
   { key: 'umbral_retiro_mm', lbl: `${ESTADOS.mayor.texto} desde (mm)`, ayuda: `Desde este valor hasta el anterior: «${bajo(ESTADOS.mayor)}». Por debajo: «${bajo(ESTADOS.limite)}»`, mm: true },
   // Margen de la alerta (columna alerta_histeresis_mm): puede ser 0 y va de 0 a 3 mm, por eso no entra en las reglas de los
   // umbrales en mm (mm: false, hist: true). El nombre técnico no se muestra al operario.
-  { key: 'alerta_histeresis_mm', lbl: 'Margen para cerrar la alerta (mm)', ayuda: 'La alerta de desgaste límite se cierra cuando la huella mínima supera el umbral más este margen (0 a 3 mm)', mm: false, hist: true, avanzado: true },
+  // La base (alerta_sincronizar, 20261126040000) cierra con minimo >= umbral_retiro_mm + margen: «llega a», no «supera».
+  { key: 'alerta_histeresis_mm', lbl: 'Margen para cerrar la alerta (mm)', ayuda: `La alerta de desgaste límite se cierra cuando la huella mínima llega a «${ESTADOS.mayor.texto} desde» más este margen (0 a 3 mm)`, mm: false, hist: true, avanzado: true },
   { key: 'dias_sin_medir_alerta', lbl: 'Días sin medir para indicador', ayuda: 'Indicador «sin medir» pasado este plazo (solo en la vista de estado)', mm: false, avanzado: true },
   { key: 'irregularidad_mm', lbl: 'Irregularidad máxima (mm)', ayuda: 'Diferencia máxima tolerada entre huellas', mm: true, avanzado: true },
   // Pasar atrás (cubiertas de dirección) va en mm, pero fuera de las reglas de los umbrales de desgaste: mm: false y dirMm: true
