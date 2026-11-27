@@ -28,12 +28,11 @@ import { sinReconocer, partesRecuadro } from '../domain/alertas.js';
 const $ = id => document.getElementById(id);
 const MAX_FILAS = 20000;
 
-const verVehiculo = id => JSON.stringify([id]);
 const matricula = p => (p ? html`<span class="dash-fleet-pat">${p}</span>` : '');
 
 // Botón «Ver coche 106»: abre el detalle del vehículo y, si se indica, deja seleccionada esa rueda.
 const textoVer = nombre => { const t = etiquetaCoche(nombre); return /^Coche /.test(t) ? `Ver coche ${t.slice(6)}` : 'Ver vehículo'; };
-const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-action="verVehiculo" data-args="${JSON.stringify(pos == null ? [v.vehiculo_id] : [v.vehiculo_id, pos])}">${textoVer(v.nombre)}</button>`;
+const botonVer = (v, pos) => html`<button type="button" class="inicio-ver" data-action="verVehiculo" data-args="${JSON.stringify(pos === null || pos === undefined ? [v.vehiculo_id] : [v.vehiculo_id, pos])}">${textoVer(v.nombre)}</button>`;
 
 // Mini vehículo de un vehículo con sus ruedas coloreadas; `filas` = v_estado_neumaticos de ese vehículo.
 // tipo_ruedas por vehículo (el estado de neumáticos no lo trae): define el chasis dibujado y el nombre de la posición.
