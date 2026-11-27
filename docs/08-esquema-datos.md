@@ -1038,7 +1038,7 @@ Migración aplicada y verificada → recién entonces la función `api-proveedor
 
 ## S.4 Límites
 
-El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución de un vehículo ya creado con «Cambiar distribución» (apéndice X). La app móvil no la usa todavía.
+El catálogo no cubre 2, 4, 14, 16 y 18 ruedas (esos vehículos se crean como «Otra distribución», sin definir). El diagrama del detalle y los nombres de posición del panel salen de la distribución cuando el vehículo la tiene y de `tipo_ruedas` si no; el panel edita la distribución y el servicio de un vehículo ya creado con «Distribución y servicio» (apéndices X y AB). La app móvil no la usa todavía.
 
 ## S.5 Pruebas
 
@@ -1228,7 +1228,7 @@ Corrige la distribución de ruedas de un vehículo existente (p. ej. tras una ca
 - Devuelve `{vehiculo_id, distribucion, tipo_ruedas, anterior}`. La base no audita cambios de vehículo, así que no deja evento.
 
 ### X.2 Panel
-- Detalle del coche: botón «Cambiar distribución» (quien puede operar) y diálogo con las mismas opciones que «Agregar vehículo». Tres clics (abrir, elegir, guardar; Enter guarda).
+- Detalle del coche: botón «Distribución y servicio» (quien puede operar) y diálogo con las mismas opciones que «Agregar vehículo», más el campo Servicio («Sin definir», «Camión», «Bus»; lo guarda `vehiculo_fijar_servicio`, apéndice AB). Tres clics (abrir, elegir, guardar; Enter guarda).
 - El diagrama y los nombres de posición se dibujan según la distribución (`layoutRuedas(posiciones, tipoLayout(veh))`): 6x2 = 8 ruedas (simple, doble, simple), sin ejes de más. Sin distribución o «Otra» se conserva el dibujo por `tipo_ruedas`. Un neumático en una posición fuera de la distribución se dibuja como eje extra.
 
 ### X.3 Pruebas
@@ -1404,3 +1404,54 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 - Clics: retirar y cambiar no suman clics. El motivo viene marcado y el operario solo lo cambia si no aplica. Montar no tiene motivo.
 - Pruebas: smoke `montar`, `montar-sucursal`, `detalle`, `detalle-admin`, `cliente` y `secuser` (`cliente` y `secuser` corren además `cambioFlow`). E2E: `tests/e2e/specs/montar-neumaticos.mjs` (retirar con catálogo, «otro» con texto, `p_motivo` libre rechazado, odómetro obligatorio con el flag, restablecido en `finally`). Unitarias: `tests/unit/montaje.test.mjs`. Escenas visuales de rol cliente, en desktop y móvil: `retirar-neumatico`, `montar-neumatico`, `montar-nueva`, `montar-siguiente`, `detalle-rueda`, `cambio-neumatico`, `cambio-cubierta`, `cambio-almacenar`, `rotar-dialogo` y `confirmar-intercambio`.
 - Lectura de los flags: la API lee `odometro_obligatorio_api` con service_role (docs/07 §4.1), porque el rol `api` con su JWT no ve su fila de `clientes` por RLS. Lo cubre la sección K de `tests/sql/t_105_odometro_motivos.sql`.
+
+# Apéndice AB · Ola 2, base: ejes, umbrales de dirección y alertas por tipo (`20261126030000_ejes_direccion_alertas.sql`)
+
+Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el servicio del vehículo (D5) y los umbrales de dirección y de swap por cliente. Las decisiones D1 a D8 están en AB.2 y la migración las cita por número. El panel ya está en dev (diálogo «Distribución y servicio», alertas por tipo, aviso de umbrales), pero depende de esta migración para funcionar (AB.1).
+
+### AB.1 Estado y orden de despliegue
+- **Pendiente de aplicar.** `20261126030000_ejes_direccion_alertas.sql` no está aplicada en producción. No se aplicó nada desde dev al redactar este apéndice.
+- Depende de `20261126020000` (AA) y, en cadena, de `20261126010000` (Z), `20261126000000` (Y), `20261125500000`, `20261123000000` y `20261120500000`, cuyas definiciones reemplaza.
+- **Contradicción sin resolver:** AA.9 y Z.7 dicen que `20261126020000` y `20261126010000` no están aplicadas; docs/10 las da por aplicadas. Antes de aplicar AB, confirmarlo en la base (`supabase migration list` y el dry-run) y corregir el documento que esté mal.
+- Orden: (1) confirmar la cadena; (2) `supabase db push --dry-run` limpio; (3) aplicar con el CLI, nunca con el MCP `apply_migration`; (4) verificar con la API real y el JWT de cada rol; (5) recién después fusionar dev → main. Fusionar antes rompe el panel: el diálogo llama a `vehiculo_fijar_servicio` y la vista de alertas pide `color` y `umbral_km` a `v_alertas`, que solo existen con la migración aplicada.
+
+### AB.2 Decisiones
+- **D1 · Swap.** Solo cubiertas montadas de vida 0. Los km son el tramo abierto (odómetro actual menos el del montaje), no los tramos cerrados. La alerta `swap` se abre al llegar a `swap_km` del cliente (20.000 por defecto) y guarda `km_actual` y `umbral_km`. Se cierra con `rotacion` si cambió la posición o la cubierta ya rotó, y con `sin_datos` si el km falta o baja de `swap_km` sin rotación.
+- **D2 · Cierre de dirección por rotación.** La alerta de dirección se cierra con `rotacion` solo si cambió la posición del neumático; mientras está abierta, la posición queda fija en la alerta. Sin cambio de posición: `sin_datos` si no hay huella, `reemplazada` si la huella está bajo el retiro, `recuperada` en el resto.
+- **D3 · Dirección.** Solo en el eje de dirección (`rol_eje = 'direccion'`), con huella medida y no bajo el retiro: bajo el retiro manda la alerta roja (RN-08). El límite se evalúa antes que el aviso, porque el rango del aviso incluye al límite. Se cierra también si el neumático deja el eje de dirección. Motivo nuevo `reemplazada`.
+- **D4 · km por mm, fuera de esta ola.** `clientes.km_por_mm_revision` es nulo por defecto, y nulo apaga el tipo `km_por_mm`. CA-07 queda fuera. El campo no tiene parámetro en `alerta_configurar`: hoy solo lo cambia SQL del equipo.
+- **D5 · Servicio del vehículo.** `vehiculos.servicio` admite `camion`, `bus` o nulo. `vehiculo_fijar_servicio` usa `neumatico_autorizar_vehiculo`, el mismo permiso que la distribución; un valor fuera de catálogo responde 23514 «servicio fuera de catálogo». Vacío o nulo deja el servicio sin definir. Grant solo para `authenticated`.
+- **D6 · Relleno al aplicar.** La última sentencia de la migración evalúa toda la flota de clientes activos con las reglas nuevas (AB.5).
+- **D7 · Irregular.** La diferencia entre huellas se redondea a 0,1 mm. La alerta se abre con `>=` el umbral `irregularidad_mm`, sin histéresis. Se cierra con `recuperada` al bajar del umbral, o con `sin_datos` si falta la medición o la rueda está en auxilio.
+- **D8 · Umbrales de dirección.** Aviso 8 mm y límite 6 mm por defecto (`direccion_aviso_mm`, `direccion_limite_mm`). El check exige `0 < límite < aviso <= 99,9`, y `alerta_configurar` rechaza valores con más de un decimal.
+
+### AB.3 Objetos
+- **Clientes:** `direccion_aviso_mm numeric(4,1) not null default 8`, `direccion_limite_mm numeric(4,1) not null default 6`, `swap_km integer not null default 20000` y `km_por_mm_revision integer` (nulo). Checks `clientes_direccion_umbrales_ck`, `clientes_swap_km_ck` (1.000 a 200.000) y `clientes_km_por_mm_ck` (nulo o mayor que 0). Privilegio de columna: `select` de las cuatro para `authenticated`, sin escritura directa.
+- **Vehículos:** `servicio text` con `vehiculos_servicio_ck` (`camion`, `bus` o nulo).
+- **Alertas:** `tipo` con `alertas_tipo_ck` (`limite`, `direccion_aviso`, `direccion_limite`, `irregular`, `swap`, `km_por_mm`). `resuelta_motivo` con `alertas_resuelta_motivo_ck`, que suma `rotacion` y `reemplazada`. Columnas nuevas `km_actual` y `umbral_km`; `umbral_mm`, `mm_apertura`, `mm_minimo` y `mm_actual` pasan a nulables, y `alertas_valores_ck` exige los km en swap y los cuatro mm en el resto. Índice único `alertas_una_abierta_por_tipo_uk` sobre (`neumatico_id`, `tipo`) donde `estado <> 'resuelta'`, que reemplaza a `alertas_una_abierta_uk`.
+- **Funciones:** `distribucion_ejes` y `rol_eje_posicion` (inmutables; la posición 99 es `auxilio`); `vehiculo_fijar_servicio` (nueva); `alerta_estado_tiros` (estado por neumático que usa el sync); `km_tramos_cubierta_interno` (sin ejecución para `authenticated`) y `km_tramos_cubierta` (wrapper con la misma firma y permisos); `alerta_sincronizar(bigint, bigint[] default null)`, que evalúa tipo por tipo en sentencias separadas; `alerta_configurar`, que pasa de 8 a 11 argumentos (los tres nuevos con `default null`, así el panel actual sigue llamándola), exige administrador de empresa (42501 «permiso denegado») y tiene grant solo para `authenticated`; `trg_alerta_vehiculos()`. `alerta_estado_tiros`, `alerta_sincronizar` y `trg_alerta_vehiculos` no tienen ejecución para `public`, `anon` ni `authenticated`.
+- **Vistas** (todas con `security_invoker = true`): `v_estado_neumaticos` suma al final `distribucion`, `servicio`, `rol_eje` y los umbrales de dirección del cliente. `v_resumen_flota_cliente` da severidad 3 solo al límite. `v_alertas` suma al final `color` (rojo para `limite`, amarillo para el resto), `km_actual` y `umbral_km`; `valor` es el km en swap y los mm en el resto; no muestra las alertas de la posición 99. Grant: `select` para `authenticated`.
+- **Triggers:** `trg_alerta_neumaticos_ins` (after insert) y `trg_alerta_neumaticos_upd` (after update de `estado`, `posicion`, `vehiculo_id`, `idneumatico` y `vida`), diferidos (`deferrable initially deferred`), llaman a `trg_alerta_neumaticos()`, que viene de `20261118500000_alerta_critica.sql` y no se redefine aquí. `trg_alerta_vehiculos` (after update de `distribucion` y `odometro_km`), diferido. `trg_alerta_clientes` (after update de los umbrales, histéresis, irregularidad, dirección y swap; no incluye `km_por_mm_revision`, por D4).
+
+### AB.4 Pruebas
+- SQL: las pruebas SQL de la ola 2 (C3) las escribe T1; al redactar este apéndice no están en dev. Lo existente sobre tramos de km es `tests/sql/t_104_auxilio_tramos_km.sql`.
+- Unitarias: `tests/unit/rol-eje.test.mjs` (espejo JS de `rol_eje_posicion`).
+- E2E: `tests/e2e/specs/ola2-alertas-servicio.mjs` (color, severidad y umbral por tipo con el JWT del rol global; servicio con `vehiculo_fijar_servicio`, que el diálogo muestra al reabrir; aviso de umbrales para el administrador de empresa). `alertas-dispositivos.mjs` ya existía y pasó 1/1 en Postgres 17 local con esta base.
+
+### AB.5 Riesgos de despliegue
+- **D6 abre alertas de golpe.** El relleno evalúa toda la flota con los tipos nuevos: en flotas reales aparecen alertas `irregular`, de dirección y `swap` que antes no existían. Es el efecto esperado, pero hay que avisarlo a los clientes antes de aplicar.
+- **Compatibilidad.** Según la migración, el panel actual sigue llamando a `alerta_configurar` gracias a los `default null` (comentario de la sección de la función), y las columnas nuevas de las vistas van al final. El diálogo de servicio y la vista de alertas nueva dependen de la migración (AB.1).
+- **Rendimiento.** `trg_alerta_neumaticos_upd` no tiene `WHEN` (AB.6): se dispara aunque el valor no cambie.
+
+### AB.6 Pendientes
+- (TL R1) `trg_alerta_neumaticos_upd` perdió el `WHEN (old.x is distinct from new.x …)`: solo rendimiento; reponerlo en una migración futura.
+- (TL R1) El comentario de la sección 3 dice que el servicio lo fija el administrador; la sucursal también puede (igual que la distribución). Ajustar el texto o confirmar la regla.
+- (TL R1) Las alertas no-límite de vehículos inactivos no se cierran solas; ya pasaba con `limite`.
+- (TL R1) Relleno D6: ver AB.5.
+- Comentarios de la migración a corregir: la cabecera y D3 citan RN-07 para dirección, pero RN-07 en docs/23 es `km_por_mm`; la sección 2 dice que `alerta_configurar` cambia las cuatro columnas nuevas y no cambia `km_por_mm_revision`; la cita a `tests/unit/rol-eje-sql.test.mjs` apunta a un archivo que no existe.
+- **Abierto (negocio):** la regla «simple antes del primer doble = dirección» (igual en `rol_eje_posicion` y en `rolEjePosicion`) da dirección al segundo eje simple delantero de un 8x4 (`SSDD`). Confirmar si en camión ese eje dirige; si no, las alertas de dirección lo evalúan igual.
+- Contradicción de estados de migraciones: ver AB.1.
+
+### AB.7 Interfaz
+- El diálogo «Distribución y servicio» guarda con dos RPC: la distribución con `vehiculo_cambiar_distribucion` y el servicio con `vehiculo_fijar_servicio`. Sigue en tres clics (abrir, elegir, guardar; Enter guarda).
+- El aviso de umbrales en Alertas nombra «Empresa > Umbrales» y solo lo ve el administrador de empresa.
