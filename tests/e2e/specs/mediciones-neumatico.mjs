@@ -6,7 +6,7 @@
 // Modifican la base de prueba: usan camiones que ninguna otra prueba toca para comprobar valores (DEMO006 y DEMO005).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, irA, abrirDetallePorMatricula } from '../lib/flujo.mjs';
+import { flujo, irA, abrirDetallePorMatricula, abrirVerMas } from '../lib/flujo.mjs';
 import { json, cifrasInicio } from '../lib/verdad.mjs';
 import { nombrePos, avisoRotacion } from '../../../assets/js/domain/cambio-neumatico.js';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
@@ -81,6 +81,7 @@ export function registrar(env) {
       // Panel: sin medición ni gráfico del viejo
       await seleccionarRueda(p, pos);
       await p.esperar(`/todavía no tiene mediciones/.test(document.querySelector('#vd-panel').textContent)`, { que: 'el panel dice que no tiene mediciones' });
+      await abrirVerMas(p);
       await p.esperar(`/Sin mediciones para graficar/.test(document.querySelector('#vd-chart-wrap').textContent)`, { que: 'sin gráfico heredado' });
     });
 
@@ -114,7 +115,9 @@ export function registrar(env) {
       assert.equal((await rueda(p, pos)).mm, '11,0');
       assert.match((await rueda(p, pos)).aria, /buen estado/i);
       await seleccionarRueda(p, pos);
+      await abrirVerMas(p);
       await p.esperar(`/1 lectura(?!s)/.test(document.querySelector('#vd-chart-wrap').getAttribute('aria-label') || document.querySelector('#vd-chart-wrap .vd-chart')?.getAttribute('aria-label') || '')`, { que: 'gráfico con un solo punto (el del nuevo)' });
+      await abrirVerMas(p);
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
       assert.match(panel, /Montaje/, 'el historial del nuevo muestra su montaje');
       assert.doesNotMatch(panel, /Baja|Dado de baja/, 'el historial no muestra la baja del viejo');
@@ -153,6 +156,7 @@ export function registrar(env) {
       assert.match(rb2.aria, /poco desgaste/i);
       // Panel de la posición nueva del neumático: su historial y su gráfico completo
       await seleccionarRueda(p, b);
+      await abrirVerMas(p);
       const panel = await p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
       await p.esperar(`/${nMedA} lecturas/.test((document.querySelector('#vd-chart-wrap .vd-chart') || {getAttribute: () => ''}).getAttribute('aria-label') || '')`, { que: `gráfico con las ${nMedA} lecturas del neumático` });
       assert.match(panel, /Rotación/, 'el historial del neumático muestra la rotación');
