@@ -139,3 +139,14 @@ npm run verificar:rapido       # lint + check + unitarias, test:front y el smoke
 - Si el smoke falla con `window.xFlow is not a function` o `reading 'closest'`: antes del servidor Node era, con casi total seguridad, un `<script>` del arnés que no
   llegaba (cola de conexiones del servidor de un hilo; no se reprodujo a voluntad); `reading 'closest'` era el síntoma secundario de una sección de Inicio
   ausente (ahora el flujo se detiene tras el primer mensaje). Con el servidor Node no reapareció en decenas de corridas seguidas y en paralelo; si vuelve, mirar primero el primer mensaje de `SMOKE:FAIL`.
+
+## 9. Asistente de reportes (IA)
+
+El asistente responde preguntas sobre la flota con la Edge Function `asistente-reportes`, que llama a un modelo a través de OpenRouter. El diseño y las decisiones están en [`docs/24`](24-asistente-reportes-ia.md). Solo lee datos: no escribe nada en la base.
+
+- **Clave**: el secreto `OPENROUTER_API_KEY` de la función, ya cargado. Se carga en el dashboard de Supabase o con `supabase secrets set OPENROUTER_API_KEY`, sin pegar el valor en la conversación. Nunca va al repo ni al navegador.
+- **Modelos**: dos variables opcionales de la función, `ASISTENTE_MODELO` (principal) y `ASISTENTE_MODELO_RESPALDO`. Los valores de referencia son los de [`docs/24` §7](24-asistente-reportes-ia.md): principal `nvidia/nemotron-3-ultra-550b-a55b:free` y respaldo `deepseek/deepseek-v4.1-flash`. Para cambiar de modelo sin desplegar: `supabase secrets set ASISTENTE_MODELO=<identificador>` (y lo mismo con `ASISTENTE_MODELO_RESPALDO`).
+- **Apagar**: `supabase secrets unset OPENROUTER_API_KEY`. Sin la clave, la función responde 503. Para volver a encenderlo, cargar la clave de nuevo.
+- **Evaluación**: el juego de 20 preguntas (`supabase/functions/asistente-reportes/evaluacion/preguntas.json`) se corre a pedido con `deno run --allow-net --allow-env --allow-read supabase/functions/asistente-reportes/evaluacion/evaluar.ts`. Las variables necesarias están en el encabezado del archivo. Usar solo el demo de NEUMET: gasta cuota de OpenRouter, no es determinista y nunca va en CI.
+- **Orden de despliegue**: primero se aplica la migración `20261126090000` con el CLI (dry-run antes y verificación después, ver 3.2). Después se fusiona el front y se despliega `asistente-reportes` con `supabase functions deploy asistente-reportes`, siempre con `verify_jwt = false`. Antes de darla por disponible, revisar los logs y hacer una llamada de humo.
+- **Herramientas de la ola 7** (`reporte_periodo` y `rendimiento_descartadas`): no se declaran hasta que su migración esté en `main`. Hasta entonces, las respuestas que dependen de ellas no están disponibles.
