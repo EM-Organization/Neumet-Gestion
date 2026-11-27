@@ -1,13 +1,17 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast, userError, confirmDialog } from '../core/ui.js';
-import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, onLogout } from '../core/auth.js';
+import { isClienteMode, currentClienteId, esAdmin, esAdminEmpresa, esUsuarioSucursal, onLogout } from '../core/auth.js';
 import { ACTIONS } from '../core/actions.js';
 import { menuMas } from '../core/menu-mas.js';
 import { registerView, switchView } from '../core/nav.js';
 import { sucursalSeleccionada } from '../core/seccional.js';
 import { etiquetaCoche } from '../domain/coche.js';
-import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
+import { fetchAll, PAGE_SIZE, MAX_ROWS, safeFilename } from '../domain/reportes.js';
+import { COLUMNAS_KM } from '../domain/km-cubierta.js';
+import { COLUMNAS_COSTO } from '../domain/costos.js';
+import { rendimientoFila, cubiertasCsv } from '../domain/rendimiento-cubierta.js';
+import { puedeVerCostos } from './costos.js';
 import { traerPrecios, conValor } from '../core/precios.js';
 import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
 import { VIDA_MAXIMA } from '../domain/recauchutado.js';
@@ -40,6 +44,8 @@ export async function loadStockAssignments(){
 // autorización (admin o perfil global del propio cliente) se verifica en la base. El perfil de sucursal no ve el stock.
 const $=id=>document.getElementById(id);
 let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0, guardandoCb=false;
+let rendKm=new Map(), rendCosto=new Map(); // neumatico_id → fila de v_km_cubierta / v_costo_cubierta (columna Rendimiento)
+let exportando=false; // doble clic en «Exportar CSV»: una exportación a la vez
 
 // Solo el administrador de la empresa escribe cubiertas (docs/17 PR 9); el equipo Neumet mira.
 const puedeGestionar=()=>esAdminEmpresa();
@@ -78,6 +84,8 @@ function renderCubiertas(){
   // «Enviar a recauchutar» solo para quien ve la pestaña Recauchutado (la acción vive en views/recauchutado.js).
   const puedeReca=alta&&pestanasVisibles({admin:esAdmin(),adminEmpresa:esAdminEmpresa()}).includes(PESTANA_RECAUCHUTADO);
   $('btn-cubierta-nueva').style.display=alta?'':'none';
+  // El perfil de sucursal no ve el stock (la base le da cero filas): exportar no le sirve.
+  $('btn-stock-csv').style.display=esUsuarioSucursal()?'none':'';
   $('stk-resumen').textContent=!cubiertas.length?'':`${plural(r.total,'cubierta')}${r.porCondicion.length?' · '+r.porCondicion.map(c=>`${c.label} ${c.n}`).join(' · '):''}`;
   if(!cubiertas.length){
     setHtml($('stk-lista'), html`<div class="empty-state"><div class="empty-title">Sin cubiertas en stock</div>${alta?html`<div class="empty-sub">Usar «Agregar cubierta» para cargar la primera.</div>`:''}</div>`);
@@ -88,18 +96,20 @@ function renderCubiertas(){
     return;
   }
   setHtml($('stk-lista'), html`<ul class="stk-lista" aria-label="Cubiertas en stock">
-    <li class="stk-cab" aria-hidden="true"><span>Quema</span><span>Cubierta</span><span>Condición</span><span>Ubicación</span><span>Compra</span><span></span></li>
+    <li class="stk-cab" aria-hidden="true"><span>Quema</span><span>Cubierta</span><span>Condición</span><span>Ubicación</span><span>Compra</span><span>Rendimiento</span><span></span></li>
     ${lista.map(c=>{
       const reca=enReca.has(c.id);
       const loc=reca?'En recauchutado':nombreUbicacion(c.sucursal_id,sucursales);
       const cli=admin?(c.clientes&&c.clientes.nombre)||nombreCliente(c.cliente_id):'';
       const etq=c.numero_quema||'sin quema';
+      const rd=rendimientoFila(rendKm.get(c.id),rendCosto.get(c.id),{conCostos:puedeVerCostos()});
       return html`<li class="stk-fila" data-cubierta="${c.id}">
         <span class="stk-quema">${c.numero_quema||'—'}${cli?html`<span class="stk-sub">${cli}</span>`:''}</span>
         <span class="stk-desc">${c.marca||'Sin marca'}${c.modelo?html` <span class="stk-sub">${c.modelo}</span>`:''}</span>
         <span class="stk-cond"><span class="badge ${claseCondicion(c.condicion)}">${etiquetaCondicion(c.condicion)}</span></span>
         <span class="stk-loc${c.sucursal_id===null&&!reca?' stk-sin':''}">${loc}</span>
         <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
+        <span class="stk-rend" title="${rd.kmNota||''}">${rd.kmTexto}${rd.cpkTexto!==null?html`<span class="stk-sub">${rd.cpkTexto}</span>`:''}</span>
         <span class="stk-acc">${alta?html`
           ${reca||!puedeReca||(c.vida??0)>=VIDA_MAXIMA?'':html`<button type="button" class="btn stk-btn stk-primaria" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
           ${menuMas({ etiqueta: `Más acciones de la cubierta ${etq}`, items: [
@@ -124,6 +134,51 @@ async function traerCubiertas(){
   if(r.error) return r;
   if(p.error) return {...r,rows:[],error:p.error};
   return {...r,rows:conValor(r.rows,p.precios,'precio_unidad')};
+}
+
+// Km y CPK de las cubiertas de la lista: `.in` por lotes de 200 ids (el lote acota cada consulta, no la vista entera).
+const LOTE_RENDIMIENTO=200;
+async function cargarRendimiento(ids){
+  const km=new Map(), costo=new Map(), ver=puedeVerCostos();
+  for(let i=0;i<ids.length;i+=LOTE_RENDIMIENTO){
+    const lote=ids.slice(i,i+LOTE_RENDIMIENTO);
+    const [a,b]=await Promise.all([
+      db.from('v_km_cubierta').select(COLUMNAS_KM).in('neumatico_id',lote),
+      ver?db.from('v_costo_cubierta').select(COLUMNAS_COSTO).in('neumatico_id',lote):Promise.resolve({data:[],error:null})]);
+    if(a.error||b.error) return {error:true};
+    (a.data||[]).forEach(f=>km.set(f.neumatico_id,f));
+    (b.data||[]).forEach(f=>costo.set(f.neumatico_id,f));
+  }
+  return {km,costo,error:false};
+}
+
+// Todas las cubiertas del cliente (cualquier estado) con sus km y costos, por lotes con range(). Cada vista tiene
+// cliente_id, así que el filtro va en la base aunque la lista de Stock esté filtrada en pantalla.
+async function leerParaCsv(cid){
+  const pagina=(tabla,columnas,orden,max=MAX_ROWS)=>fetchAll((from,to)=>{
+    let q=db.from(tabla).select(columnas).eq('cliente_id',cid);
+    orden.forEach(c=>{ q=q.order(c); });
+    return q.range(from,to);
+  },{pageSize:PAGE_SIZE,max});
+  const sinDatos={rows:[],truncated:false,error:null};
+  const ver=puedeVerCostos();
+  const [n,k,c,v]=await Promise.all([
+    pagina('neumaticos','id,numero_quema,idneumatico,marca,modelo,vida,estado,vehiculo_id,posicion,vehiculos(nombre,tipo_ruedas)',['id']),
+    pagina('v_km_cubierta',COLUMNAS_KM,['neumatico_id']),
+    ver?pagina('v_costo_cubierta',COLUMNAS_COSTO,['neumatico_id']):Promise.resolve(sinDatos),
+    // Hasta cuatro vidas por cubierta: el tope de filas es el de cubiertas por cuatro.
+    ver?pagina('v_costo_vida','neumatico_id,vida,moneda,moneda_mixta,km_recorridos,km_confiable,cpk',['neumatico_id','vida'],MAX_ROWS*4):Promise.resolve(sinDatos)]);
+  return {n,k,c,v};
+}
+
+// Descarga local, igual que el resto de exportaciones (Reportes): el CSV ya lleva el BOM de buildCsv.
+function descargarCsv(texto,nombre){
+  const blob=new Blob([texto],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 export async function loadStock(){
@@ -151,8 +206,12 @@ export async function loadStock(){
   // después manda el filtro propio de Stock, que se puede volver a «Todas».
   const ini=isClienteMode()?sucursalSeleccionada():'';
   if(ini!==sucIni){ sucIni=ini; const f=$('filter-sucursal-stock'); if(!ini) f.value=''; else if([...f.options].some(o=>o.value===String(ini))) f.value=String(ini); }
-  await loadStockAssignments();
+  // En paralelo: la lista no espera una ida y vuelta más por la columna Rendimiento.
+  // Sin lecturas de km, la columna muestra «Sin dato»: la lista no se cae por una vista.
+  const [,rend]=await Promise.all([loadStockAssignments(), cargarRendimiento(cubiertas.map(c=>c.id))]);
   if(mio!==cargaN) return;
+  if(rend.error) showToast('No se pudo leer el rendimiento de las cubiertas',true); // sin userError: no es un fallo de código
+  rendKm=rend.km||new Map(); rendCosto=rend.costo||new Map();
   renderStock();
 }
 
@@ -359,7 +418,25 @@ ACTIONS.verStockQuema=function(quema){
   switchView('stock');
 };
 
-onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubiertaModal=null; moverId=null; $('search-stock').value=''; });
+ACTIONS.cubiertasCsv=async function(){
+  if(exportando||esUsuarioSucursal()) return;
+  const cid=isClienteMode()?currentClienteId:$('filter-cliente-stock').value;
+  if(!cid){ showToast('Elegir un cliente para exportar sus cubiertas',true); return; }
+  exportando=true; const btn=$('btn-stock-csv'); btn.disabled=true;
+  try{
+    const {n,k,c,v}=await leerParaCsv(cid);
+    const malo=[n,k,c,v].find(x=>x.error||x.truncated);
+    if(malo){
+      showToast(malo.truncated?`Hay más de ${MAX_ROWS.toLocaleString('es-AR')} filas: el CSV no se genera completo`:'No se pudo leer las cubiertas para exportar',true);
+      return;
+    }
+    const texto=cubiertasCsv(n.rows,k.rows,c.rows,v.rows,{conCostos:puedeVerCostos(),enReca});
+    descargarCsv(texto,safeFilename(['neumet-cubiertas',nombreCliente(cid),new Date().toISOString().slice(0,10)],'csv'));
+    showToast(`CSV exportado (${n.rows.length} filas)`);
+  } finally { exportando=false; btn.disabled=false; }
+};
+
+onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubiertaModal=null; moverId=null; rendKm=new Map(); rendCosto=new Map(); $('search-stock').value=''; });
 
 ACTIONS.loadStock=loadStock;
 export const load=loadStock;

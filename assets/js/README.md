@@ -42,6 +42,7 @@ domain/
   empresa.js            PURO: pantalla Empresa (F10): interpreta las respuestas 200/4xx/502 de quitar y reponer acceso, orden y acciones de la lista, argumentos de alerta_configurar
   neumaticos.js         PURO: pestañas visibles de «Neumáticos» por rol y navegación por teclado
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
+  rendimiento-cubierta.js PURO: columna Rendimiento de Stock (km y CPK por cubierta) y CSV de cubiertas con km y CPK por vida (T3, P1-10)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
 views/
   inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo administración)  balance.js (+ balance-chart.js)

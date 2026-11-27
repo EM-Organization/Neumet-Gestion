@@ -137,7 +137,8 @@
 /* ── Stock de cubiertas individuales ── */
 .stk-resumen { color: var(--text-secondary); font-size: 13px; margin: 0 0 12px; min-height: 1em; }
 .stk-lista { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(72px, .7fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) 232px; gap: 12px; align-items: center; padding: 11px 16px; }
+.stk-cab, .stk-fila { display: grid; grid-template-columns: minmax(72px, .7fr) minmax(120px, 1.4fr) 124px minmax(110px, 1fr) minmax(90px, .8fr) minmax(124px, 1fr) 232px; gap: 12px; align-items: center; padding: 11px 16px; }
+.stk-rend { font-variant-numeric: tabular-nums; }
 /* Recauchutado: la cubierta (quema, marca y modelo en líneas propias) y acciones con texto más largo. */
 .reca-fila { grid-template-columns: minmax(140px, 1.2fr) minmax(110px, 1fr) 100px minmax(90px, .8fr) minmax(110px, .9fr) 310px; }
 .stk-cab { font-size: 12px; font-weight: 600; color: var(--text-tertiary); border-bottom: 1px solid var(--border); }
@@ -173,19 +174,20 @@
 /* Entre el móvil y ~1240 px (con el menú lateral, el contenido mide menos de 960 px) las seis columnas no caben: las cinco de datos quedan
    en una fila y las acciones pasan a una segunda, alineadas a la derecha, en lugar de apilarse dentro de una columna angosta. */
 @media (min-width: 761px) and (max-width: 1240px) {
-  .stk-cab, .stk-fila { grid-template-columns: minmax(70px, .8fr) minmax(100px, 1.3fr) 112px minmax(90px, 1fr) minmax(76px, .8fr); }
+  .stk-cab, .stk-fila { grid-template-columns: minmax(70px, .8fr) minmax(100px, 1.3fr) 112px minmax(90px, 1fr) minmax(76px, .8fr) minmax(124px, 1fr); }
   .reca-fila { grid-template-columns: minmax(120px, 1.3fr) minmax(100px, 1fr) 100px minmax(84px, .8fr) minmax(100px, .9fr); }
   .stk-cab span:last-child { display: none; }
   .stk-fila .stk-acc { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
   .stk-cab { display: none; }
-  .stk-fila { grid-template-columns: 1fr auto; grid-template-areas: "quema cond" "desc desc" "loc compra" "acc acc"; gap: 6px 12px; padding: 12px 14px; }
+  .stk-fila { grid-template-columns: 1fr auto; grid-template-areas: "quema cond" "desc desc" "loc compra" "rend rend" "acc acc"; gap: 6px 12px; padding: 12px 14px; }
   .stk-quema { grid-area: quema; }
   .stk-cond { grid-area: cond; justify-self: end; }
   .stk-desc { grid-area: desc; }
   .stk-loc { grid-area: loc; font-size: 13px; }
   .stk-compra { grid-area: compra; text-align: right; font-size: 13px; }
+  .stk-rend { grid-area: rend; font-size: 13px; }
   .stk-acc { grid-area: acc; justify-content: flex-start; flex-wrap: wrap; margin-top: 4px; }
 }
 
