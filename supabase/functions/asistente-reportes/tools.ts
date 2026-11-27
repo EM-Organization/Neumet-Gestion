@@ -374,8 +374,9 @@ const medicionesRecientes: Herramienta = {
 const vehiculosListar: Herramienta = {
   nombre: 'vehiculos_listar',
   descripcion:
-    'Vehículos del cliente con id, nombre, patente, número interno, tipo_ruedas (10 o 16 neumáticos), sucursal_id ' +
-    'y si están activos. texto busca por nombre, patente o número.',
+    'Vehículos del cliente con id, nombre, patente, número interno, tipo_ruedas (10 o 16 neumáticos), distribucion ' +
+    '(por ejemplo 6x2 o 6x4), servicio (camion, bus o vacío si no está definido), sucursal_id y si están activos. ' +
+    'texto busca por nombre, patente o número.',
   campos: {
     texto: { tipo: 'texto', descripcion: 'Parte del nombre, la patente o el número.', maximo: 40 },
     limite: CAMPO_LIMITE,
@@ -392,8 +393,8 @@ const vehiculosListar: Herramienta = {
       rest,
       {
         recurso: 'vehiculos',
-        // `distribucion` y `servicio` del spec no existen en el esquema (docs/08, migraciones): se usa `tipo_ruedas`.
-        columnas: 'id,nombre,patente,numero,tipo_ruedas,sucursal_id,activo',
+        // `distribucion` (20261122000000) y `servicio` (20261126030000) son de lectura para todo perfil del cliente.
+        columnas: 'id,nombre,patente,numero,tipo_ruedas,distribucion,servicio,sucursal_id,activo',
         filtros,
         orden: 'nombre.asc',
       },
