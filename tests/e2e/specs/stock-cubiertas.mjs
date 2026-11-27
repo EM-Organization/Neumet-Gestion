@@ -436,9 +436,9 @@ export function registrar(env) {
       await p.eval(`document.querySelector('input[name="cambio-destino"][value="almacenado"]').click()`);
       await p.esperar(`!!document.querySelector('#cambio-retorno-wrap').offsetParent`, { que: 'sucursal donde queda en stock' });
       assert.equal(await p.eval(`!!document.querySelector('#cambio-quema-viejo-wrap').offsetParent`), false, 'el neumático retirado ya tiene quema');
-      assert.equal(await p.eval(`[...document.querySelectorAll('#cambio-cubierta option')].some(o => /S-003 · .* · Nuevo · Sin sucursal/.test(o.textContent))`), true);
-      assert.equal(await p.eval(`[...document.querySelectorAll('#cambio-cubierta option')].some(o => /MarcaAjena/.test(o.textContent))`), false, 'no ofrece cubiertas de otro cliente');
-      await elegir(p, '#cambio-cubierta', cub.id);
+      assert.equal(await p.eval(`[...document.querySelectorAll('#cambio-lista .mont-fila')].some(f => f.querySelector('.mont-quema').textContent === 'S-003' && /Nuevo · Sin sucursal/.test(f.textContent))`), true);
+      assert.equal(await p.eval(`[...document.querySelectorAll('#cambio-lista .mont-fila')].some(f => /MarcaAjena/.test(f.textContent))`), false, 'no ofrece cubiertas de otro cliente');
+      await p.eval(`document.querySelector('input[name="cambio-cubierta"][value="${cub.id}"]').click()`);
       await elegir(p, '#cambio-retorno-suc', salto);
       await p.esperar(`/vuelve al stock, Salto/.test(document.querySelector('#cambio-resumen').textContent) && /cubierta S-003 del stock/.test(document.querySelector('#cambio-resumen').textContent)`, { que: 'resumen del cambio' });
       await p.click('#cambio-confirmar');

@@ -1028,8 +1028,11 @@
       </div>
       <fieldset class="cambio-grupo"><legend>Neumático nuevo</legend>
         <div id="cambio-origenes" class="cambio-opciones"></div>
-        <div id="cambio-cubierta-wrap" class="field"><label for="cambio-cubierta">Cubierta del stock</label>
-          <select id="cambio-cubierta" data-change="neumatico-cambiar-resumen"></select></div>
+        <div id="cambio-cubierta-wrap">
+          <div class="field"><label for="cambio-buscar" class="sr-only">Buscar cubierta</label>
+            <input id="cambio-buscar" type="search" placeholder="Quema, marca o modelo" autocomplete="off" spellcheck="false"/></div>
+          <div id="cambio-lista" class="mont-lista" role="radiogroup" aria-label="Cubiertas del stock"></div>
+        </div>
         <div id="cambio-stock-wrap" class="field"><label for="cambio-stock">Lote del stock</label>
           <select id="cambio-stock" data-change="neumatico-cambiar-resumen"></select></div>
         <div id="cambio-nuevo-wrap">

@@ -76,12 +76,16 @@ export function validarCambio(f) {
   }
 
   let stockId = null, cubiertaId = null, nuevo = null, nuevoTxt;
+  // Nada viene preseleccionado (H3): sin cubierta ni lote elegidos, el mensaje dice qué falta. Un lote o una cubierta
+  // que existen pero no están disponibles mantienen su mensaje de siempre.
   if (f.origen === 'cubierta') {
+    if (f.cubiertaId === null || f.cubiertaId === undefined || String(f.cubiertaId) === '') return { ok: false, error: 'Elegir la cubierta que se colocó' };
     const c = cubiertasMontables(f.cubiertas).find(x => String(x.id) === String(f.cubiertaId));
     if (!c) return { ok: false, error: 'Elegir una cubierta del stock disponible' };
     cubiertaId = Number(c.id);
     nuevoTxt = `${[c.marca, c.modelo].filter(Boolean).join(' ') || 'cubierta'} (cubierta ${c.numero_quema} del stock)`;
   } else if (f.origen === 'stock') {
+    if (f.stockId === null || f.stockId === undefined || String(f.stockId) === '') return { ok: false, error: 'Elegir el lote del stock' };
     const s = stockDisponible(f.stock).find(x => String(x.id) === String(f.stockId));
     if (!s) return { ok: false, error: 'Elegir un neumático del stock con unidades disponibles' };
     stockId = Number(s.id);
