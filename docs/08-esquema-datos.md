@@ -1526,7 +1526,7 @@ Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de 
 ## AD.3 Regla de caída brusca (RN-09)
 - Referencia: la última medición `calidad = 'valida'` de la misma cubierta (mismo vehículo y posición).
 - Caída = huella mínima previa menos huella mínima nueva, redondeada a 0,1 mm. Si la caída es igual o mayor que `caida_brusca_mm`, la medición queda `sospechosa`.
-- Un evento entre ambas mediciones de tipo `reencauche`, `reparacion` o `montaje` anula la comparación.
+- Un evento entre ambas mediciones de tipo `reencauche`, `reparacion` o `montaje` anula la comparación; en una medición por posición sin cubierta identificada, también `desmontaje`, `rotacion` o `baja` de esa posición.
 - Texto del motivo: «Caída brusca de X mm desde la medición anterior», con coma decimal. Si hay varios motivos, se unen con «; » (la huella primero, luego la caída).
 - Las mediciones históricas no se recalculan (ver AD.9).
 
@@ -1534,7 +1534,7 @@ Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de 
 - Firma: `medicion_corregir(p_medicion_id bigint, p_mm1 numeric, p_mm2 numeric, p_mm3 numeric, p_motivo_codigo text, p_motivo_texto text default null) returns jsonb`.
 - Devuelve `{id, mm1, mm2, mm3, promedio, cambiado}`. Lo corregido queda `valida`, con `calidad_motivo = 'Corregida: ' || motivo` y `corregida_at`. Es la referencia de la siguiente caída.
 - Motivo del catálogo `correccion_medicion`: `error_calibre`, `huella_mal_tomada`, `carga_manual` y `otro` (con texto). Lo valida `motivo_movimiento_validar`.
-- Errores: 42501 (medición ajena o sin perfil), 22004 (valores nulos), 23514 (valor fuera de 0 a 30 mm o NaN), 22023 (motivo fuera de catálogo o «otro» sin texto).
+- Errores: 42501 (medición ajena o sin perfil), 22004 (valores nulos), 23514 (valor fuera de 0 a 30 mm o NaN), 22023 (más de un decimal, medición invalidada sin revalidar, motivo fuera de catálogo o «otro» sin texto).
 - Auditoría: `CORREGIR_MEDICION` con `antes` y `despues`. El rol sale de `perfiles`: administrador de empresa (`admin_empresa`) o sucursal (`sucursal`).
 - Autorización: `medicion_autorizar` (cliente y, si la tiene, su sucursal). La RPC está en el grupo «recorta» de `t_96`: su cuerpo no cita el rol administrador global.
 
@@ -1556,7 +1556,7 @@ Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de 
 ## AD.8 Catálogo y desviaciones
 - `motivos_movimiento_tipo_ck` admite `correccion_medicion`. Seed: `error_calibre` (1), `huella_mal_tomada` (2), `carga_manual` (3), `otro` (9).
 - Pendiente: decidir si `trg_audit_clientes` y la fila `FIJAR_MONEDA` deben quedar juntas o si una sobra. Hoy se conservan las dos.
-- Pendiente: la sincronización de alertas al corregir (que una corrección reabra o cierre la alerta de la cubierta) no tiene prueba en `t_108`.
+- La sincronización de alertas al corregir la hace `trg_alerta_mediciones_upd`, sin otra llamada; `t_108` prueba que una lectura de 2 mm corregida a 9 mm resuelve la alerta de límite como `recuperada`.
 - Desviación de la especificación: en el caso «Recauchutado entre la previa (4) y la nueva (12)» no hay caída (es un aumento). La prueba de caída usa previa 10, reencauche y nueva 4. En la cadena «nueva 5,2» con umbral 5, la caída es de 4,8 (válida), así que la cadena usa 5,0.
 
 ## AD.9 Consultas de solo lectura para producción

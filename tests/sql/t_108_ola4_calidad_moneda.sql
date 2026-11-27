@@ -224,6 +224,20 @@ select test.eq('3: 30 mm es el máximo válido',
   (select public.medicion_corregir(:s8, 30, 30, 30, 'error_calibre') ->> 'cambiado'), 'true');
 reset role;
 
+-- Pos 9: la corrección resincroniza las alertas sin otra llamada (trg_alerta_mediciones_upd). Una lectura de 2 mm abre
+-- la alerta de límite; corregida a 9 mm, la alerta se resuelve como recuperada.
+select pg_temp.med(1081, 1, 9, 'C108-9', 40, 2, 9, 9) as l9 \gset
+select test.eq('3: la lectura de 2 mm abre la alerta de límite',
+  (select count(*)::text from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
+    where n.idneumatico = 'C108-9' and a.tipo = 'limite' and a.estado <> 'resuelta'), '1');
+select test.become('authenticated', test.u_cli_a());
+select public.medicion_corregir(:l9, 9, 9, 9, 'error_calibre');
+reset role;
+select test.eq('3: corregida a 9 mm, la alerta de límite queda resuelta como recuperada',
+  (select string_agg(a.estado || '|' || coalesce(a.resuelta_motivo, 'NULL'), ',')
+     from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
+    where n.idneumatico = 'C108-9' and a.tipo = 'limite'), 'resuelta|recuperada');
+
 -- ---------------------------------------------------------------------------------------------
 -- 4. Moneda por defecto
 -- ---------------------------------------------------------------------------------------------
