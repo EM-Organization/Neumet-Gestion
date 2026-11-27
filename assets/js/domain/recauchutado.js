@@ -113,8 +113,9 @@ export function validarAceptacion(d = {}, { hoy = hoyISO() } = {}) {
     if (!/^\d+(\.\d{1,2})?$/.test(s)) return { ok: false, error: 'El costo debe ser un número mayor o igual a 0, con hasta 2 decimales' };
     costo = Number(s);
   }
-  const moneda = (txt(d.moneda) || 'UYU').toUpperCase();
-  if (!/^[A-Z]{3}$/.test(moneda)) return { ok: false, error: 'La moneda debe ser un código de 3 letras' };
+  // Moneda vacía: p_moneda null, la base usa la moneda del cliente (igual que costo_registrar).
+  const moneda = txt(d.moneda)?.toUpperCase() ?? null;
+  if (moneda !== null && !/^[A-Z]{3}$/.test(moneda)) return { ok: false, error: 'La moneda debe ser un código de 3 letras' };
   const bm = txt(d.bandaMarca);
   const bmo = txt(d.bandaModelo);
   if ((bm && bm.length > 60) || (bmo && bmo.length > 60)) return { ok: false, error: 'La marca y el modelo de la banda admiten hasta 60 caracteres' };

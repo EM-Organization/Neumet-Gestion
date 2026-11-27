@@ -17,7 +17,11 @@ export const CONCEPTOS = [
 ];
 export const etiquetaConcepto = id => (CONCEPTOS.find(c => c.id === id) || {}).label || String(id ?? '—');
 
-export const MONEDA_DEFECTO = 'UYU';
+// Monedas que ofrece el panel. La base acepta cualquier código de 3 letras; esta lista es la que se muestra.
+export const MONEDAS = Object.freeze(['USD', 'UYU']); // [confirmar] con el cliente
+export const MONEDA_DEFECTO = 'USD'; // RN-28: respaldo de formato y de los formularios
+const CODIGO_MONEDA = /^[A-Z]{3}$/;
+export const ERROR_MONEDA = 'La moneda debe ser un código de 3 letras';
 export const MUESTRA_MINIMA = 5;
 export const MAX_MONTO = 9999999999.99;
 export const MAX_NOTAS = 500;
@@ -100,8 +104,9 @@ export function validarCosto({ neumaticoId, concepto, monto, moneda, fecha, nota
   if (!CONCEPTOS.some(c => c.id === concepto)) return { ok: false, error: 'Elegir el concepto' };
   const m = parseMonto(monto);
   if (!m.ok) return m;
-  const mon = String(moneda ?? MONEDA_DEFECTO).trim().toUpperCase() || MONEDA_DEFECTO;
-  if (!/^[A-Z]{3}$/.test(mon)) return { ok: false, error: 'La moneda debe ser un código de 3 letras' };
+  // Moneda vacía: p_moneda null, la base usa la moneda del cliente.
+  const mon = String(moneda ?? '').trim().toUpperCase();
+  if (mon !== '' && !CODIGO_MONEDA.test(mon)) return { ok: false, error: ERROR_MONEDA };
   let f = null;
   if (!vacio(fecha)) {
     f = String(fecha).trim();
@@ -112,8 +117,35 @@ export function validarCosto({ neumaticoId, concepto, monto, moneda, fecha, nota
   if (n !== null && n.length > MAX_NOTAS) return { ok: false, error: `Las notas admiten hasta ${MAX_NOTAS} caracteres` };
   return {
     ok: true,
-    args: { p_neumatico_id: Number(neumaticoId), p_concepto: concepto, p_monto: m.valor, p_fecha: f, p_notas: n, p_moneda: mon },
+    args: { p_neumatico_id: Number(neumaticoId), p_concepto: concepto, p_monto: m.valor, p_fecha: f, p_notas: n, p_moneda: mon || null },
   };
+}
+
+// ---- Moneda ----------------------------------------------------------------------------------------------------------
+
+// Opciones del selector: la lista del panel, con la moneda actual agregada al final si no está (p. ej. EUR cargado antes).
+export function opcionesMoneda(actual) {
+  const opciones = [...MONEDAS];
+  const cod = String(actual ?? '').trim().toUpperCase();
+  if (CODIGO_MONEDA.test(cod) && !opciones.includes(cod)) opciones.push(cod);
+  return opciones;
+}
+
+// Moneda preseleccionada en un formulario: la del cliente si es un código válido; si no, MONEDA_DEFECTO.
+export const monedaInicial = monedaDefault => (CODIGO_MONEDA.test(monedaDefault) ? monedaDefault : MONEDA_DEFECTO);
+
+// Código de moneda que escribe una persona (Empresa). {ok, moneda} | {ok:false, error}.
+export function validarMoneda(texto) {
+  const cod = String(texto ?? '').trim().toUpperCase();
+  if (!CODIGO_MONEDA.test(cod)) return { ok: false, error: ERROR_MONEDA };
+  return { ok: true, moneda: cod };
+}
+
+export function traducirErrorMoneda(err) {
+  const code = err && err.code ? String(err.code) : '';
+  if (code === '42501') return 'Sin permiso para cambiar la moneda';
+  if (code === '23514') return ERROR_MONEDA;
+  return 'No se pudo guardar la moneda. Reintentar';
 }
 
 export const ERROR_GENERICO_COSTO = 'No se pudo guardar. Reintentar';

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   soloObservadas, contarObservadas, textoObservaciones, detalleObservaciones, textoAvisoInicio, valoresTexto,
   agruparPorNeumatico, validarMotivo, traducirErrorCalidad, etiquetaCalidad, simboloCalidad, MOTIVO_MAX,
+  esCorregida, esCaidaBrusca, validarCorreccion, sinCambios, traducirErrorCorreccion,
 } from '../../assets/js/domain/calidad.js';
 import { fmtNum } from '../../assets/js/domain/formato.js';
 
@@ -73,4 +74,103 @@ test('traducirErrorCalidad: mensajes cortos, sin segunda persona ni detalles de 
   assert.equal(traducirErrorCalidad({ code: '22023' }), 'Indicar el motivo de la invalidación');
   assert.equal(traducirErrorCalidad({ code: 'XX000', message: 'relation "x" does not exist' }), 'No se pudo guardar el cambio. Reintentar');
   assert.equal(traducirErrorCalidad(null), 'No se pudo guardar el cambio. Reintentar');
+});
+
+// ---- Corrección de mediciones, «Corregida» y caída brusca ----
+
+const CAT_CORR = [
+  { tipo: 'correccion_medicion', codigo: 'error_calibre', etiqueta: 'Error de calibre', orden: 1, activo: true },
+  { tipo: 'correccion_medicion', codigo: 'huella_mal_tomada', etiqueta: 'Huella mal tomada', orden: 2, activo: true },
+  { tipo: 'correccion_medicion', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
+  { tipo: 'alineacion', codigo: 'desgaste_lateral', etiqueta: 'Desgaste lateral', orden: 1, activo: true },
+];
+const corr = (o = {}) => ({ medicionId: 7, mm1: '9', mm2: '9,5', mm3: '9.5', motivoCodigo: 'error_calibre', motivoTexto: '', ...o });
+const errCorr = (o) => { const r = validarCorreccion(corr(o), CAT_CORR); assert.equal(r.ok, false, JSON.stringify(o)); return r; };
+
+test('validarCorreccion: caso válido con coma y punto; arma los argumentos de la RPC', () => {
+  const r = validarCorreccion(corr(), CAT_CORR);
+  assert.deepEqual(r, {
+    ok: true,
+    args: { p_medicion_id: 7, p_mm1: 9, p_mm2: 9.5, p_mm3: 9.5, p_motivo_codigo: 'error_calibre', p_motivo_texto: null },
+  });
+});
+
+test('validarCorreccion: huellas de 0 a 30, con un decimal como máximo', () => {
+  assert.equal(validarCorreccion(corr({ mm1: '30' }), CAT_CORR).ok, true);
+  assert.equal(validarCorreccion(corr({ mm1: '0' }), CAT_CORR).ok, true);
+  assert.equal(validarCorreccion(corr({ mm1: '30,0' }), CAT_CORR).ok, true);
+  assert.equal(validarCorreccion(corr({ mm1: '30,1' }), CAT_CORR).error, 'La huella debe estar entre 0 y 30 mm');
+  assert.equal(validarCorreccion(corr({ mm1: '-0,1' }), CAT_CORR).error, 'La huella debe estar entre 0 y 30 mm');
+  assert.equal(validarCorreccion(corr({ mm2: '8,25' }), CAT_CORR).error, 'Máximo un decimal');
+  assert.equal(validarCorreccion(corr({ mm3: 'abc' }), CAT_CORR).error, 'La huella 3 debe ser un número');
+});
+
+test('validarCorreccion: una huella vacía indica su campo', () => {
+  const r = errCorr({ mm1: '' });
+  assert.equal(r.campo, 'mm1');
+  assert.equal(r.error, 'Indicar la huella 1');
+  assert.equal(errCorr({ mm3: null }).campo, 'mm3');
+});
+
+test('validarCorreccion: el motivo se valida contra el catálogo de correccion_medicion', () => {
+  assert.deepEqual(errCorr({ motivoCodigo: '' }), { ok: false, campo: 'motivoCodigo', error: 'Elegir el motivo' });
+  assert.equal(errCorr({ motivoCodigo: 'desgaste_lateral' }).error, 'Elegir un motivo de la lista');
+  assert.equal(errCorr({ motivoCodigo: 'desgaste_lateral' }).campo, 'motivoCodigo');
+});
+
+test('validarCorreccion: «otro» exige texto de hasta 300 caracteres; otro código no lleva texto', () => {
+  const sinTexto = errCorr({ motivoCodigo: 'otro', motivoTexto: ' ' });
+  assert.equal(sinTexto.error, 'Escribir el motivo');
+  assert.equal(sinTexto.campo, 'motivoTexto');
+  assert.equal(errCorr({ motivoCodigo: 'otro', motivoTexto: 'x'.repeat(301) }).campo, 'motivoTexto');
+  const ok = validarCorreccion(corr({ motivoCodigo: 'otro', motivoTexto: 'Cinta mal puesta' }), CAT_CORR);
+  assert.equal(ok.args.p_motivo_texto, 'Cinta mal puesta');
+  assert.equal(validarCorreccion(corr({ motivoTexto: 'sobra' }), CAT_CORR).args.p_motivo_texto, null);
+});
+
+test('validarCorreccion: sin medición no se llama a la RPC', () => {
+  assert.equal(validarCorreccion(corr({ medicionId: null }), CAT_CORR).campo, 'medicionId');
+});
+
+test('sinCambios: compara numéricamente con los valores guardados', () => {
+  const args = { p_mm1: 9, p_mm2: 9.5, p_mm3: 9 };
+  assert.equal(sinCambios({ mm1: 9, mm2: 9.5, mm3: 9 }, args), true);
+  assert.equal(sinCambios({ mm1: 9, mm2: 9.5, mm3: 9.1 }, args), false);
+  assert.equal(sinCambios({ mm1: '9.0', mm2: '9.5', mm3: '9.0' }, args), true);
+  assert.equal(sinCambios({ mm1: null, mm2: 9.5, mm3: 9 }, args), false);
+});
+
+test('traducirErrorCorreccion: un mensaje por rama, sin detalles de la base', () => {
+  assert.equal(traducirErrorCorreccion({ code: '42501' }), 'Sin permiso para corregir esta medición');
+  assert.equal(traducirErrorCorreccion({ code: 'P0002' }), 'La medición ya no existe');
+  assert.equal(traducirErrorCorreccion({ code: '22023', message: 'Hay que revalidar la medición antes de corregirla' }), 'Marcar la medición como válida antes de corregirla');
+  assert.equal(traducirErrorCorreccion({ code: '22023', message: 'motivo inválido' }), 'Elegir un motivo de la lista');
+  assert.equal(traducirErrorCorreccion({ code: '22004' }), 'Revisar los valores de las huellas');
+  assert.equal(traducirErrorCorreccion({ code: '23514' }), 'Revisar los valores de las huellas');
+  assert.equal(traducirErrorCorreccion({ code: '22023', message: 'mm fuera de rango' }), 'Revisar los valores de las huellas');
+  assert.equal(traducirErrorCorreccion({ code: 'XX000' }), 'No se pudo guardar la corrección. Reintentar');
+  assert.equal(traducirErrorCorreccion(null), 'No se pudo guardar la corrección. Reintentar');
+});
+
+test('etiquetaCalidad: una medición válida corregida es «Corregida»; el resto no cambia', () => {
+  assert.equal(etiquetaCalidad('valida', true), 'Corregida');
+  assert.equal(etiquetaCalidad('valida'), 'Válida');
+  assert.equal(etiquetaCalidad('valida', false), 'Válida');
+  assert.equal(etiquetaCalidad('sospechosa'), 'En revisión');
+  assert.equal(etiquetaCalidad('sospechosa', true), 'En revisión');
+});
+
+test('esCorregida: válida con corregida_at no nula', () => {
+  assert.equal(esCorregida({ calidad: 'valida', corregida_at: '2026-11-20T10:00:00Z' }), true);
+  assert.equal(esCorregida({ calidad: 'valida', corregida_at: null }), false);
+  assert.equal(esCorregida({ calidad: 'valida' }), false);
+  assert.equal(esCorregida({ calidad: 'sospechosa', corregida_at: '2026-11-20T10:00:00Z' }), false);
+  assert.equal(esCorregida(null), false);
+});
+
+test('esCaidaBrusca: reconoce el motivo que escribe la base', () => {
+  assert.equal(esCaidaBrusca('Caída brusca de 5,0 mm desde la medición anterior; huella 9,0 mm'), true);
+  assert.equal(esCaidaBrusca('Aumento de huella de 2,0 mm desde la medición anterior'), false);
+  assert.equal(esCaidaBrusca(null), false);
+  assert.equal(esCaidaBrusca(undefined), false);
 });

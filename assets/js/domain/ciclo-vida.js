@@ -2,7 +2,9 @@
 export const TIPOS_EVENTO = ['montaje','desmontaje','rotacion','reparacion','reencauche','baja','inspeccion','rotacion_disco','alineacion'];
 export const TIPO_LABEL = {
   montaje:'Montaje', desmontaje:'Desmontaje', rotacion:'Rotación', reparacion:'Reparación',
-  reencauche:'Recauchutado', baja:'Baja', inspeccion:'Inspección', rotacion_disco:'Rotación en disco', alineacion:'Alineación'
+  reencauche:'Recauchutado', baja:'Baja', inspeccion:'Inspección', rotacion_disco:'Rotación en disco', alineacion:'Alineación',
+  alta_stock:'Alta en stock', traslado:'Traslado', cambio_condicion:'Cambio de condición',
+  envio_recauchutado:'Envío a recauchutar', dictamen_recauchutado:'Dictamen de recauchutado', rechazo_recauchutado:'Rechazo de recauchutado'
 };
 export const VIDA_MAX = 3;
 
