@@ -104,7 +104,7 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   var recI = $('#inicio-contenido .inicio-linea');
   if(!recI || !recI.querySelector('.badge.red') || !recI.querySelector('.badge.gray') || recI.querySelector('.badge.orange')) fail('inicio (flota): el recuadro debe ir en rojo para «cambiar» y en gris para «revisar» en cero');
   // Tipo de cada alerta (presentacionAlerta, docs/14): cada límite lleva «× Desgaste límite» en rojo; una alerta de cambio de
-  // posición va en amarillo con «◆ Swap» y nada en rojo. Va al final, con una alerta propia, para no mover las cifras de arriba.
+  // posición va en amarillo con «◆ Primera rotación» y nada en rojo. Va al final, con una alerta propia, para no mover las cifras de arriba.
   fx.alertasExtra = [{cliente_id:1,vehiculo_id:10,vehiculo_nombre:'Camión 01',patente:'AB123CD',posicion:null,tipo:'swap',severidad:2,valor:null,mensaje:'Intercambiar el juego de neumáticos entre ejes',ultima_medicion_at:new Date(Date.now()-4*86400000).toISOString(),alerta_id:105,estado:'abierta',silenciada_hasta:null}];
   if(!nav('alertas')) return;
   await sleep(700);
@@ -118,7 +118,8 @@ window.flotaFlow = async function(w, d, sleep, fail, log){
   else {
     var tSwap = swap.textContent.replace(/\s+/g, ' ');
     if(/Neumático crítico/.test(tSwap) || swap.querySelector('.badge.red')) fail('alertas: la alerta de cambio de posición no debe ir en rojo ni decir «Neumático crítico»: ' + tSwap);
-    if(!swap.querySelector('.badge.orange') || !/◆ Swap/.test(tSwap)) fail('alertas: la alerta de cambio de posición debe llevar «◆ Swap» en amarillo: ' + tSwap);
+    if(!swap.querySelector('.badge.orange') || !/◆ Primera rotación/.test(tSwap)) fail('alertas: la alerta de cambio de posición debe llevar «◆ Primera rotación» en amarillo: ' + tSwap);
+    if(/swap/i.test(tSwap)) fail('alertas: la alerta de cambio de posición no debe decir «swap» (jerga, docs/14 §5): ' + tSwap);
   }
   fx.alertasExtra = null;
 };
