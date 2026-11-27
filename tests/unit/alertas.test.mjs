@@ -96,10 +96,24 @@ describe('presentación de cada tipo', () => {
     assert.deepEqual([p.etiqueta, p.simbolo, p.color, p.accion], ['Revisar', '◆', 'orange', 'Revisar']);
     assert.equal(presentacionAlerta({ tipo: 'limite' }).color, 'red');
   });
-  test('swap: la etiqueta nombra el umbral de la base con formato de miles; sin dato, «Swap» a secas', () => {
-    assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Swap a 30.000 km', simbolo: '◆', color: 'orange', accion: 'Revisar' });
-    assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: null }).etiqueta, 'Swap');
-    assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Swap');
+  test('swap: la etiqueta nombra el umbral de la base con formato de miles; sin dato, «Primera rotación» a secas', () => {
+    assert.deepEqual(presentacionAlerta({ tipo: 'swap', umbral_km: 30000 }), { etiqueta: 'Primera rotación a 30.000 km', simbolo: '◆', color: 'orange', accion: 'Revisar' });
+    assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: null }).etiqueta, 'Primera rotación');
+    assert.equal(presentacionAlerta({ tipo: 'swap', umbral_km: 0 }).etiqueta, 'Primera rotación');
+    assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Primera rotación');
+  });
+  test('detalleAlerta de swap compone los km del tramo desde km_actual, sin el mensaje de la base', () => {
+    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: 38000, umbral_km: 20000, mensaje: 'Hacer el swap: 38.000 km desde el montaje (swap a los 20.000 km)' }), '38.000 km desde el montaje');
+  });
+  test('detalleAlerta de swap sin km_actual da cadena vacía: el chip ya dice qué hacer', () => {
+    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: null, mensaje: 'Hacer el swap: 38.000 km desde el montaje (swap a los 20.000 km)' }), '');
+  });
+  test('ningún resultado de presentacionAlerta ni de detalleAlerta nombra «swap», en ningún tipo', () => {
+    for (const t of Object.keys(PRESENTACION_ALERTA)) {
+      const a = { tipo: t, umbral_km: 20000, km_actual: 38000, mensaje: 'Mensaje de la base' };
+      assert.doesNotMatch(JSON.stringify(presentacionAlerta(a)), /swap/i, t);
+      assert.doesNotMatch(detalleAlerta(a), /swap/i, t);
+    }
   });
   test('detalleAlerta quita el prefijo «<etiqueta>:» que trae la base: el chip ya nombra el tipo', () => {
     assert.equal(detalleAlerta({ tipo: 'limite', mensaje: 'Desgaste límite: 2,9 mm (umbral 3 mm)' }), '2,9 mm (umbral 3 mm)');

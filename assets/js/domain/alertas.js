@@ -43,18 +43,19 @@ export const PRESENTACION_ALERTA = Object.freeze({
   direccion_limite: { etiqueta: 'Pasar atrás ya', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   irregular: { etiqueta: 'Desgaste irregular', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   lateral: { etiqueta: 'Desgaste lateral', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
-  swap: { etiqueta: 'Swap', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
+  // `swap` es el valor guardado en la base (alertas_tipo_ck): no se renombra. En pantalla es «Primera rotación» (docs/14 §3).
+  swap: { etiqueta: 'Primera rotación', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
   km_por_mm: { etiqueta: 'Km por mm', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
 });
 
 // Un tipo fuera de la tabla (p. ej. `critico`, que la base ya no admite) se muestra en amarillo como «Revisar». El mensaje no va en
 // la etiqueta: la columna Mensaje ya lo muestra al lado (detalleAlerta), y como etiqueta se repetía.
-// El swap nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Swap» a secas, sin inventar una cifra.
+// La primera rotación nombra su umbral (`umbral_km`, de cada empresa): sin dato, «Primera rotación» a secas, sin inventar una cifra.
 export function presentacionAlerta(a) {
   if (a && Object.hasOwn(PRESENTACION_ALERTA, a.tipo)) {
     const p = PRESENTACION_ALERTA[a.tipo];
     const km = Number(a.umbral_km);
-    if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Swap a ${fmtNum(km)} km` };
+    if (a.tipo === 'swap' && Number.isFinite(km) && km > 0) return { ...p, etiqueta: `Primera rotación a ${fmtNum(km)} km` };
     return p;
   }
   return { etiqueta: 'Revisar', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' };
@@ -66,6 +67,12 @@ export function presentacionAlerta(a) {
 // Sin prefijo, el texto queda igual; sin mensaje, da cadena vacía.
 const PREFIJO_MENSAJE_BASE = Object.freeze({ lateral: 'Revisar alineación' });
 export function detalleAlerta(a) {
+  // El mensaje de la base para la primera rotación es jerga («Hacer el swap: …») y repite el umbral que ya dice el chip:
+  // el detalle se compone con los km del tramo, o queda vacío si no hay dato.
+  if (a && a.tipo === 'swap') {
+    const km = a.km_actual == null || a.km_actual === '' ? NaN : Number(a.km_actual);
+    return Number.isFinite(km) ? `${fmtNum(km)} km desde el montaje` : '';
+  }
   const mensaje = String((a && a.mensaje) ?? '');
   const prefijos = [`${presentacionAlerta(a).etiqueta}:`];
   if (a && PREFIJO_MENSAJE_BASE[a.tipo]) prefijos.push(`${PREFIJO_MENSAJE_BASE[a.tipo]}:`);
