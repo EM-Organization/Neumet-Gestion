@@ -984,3 +984,25 @@
 .dist-op:has(input:checked) .dist-dibujo { color: var(--text-primary); }
 .dist-sin-dibujo { width: 48px; height: 80px; }
 @media (max-width: 640px) { .dist-opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Asistente de reportes (docs/24 §2): el campo, la respuesta con su fuente y los reportes listos. Solo escritorio (docs/14 §5). */
+.rep-asistente { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:16px; }
+.asis-cliente { max-width:280px; margin-bottom:14px; }
+.asis-form { display:flex; flex-direction:column; gap:6px; }
+.asis-etiqueta { font-size:12px; font-weight:600; color:var(--text-secondary); }
+.asis-entrada { display:flex; gap:10px; align-items:flex-start; }
+.asis-entrada textarea { flex:1; min-height:44px; resize:vertical; background:var(--surface-secondary); border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px; font-size:14px; font-family:var(--font); color:var(--text-primary); outline:none; }
+.asis-entrada textarea:focus { border-color:var(--accent-dark); box-shadow:0 0 0 3px var(--accent-light); }
+.asis-entrada button:disabled, .asis-listos button:disabled { opacity:.5; cursor:not-allowed; }
+.asis-nota { font-size:12px; color:var(--text-secondary); margin:6px 0 0; }
+.asis-estado { display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-height:20px; margin:10px 0; font-size:13px; color:var(--text-secondary); }
+.asis-historial { display:flex; flex-direction:column; gap:14px; }
+.asis-historial:empty { display:none; }
+.asis-pregunta-hecha { margin:0; font-weight:600; color:var(--text-primary); }
+.asis-sin-respuesta { margin-left:6px; font-size:12px; font-weight:600; color:var(--text-secondary); }
+.asis-respuesta { display:flex; flex-direction:column; gap:8px; border-left:3px solid var(--border); padding:2px 0 2px 12px; }
+.asis-respuesta p { margin:0; font-size:14px; line-height:1.5; color:var(--text-primary); }
+.asis-respuesta .asis-fuente { font-size:12px; color:var(--text-secondary); }
+.asis-tabla { overflow-x:auto; }
+.asis-listos-titulo { margin-top:14px; }
+.asis-listos { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }

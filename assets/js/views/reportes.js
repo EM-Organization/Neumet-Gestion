@@ -14,6 +14,7 @@ import { contextoListo, hayFiltroSeccional, sucursalSeleccionada, filtrarConsult
 import { fmtMm } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
 import { ESTADOS } from '../domain/estado-desgaste.js';
+import * as asistente from './asistente-reportes.js';
 
 const $ = id => document.getElementById(id);
 const COLOR = {
@@ -56,6 +57,7 @@ export async function load() {
     nombresClientes = new Map((data || []).map(c => [String(c.id), c.nombre]));
     fillSelect($('rep-cliente'), 'Todos los clientes', (data || []).map(c => ({ id: c.id, label: c.nombre })));
   }
+  asistente.refrescar(); // el selector de cliente acaba de reiniciarse: el asistente ajusta lo habilitado (sin tocar lo escrito)
   await loadVehiculos();
   $('rep-ver-vehiculo').hidden = true;
   await cargarCpk();
@@ -239,11 +241,11 @@ function printReport() {
 
 ACTIONS.repExportCsv = exportCsv;
 ACTIONS.repPrint = printReport;
-ACTIONS.repClienteChange = async v => { await loadVehiculos(); ACTIONS.repVehiculoChange(''); await cargarCpk(); };
+ACTIONS.repClienteChange = async v => { asistente.clienteCambio(); await loadVehiculos(); ACTIONS.repVehiculoChange(''); await cargarCpk(); };
 ACTIONS.repCpkCargar = () => cargarCpk();
 ACTIONS.repCpkCsv = exportCpkCsv;
 ACTIONS.repVehiculoChange = v => { $('rep-ver-vehiculo').hidden = !v; };
 ACTIONS.repVerVehiculo = () => { const v = $('rep-vehiculo').value; if (v) ACTIONS.verVehiculo(v); };
 registerView('reportes', 'Reportes', load);
 
-export function init() { /* sin listeners propios: todo va por data-action / data-change */ }
+export function init() { asistente.init(); /* el resto va por data-action / data-change */ }
