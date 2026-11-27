@@ -165,6 +165,24 @@ test('cubierta individual: rechaza la que no está disponible o no existe', () =
   assert.equal(validarCambio({ ...conCubierta, cubiertas: [] }).ok, false);
 });
 
+// H3: el modal arranca sin cubierta ni lote elegidos; confirmar sin elegir tiene que decir qué falta.
+test('cubierta sin elegir (vacía o null): pide elegir la que se colocó', () => {
+  for (const cubiertaId of ['', null]) {
+    const r = validarCambio({ ...conCubierta, cubiertaId });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /Elegir la cubierta que se colocó/);
+  }
+});
+
+test('lote sin elegir (vacío o null): pide elegir el lote; un lote sin unidades mantiene su mensaje', () => {
+  for (const stockId of ['', null]) {
+    const r = validarCambio({ ...base, stockId });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'Elegir el lote del stock');
+  }
+  assert.match(validarCambio({ ...base, stockId: '2' }).error, /Elegir un neumático del stock con unidades disponibles/);
+});
+
 test('los lotes y el ingreso manual siguen sin parámetros nuevos (compatibles)', () => {
   assert.equal('p_cubierta_id' in validarCambio(base).params, false);
   assert.equal('p_devolver_stock' in validarCambio(base).params, false);

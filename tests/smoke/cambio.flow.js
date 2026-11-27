@@ -3,6 +3,7 @@
 // data-action="neumatico-cambiar" data-vehiculo-id data-posicion (aquí un botón sintético).
 window.cambioFlow = async function(w, d, sleep, fail, log){
   var fx = w.__cicloFx, $ = function(s){ return d.querySelector(s); };
+  var secUser = /[?&]secuser=1/.test(w.parent.location.search);
   var cambios = function(){ return fx.rpcs.filter(function(r){ return r.name === 'neumatico_cambiar'; }); };
   var base = cambios().length, evento = 0;
   d.addEventListener('neumet:neumatico-cambiado', function(){ evento++; });
@@ -17,7 +18,9 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   if($('#cambio-form').tagName !== 'FORM' || $('#cambio-confirmar').type !== 'submit') fail('cambio: el modal debe ser un formulario con envío por Enter');
   if($('#cambio-actual').innerHTML.indexOf('<MultiWay>') !== -1) fail('cambio: HTML sin escapar');
   if(d.querySelectorAll('input[name="cambio-destino"]').length !== 4) fail('cambio: faltan los 4 destinos');
-  if(!$('#cambio-stock').options.length) fail('cambio: no lista el stock del cliente');
+  // H3: nada viene elegido. El placeholder cuenta como opción, así que hace falta al menos un lote después de él
+  if($('#cambio-stock').options.length < 2) fail('cambio: no lista el stock del cliente');
+  if($('#cambio-stock').value !== '' || $('#cambio-stock').options[0].textContent.trim() !== 'Elegir lote') fail('cambio: el lote no debe venir elegido');
   if(!$('#cambio-resumen').textContent) fail('cambio: sin resumen');
 
   // Campos separados: km que ya traía el neumático (0 por defecto), número de quema y odómetro del vehículo (opcional)
@@ -34,7 +37,11 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   if(!$('#cambio-error').textContent) fail('cambio: sin mensaje de validación');
   $('#cambio-motivo').value = 'desgaste';
 
-  // Error de la RPC: mensaje comprensible, el modal sigue abierto, ningún éxito
+  // Error de la RPC: mensaje comprensible, el modal sigue abierto, ningún éxito. Nada viene elegido: hay que elegir antes
+  // el neumático (cubierta en el administrador de empresa, lote en el usuario de sucursal).
+  if(secUser) $('#cambio-stock').value = $('#cambio-stock').options[1].value;
+  else d.querySelector('#cambio-lista input[name="cambio-cubierta"]').click();
+  await sleep(50);
   var ce = w.console.error; w.console.error = function(){};
   fx.rpcError = {code: '55000', message: 'sin unidades en el stock seleccionado'};
   $('#cambio-confirmar').click(); await sleep(300);
@@ -82,26 +89,65 @@ window.cambioFlow = async function(w, d, sleep, fail, log){
   if(evento !== 1) fail('cambio: no se emitió el evento de refresco');
   log.push('cambio-flow: rpcs=' + cambios().length);
 
-  // Cubierta individual del stock y devolución del neumático retirado al stock (solo admin y perfil global)
-  var secUser = /[?&]secuser=1/.test(w.parent.location.search);
+  // Nada viene elegido (H3). Cubierta del stock (administrador de empresa) o lote del stock (usuario de sucursal), y
+  // devolución del neumático retirado al stock (solo admin y perfil global)
   btn.setAttribute('data-posicion', '3');   // P3 no tiene número de quema en los datos de prueba
   btn.click(); await sleep(600);
   var cubRadio = d.querySelector('input[name="cambio-origen"][value="cubierta"]');
   if(secUser){
     if(cubRadio) fail('cambio(sucursal): ofrece cubiertas del stock');
     if($('#cambio-retorno-wrap').style.display !== 'none') fail('cambio(sucursal): ofrece devolver al stock');
+    // Lote del stock: es el origen por defecto, pero ningún lote viene elegido; confirmar sin elegir no llega a la base
+    var stRadio = d.querySelector('input[name="cambio-origen"][value="stock"]');
+    if(!stRadio || !stRadio.checked) fail('cambio(sucursal): el origen por defecto debe ser el lote del stock');
+    if($('#cambio-stock').value !== '') fail('cambio(sucursal): el lote no debe venir elegido');
+    var antesLote = cambios().length;
+    $('#cambio-confirmar').click(); await sleep(200);
+    if(cambios().length !== antesLote) fail('cambio(sucursal): sin lote elegido llegó a la RPC');
+    if($('#cambio-error').textContent.indexOf('Elegir el lote del stock') === -1) fail('cambio(sucursal): sin lote elegido, error: ' + $('#cambio-error').textContent);
+    if(d.activeElement !== $('#cambio-stock')) fail('cambio(sucursal): el foco debe ir al select de lote');
+    var lote = $('#cambio-stock').options[1];
+    $('#cambio-stock').value = lote.value; $('#cambio-stock').dispatchEvent(new w.Event('change', {bubbles: true}));
+    $('#cambio-confirmar').click(); await sleep(400);
+    var cl = cambios()[cambios().length - 1].args;
+    if(cambios().length !== antesLote + 1 || cl.p_stock_id !== Number(lote.value) || cl.p_cubierta_id !== undefined) fail('cambio(sucursal): args con el lote elegido: ' + JSON.stringify(cl));
   } else {
     if(!cubRadio || !cubRadio.checked) { fail('cambio: falta la opción «Cubierta del stock» (o no es la predeterminada)'); btn.remove(); return; }
-    var opts = Array.prototype.map.call($('#cambio-cubierta').options, function(o){ return o.textContent; });
-    if(opts.length !== 4 || opts[0] !== 'S-001 · Michelin X <Multi> Z · Nuevo · Montevideo' || opts.join('|').indexOf('Z-900') !== -1) fail('cambio: cubiertas ofrecidas: ' + opts.join(' | '));
+    // La lista arranca sin ninguna fila marcada; la primera es S-001 con la marca escapada como texto
+    var filas = d.querySelectorAll('#cambio-lista .mont-fila');
+    if(filas.length !== 4) fail('cambio: la lista de cubiertas debe tener 4 filas: ' + filas.length);
+    if(d.querySelector('#cambio-lista input:checked')) fail('cambio: ninguna cubierta debe venir elegida');
+    if(!filas[0] || filas[0].textContent.indexOf('S-001') === -1 || filas[0].textContent.indexOf('Michelin X <Multi> Z') === -1) fail('cambio: primera fila de cubiertas: ' + (filas[0] && filas[0].textContent));
+    if($('#cambio-lista').textContent.indexOf('Z-900') !== -1) fail('cambio: ofrece cubiertas de otro cliente');
+    if($('#cambio-lista').innerHTML.indexOf('<Multi>') !== -1) fail('cambio: HTML sin escapar en la lista de cubiertas');
     if($('#cambio-quema-km-wrap').style.display !== 'none') fail('cambio: con cubierta del stock no deben verse quema ni km');
     if($('#cambio-actual').innerHTML.indexOf('<Multi>') !== -1) fail('cambio: HTML sin escapar');
-    $('#cambio-cubierta').value = '32'; $('#cambio-cubierta').dispatchEvent(new w.Event('change', {bubbles: true}));
+    $('#cambio-motivo').value = 'desgaste';
+    // Confirmar sin cubierta elegida: no llama a la RPC, el aviso dice qué falta y el foco va al buscador
+    var antesSin = cambios().length;
+    $('#cambio-confirmar').click(); await sleep(200);
+    if(cambios().length !== antesSin) fail('cambio: sin cubierta elegida llegó a la RPC');
+    if($('#cambio-error').textContent.indexOf('Elegir la cubierta que se colocó') === -1) fail('cambio: sin cubierta elegida, error: ' + $('#cambio-error').textContent);
+    if(d.activeElement !== $('#cambio-buscar')) fail('cambio: el foco debe ir al buscador de cubiertas');
+    // Buscador con varias coincidencias (s-00: S-001 y S-002): Enter no elige ni envía
+    $('#cambio-buscar').value = 's-00'; $('#cambio-buscar').dispatchEvent(new w.Event('input', {bubbles: true}));
+    $('#cambio-form').requestSubmit(); await sleep(200);
+    if(cambios().length !== antesSin) fail('cambio: Enter con varias coincidencias no debe enviar');
+    // Una sola coincidencia (S-002): Enter la elige y envía
+    $('#cambio-buscar').value = 'S-002'; $('#cambio-buscar').dispatchEvent(new w.Event('input', {bubbles: true}));
+    $('#cambio-form').requestSubmit(); await sleep(400);
+    var ce32 = cambios()[cambios().length - 1].args;
+    if(cambios().length !== antesSin + 1 || ce32.p_cubierta_id !== 32 || ce32.p_stock_id !== null) fail('cambio: Enter con una sola coincidencia: ' + JSON.stringify(ce32));
+    // Buscador vacío: clic en la fila de S-002 y Confirmar
+    btn.click(); await sleep(600);
+    var fila32 = d.querySelector('#cambio-lista input[name="cambio-cubierta"][value="32"]');
+    if(!fila32) { fail('cambio: falta la fila de la cubierta 32'); btn.remove(); return; }
+    fila32.click(); await sleep(100);
     $('#cambio-motivo').value = 'desgaste';
     if($('#cambio-resumen').textContent.indexOf('cubierta S-002 del stock') === -1) fail('cambio: resumen con la cubierta: ' + $('#cambio-resumen').textContent);
     $('#cambio-confirmar').click(); await sleep(400);
     var ca = cambios()[cambios().length - 1].args;
-    if(ca.p_cubierta_id !== 32 || ca.p_stock_id !== null || ca.p_nuevo !== null || ca.p_numero_quema !== null || ca.p_km_previos !== 0 || 'p_devolver_stock' in ca) fail('cambio: args con cubierta: ' + JSON.stringify(ca));
+    if(cambios().length !== antesSin + 2 || ca.p_cubierta_id !== 32 || ca.p_stock_id !== null || ca.p_nuevo !== null || ca.p_numero_quema !== null || ca.p_km_previos !== 0 || 'p_devolver_stock' in ca) fail('cambio: args con cubierta: ' + JSON.stringify(ca));
 
     // Almacenar: vuelve al stock en una sucursal; sin quema propia hay que indicarla
     btn.click(); await sleep(600);
