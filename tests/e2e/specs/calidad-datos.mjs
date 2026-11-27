@@ -10,7 +10,7 @@ const OTRA = `(select id from public.clientes where nombre = 'Otra Empresa SA')`
 const SUC = n => `(select s.id from public.sucursales s where s.cliente_id = ${DEMO} and lower(s.nombre) = '${n}')`;
 const rpc = (p, fn, args) => p.eval(`fetch('/rest/v1/rpc/${fn}', { method: 'POST', headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify(${JSON.stringify(args)}) })
   .then(async r => ({ status: r.status, cuerpo: await r.json().catch(() => null) }))`);
-const HTTP = [{ ruta: /rpc\/medicion_(invalidar|revalidar)/, status: [400, 403] }];
+const HTTP = [{ ruta: /rpc\/medicion_(invalidar|revalidar|corregir)/, status: [400, 403] }];
 const leer = p => p.eval(`fetch('/rest/v1/mediciones?select=id,calidad&calidad=neq.valida&limit=1000', { headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x' } })
   .then(async r => ({ status: r.status, filas: r.ok ? await r.json() : [] }))`);
 
@@ -65,6 +65,18 @@ export function registrar(env) {
         assert.equal(aj.status, 403);
       }, { http: HTTP });
       assert.equal(est(mS), 'valida');
+      // Corrección a mano: el operario de otra sucursal recibe 403; el administrador de empresa corrige y la medición queda válida
+      await flujo(env, 'cal-corregir-salto', 'salto', async p => {
+        const r = await rpc(p, 'medicion_corregir', { p_medicion_id: mM, p_mm1: 9, p_mm2: 9, p_mm3: 9, p_motivo_codigo: 'error_calibre' });
+        assert.equal(r.status, 403);
+        assert.equal(r.cuerpo.code, '42501');
+      }, { http: HTTP });
+      await flujo(env, 'cal-corregir-global', 'global', async p => {
+        const r = await rpc(p, 'medicion_corregir', { p_medicion_id: mM, p_mm1: 9, p_mm2: 9, p_mm3: 9, p_motivo_codigo: 'error_calibre' });
+        assert.equal(r.status, 200, JSON.stringify(r.cuerpo));
+        assert.equal(r.cuerpo.cambiado, true);
+      }, { http: HTTP });
+      assert.equal(est(mM), 'valida');
       const aud = Number(env.sql(`select count(*) from public.audit_log where entidad = 'mediciones' and accion in ('INVALIDAR_MEDICION','REVALIDAR_MEDICION') and entidad_id = '${mS}'`));
       assert.equal(aud, 2, 'invalidar y revalidar quedan auditados');
     } finally {

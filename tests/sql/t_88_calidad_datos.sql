@@ -153,7 +153,8 @@ select pg_temp.med(881, 1, 8, 'T-881-8', 24 * 5, 6, 6, 6) as b2n \gset
 select test.eq('B2: aumento de 1,0 exacto es válido', pg_temp.cal(:b2n), 'valida');
 -- la comparación es con la previa VÁLIDA: si la anterior estaba invalidada se compara con la anterior a esa
 select pg_temp.med(881, 1, 9, 'T-881-9', 24 * 12, 8, 8, 8) as b2o \gset
-select pg_temp.med(881, 1, 9, 'T-881-9', 24 * 8, 3, 3, 3) as b2p \gset
+-- 4 y no 3: con 3, la caída de 5 mm desde 8 ya la marcaría sospechosa por la regla de caída y el conteo de auditoría de B7 no cuadraría.
+select pg_temp.med(881, 1, 9, 'T-881-9', 24 * 8, 4, 4, 4) as b2p \gset
 update public.mediciones set calidad = 'invalidada', calidad_motivo = 'prueba' where id = :b2p;
 select pg_temp.med(881, 1, 9, 'T-881-9', 24 * 4, 8.5, 8.5, 8.5) as b2q \gset
 select test.eq('B2: se compara con la previa válida (la invalidada se ignora)', pg_temp.cal(:b2q), 'valida');
@@ -189,12 +190,15 @@ select pg_temp.med(884, 1, 5, 'T-884-5', 1, 35, 35, 35) as b4a \gset
 select test.eq('B4: 35 mm: rango físico', pg_temp.cal(:b4a) || '/' || pg_temp.mot(:b4a), 'sospechosa/Valor fuera del rango físico (0 a 30 mm)');
 select pg_temp.med(884, 1, 2, 'T-884-2', 90, 30, 30, 30) as b4b \gset
 select test.eq('B4: 30 mm exactos es válido', pg_temp.cal(:b4b), 'valida');
+-- La caída brusca (ola 4) tiene su prueba en t_108. Aquí se sube su umbral al máximo (30 mm) para que la lectura de
+-- 14/3/14, que baja 27 mm del mínimo anterior, solo levante la regla de huellas.
+update public.clientes set caida_brusca_mm = 30 where id = 1;
 select pg_temp.med(884, 1, 2, 'T-884-2', 89, 14, 3, 14) as b4c \gset
 select test.eq('B4: diferencia de 11 mm entre huellas es sospechosa', pg_temp.mot(:b4c), 'Diferencia entre huellas de 11 mm (máx. 10 mm)');
 update public.clientes set huella_absurda_mm = 12 where id = 1;
 select pg_temp.med(884, 1, 2, 'T-884-2', 88, 14, 3, 14) as b4d \gset
 select test.eq('B4: el umbral por cliente es configurable (12 mm: 11 mm es válida)', pg_temp.cal(:b4d), 'valida');
-update public.clientes set huella_absurda_mm = 10 where id = 1;
+update public.clientes set huella_absurda_mm = 10, caida_brusca_mm = 5 where id = 1;
 select test.denied('B4: el umbral del cliente debe ser positivo', $$update public.clientes set huella_absurda_mm = 0 where id = 1$$, '23514');
 
 -- B5. Odómetro decreciente respecto al vehículo

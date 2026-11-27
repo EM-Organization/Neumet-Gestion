@@ -1507,3 +1507,87 @@ select tipo, estado, count(*) from public.alertas where tipo in ('irregular','la
 ## AC.8 Desviaciones y pendientes
 - Desviación de T1 (punto 8): `WHEN` en `CREATE CONSTRAINT TRIGGER` sustituido por la guarda del AC.4.
 - Resuelto (AB.6): el filtro que faltaba (sin `WHEN` desde la ola 2) queda cubierto por la guarda del AC.4 dentro de la función del trigger.
+
+# Apéndice AD · Ola 4: caída brusca, corrección de mediciones y moneda por defecto (`20261126050000_calidad_moneda.sql`)
+
+Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de `20261126040000` (apéndice AC: `alerta_configurar` de 11 argumentos y el catálogo de motivos con `rotacion_disco` y `alineacion`) y de `20261120500000` (apéndice de cierre de escrituras: privilegios por columna de `clientes` y `costo_registrar` con moneda). **Pendiente de aplicar:** no está aplicada en producción; se aplica con el CLI (`neumet-aplicar-migracion`).
+
+## AD.1 Concurrencia
+- `medicion_corregir` toma `for update` sobre la medición a través de `medicion_autorizar`. Dos correcciones simultáneas se serializan.
+- Idempotencia: si la medición ya tiene `corregida_at` y los tres valores pedidos son iguales a los guardados, la RPC devuelve `cambiado: false` y no escribe ni audita de nuevo. Un doble envío deja un solo registro en `audit_log`.
+- El trigger de calidad (`trg_mediciones_calidad`, AFTER INSERT) no rechaza nunca la medición: solo la marca.
+
+## AD.2 Columnas y privilegios
+- `clientes.caida_brusca_mm numeric(4,1) not null default 5`, con `check (caida_brusca_mm > 0 and caida_brusca_mm <= 30)`. Umbral de RN-09 por cliente.
+- `clientes.moneda_default text not null default 'USD'`, con `check (moneda_default ~ '^[A-Z]{3}$')`. Moneda de los costos cuando la llamada no la indica (RN-28).
+- `mediciones.corregida_at timestamptz`: marca las mediciones corregidas a mano.
+- `grant select (caida_brusca_mm, moneda_default) on public.clientes to authenticated`. No hay `update` directo: los cambios pasan por `alerta_configurar` y `cliente_fijar_moneda`.
+
+## AD.3 Regla de caída brusca (RN-09)
+- Referencia: la última medición `calidad = 'valida'` de la misma cubierta (mismo vehículo y posición).
+- Caída = huella mínima previa menos huella mínima nueva, redondeada a 0,1 mm. Si la caída es igual o mayor que `caida_brusca_mm`, la medición queda `sospechosa`.
+- Un evento entre ambas mediciones de tipo `reencauche`, `reparacion` o `montaje` anula la comparación.
+- Texto del motivo: «Caída brusca de X mm desde la medición anterior», con coma decimal. Si hay varios motivos, se unen con «; » (la huella primero, luego la caída).
+- Las mediciones históricas no se recalculan (ver AD.9).
+
+## AD.4 `medicion_corregir` (RN-10)
+- Firma: `medicion_corregir(p_medicion_id bigint, p_mm1 numeric, p_mm2 numeric, p_mm3 numeric, p_motivo_codigo text, p_motivo_texto text default null) returns jsonb`.
+- Devuelve `{id, mm1, mm2, mm3, promedio, cambiado}`. Lo corregido queda `valida`, con `calidad_motivo = 'Corregida: ' || motivo` y `corregida_at`. Es la referencia de la siguiente caída.
+- Motivo del catálogo `correccion_medicion`: `error_calibre`, `huella_mal_tomada`, `carga_manual` y `otro` (con texto). Lo valida `motivo_movimiento_validar`.
+- Errores: 42501 (medición ajena o sin perfil), 22004 (valores nulos), 23514 (valor fuera de 0 a 30 mm o NaN), 22023 (motivo fuera de catálogo o «otro» sin texto).
+- Auditoría: `CORREGIR_MEDICION` con `antes` y `despues`. El rol sale de `perfiles`: administrador de empresa (`admin_empresa`) o sucursal (`sucursal`).
+- Autorización: `medicion_autorizar` (cliente y, si la tiene, su sucursal). La RPC está en el grupo «recorta» de `t_96`: su cuerpo no cita el rol administrador global.
+
+## AD.5 `cliente_fijar_moneda`
+- Firma: `cliente_fijar_moneda(p_cliente_id bigint, p_moneda text)` → `{cliente_id, moneda, cambiado}`. Solo el administrador de empresa, sobre su propio cliente (`admin_empresa_cliente_id()`).
+- Errores: 42501 (perfil ajeno o sin administrador de empresa), 23514 (código que no son tres letras mayúsculas).
+- `p_moneda` se normaliza con `upper(btrim(...))`. Si ya es la moneda del cliente, no escribe (`cambiado: false`).
+- Auditoría: `FIJAR_MONEDA` (rol `admin_empresa`). El UPDATE también lo registra `trg_audit_clientes`, así que quedan dos filas por cada cambio. Es el comportamiento actual de `clientes`; se revisa en AD.8.
+
+## AD.6 `alerta_configurar` con 12 argumentos
+- Se agrega `p_caida_brusca_mm numeric default null` al final. Sin valor, no cambia.
+- Errores: 22023 (más de un decimal), 23514 (menor o igual que 0, o mayor que 30).
+
+## AD.7 Moneda por defecto en costos
+- `costo_registrar` y `recauchutado_aceptar` tienen `p_moneda text default null`. Sin valor, la moneda es `upper(btrim(coalesce(p_moneda, clientes.moneda_default, 'USD')))`.
+- Los costos ya registrados no cambian de moneda. Las llamadas que pasan `p_moneda` se respetan tal cual, en mayúsculas.
+- Cambian firmas: se recrean con drop y create (`medicion_evaluar_calidad`, `alerta_configurar`, `costo_registrar`, `recauchutado_aceptar`).
+
+## AD.8 Catálogo y desviaciones
+- `motivos_movimiento_tipo_ck` admite `correccion_medicion`. Seed: `error_calibre` (1), `huella_mal_tomada` (2), `carga_manual` (3), `otro` (9).
+- Pendiente: decidir si `trg_audit_clientes` y la fila `FIJAR_MONEDA` deben quedar juntas o si una sobra. Hoy se conservan las dos.
+- Pendiente: la sincronización de alertas al corregir (que una corrección reabra o cierre la alerta de la cubierta) no tiene prueba en `t_108`.
+- Desviación de la especificación: en el caso «Recauchutado entre la previa (4) y la nueva (12)» no hay caída (es un aumento). La prueba de caída usa previa 10, reencauche y nueva 4. En la cadena «nueva 5,2» con umbral 5, la caída es de 4,8 (válida), así que la cadena usa 5,0.
+
+## AD.9 Consultas de solo lectura para producción
+Correr antes de aplicar; no modifican datos.
+
+```sql
+-- Costos por cliente y moneda (qué moneda tienen los datos ya cargados)
+select cliente_id, moneda, count(*) from public.costos_neumatico group by 1, 2 order by 1, 2;
+```
+
+```sql
+-- Mediciones históricas que serían caída brusca con el umbral de 5 mm (no se recalculan)
+with v as (
+  select m.id,
+         least(m.mm1, m.mm2, m.mm3) as minimo,
+         lag(least(m.mm1, m.mm2, m.mm3)) over (partition by m.vehiculo_id, m.posicion order by m.created_at, m.id) as prev_min
+    from public.mediciones m
+   where m.calidad = 'valida' and m.vehiculo_id is not null
+)
+select count(*) from v where prev_min - minimo >= 5;
+```
+
+Nota: la consulta agrupa por vehículo y posición (la cubierta en `mediciones`), usa solo las `valida` y no contempla los eventos entre mediciones. Es una estimación para dimensionar el efecto; no reemplaza la regla del trigger.
+
+## AD.10 Pruebas
+- SQL: `tests/sql/t_108_ola4_calidad_moneda.sql` (caída brusca con sus bordes, eventos entre, corrección y su idempotencia, auditoría con rol, moneda por defecto en costos, privilegios por columna y permisos por rol).
+- Ajustes de pruebas existentes: `t_88` (umbral de la caída aislado en B4; la medición de B2 queda con caída de 4 mm, por debajo del umbral), `t_91` (el costo explícito de R7 pasa a `UYU` para mantener la mezcla de monedas), `t_96` (dos RPC nuevas en el grupo «recorta»; conteos 30 y 33), `t_104` (cohorte CA-13 espera `USD`), `t_105` (catálogo con `correccion_medicion`; conteos 30 y 31).
+- `tests/sql/run.sh` aplica la migración dos veces (idempotencia).
+- E2E: `tests/e2e/specs/admin-empresa.mjs` (umbral de caída: 4 admitido, 31 rechazado; restauración en `finally`) y `tests/e2e/specs/calidad-datos.mjs` (corrección: 403 para un operario de otra sucursal, 200 y `cambiado: true` para el administrador de empresa).
+
+## AD.11 Riesgos de despliegue
+- **Moneda por defecto.** Los costos nuevos sin moneda explícita pasan a USD para todos los clientes. Los costos ya cargados no cambian. Conviene revisar con la consulta del AD.9 antes de aplicar.
+- **Umbral por cliente.** Todos los clientes quedan con 5 mm. Una medición que hoy queda válida puede quedar sospechosa tras la regla nueva, pero solo en mediciones nuevas.
+- **Historia sin recalcular.** Las mediciones anteriores no cambian de calidad. La consulta del AD.9 dimensiona cuántas serían caídas bruscas.

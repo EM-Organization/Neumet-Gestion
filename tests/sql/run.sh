@@ -220,6 +220,10 @@ echo "== migración disco, alineación y desgaste lateral (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126040000_disco_alineacion.sql"
 echo "== migración disco, alineación y desgaste lateral (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126040000_disco_alineacion.sql"
+echo "== migración calidad, corrección y moneda por cliente (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126050000_calidad_moneda.sql"
+echo "== migración calidad, corrección y moneda por cliente (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126050000_calidad_moneda.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

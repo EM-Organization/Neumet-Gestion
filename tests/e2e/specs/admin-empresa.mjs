@@ -124,7 +124,7 @@ export function registrar(env) {
   });
 
   test('Administración de empresa (API): alerta_configurar con todos los umbrales y la huella absurda', async () => {
-    const previo = json(env, `select umbral_bajo_mm, umbral_critico_mm, umbral_retiro_mm, dias_sin_medir_alerta, irregularidad_mm, alerta_histeresis_mm, huella_absurda_mm from public.clientes where id = ${DEMO}`)[0];
+    const previo = json(env, `select umbral_bajo_mm, umbral_critico_mm, umbral_retiro_mm, dias_sin_medir_alerta, irregularidad_mm, alerta_histeresis_mm, huella_absurda_mm, caida_brusca_mm from public.clientes where id = ${DEMO}`)[0];
     try {
       for (const rol of ['salto', 'api', 'sinperfil', null]) {
         denegado(await rpc(env, rol, 'alerta_configurar', { p_cliente_id: null, p_huella_absurda_mm: 20 }), `configurar como ${rol}`);
@@ -136,11 +136,16 @@ export function registrar(env) {
       assert.deepEqual([Number(fila.huella_absurda_mm), fila.dias_sin_medir_alerta], [25, 21]);
       assert.equal((await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_huella_absurda_mm: 41 })).status, 400);
       assert.equal((await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_umbral_retiro_mm: 6 })).status, 400, 'retiro sobre el crítico');
+      // Caída brusca (ola 4): 4 mm se guarda; 31 mm fuera del rango (0,1 a 30) es 400
+      const caida = await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_caida_brusca_mm: 4 });
+      assert.equal(caida.status, 200, JSON.stringify(caida.datos));
+      assert.equal(Number(caida.datos.caida_brusca_mm), 4);
+      assert.equal((await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: null, p_caida_brusca_mm: 31 })).status, 400, 'caída brusca de 31 mm');
       denegado(await rpc(env, 'global', 'alerta_configurar', { p_cliente_id: Number(env.sql(`select ${OTRA}`)), p_umbral_critico_mm: 5 }), 'otra empresa por parámetro');
       // Desde C2 (20261120500000) el equipo Neumet ya no configura umbrales de una empresa
       denegado(await rpc(env, 'admin', 'alerta_configurar', { p_cliente_id: Number(env.sql(`select ${DEMO}`)), p_huella_absurda_mm: 25 }), 'configurar como equipo Neumet (C2)');
     } finally {
-      env.sql(`update public.clientes set umbral_bajo_mm = ${previo.umbral_bajo_mm}, umbral_critico_mm = ${previo.umbral_critico_mm}, umbral_retiro_mm = ${previo.umbral_retiro_mm}, dias_sin_medir_alerta = ${previo.dias_sin_medir_alerta}, irregularidad_mm = ${previo.irregularidad_mm}, alerta_histeresis_mm = ${previo.alerta_histeresis_mm}, huella_absurda_mm = ${previo.huella_absurda_mm} where id = ${DEMO}`);
+      env.sql(`update public.clientes set umbral_bajo_mm = ${previo.umbral_bajo_mm}, umbral_critico_mm = ${previo.umbral_critico_mm}, umbral_retiro_mm = ${previo.umbral_retiro_mm}, dias_sin_medir_alerta = ${previo.dias_sin_medir_alerta}, irregularidad_mm = ${previo.irregularidad_mm}, alerta_histeresis_mm = ${previo.alerta_histeresis_mm}, huella_absurda_mm = ${previo.huella_absurda_mm}, caida_brusca_mm = ${previo.caida_brusca_mm} where id = ${DEMO}`);
     }
   });
 }
