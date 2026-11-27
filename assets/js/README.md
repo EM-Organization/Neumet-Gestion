@@ -32,6 +32,7 @@ domain/
   estado-desgaste.js    PURO: `wearStatus` por valor mostrado (bueno/poco/mayor/limite/sinDatos), rangos, conteo de chips, eje y bandas del gráfico (docs/21)
                         y ÚNICA fuente de los nombres de estado del panel (`ESTADOS`, `BANDERA`, `textoEstadoBase`, `BUENO_O_POCO`; docs/14 §3). Los módulos los importan y no repiten los nombres con mayúscula inicial ni en mayúsculas (la prosa en minúscula no se verifica)
                         (`tests/unit/nombres-estado-fuente.test.mjs`); excepción declarada: `vehiculo-diagrama.js` (`NIVEL_INFO`), que no puede importarla por ciclo (estado-desgaste -> desgaste-flota -> vehiculo-diagrama) y está cubierto por `renombres-estados.test.mjs`. El HTML estático de `adminpanel/index.html` lleva los literales, cubiertos por test
+  panel-rueda.js        PURO: aviso del panel de una rueda (por prioridad), km previos y ítems del menú «Más» de la cabecera del detalle (tests/unit/panel-rueda.test.mjs)
   tokens-detalle.js     PURO: medidas de la spec (docs/22) para el diagrama, la bandera y el gráfico del detalle; TODO-BREAKPOINTS
   grafico-desgaste.js   PURO: serie, eje X y `datosGrafico` (puntos, bandas, línea) del detalle de vehículo
   flota.js              PURO: agrupar/ordenar vehículos por severidad, KPIs, filtros de alertas

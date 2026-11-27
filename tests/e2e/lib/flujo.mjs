@@ -68,3 +68,7 @@ export async function abrirDetallePorMatricula(p, matricula) {
   }
   await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && document.querySelectorAll('#vd-diagrama .vd-rueda').length > 0`, { que: `detalle de ${matricula}` });
 }
+
+// «Ver más» de la ficha de la rueda va cerrado por defecto (docs/21 §6): el panel, el gráfico, los km previos y el historial
+// solo existen para el lector cuando está abierto. Idempotente: si ya está abierto, no hace nada.
+export const abrirVerMas = p => p.eval(`(() => { const d = document.querySelector('details.vd-mas'); if (d && !d.open) d.querySelector('summary').click(); return !!d; })()`);

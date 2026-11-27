@@ -87,8 +87,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(Array.prototype.some.call(all('#mont-pos option'), function(o){ return o.value === '3'; })) fail('montar: la posición 3 ya no está libre');
   if(all('#mont-lista .mont-fila').length !== 2) fail('montar: la cubierta montada debe salir de la lista (' + all('#mont-lista .mont-fila').length + ')');
   if($('#mont-cerrar').textContent.trim() !== 'Terminar') fail('montar: el botón debe pasar a «Terminar»');
-  await esperar(function(){ return /1 neumático/.test(txt('#vd-resumen')); }, 'recargar el detalle');
-  if(!/1 neumático/.test(txt('#vd-resumen')) || all('#vd-diagrama .vd-vacia').length !== 9) fail('montar: el detalle no se recargó detrás del modal: ' + txt('#vd-resumen'));
+  await esperar(function(){ return /1 neumático/.test(txt('#vd-cab')); }, 'recargar el detalle');
+  if(!/1 neumático/.test(txt('#vd-cab')) || all('#vd-diagrama .vd-vacia').length !== 9) fail('montar: el detalle no se recargó detrás del modal: ' + txt('#vd-cab'));
 
   // Cubierta nueva en P4: validación local y datos completos
   $('#mont-tab-nuevo').click(); await sleep(100);
@@ -146,7 +146,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if($('#modal-montar').classList.contains('show')) fail('montar: «Terminar» no cerró el modal');
   // El detalle se repintó detrás del modal: el foco vuelve a un «Montar neumático», no queda en <body>
   if(!d.activeElement || d.activeElement === d.body || !$('#view-vehiculo-detalle').contains(d.activeElement)) fail('montar: tras «Terminar» el foco debe volver al detalle del vehículo, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
-  if(all('#vd-diagrama .vd-vacia').length !== 8 || !/2 neumáticos/.test(txt('#vd-resumen')) || /Sin neumáticos montados/.test(txt('#vd-resumen'))) fail('montar: detalle tras montar 2: ' + txt('#vd-resumen'));
+  if(all('#vd-diagrama .vd-vacia').length !== 8 || !/2 neumáticos/.test(txt('#vd-cab')) || /Sin neumáticos montados/.test(txt('#vd-resumen'))) fail('montar: detalle tras montar 2: ' + txt('#vd-cab'));
   if(!$('#vd-resumen [data-action="neumatico-montar"]') || txt('#vd-resumen [data-action="neumatico-montar"]') !== 'Montar neumático') fail('montar: con posiciones libres debe quedar «Montar neumático»');
 
   // Retirar el neumático de P4 (baja con motivo): la posición vuelve a quedar vacía
@@ -173,7 +173,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   await esperar(function(){ return $('#vd-diagrama .vd-vacia[data-pos="4"]'); }, 'P4 vacía tras retirar');
   if($('#modal-retirar').classList.contains('show')) fail('montar: el modal de retirar no se cerró');
   if($('#vd-panel').classList.contains('abierto')) fail('montar: el panel debe cerrarse al quedar la posición vacía');
-  if(!/1 neumático/.test(txt('#vd-resumen'))) fail('montar: tras retirar queda 1 neumático: ' + txt('#vd-resumen'));
+  if(!/1 neumático/.test(txt('#vd-cab'))) fail('montar: tras retirar queda 1 neumático: ' + txt('#vd-cab'));
   // Enter en la búsqueda del stock: con UNA coincidencia elige y monta; con ninguna o varias, no. Stock restante: S-001 y S-010.
   var abrir = $('#vd-resumen [data-action="neumatico-montar"]'); abrir.click();
   if(!await esperar(function(){ return $('#modal-montar').classList.contains('show'); }, 'reabrir el modal de montar')) return;
@@ -289,12 +289,14 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   var vivos = function(){ return T.neumaticos.filter(function(x){ return x.vehiculo_id === 13 && x.estado !== 'baja'; }); };
   var nVivos = vivos().length;
   var be = $('#vd-cab [data-action="vehiculo-eliminar"]');
+  // «Eliminar vehículo» vive en el menú «Más»: al elegirlo el foco vuelve al botón «Más», que es el origen del diálogo.
+  var bm = $('#vd-cab [data-menu-mas-btn]');
   if(!be || be.textContent.trim() !== 'Eliminar vehículo' || nVivos < 2) { fail('eliminar: falta «Eliminar vehículo» en la cabecera o el coche no tiene neumáticos (' + nVivos + ')'); return; }
   // Vehículo sin neumáticos (todos dados de baja): el diálogo abre como confirmación simple, sin errores de consola,
   // con el foco inicial en «Cancelar» (la salida segura; Enter no elimina) y, al cancelar, el foco vuelve al botón que lo abrió.
   var estados = vivos().map(function(x){ return [x, x.estado]; });
   estados.forEach(function(e){ e[0].estado = 'baja'; });
-  be.focus(); be.click();
+  bm.click(); be.focus(); be.click();
   var abrio = await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar sin neumáticos');
   await sleep(200);
   if(abrio){
@@ -303,15 +305,15 @@ window.montarFlow = async function(w, d, sleep, fail, log){
     if(d.activeElement !== $('#veh-elim-cancelar')) fail('eliminar: el foco inicial del alertdialog debe ser «Cancelar», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
     $('#veh-elim-cancelar').click(); await sleep(200);
     if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: «Cancelar» no cerró el diálogo (sin neumáticos)');
-    if(d.activeElement !== be) fail('eliminar: al cancelar el foco debe volver a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+    if(d.activeElement !== bm) fail('eliminar: al cancelar el foco debe volver al botón «Más» de la cabecera, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   }
   estados.forEach(function(e){ e[0].estado = e[1]; });
   var conQuema = vivos()[0].numero_quema;
   vivos()[0].numero_quema = null; // un neumático sin quema no puede volver al stock
-  be.focus(); be.click();
+  bm.click(); be.focus(); be.click();
   if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar')) return;
   // Accesibilidad del alertdialog (docs/21 §5.5), con neumáticos: rol, foco inicial en «Cancelar» y no en el radio,
-  // Tab que no sale del diálogo y Escape que cierra y devuelve el foco a «Eliminar vehículo».
+  // Tab que no sale del diálogo y Escape que cierra y devuelve el foco al botón «Más».
   var dlgEl = $('#modal-veh-eliminar .modal');
   if(dlgEl.getAttribute('role') !== 'alertdialog' || dlgEl.getAttribute('aria-modal') !== 'true') fail('eliminar: el diálogo debe ser role="alertdialog" aria-modal: ' + dlgEl.getAttribute('role'));
   if(dlgEl.getAttribute('aria-labelledby') !== 'veh-elim-title') fail('eliminar: el alertdialog debe nombrarse con su título');
@@ -322,7 +324,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   if(d.activeElement !== primero) fail('eliminar: Tab desde «Eliminar vehículo» (el último) debe volver al primer control, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   d.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true})); await sleep(200);
   if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: Escape no cerró el diálogo');
-  if(d.activeElement !== be) fail('eliminar: Escape debe devolver el foco a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  if(d.activeElement !== bm) fail('eliminar: Escape debe devolver el foco al botón «Más» de la cabecera, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   be.click();
   if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'reabrir el diálogo tras Escape')) return;
   var radioStock = $('input[name="veh-elim-destino"][value="stock"]');
@@ -333,7 +335,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   $('#veh-elim-cancelar').click(); await sleep(100);
   if($('#modal-veh-eliminar').classList.contains('show')) fail('eliminar: «Cancelar» no cerró el diálogo');
   await sleep(100);
-  if(d.activeElement !== be) fail('eliminar: al cancelar el foco debe volver a «Eliminar vehículo», está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  if(d.activeElement !== bm) fail('eliminar: al cancelar el foco debe volver al botón «Más» de la cabecera, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   vivos()[0].numero_quema = conQuema;
   // Con quema en todos: «Enviar al stock» viene elegido; «Dar de baja» no.
   $('#vd-cab [data-action="vehiculo-eliminar"]').click();

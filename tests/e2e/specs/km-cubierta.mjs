@@ -3,7 +3,7 @@
 // Crea un vehículo propio de Demo y lo borra al terminar (no altera las cifras de las demás pruebas).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flujo, abrirDetallePorMatricula } from '../lib/flujo.mjs';
+import { flujo, abrirDetallePorMatricula, abrirVerMas } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
 
 const OTRA = `(select id from public.clientes where nombre = 'Otra Empresa SA')`;
@@ -27,7 +27,7 @@ async function seleccionarRueda(p, pos) {
   await p.click(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
   await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-rotar-btn') && document.querySelector('#vd-rotar-btn').dataset.posicion === '${pos}'`, { que: `panel de la rueda ${pos}` });
 }
-const panel = p => p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`);
+const panel = async p => { await abrirVerMas(p); return p.eval(`document.querySelector('#vd-panel').innerText.replace(/\\s+/g, ' ')`); };
 const fmt = n => Number(n).toLocaleString('es-AR');
 
 export function registrar(env) {

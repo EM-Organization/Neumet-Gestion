@@ -100,7 +100,7 @@ export function registrar(env) {
       await p.click('#mont-confirmar');
       await enEstado(p, /Montado: Eje 2 izquierda exterior\. Siguiente posición libre: Eje 2 izquierda interior/);
       await p.click('#mont-cerrar');
-      await p.esperar(`!document.querySelector('#modal-montar').classList.contains('show') && /3 neumáticos/.test(document.querySelector('#vd-resumen').textContent)`, { que: 'detalle con 3 neumáticos' });
+      await p.esperar(`!document.querySelector('#modal-montar').classList.contains('show') && /3 neumáticos/.test(document.querySelector('#vd-cab').textContent)`, { que: 'detalle con 3 neumáticos' });
       assert.equal(await p.eval(`document.querySelectorAll('#vd-diagrama .vd-vacia').length`), 7);
       assert.equal(await p.eval(`!!document.querySelector('#vd-resumen .vd-vacio')`), false, 'ya no hay estado vacío');
     }, { http: RECHAZO });
@@ -223,7 +223,7 @@ export function registrar(env) {
         await p.click('#mont-confirmar');
         await enEstado(p, /Montado: Delantera izquierda\. Siguiente posición libre: Delantera derecha/);
         await p.click('#mont-cerrar');
-        await p.esperar(`/1 neumático/.test(document.querySelector('#vd-resumen').textContent) && !document.querySelector('#modal-montar').classList.contains('show')`, { que: 'detalle con 1 neumático' });
+        await p.esperar(`/1 neumático/.test(document.querySelector('#vd-cab').textContent) && !document.querySelector('#modal-montar').classList.contains('show')`, { que: 'detalle con 1 neumático' });
         // Retirar: sin «Stock» entre los destinos
         await p.click('#vd-diagrama .vd-rueda[data-pos="1"]');
         await p.esperar(`!!document.querySelector('#vd-panel [data-action="neumatico-retirar"]')`, { que: 'panel de P1' });
