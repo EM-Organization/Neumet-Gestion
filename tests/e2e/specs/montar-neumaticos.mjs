@@ -15,6 +15,8 @@ const sucDemo = (env, nombre) => Number(env.sql(`select id from public.sucursale
 
 const rpc = (p, nombre, args) => p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.rpc(${JSON.stringify(nombre)}, ${JSON.stringify(args)})).then(r => ({ data: r.data, error: r.error && { code: r.error.code, message: r.error.message } }))`);
 const elegir = (p, sel, valor) => p.eval(`(() => { const s = document.querySelector(${JSON.stringify(sel)}); s.value = ${JSON.stringify(String(valor))}; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+// Distribución: tarjetas de radio. Elegir es un clic en la tarjeta del código.
+const elegirDistribucion = (p, codigo) => p.eval(`document.querySelector('#veh-nuevo-distribucion input[value=${JSON.stringify(codigo)}]').click()`);
 const visible = (p, sel) => p.eval(`!!document.querySelector(${JSON.stringify(sel)}) && document.querySelector(${JSON.stringify(sel)}).getClientRects().length > 0`);
 
 const nuevoVehiculo = (env, patente, { cliente = DEMO, sucursal = null, tipo = 10, odometro = 'null' } = {}) =>
@@ -167,7 +169,7 @@ export function registrar(env) {
       assert.equal(await p.eval(`document.querySelector('#veh-nuevo-cargar').checked`), true, 'la opción empieza marcada');
       await p.escribir('#veh-nuevo-numero', '8801');
       await p.escribir('#veh-nuevo-patente', 'e2e 8801');
-      await elegir(p, '#veh-nuevo-distribucion', '6x2');
+      await elegirDistribucion(p, '6x2');
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`document.querySelector('#view-vehiculo-detalle').classList.contains('active') && /Coche 8801/.test(document.querySelector('#vd-cab').textContent) && !!document.querySelector('#vd-resumen .vd-vacio')`, { que: 'detalle del vehículo nuevo, vacío' });
       assert.match(await texto(p, '#breadcrumb-parent'), /Vehículos/);
@@ -181,7 +183,7 @@ export function registrar(env) {
       await irA(p, 'vehiculos');
       await p.click('#btn-veh-agregar');
       await p.escribir('#veh-nuevo-numero', '8802');
-      await elegir(p, '#veh-nuevo-distribucion', '4x2');
+      await elegirDistribucion(p, '4x2');
       await p.eval(`document.querySelector('#veh-nuevo-cargar').click()`);
       await p.click('#veh-nuevo-guardar');
       await p.esperar(`/Coche 8802/.test(document.querySelector('#veh-lista').textContent)`, { que: 'vehículo en la lista' });

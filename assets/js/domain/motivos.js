@@ -7,7 +7,7 @@ export const MOTIVO_OTRO = 'otro';
 export const MAX_MOTIVO_TEXTO = 300;
 
 // Tipo de catálogo que usa cada operación (espejo de la base). El retiro y el cambio a baja usan el catálogo de baja.
-export const TIPO_MOTIVO = Object.freeze({ rotar: 'rotacion', baja: 'baja', cambio: 'cambio', desmontaje: 'desmontaje', rotarDisco: 'rotacion_disco', alinear: 'alineacion' });
+export const TIPO_MOTIVO = Object.freeze({ rotar: 'rotacion', baja: 'baja', cambio: 'cambio', desmontaje: 'desmontaje', rotarDisco: 'rotacion_disco', alinear: 'alineacion', corregir: 'correccion_medicion' });
 
 // Motivos activos del tipo, en el orden del catálogo. `catalogo` = filas de motivos_movimiento {tipo, codigo, etiqueta, orden, activo}.
 export function motivosDelTipo(catalogo, tipo) {

@@ -4,9 +4,9 @@
 import { db } from '../core/supabase.js';
 import { html, setHtml, joinHtml } from '../core/html.js';
 import { showToast } from '../core/ui.js';
-import { isClienteMode, esAdmin, currentSucursalId } from '../core/auth.js';
+import { isClienteMode, esAdmin, currentSucursalId, currentClienteId } from '../core/auth.js';
 import { ACTIONS, registerActions } from '../core/actions.js';
-import { CONCEPTOS, MONEDA_DEFECTO, validarCosto, traducirErrorCosto, ERROR_GENERICO_COSTO, puedeGestionarCostos } from '../domain/costos.js';
+import { CONCEPTOS, MONEDA_DEFECTO, monedaInicial, validarCosto, traducirErrorCosto, ERROR_GENERICO_COSTO, puedeGestionarCostos } from '../domain/costos.js';
 
 const $ = id => document.getElementById(id);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -18,14 +18,23 @@ export const puedeRegistrarCosto = () => puedeVerCostos() && !esAdmin();
 
 const err = msg => { const el = $('costo-error'); el.textContent = msg || ''; };
 
+// Moneda que se precarga: la del cliente (clientes.moneda_default), leída al abrir para que un cambio en Empresa se vea
+// sin recargar. Sin cliente o si la lectura falla, USD; si el campo queda vacío, la base usa la moneda del cliente.
+async function monedaDelCliente() {
+  if (!currentClienteId) return MONEDA_DEFECTO;
+  const { data, error } = await db.from('clientes').select('moneda_default').eq('id', currentClienteId).maybeSingle();
+  return monedaInicial(error ? null : data && data.moneda_default);
+}
+
 // Abre el formulario para un neumático. `etiqueta`: texto que lo identifica (posición, marca, quema).
-export function abrirRegistroCosto({ neumaticoId, etiqueta = '', alGuardar = null }) {
+export async function abrirRegistroCosto({ neumaticoId, etiqueta = '', alGuardar = null }) {
   if (!puedeRegistrarCosto() || neumaticoId === null || neumaticoId === undefined) return;
   ctx = { neumaticoId, alGuardar };
+  const moneda = await monedaDelCliente();
   $('costo-sub').textContent = etiqueta;
   setHtml($('costo-concepto'), joinHtml([html`<option value="">Elegir concepto</option>`, ...CONCEPTOS.map(c => html`<option value="${c.id}">${c.label}</option>`)]));
   $('costo-monto').value = '';
-  $('costo-moneda').value = MONEDA_DEFECTO;
+  $('costo-moneda').value = moneda;
   $('costo-fecha').value = hoyISO();
   $('costo-fecha').max = hoyISO();
   $('costo-notas').value = '';

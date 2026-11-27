@@ -545,6 +545,13 @@
           <div class="login-error" id="emp-umb-error" role="alert"></div>
           <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button></div>
         </form>
+        <form class="ficha-card" id="emp-moneda-form" novalidate>
+          <div class="ficha-card-title">Moneda de los costos</div>
+          <div class="ficha-sub">Moneda con la que se precargan los costos nuevos. Los costos ya cargados no cambian.</div>
+          <div class="field"><label for="emp-moneda">Moneda</label><select id="emp-moneda"></select></div>
+          <div class="login-error" id="emp-moneda-error" role="alert"></div>
+          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-moneda-guardar">Guardar moneda</button></div>
+        </form>
       </div>
 
       <!-- USO (isla Svelte, solo equipo Neumet): el aviso se muestra solo si la pantalla nueva no está disponible (bandera apagada o panel nuevo sin cargar) -->
@@ -1087,6 +1094,35 @@
   </form>
 </div>
 
+<!-- Modal Corregir medición (huellas a mano; el motivo sale del catálogo correccion_medicion: RN-14) -->
+<div class="modal-backdrop" id="modal-corregir" data-backdrop-close="calidad-corregir-cerrar" data-foco-inicial="corr-mm1">
+  <form class="modal cambio-modal" id="corregir-form" novalidate>
+    <div class="modal-header">
+      <div class="modal-title" id="corr-title">Corregir medición</div>
+      <div class="modal-sub" id="corr-sub"></div>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="corr-mm1">Interno (mm)</label>
+        <input id="corr-mm1" type="text" inputmode="decimal" autocomplete="off"/></div>
+      <div class="field"><label for="corr-mm2">Centro (mm)</label>
+        <input id="corr-mm2" type="text" inputmode="decimal" autocomplete="off"/></div>
+      <div class="field"><label for="corr-mm3">Externo (mm)</label>
+        <input id="corr-mm3" type="text" inputmode="decimal" autocomplete="off"/>
+        <div class="field-hint">Entre 0 y 30 mm, con un decimal como máximo.</div></div>
+      <div class="field"><label for="corr-motivo">Motivo <span class="label-opt">(obligatorio)</span></label>
+        <select id="corr-motivo" data-change="calidad-corregir-motivo"></select></div>
+      <div class="field" id="corr-motivo-texto-wrap"><label for="corr-motivo-texto">Texto del motivo</label>
+        <input id="corr-motivo-texto" type="text" maxlength="300" autocomplete="off"/>
+        <div class="field-hint">Con «otro», describir el motivo (máx. 300 caracteres).</div></div>
+      <div id="corr-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn ghost" data-action="calidad-corregir-cerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="corr-confirmar">Guardar corrección</button>
+    </div>
+  </form>
+</div>
+
 <!-- Modal Montar neumático (posición libre: cubierta del stock o cubierta nueva) -->
 <div class="modal-backdrop" id="modal-montar" data-backdrop-close="neumatico-montar-cerrar">
   <form class="modal cambio-modal" id="mont-form" novalidate>
@@ -1231,7 +1267,7 @@
       <div class="field"><label for="costo-concepto">Concepto</label><select id="costo-concepto"></select></div>
       <div class="field-row">
         <div class="field"><label for="costo-monto">Monto</label><input type="number" id="costo-monto" min="0" step="0.01" inputmode="decimal" placeholder="0,00"/></div>
-        <div class="field"><label for="costo-moneda">Moneda</label><input type="text" id="costo-moneda" maxlength="3" value="UYU" autocomplete="off" style="text-transform:uppercase"/></div>
+        <div class="field"><label for="costo-moneda">Moneda</label><input type="text" id="costo-moneda" maxlength="3" value="" autocomplete="off" style="text-transform:uppercase"/></div>
       </div>
       <div class="field"><label for="costo-fecha">Fecha</label><input type="date" id="costo-fecha"/></div>
       <div class="field"><label for="costo-notas">Notas <span class="label-opt">(opcional)</span></label><input type="text" id="costo-notas" maxlength="500" autocomplete="off"/></div>
@@ -1253,9 +1289,9 @@
     <div class="modal-body" id="veh-nuevo-body">
       <div class="field"><label for="veh-nuevo-numero">Número de coche</label><input type="text" id="veh-nuevo-numero" maxlength="50" autocomplete="off"/></div>
       <div class="field"><label for="veh-nuevo-patente">Matrícula <span class="label-opt">(opcional)</span></label><input type="text" id="veh-nuevo-patente" maxlength="20" autocomplete="off" autocapitalize="characters"/></div>
-      <div class="field"><label for="veh-nuevo-distribucion">Distribución de neumáticos</label>
-        <select id="veh-nuevo-distribucion" aria-describedby="veh-nuevo-distribucion-ayuda"></select>
-        <div class="field-hint" id="veh-nuevo-distribucion-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4.</div></div>
+      <fieldset class="cambio-grupo" id="veh-nuevo-distribucion" aria-describedby="veh-nuevo-distribucion-ayuda"><legend>Distribución de neumáticos</legend>
+        <div class="dist-opciones"></div>
+        <div class="field-hint" id="veh-nuevo-distribucion-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4.</div></fieldset>
       <div class="field" id="veh-nuevo-tipo-campo" hidden><label for="veh-nuevo-ruedas">Tipo de ruedas</label>
         <select id="veh-nuevo-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
         <div class="field-hint">El vehículo queda sin distribución definida.</div></div>
@@ -1278,9 +1314,9 @@
       <div class="modal-sub" id="veh-dist-sub"></div>
     </div>
     <div class="modal-body">
-      <div class="field"><label for="veh-dist-distribucion">Distribución de neumáticos</label>
-        <select id="veh-dist-distribucion" aria-describedby="veh-dist-ayuda"></select>
-        <div class="field-hint" id="veh-dist-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4. Los neumáticos montados conservan su posición.</div></div>
+      <fieldset class="cambio-grupo" id="veh-dist-distribucion" aria-describedby="veh-dist-ayuda"><legend>Distribución de neumáticos</legend>
+        <div class="dist-opciones"></div>
+        <div class="field-hint" id="veh-dist-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4. Los neumáticos montados conservan su posición.</div></fieldset>
       <div class="field" id="veh-dist-tipo-campo" hidden><label for="veh-dist-ruedas">Tipo de ruedas</label>
         <select id="veh-dist-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
         <div class="field-hint">El vehículo queda sin distribución definida.</div></div>
@@ -1343,7 +1379,7 @@
       </div>
       <div class="field-row" id="reca-g-costo">
         <div class="field"><label for="reca-costo">Costo <span class="label-opt">(opcional)</span></label><input type="number" id="reca-costo" min="0" step="0.01" inputmode="decimal"/></div>
-        <div class="field"><label for="reca-moneda">Moneda</label><input type="text" id="reca-moneda" maxlength="3" value="UYU" autocomplete="off"/></div>
+        <div class="field"><label for="reca-moneda">Moneda</label><input type="text" id="reca-moneda" maxlength="3" value="" autocomplete="off"/></div>
       </div>
       <div class="field" id="reca-g-sucursal"><label for="reca-sucursal">Sucursal donde queda la cubierta</label><select id="reca-sucursal"></select></div>
       <div class="field"><label for="reca-fecha">Fecha</label><input type="date" id="reca-fecha"/></div>

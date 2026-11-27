@@ -69,7 +69,9 @@ describe('validarAceptacion', () => {
     const r = validarAceptacion({ ...base, bandaMarca: ' Vipal ', costo: '400,50', moneda: 'usd', sucursalId: '2' }, HOY);
     assert.deepEqual(r.args, { p_id: 4, p_profundidad_mm: 16.5, p_banda_marca: 'Vipal', p_banda_modelo: null, p_costo: 400.5,
       p_moneda: 'USD', p_fecha: null, p_sucursal_id: 2, p_notas: null });
-    assert.equal(validarAceptacion(base, HOY).args.p_moneda, 'UYU');
+    assert.equal(validarAceptacion(base, HOY).args.p_moneda, null);
+    assert.equal(validarAceptacion({ ...base, moneda: '  ' }, HOY).args.p_moneda, null);
+    assert.equal(validarAceptacion({ ...base, moneda: 'US' }, HOY).error, 'La moneda debe ser un código de 3 letras');
     assert.equal(validarAceptacion(base, HOY).args.p_costo, null);
   });
   test('profundidad: obligatoria y entre 0 y 30', () => {

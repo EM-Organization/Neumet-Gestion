@@ -288,7 +288,7 @@ select public.recauchutado_enviar(test.id91('R91-7'), 'Prov B');
 select public.recauchutado_dictaminar(test.pid91('R91-7'), true);
 select public.recauchutado_aceptar(test.pid91('R91-7'), 15, 'Bandag', 'BDR', 300);
 select public.costo_registrar(test.id91('R91-7'), 'otro', 20);
-select public.costo_registrar(test.id91('R91-7'), 'otro', 5, null, null, 'USD');
+select public.costo_registrar(test.id91('R91-7'), 'otro', 5, null, null, 'UYU');
 select public.costo_registrar(test.id91('R91-7'), 'compra', 450);
 reset role;
 select test.eq('R7: cada costo en su vida (la compra manual, en la vida base)',

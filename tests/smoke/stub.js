@@ -3,9 +3,11 @@
   var asCliente = /[?&](cliente|secuser)=1/.test(window.parent.location.search);
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   var cl = [
-    {id:1,nombre:'Transportes Alfa',precio_mensual:50000,created_at:D(40),auth_user_id:'u-1'},
-    {id:2,nombre:'Minera <Beta> & Cía',precio_mensual:75000,created_at:D(20),auth_user_id:null}
+    {id:1,nombre:'Transportes Alfa',precio_mensual:50000,created_at:D(40),auth_user_id:'u-1',caida_brusca_mm:5,moneda_default:'USD'},
+    {id:2,nombre:'Minera <Beta> & Cía',precio_mensual:75000,created_at:D(20),auth_user_id:null,caida_brusca_mm:5,moneda_default:'USD'}
   ];
+  // Los flujos cambian la moneda del cliente (costos, recauchutado) por esta referencia antes de abrir un formulario.
+  window.__clientesStub = cl;
   var veh = [
     {id:10,nombre:'Camión 01',patente:'AB123CD',numero:'201',tipo_ruedas:10,cliente_id:1,activo:true,created_at:D(30),clientes:{nombre:cl[0].nombre}},
     {id:11,nombre:'Camión 02',patente:'XY987ZZ',numero:'202',tipo_ruedas:16,cliente_id:2,activo:true,created_at:D(25),clientes:{nombre:cl[1].nombre}}
@@ -96,7 +98,8 @@
     ['rotacion_disco','desgaste_lateral','Desgaste lateral',1],['rotacion_disco','swap_20000','Swap a 20.000 km',2],['rotacion_disco','otro','Otro',9],
     ['alineacion','desgaste_lateral','Desgaste lateral',1],['alineacion','control','Control de rutina',2],['alineacion','reparacion_tren','Reparación del tren delantero',3],['alineacion','otro','Otro',9],
     ['cambio','desgaste','Desgaste',1],['cambio','danio','Daño o pinchazo',2],['cambio','desgaste_irregular','Desgaste irregular',3],['cambio','otro','Otro',9],
-    ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9]
+    ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9],
+    ['correccion_medicion','error_calibre','Error del calibre',1],['correccion_medicion','huella_mal_tomada','Huella mal tomada',2],['correccion_medicion','carga_manual','Error al cargar el valor',3],['correccion_medicion','otro','Otro',9]
   ].map(function(r){ return {tipo:r[0],codigo:r[1],etiqueta:r[2],orden:r[3],activo:true,cliente_id:null}; });
   var T = {recauchutados:reca,eventos_neumatico:evs,v_costo_cubierta:costoc,clientes:cl,vehiculos:veh,dispositivos:dev,mediciones:med,v_mediciones_neumatico:medNeu,neumaticos:neu.concat(cub),stock_neumaticos:stock,gastos:gas,v_km_cubierta:kmc,motivos_movimiento:mot};
 
@@ -129,11 +132,19 @@
     };
     return q;
   }
+  // Escrituras de la corrección de mediciones y de la moneda (F8 ola 4): se registran los argumentos para que los flujos los comparen.
+  // window.__escrituras.error simula un rechazo de la base ({code:'42501', message:'...'}, como en empresa.flow.js) hasta que se borra.
+  var escrituras = window.__escrituras = {calls:[], error:null};
+  function escritura(name, args){
+    escrituras.calls.push({name:name, args:args});
+    if(escrituras.error) return Promise.resolve({data:null, error:escrituras.error});
+    return Promise.resolve({data: name==='medicion_corregir' ? {ok:true} : {cliente_id:1, moneda:args.p_moneda, cambiado:true}, error:null});
+  }
   var session={user:{id:'u-1',email:'admin@test.local'}};
   window.supabase={createClient:function(){
     return {
       from:Q,
-      rpc:function(name){ if(name==='cpk_por_grupo') return Promise.resolve({data:cpkg,error:null}); return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,total_meds:3,last_seen:D(1)}]:null,error:null}); },
+      rpc:function(name,args){ if(name==='medicion_corregir' || name==='cliente_fijar_moneda') return escritura(name,args); if(name==='cpk_por_grupo') return Promise.resolve({data:cpkg,error:null}); return Promise.resolve({data: name==='get_unregistered_devices'?[{device_id:'DE:AD:BE:EF:00:01',last_seen:D(1),n:3,total_meds:3,last_seen:D(1)}]:null,error:null}); },
       auth:{
         getSession:function(){
           var q=window.parent.location.search;

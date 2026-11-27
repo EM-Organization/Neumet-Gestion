@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   DISTRIBUCIONES, OTRA_DISTRIBUCION, buscarDistribucion, tipoRuedasDe, detalleEjes, etiquetaDistribucion, textoOpcion, textoRuedas, tipoLayout, distribucionActual, validarCambioDistribucion, traducirErrorDistribucion, SERVICIOS, validarCambioServicio, traducirErrorServicio,
+  pictogramaDistribucion,
 } from '../../assets/js/domain/distribucion.js';
 
 const leer = ruta => readFileSync(new URL(ruta, import.meta.url), 'utf8');
@@ -84,6 +85,54 @@ describe('cambiar la distribución de un vehículo', () => {
     const m = 'la distribución tiene 10 ruedas y hay neumáticos montados en las posiciones 11: retirarlos o elegir otra distribución';
     assert.match(traducirErrorDistribucion({ code: '23514', message: m }), /^La distribución tiene 10 ruedas .*posiciones 11/);
     assert.equal(traducirErrorDistribucion({ code: '42501' }), 'Sin permiso para cambiar este vehículo');
+  });
+});
+
+// El pictograma de las tarjetas: un eje por letra del código, de adelante hacia atrás, con las ruedas que dice el código.
+describe('pictograma de la distribución (tarjetas del selector)', () => {
+  const ruedasDe = id => pictogramaDistribucion(id).ejes.map(e => e.ruedas.length);
+  const direccionDe = id => pictogramaDistribucion(id).ejes.map(e => e.direccion);
+
+  test('4x2 (SD): dos ejes, el primero de dirección con 2 ruedas y el segundo con 4', () => {
+    const g = pictogramaDistribucion('4x2');
+    assert.equal(g.ejes.length, 2);
+    assert.deepEqual(ruedasDe('4x2'), [2, 4]);
+    assert.deepEqual(direccionDe('4x2'), [true, false]);
+  });
+  test('6x2 (SDS): ruedas 2, 4 y 2; solo el primero es de dirección (el último S es portador)', () => {
+    assert.deepEqual(ruedasDe('6x2'), [2, 4, 2]);
+    assert.deepEqual(direccionDe('6x2'), [true, false, false]);
+  });
+  test('8x2 (SSDS): cuatro ejes; los dos primeros de dirección', () => {
+    assert.deepEqual(ruedasDe('8x2'), [2, 2, 4, 2]);
+    assert.deepEqual(direccionDe('8x2'), [true, true, false, false]);
+  });
+  test('8x4 (SSDD): ruedas 2, 2, 4, 4; dirección en los dos primeros', () => {
+    assert.deepEqual(ruedasDe('8x4'), [2, 2, 4, 4]);
+    assert.deepEqual(direccionDe('8x4'), [true, true, false, false]);
+  });
+  test('total de ruedas = el campo ruedas del catálogo', () => {
+    for (const d of DISTRIBUCIONES) {
+      const total = pictogramaDistribucion(d.id).ejes.reduce((n, e) => n + e.ruedas.length, 0);
+      assert.equal(total, buscarDistribucion(d.id).ruedas, d.id);
+    }
+  });
+  test('mismo ancho y alto para todas; ningún x fuera del dibujo; ruedas de un eje simétricas', () => {
+    const medidas = new Set(DISTRIBUCIONES.map(d => { const g = pictogramaDistribucion(d.id); return `${g.ancho}x${g.alto}`; }));
+    assert.equal(medidas.size, 1);
+    for (const d of DISTRIBUCIONES) {
+      const g = pictogramaDistribucion(d.id);
+      const centro = g.ancho / 2;
+      for (const e of g.ejes) {
+        const xs = e.ruedas.map(r => r.x);
+        assert.ok(xs.every(x => x >= 0 && x <= g.ancho), `${d.id}: x fuera de [0, ${g.ancho}]`);
+        assert.ok(e.y >= 0 && e.y <= g.alto, `${d.id}: y fuera del dibujo`);
+        assert.deepEqual(xs.map(x => centro * 2 - x).sort((a, b) => a - b), xs, `${d.id}: eje no simétrico`);
+      }
+    }
+  });
+  test('«otra», código desconocido, vacío o nulo: sin pictograma', () => {
+    for (const id of ['otra', '', null, '9x9']) assert.equal(pictogramaDistribucion(id), null, String(id));
   });
 });
 

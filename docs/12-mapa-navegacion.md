@@ -25,7 +25,7 @@ Qué ve cada rol, a dónde lleva cada elemento y qué se puede hacer en cada pan
 
 Nomenclatura (plan de [docs/17](17-plan-roles-admin.md), F10 en curso): el perfil global es el «Administrador de empresa» y el perfil de sucursal el «Usuario de sucursal»; la base conserva los valores `cliente` y `admin`. Esta sección usa ambos nombres: «perfil global» equivale a «administrador de empresa».
 
-Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios y Umbrales); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
+Menú lateral: **Inicio · Vehículos · Neumáticos · Alertas · Reportes**. «Neumáticos» agrupa dos pestañas, **Stock** y **Recauchutado** (esta última solo para el administrador de empresa y el equipo Neumet, este en solo lectura). El administrador de empresa ve además **Sucursales** dentro de la sección **Empresa** (con Usuarios y Umbrales). En Umbrales, además de los valores de desgaste, está la **Caída brusca desde (mm)** (baja de la huella mínima entre dos mediciones que deja la nueva como sospechosa; entre 0 y 30, un decimal) y la tarjeta **Moneda de los costos** (con la que se precargan los costos y las aceptaciones de recauchutado; los costos ya cargados no cambian); el perfil de sucursal y el equipo Neumet no la ven. Con perfil global aparece además el selector **Sucursal** (Todas / Montevideo / Salto…) que filtra todas las pantallas; un perfil de sucursal no lo ve porque la base ya le limita los datos.
 
 ```mermaid
 flowchart TD
@@ -172,6 +172,9 @@ Inicio para el administrador añade el bloque «Clientes con más urgencias» (s
 | Clientes (admin) | `clientes` | `ficha` |
 | Balance (admin) | `balance` | |
 | Uso (admin) | `uso` | |
+| Mediciones a revisar (desde el aviso «Revisar ›» de Inicio; no está en el menú) | `calidad` | Modal «Corregir medición» (`modal-corregir`) |
+
+Corregir una medición (vista `calidad`, perfil global): en Inicio, «Revisar ›»; en la lista, **Corregir** de la medición; se editan las tres huellas (Interno, Centro, Externo, en mm), se elige el motivo y se pulsa **Guardar corrección**. La base la deja válida con su fecha de corrección y la registra en la auditoría; el equipo Neumet no ve el botón (solo mira). Si las huellas no cambian, no se llama a la base.
 
 Las RPC de sucursales (`sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar`) aceptan solo al administrador de empresa, sobre su propio cliente; desde la migración C2 el equipo Neumet recibe «permiso denegado» (`42501`), igual que el usuario de sucursal, otro cliente, el rol `api`, una sesión sin perfil y `anon`. La ficha de cliente es de solo lectura: las sucursales se administran en Empresa > Sucursales.
 

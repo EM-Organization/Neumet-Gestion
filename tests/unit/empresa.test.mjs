@@ -130,9 +130,9 @@ test('mensajeCrearUsuarioEmpresa: 409 acceso_quitado remite a Reponer acceso', (
   assert.ok(mensajeCrearUsuarioEmpresa(500, { error: 'x' }).length > 0);
 });
 
-test('argsAlertaConfigurar: mapea los umbrales, la histéresis, pasar atrás y swap a los parámetros de la RPC', () => {
-  const a = argsAlertaConfigurar('7', { umbral_bajo_mm: 4, umbral_critico_mm: 3, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 1.6, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, swap_km: 20000 });
-  assert.deepEqual(a, { p_cliente_id: 7, p_umbral_bajo_mm: 4, p_umbral_critico_mm: 3, p_histeresis_mm: 0.5, p_umbral_retiro_mm: 1.6, p_dias_sin_medir: 30, p_irregularidad_mm: 2, p_direccion_aviso_mm: 8, p_direccion_limite_mm: 6, p_swap_km: 20000 });
+test('argsAlertaConfigurar: mapea los umbrales, la histéresis, pasar atrás, caída brusca y swap a los parámetros de la RPC', () => {
+  const a = argsAlertaConfigurar('7', { umbral_bajo_mm: 4, umbral_critico_mm: 3, alerta_histeresis_mm: 0.5, umbral_retiro_mm: 1.6, dias_sin_medir_alerta: 30, irregularidad_mm: 2, direccion_aviso_mm: 8, direccion_limite_mm: 6, caida_brusca_mm: 5, swap_km: 20000 });
+  assert.deepEqual(a, { p_cliente_id: 7, p_umbral_bajo_mm: 4, p_umbral_critico_mm: 3, p_histeresis_mm: 0.5, p_umbral_retiro_mm: 1.6, p_dias_sin_medir: 30, p_irregularidad_mm: 2, p_direccion_aviso_mm: 8, p_direccion_limite_mm: 6, p_caida_brusca_mm: 5, p_swap_km: 20000 });
 });
 
 test('mensajeErrorConfigurar', () => {

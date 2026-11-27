@@ -426,8 +426,18 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   $('#vd-diagrama .vd-rueda[data-pos="5"]').dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(300);
   if($('#vd-panel').textContent.indexOf('Monedas mixtas') === -1 || /UYU 0,000/.test($('#vd-panel').textContent)) fail('detalle: monedas mixtas deberían mostrarse sin total');
   // Registrar costo: abre el formulario, valida y guarda
+  // Moneda precargada con la del cliente (F8 ola 4); una moneda que no tiene formato de código cae a USD
+  w.__clientesStub[0].moneda_default = 'UYU';
   $('#vd-panel [data-action="detalleRegistrarCosto"]').click(); await sleep(150);
   if(!$('#modal-costo').classList.contains('show')) fail('detalle: «Registrar costo» no abrió el formulario');
+  if($('#costo-moneda').value !== 'UYU') fail('detalle: el costo no precarga la moneda del cliente: '+$('#costo-moneda').value);
+  w.__clientesStub[0].moneda_default = 'DOLARES';
+  $('#modal-costo [data-action="costoCerrar"]').click(); await sleep(100);
+  $('#vd-panel [data-action="detalleRegistrarCosto"]').click(); await sleep(150);
+  if($('#costo-moneda').value !== 'USD') fail('detalle: una moneda sin formato de código debe caer a USD: '+$('#costo-moneda').value);
+  w.__clientesStub[0].moneda_default = 'USD';
+  $('#modal-costo [data-action="costoCerrar"]').click(); await sleep(100);
+  $('#vd-panel [data-action="detalleRegistrarCosto"]').click(); await sleep(150);
   $('#costo-guardar').click(); await sleep(100);
   if($('#costo-error').textContent.indexOf('Elegir el concepto') === -1) fail('detalle: el formulario de costo no valida el concepto: '+$('#costo-error').textContent);
   $('#costo-concepto').value = 'reparacion'; $('#costo-monto').value = '250.50';

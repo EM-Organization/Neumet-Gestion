@@ -171,7 +171,7 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
 
   // Umbrales vía RPC alerta_configurar
   $('.nav-item[data-view="empresa-umbrales"]').click(); await sleep(500);
-  if (all('#emp-umb-campos [data-umbral]').length !== 9) fail('empresa: faltan campos de umbrales');
+  if (all('#emp-umb-campos [data-umbral]').length !== 10) fail('empresa: faltan campos de umbrales');
   var grupos = {};
   Array.prototype.forEach.call(all('#emp-umb-campos .field'), function (f) {
     var key = Math.round(f.getBoundingClientRect().top);
@@ -182,18 +182,20 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
     if (grupos[k].length > 1 && new Set(grupos[k]).size !== 1) fail('empresa: los inputs de umbrales no están alineados verticalmente');
   }
   if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0,5') fail('empresa: la histéresis actual no se cargó');
+  if (!$('#eu-caida_brusca_mm') || $('#eu-caida_brusca_mm').value !== '5') fail('empresa: la caída brusca actual no se cargó: ' + ($('#eu-caida_brusca_mm') && $('#eu-caida_brusca_mm').value));
   var ordenCampos = Array.prototype.slice.call(all('#emp-umb-campos [data-umbral]')).map(function (i) { return i.dataset.umbral; }).slice(0, 3).join(',');
   if (ordenCampos !== 'umbral_bajo_mm,umbral_critico_mm,umbral_retiro_mm') fail('empresa: los umbrales deben ir de mayor a menor: ' + ordenCampos);
   var textoUmb = $('#view-empresa-umbrales').textContent;
   if (/\((naranja|rojo)\)|[<"]/i.test(textoUmb.replace(/\s+/g, ' ')) ) fail('empresa: textos de umbrales fuera de la guía: ' + textoUmb.replace(/\s+/g, ' '));
   var upd0 = (w.__saludFx && w.__saludFx.updates.length) || 0;
-  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '7,5', direccion_limite_mm: '6,5', swap_km: '15000' };
+  var valores = { umbral_bajo_mm: '9', umbral_critico_mm: '5', umbral_retiro_mm: '3', alerta_histeresis_mm: '1,2', dias_sin_medir_alerta: '30', irregularidad_mm: '2', direccion_aviso_mm: '7,5', direccion_limite_mm: '6,5', swap_km: '15000', caida_brusca_mm: '4,5' };
   var llenar = function () { Object.keys(valores).forEach(function (k) { $('#eu-' + k).value = valores[k]; }); };
   llenar();
   $('#emp-umb-form').requestSubmit(); await sleep(500);
   var cfg = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).pop();
   if (!cfg || cfg.args.p_cliente_id !== 1 || cfg.args.p_umbral_bajo_mm !== 9 || cfg.args.p_histeresis_mm !== 1.2) fail('empresa: alerta_configurar ' + JSON.stringify(cfg));
   if (!cfg || cfg.args.p_direccion_aviso_mm !== 7.5 || cfg.args.p_direccion_limite_mm !== 6.5 || cfg.args.p_swap_km !== 15000) fail('empresa: pasar atrás y swap no llegan a alerta_configurar ' + JSON.stringify(cfg));
+  if (!cfg || cfg.args.p_caida_brusca_mm !== 4.5) fail('empresa: la caída brusca no llega a alerta_configurar ' + JSON.stringify(cfg));
   if (!/Umbrales actualizados/.test(toast())) fail('empresa: sin aviso al guardar umbrales: ' + toast());
   if (d.activeElement !== $('#emp-umb-guardar')) fail('empresa: tras guardar umbrales el foco debe volver a Guardar, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   // Si el operario ya puso el foco en otro campo mientras guardaba, no se le quita
@@ -205,10 +207,38 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (fx.rpcs.length !== nCfg || !$('#emp-umb-error').classList.contains('show')) fail('empresa: umbrales inválidos llegaron a la base o no se avisó');
   llenar(); $('#eu-alerta_histeresis_mm').value = '3,5'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !/margen para resolver la alerta/i.test($('#emp-umb-error').textContent)) fail('empresa: histéresis fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
+  llenar(); $('#eu-caida_brusca_mm').value = '31'; $('#emp-umb-form').requestSubmit(); await sleep(200);
+  if (fx.rpcs.length !== nCfg || !/hasta 30/.test($('#emp-umb-error').textContent)) fail('empresa: caída brusca fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
+  llenar(); $('#eu-caida_brusca_mm').value = '0'; $('#emp-umb-form').requestSubmit(); await sleep(200);
+  if (fx.rpcs.length !== nCfg || !/Caída brusca desde \(mm\)/.test($('#emp-umb-error').textContent)) fail('empresa: caída brusca en 0 llegó a la base o el error no nombra el campo: ' + $('#emp-umb-error').textContent);
   llenar(); fx.errAlerta = { code: '42501', message: 'denegado' };
   $('#emp-umb-form').requestSubmit(); await sleep(300);
   if ($('#emp-umb-error').textContent.indexOf('Sin permiso') === -1) fail('empresa: 42501 sin mensaje: ' + $('#emp-umb-error').textContent);
   fx.errAlerta = null;
+
+  // Moneda de los costos (F8 ola 4): tarjeta aparte con su propio guardado; la RPC la registra el stub en __escrituras
+  var escrMon = w.__escrituras;
+  if (!$('#emp-moneda') || $('#emp-moneda').value !== 'USD') fail('empresa: la moneda del cliente no se cargó: ' + ($('#emp-moneda') && $('#emp-moneda').value));
+  $('#emp-moneda').value = 'UYU';
+  $('#emp-moneda-form').requestSubmit(); await sleep(400);
+  var mon = escrMon.calls.filter(function (c) { return c.name === 'cliente_fijar_moneda'; }).pop();
+  if (!mon || mon.args.p_cliente_id !== 1 || mon.args.p_moneda !== 'UYU') fail('empresa: cliente_fijar_moneda ' + JSON.stringify(mon));
+  if (!/Moneda actualizada/.test(toast())) fail('empresa: sin aviso al guardar la moneda: ' + toast());
+  var nMon = escrMon.calls.length;
+  $('#emp-moneda').value = 'USD'; escrMon.error = { code: '42501', message: 'denegado' };
+  $('#emp-moneda-form').requestSubmit(); await sleep(300);
+  if ($('#emp-moneda-error').textContent.indexOf('Sin permiso para cambiar la moneda') === -1) fail('empresa: 42501 de la moneda sin mensaje: ' + $('#emp-moneda-error').textContent);
+  escrMon.error = null;
+  if (escrMon.calls.length !== nMon + 1) fail('empresa: el guardado de la moneda debe llamar una vez');
+  // Dos clics seguidos: una sola RPC (guarda ocupado)
+  var nMon2 = escrMon.calls.length;
+  $('#emp-moneda').value = 'UYU';
+  $('#emp-moneda-guardar').click(); $('#emp-moneda-guardar').click(); await sleep(400);
+  if (escrMon.calls.length !== nMon2 + 1) fail('empresa: dos clics en Guardar moneda llamaron ' + (escrMon.calls.length - nMon2) + ' veces');
+  // Umbrales y moneda guardados seguidos: las dos RPC salen
+  var nCfg2 = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length;
+  llenar(); $('#emp-umb-form').requestSubmit(); $('#emp-moneda').value = 'USD'; $('#emp-moneda-form').requestSubmit(); await sleep(500);
+  if (fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length !== nCfg2 + 1 || escrMon.calls.length !== nMon2 + 2) fail('empresa: umbrales y moneda seguidos no salieron las dos RPC');
 
   // Alertas: sin tarjeta de nivel crítico ni escritura de umbrales; solo un aviso hacia Empresa > Umbrales
   var nCfgAl = fx.rpcs.filter(function (r) { return r.name === 'alerta_configurar'; }).length;

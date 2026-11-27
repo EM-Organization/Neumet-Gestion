@@ -38,6 +38,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'detalle-calidad': async function(){ await abrirDetalle(); var sm = $('#vd-calidad summary'); if(sm) sm.click(); else fail('escena '+name+': sin indicador de calidad'); await sleep(300); var c = $('#vd-calidad'); if(c) c.scrollIntoView(); await sleep(200); },
     'detalle-rueda-calidad': async function(){ await abrirDetalle(); rueda3(); await sleep(800); var h = Array.prototype.filter.call(d.querySelectorAll('#vd-panel h4'), function(x){ return /Calidad/.test(x.textContent); })[0]; if(h) h.scrollIntoView(); else fail('escena '+name+': sin sección de calidad'); await sleep(300); },
     'calidad-lista': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); },
+    'calidad-corregir': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); click('#cal-contenido [data-action="calidad-corregir"]'); await sleep(500); },
     'calidad-invalidar': async function(){ nav('inicio'); await sleep(800); click('#inicio-contenido [data-action="irA"][data-args=\'["calidad"]\']'); await sleep(800); click('#cal-contenido [data-action="calidad-invalidar"]'); await sleep(600); },
     'detalle-vacio': async function(){ await abrirVacio(); },
     'detalle-vacio-rueda': async function(){ await abrirVacio(); var r = $('#vd-diagrama .vd-rueda[data-pos="4"]'); if(r) r.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 4'); await sleep(700); },
@@ -56,6 +57,8 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'rotar-dialogo': async function(){ await abrirDetalle(); var r1 = $('#vd-diagrama .vd-rueda[data-pos="1"]'); if(r1) r1.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 1'); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = '2'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(700); },
     'rotar-disco': async function(){ await abrirDetalle(); var r1 = $('#vd-diagrama .vd-rueda[data-pos="1"]'); if(r1) r1.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 1'); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = 'disco'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(700); },
     'alinear': async function(){ await abrirDetalle(); var b = $('#vd-alinear-btn'); if(!b){ fail('escena '+name+': sin botón Registrar alineación'); return; } b.click(); await sleep(700); },
+    // Diálogo de distribución con la tarjeta 6x2 marcada (las tarjetas son radios: el clic la marca)
+    'cambiar-distribucion': async function(){ await abrirDetalle(); click('#vd-cab [data-action="vehiculo-cambiar-distribucion"]'); await sleep(600); click('#veh-dist-distribucion input[value="6x2"]'); await sleep(300); },
     'confirmar-eliminar': async function(){ nav('clientes'); await sleep(800); click('#tbody-clientes button[data-a="del"]'); await sleep(500); },
     'stock-mover': async function(){ nav('stock'); await sleep(800); click('[data-cubierta="31"] [data-action="cubiertaMover"]'); await sleep(500); },
     'stock-busqueda': async function(){ nav('inicio'); await sleep(600); var i = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input'); i.value = 's-0'; i.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(700); },
@@ -72,6 +75,7 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
       Array.prototype.forEach.call(v.querySelectorAll('table, input, select, button'), function(e){ if(e.offsetParent && e.getBoundingClientRect().right > ancho + 1) fail('escena '+name+': '+e.tagName+' sale del ancho visible ('+Math.round(e.getBoundingClientRect().right)+' > '+ancho+')'); });
     },
     'empresa-umbrales': async function(){ nav('empresa-umbrales'); await sleep(800); },
+    'empresa-moneda': async function(){ nav('empresa-umbrales'); await sleep(800); var f = d.getElementById('emp-moneda-form'); if(f) f.scrollIntoView(); await sleep(200); },
     'reportes': async function(){ nav('reportes'); await sleep(800); },
     'reportes-cpk': async function(){ nav('reportes'); await sleep(900); var c = $('#rep-cpk-card'); if(!c || c.hidden) fail('escena '+name+': sin Costo por km'); else c.scrollIntoView(); await sleep(300); },
     'mediciones': async function(){ nav('mediciones'); await sleep(800); },

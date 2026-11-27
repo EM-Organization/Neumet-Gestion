@@ -78,8 +78,9 @@ export function registrar(env) {
         let t = await panel(p);
         assert.ok(t.includes('Costo UYU 1.200,00') && t.includes('Costo por km UYU 0,120 por km'), t);
         await p.click('[data-action="detalleRegistrarCosto"]');
-        await p.esperar(`document.querySelector('#modal-costo').classList.contains('show')`, { que: 'formulario de costo' });
-        await p.eval(`document.querySelector('#costo-concepto').value = 'recauchutado'; document.querySelector('#costo-monto').value = '300'; true`);
+        await p.esperar(`document.querySelector('#modal-costo').classList.contains('show') && document.querySelector('#costo-moneda').value !== ''`, { que: 'formulario de costo con la moneda del cliente' });
+        // La moneda se precarga con la de Empresa; el costo del caso va en UYU, como el de la fila anterior
+        await p.eval(`document.querySelector('#costo-concepto').value = 'recauchutado'; document.querySelector('#costo-monto').value = '300'; document.querySelector('#costo-moneda').value = 'UYU'; true`);
         await p.click('#costo-guardar');
         await p.esperar(`!document.querySelector('#modal-costo').classList.contains('show') && document.querySelector('#vd-panel').innerText.includes('1.500,00')`, { que: 'costo registrado y panel recargado' });
         t = await panel(p);

@@ -97,3 +97,26 @@ export function traducirErrorServicio(err) {
   if (code === '23514') return 'El servicio no es válido. Elegir camión o bus';
   return 'No se pudo guardar el servicio. Reintentar';
 }
+
+// Pictograma de la distribución para las tarjetas del selector: vista desde arriba, el frente arriba. Mismas medidas para
+// todas las distribuciones, así las tarjetas miden lo mismo. `x` es el centro de la rueda, en unidades del viewBox.
+const PICTO = Object.freeze({ ancho: 60, alto: 100, margen: 12, anchoRueda: 6 });
+const CENTRO = PICTO.ancho / 2;
+
+// Una S pone una rueda por lado; una D, dos (la interior y la exterior).
+const ruedasDeEje = letra => (letra === 'D' ? [10, 20] : [14]).flatMap(separacion => [CENTRO - separacion, CENTRO + separacion]).sort((a, b) => a - b);
+
+// Ejes de adelante hacia atrás (eje 0 = el de arriba). Dirección: los S antes del primer D. En el catálogo, el eje S que
+// queda detrás de los dobles es un eje portador, no de dirección. Mismo criterio que rol-eje.js, sin importarlo (evita un ciclo).
+export function pictogramaDistribucion(id) {
+  const d = buscarDistribucion(id);
+  if (!d) return null;
+  const n = d.ejes.length;
+  const primerDoble = d.ejes.indexOf('D');
+  const ejes = [...d.ejes].map((letra, i) => ({
+    y: n === 1 ? PICTO.alto / 2 : PICTO.margen + Math.round(i * (PICTO.alto - 2 * PICTO.margen) / (n - 1)),
+    direccion: letra === 'S' && i < primerDoble,
+    ruedas: ruedasDeEje(letra).map(x => ({ x, ancho: PICTO.anchoRueda })),
+  }));
+  return { ancho: PICTO.ancho, alto: PICTO.alto, ejes };
+}

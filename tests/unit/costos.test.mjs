@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   resumenCosto, indexarCostos, puedeGestionarCostos, fmtMonto, fmtCpk, parseMonto, validarCosto, traducirErrorCosto,
   filasCpk, cpkCsv, etiquetaConcepto, MUESTRA_MINIMA, AVISO_COMPARAR, NOTA_SIN_KM, SIN_COSTOS, ERROR_GENERICO_COSTO,
+  MONEDAS, MONEDA_DEFECTO, opcionesMoneda, monedaInicial, validarMoneda, traducirErrorMoneda,
 } from '../../assets/js/domain/costos.js';
 import { NOTA_FALTAN_LECTURAS, NOTA_SIN_DATO } from '../../assets/js/domain/km-cubierta.js';
 
@@ -120,6 +121,37 @@ describe('indexarCostos, permisos y formatos', () => {
   });
 });
 
+describe('moneda por defecto (RN-28: USD)', () => {
+  test('MONEDA_DEFECTO es USD y el formato sin moneda la usa', () => {
+    assert.equal(MONEDA_DEFECTO, 'USD');
+    assert.equal(fmtMonto(1500), 'USD 1.500,00');
+    assert.equal(fmtMonto(1500, 'UYU'), 'UYU 1.500,00');
+  });
+  test('opcionesMoneda: la lista del panel, la actual al final sin duplicar', () => {
+    assert.deepEqual(MONEDAS, ['USD', 'UYU']);
+    assert.deepEqual(opcionesMoneda('EUR'), ['USD', 'UYU', 'EUR']);
+    assert.deepEqual(opcionesMoneda('USD'), ['USD', 'UYU']);
+    assert.deepEqual(opcionesMoneda(null), ['USD', 'UYU']);
+    assert.deepEqual(opcionesMoneda('xx'), ['USD', 'UYU']);
+  });
+  test('monedaInicial: la del cliente si es un código válido; si no, USD', () => {
+    assert.equal(monedaInicial('UYU'), 'UYU');
+    assert.equal(monedaInicial(null), 'USD');
+    assert.equal(monedaInicial('xx'), 'USD');
+  });
+  test('validarMoneda: normaliza o rechaza con el mensaje de la base', () => {
+    assert.deepEqual(validarMoneda(' eur '), { ok: true, moneda: 'EUR' });
+    assert.deepEqual(validarMoneda('US'), { ok: false, error: 'La moneda debe ser un código de 3 letras' });
+    assert.equal(validarMoneda('').ok, false);
+  });
+  test('traducirErrorMoneda: permiso, código inválido y el resto', () => {
+    assert.equal(traducirErrorMoneda({ code: '42501' }), 'Sin permiso para cambiar la moneda');
+    assert.equal(traducirErrorMoneda({ code: '23514' }), 'La moneda debe ser un código de 3 letras');
+    assert.equal(traducirErrorMoneda({ code: 'XX000' }), 'No se pudo guardar la moneda. Reintentar');
+    assert.equal(traducirErrorMoneda(null), 'No se pudo guardar la moneda. Reintentar');
+  });
+});
+
 describe('validarCosto', () => {
   const ok = (o = {}) => ({ neumaticoId: 5, concepto: 'compra', monto: '1250,5', moneda: 'usd', fecha: '2026-06-01', notas: ' Factura 12 ', ...o });
   const hoy = { hoy: '2026-06-15' };
@@ -128,11 +160,16 @@ describe('validarCosto', () => {
     assert.equal(r.ok, true);
     assert.deepEqual(r.args, { p_neumatico_id: 5, p_concepto: 'compra', p_monto: 1250.5, p_fecha: '2026-06-01', p_notas: 'Factura 12', p_moneda: 'USD' });
   });
-  test('moneda por omisión UYU, fecha y notas opcionales', () => {
+  test('moneda vacía: p_moneda null (la base usa la del cliente); fecha y notas opcionales', () => {
     const r = validarCosto(ok({ moneda: '', fecha: '', notas: '' }), hoy);
-    assert.equal(r.args.p_moneda, 'UYU');
+    assert.equal(r.args.p_moneda, null);
     assert.equal(r.args.p_fecha, null);
     assert.equal(r.args.p_notas, null);
+    assert.equal(validarCosto(ok({ moneda: undefined }), hoy).args.p_moneda, null);
+  });
+  test('moneda: con espacios y minúsculas se normaliza; un código inválido falla', () => {
+    assert.equal(validarCosto(ok({ moneda: ' usd ' }), hoy).args.p_moneda, 'USD');
+    assert.equal(validarCosto(ok({ moneda: 'US' }), hoy).error, 'La moneda debe ser un código de 3 letras');
   });
   test('monto 0 es válido', () => assert.equal(validarCosto(ok({ monto: '0' }), hoy).ok, true));
   test('rechazos con mensaje', () => {

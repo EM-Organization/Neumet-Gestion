@@ -14,6 +14,10 @@ const CAT = [
   { tipo: 'rotacion', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
 ];
 
+test('TIPO_MOTIVO.corregir es el catálogo de la corrección de mediciones', () => {
+  assert.equal(TIPO_MOTIVO.corregir, 'correccion_medicion');
+});
+
 test('motivosDelTipo: solo activos del tipo, en orden', () => {
   assert.deepEqual(motivosDelTipo(CAT, 'baja').map(m => m.codigo), ['desgaste', 'otro']);
   assert.deepEqual(motivosDelTipo(CAT, 'desmontaje'), []);
