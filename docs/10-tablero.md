@@ -114,7 +114,7 @@
 - Ola de densidad (PR 164), ajustes menores (no bloquean):
   - Panel de rueda: «Ver más» abierto pide el gráfico dos veces; sin número de quema ya no dice «Sin registrar»; bajo el límite no se explica el desgaste acelerado (queda la marca); la nota «El mínimo decide el estado» solo sale con tasa positiva y el promedio quedó a tres clics; el pie sigue en dos filas.
   - La altura de la ficha depende de la constante de 56 px del margen de `.view`.
-  - Umbrales: si la base rechaza el guardado, «Ajustes avanzados» no se abre hacia el campo. Empresa tiene dos botones primarios.
+  - Umbrales: si la base rechaza el guardado, no se enfoca ningún campo.
   - Alertas: dos líneas de ayuda apuntan a «Empresa > Umbrales»; el filtro no vuelve a «Abiertas» al cambiar de sucursal (decidido así); los datos simulados no tienen `abierta_at`.
   - Inicio: en «Últimas mediciones», una subida de huella («+0,5 mm») no aclara que no es desgaste. El oráculo e2e `alertasAbiertas` deja afuera un estado nulo. Evaluar si «Dispositivos» aporta al administrador de empresa.
   - Neumáticos: «Enviar a recauchutar» en cubiertas nuevas, «Sin dato» doble y «Lotes anteriores» siempre abierto.
@@ -127,7 +127,8 @@
   - Mediciones a revisar: tres botones por fila sin acción principal y valores en mm sin nombre de zona.
   - Stock: ocho columnas, «Enviar a recauchutar» también en cubiertas nuevas y «Sin dato» repetido.
   - El panel no explica que las mediciones se toman con la aplicación móvil.
-- Auditoría de UX del 27/11, P3 sin resolver: Umbrales con dos botones primarios y «Ajustes avanzados» mal ubicado; Reportes con la columna «Neumáticos» desalineada, «Muestra baja» con el símbolo de «Poco desgaste» y dos «Exportar CSV»; Alertas con dos ayudas al mismo lugar y contadores en cero; Sucursales con «Guardar nombre» y «Eliminar» visibles en cada fila; textos «36,7 semanas», «Bloquear de nuevo» y «Lote del stock».
+- Auditoría de UX del 27/11, P3 sin resolver: «Muestra baja» con el símbolo de «Poco desgaste»; Alertas con dos ayudas al mismo lugar y contadores en cero; Sucursales con «Guardar nombre» y «Eliminar» visibles en cada fila; textos «36,7 semanas», «Bloquear de nuevo» y «Lote del stock».
+- Rediseño de Reportes y Umbrales (`fix/ux-reportes-umbrales`, solo front, sin migración): el asistente es el bloque principal de Reportes y las exportaciones quedan debajo (tabla de costo por km tras «Ver tabla»: 1 clic más); Umbrales muestra todos los ajustes con escala de estados y barra de guardado fija (1 clic menos para un ajuste secundario). Verificado en Chrome con datos simulados.
 - Correcciones P1 de la auditoría (PR 165), ajustes menores (no bloquean):
   - `core/nav.js`: el Esc que cierra la barra lateral en pantallas angostas no llama a `preventDefault` y cierra también el panel de rueda.
   - `views/cambio-neumatico.js` (`pintarLista`): una cubierta elegida que siguiera en el filtro pero más allá de `MAX_LISTA` quedaría elegida sin verse; no ocurre con el orden actual.

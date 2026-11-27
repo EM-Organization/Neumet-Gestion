@@ -30,6 +30,12 @@ const TEXTO_CONSULTANDO = 'Consultando datos';
 const EJEMPLO_CON_COSTOS = 'Por ejemplo: costo por km por marca';
 // Ambos ejemplos entran en dos líneas del campo a 390 px (el campo tiene dos filas).
 const EJEMPLO_SIN_COSTOS = 'Por ejemplo: cubiertas para cambiar';
+// Preguntas de un clic: se envían tal como se leen. La de costos solo para quien los ve.
+const PREGUNTAS_EJEMPLO = [
+  { texto: 'Cubiertas para cambiar', costos: false },
+  { texto: 'Últimas mediciones por vehículo', costos: false },
+  { texto: 'Costo por km por marca', costos: true },
+];
 
 let conversacion = [];   // {pregunta, respuesta: {bloques, fuentes, ...} | null, fallida}; solo de la sesión, nunca en localStorage
 let enCurso = false;
@@ -81,7 +87,7 @@ function pintarControles() {
   $('asis-pregunta').disabled = !habilitado;
   $('asis-enviar').disabled = !habilitado;
   $('asis-pregunta').placeholder = puedeVerCostos() ? EJEMPLO_CON_COSTOS : EJEMPLO_SIN_COSTOS;
-  document.querySelectorAll('#asis-listos button').forEach(b => { b.disabled = !habilitado; });
+  document.querySelectorAll('.asis-listos button').forEach(b => { b.disabled = !habilitado; });
 }
 
 function pintarListos() {
@@ -91,6 +97,8 @@ function pintarListos() {
     return html`<button type="button" class="btn" data-reporte="${id}">${reporte.titulo}</button>`;
   });
   setHtml($('asis-listos'), joinHtml(botones));
+  const ejemplos = PREGUNTAS_EJEMPLO.filter(p => !p.costos || puedeVerCostos());
+  setHtml($('asis-ejemplos'), joinHtml(ejemplos.map(p => html`<button type="button" class="btn" data-ejemplo="${p.texto}">${p.texto}</button>`)));
 }
 
 function pintarEstado() {
@@ -112,7 +120,7 @@ function pintarRespuesta({ bloques, fuentes }) {
 
 function pintarHistorial() {
   tablas = [];
-  const turnos = conversacion.map(e => html`<p class="asis-pregunta-hecha">${e.pregunta}${e.fallida ? html` <span class="asis-sin-respuesta">Sin respuesta</span>` : ''}</p>${e.respuesta ? pintarRespuesta(e.respuesta) : ''}`);
+  const turnos = conversacion.map(e => html`<p class="asis-pregunta-hecha">${e.titulo || e.pregunta}${e.fallida ? html` <span class="asis-sin-respuesta">Sin respuesta</span>` : ''}</p>${e.respuesta ? pintarRespuesta(e.respuesta) : ''}`);
   setHtml($('asis-historial'), joinHtml(turnos));
 }
 
@@ -130,12 +138,13 @@ function descargarCsv(n) {
   download(tablaACsv(t.columnas, t.filas), safeFilename(['neumet-asistente', new Date().toISOString().slice(0, 10)], 'csv'));
 }
 
-async function preguntar(texto) {
+// `titulo` es lo que se lee en la conversación cuando el texto enviado lleva instrucciones para el modelo (reportes listos).
+async function preguntar(texto, titulo = null) {
   const pregunta = String(texto ?? '').trim();
   if (!pregunta || enCurso || !puedePreguntar()) return;
   const gen = generacion;
   const historial = recortarHistorial(turnosCompletados(conversacion));
-  const entrada = { pregunta, respuesta: null, fallida: false };
+  const entrada = { pregunta, titulo, respuesta: null, fallida: false };
   conversacion.push(entrada);
   enCurso = true;
   reintento = null;
@@ -171,7 +180,7 @@ function reintentar() {
   const fallida = reintento;
   conversacion = conversacion.filter(e => e !== fallida);
   reintento = null;
-  preguntar(fallida.pregunta);
+  preguntar(fallida.pregunta, fallida.titulo);
 }
 
 // Enter envía; Shift+Enter deja el salto de línea. Enter mantenido (e.repeat) no envía otra vez.
@@ -184,7 +193,9 @@ function alTeclear(e) {
 
 function alPulsar(e) {
   const reporte = e.target.closest('[data-reporte]');
-  if (reporte) { preguntar(preguntaReporte(reporte.dataset.reporte, hoyIso())); return; }
+  if (reporte) { preguntar(preguntaReporte(reporte.dataset.reporte, hoyIso()), reporte.textContent); return; }
+  const ejemplo = e.target.closest('[data-ejemplo]');
+  if (ejemplo) { preguntar(ejemplo.dataset.ejemplo); return; }
   const csv = e.target.closest('[data-asis-csv]');
   if (csv) { descargarCsv(Number(csv.dataset.asisCsv)); return; }
   if (e.target.closest('[data-asis-reintentar]')) reintentar();

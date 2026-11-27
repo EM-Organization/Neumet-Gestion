@@ -21,7 +21,7 @@ describe('validarUmbrales', () => {
     for (const o of [{ umbral_critico_mm: '8' }, { umbral_retiro_mm: '5' }, { umbral_bajo_mm: '4' }, { umbral_retiro_mm: '6' }]) {
       const v = validarUmbrales({ ...OK, ...o });
       assert.equal(v.ok, false, JSON.stringify(o));
-      assert.match(v.error, /mayor desgaste, poco desgaste, buen estado/);
+      assert.match(v.error, /buen estado, luego poco desgaste, luego mayor desgaste/);
     }
   });
   test('campo vacío o no numérico', () => {
@@ -186,7 +186,7 @@ describe('textos y orden de los campos (docs/14)', () => {
   });
 });
 
-describe('a la vista y ajustes avanzados (T5)', () => {
+describe('umbrales de desgaste y demás ajustes (T5)', () => {
   test('a la vista solo los tres umbrales de desgaste, en orden de mayor a menor', () => {
     assert.deepEqual(camposBasicos().map(c => c.key), ['umbral_bajo_mm', 'umbral_critico_mm', 'umbral_retiro_mm']);
   });

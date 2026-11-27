@@ -36,16 +36,12 @@ export function registrar(env) {
         // Umbrales: editar y guardar con Enter
         await irA(p, 'empresa-umbrales');
         await p.esperar(`document.querySelectorAll('#emp-umb-campos [data-umbral]').length === ${CAMPOS_UMBRAL.length} && document.querySelector('#eu-umbral_bajo_mm').value !== ''`, { que: 'umbrales cargados' });
-        // Los tres umbrales a la vista; el resto en «Ajustes avanzados», cerrado al cargar. Para escribir en un campo
-        // avanzado hay que abrir el desplegable antes.
-        assert.equal(await p.eval(`document.querySelector('#emp-umb-campos details.umb-avanzados').open`), false, 'Ajustes avanzados carga cerrado');
-        const abrirAvanzados = () => p.eval(`(() => { document.querySelector('#emp-umb-campos details.umb-avanzados').open = true; })()`);
+        assert.equal(await p.eval(`document.querySelectorAll('#emp-umb-campos details').length`), 0, 'todos los ajustes a la vista');
         // El campo muestra el decimal con coma (es-AR), no con el punto de la base.
         assert.equal(await p.eval(`document.querySelector('#eu-alerta_histeresis_mm').value`), String(Number(previo.alerta_histeresis_mm)).replace('.', ','), 'la histéresis actual viene de la base');
         const nuevo = Number(previo.umbral_bajo_mm) + 0.5;
         const nuevaHist = Number(previo.alerta_histeresis_mm) === 1.2 ? 1.4 : 1.2;
         await p.escribir('#eu-umbral_bajo_mm', String(nuevo));
-        await abrirAvanzados();
         await p.escribir('#eu-alerta_histeresis_mm', String(nuevaHist).replace('.', ','));
         await p.enter();
         await p.esperar(`/Umbrales actualizados/.test(document.querySelector('#toast-msg').textContent)`, { que: 'aviso de guardado' });

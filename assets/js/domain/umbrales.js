@@ -2,13 +2,11 @@
 // En la BD existe el check umbral_retiro_mm < umbral_critico_mm < umbral_bajo_mm; aquí se valida igual para avisar antes
 // de enviar. Tests: tests/unit/umbrales.test.mjs
 // Orden: de mayor a menor (bajo, crítico, retiro), el mismo de la regla de validación; luego los demás ajustes.
-// Solo los tres umbrales de desgaste van a la vista (camposBasicos); el resto, en «Ajustes avanzados» (camposAvanzados).
+// Los tres umbrales de desgaste (camposBasicos) se muestran junto a la escala; el resto (camposAvanzados), agrupado por tema.
 // Los textos hablan de las categorías de producto; los nombres técnicos de las columnas no se muestran (docs/14).
 import { ESTADOS } from './estado-desgaste.js';
 import { fmtNum } from './formato.js';
 const bajo = e => e.texto.toLowerCase();
-// Orden de los nombres para los mensajes de umbrales: de mayor a menor.
-export const ORDEN_NOMBRES = `${bajo(ESTADOS.mayor)}, ${bajo(ESTADOS.poco)}, ${bajo(ESTADOS.bueno)}`;
 
 export const CAMPOS_UMBRAL = [
   { key: 'umbral_bajo_mm', lbl: `${ESTADOS.bueno.texto} desde (mm)`, ayuda: `Por encima: «${bajo(ESTADOS.bueno)}»`, mm: true },
@@ -31,7 +29,7 @@ export const CAMPOS_UMBRAL = [
   { key: 'swap_km', lbl: 'Primera rotación a los (km)', ayuda: 'Kilómetros desde el montaje de una cubierta nueva', mm: false, avanzado: true }
 ];
 
-// Los tres umbrales de desgaste (a la vista) y el resto de ajustes («Ajustes avanzados», cerrado al cargar).
+// Los tres umbrales de desgaste y el resto de ajustes.
 export const camposBasicos = () => CAMPOS_UMBRAL.filter(c => !c.avanzado);
 export const camposAvanzados = () => CAMPOS_UMBRAL.filter(c => c.avanzado);
 
@@ -90,7 +88,7 @@ export function validarUmbrales(raw = {}) {
     return { ok: false, campo: 'swap_km', error: `${lblDe('swap_km')}: entero entre 1000 y 200000` };
   }
   if (!(v.umbral_retiro_mm < v.umbral_critico_mm && v.umbral_critico_mm < v.umbral_bajo_mm)) {
-    return { ok: false, campo: 'umbral_critico_mm', error: `Los umbrales deben descender: ${ORDEN_NOMBRES}` };
+    return { ok: false, campo: 'umbral_critico_mm', error: `Los valores deben ir de mayor a menor: ${bajo(ESTADOS.bueno)}, luego ${bajo(ESTADOS.poco)}, luego ${bajo(ESTADOS.mayor)}` };
   }
   // El límite (ya bajo) debe quedar por debajo del aviso (desde): si no, el segundo nivel no añade nada.
   if (!(v.direccion_limite_mm < v.direccion_aviso_mm)) {
