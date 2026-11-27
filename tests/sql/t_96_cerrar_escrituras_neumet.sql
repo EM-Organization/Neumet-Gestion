@@ -81,6 +81,9 @@ insert into _grp96 values
   -- RPC del plan de roles ya fusionadas, sin escritura del equipo Neumet: nacen con su propio control de rol
   ('plan', 'admin_empresa_cliente_id'), ('plan', 'vehiculo_corregir_odometro'), ('plan', 'usuarios_empresa_listar'),
   ('plan', 'usuario_empresa_quitar_acceso'), ('plan', 'usuario_empresa_reponer_acceso'), ('plan', 'vehiculo_eliminar'), ('plan', 'vehiculo_cambiar_distribucion'), ('plan', 'vehiculo_fijar_servicio'),
+  -- RPC del asistente de reportes (20261126090000): nacen con su propio control de perfil (admin, cliente, sin perfil, api);
+  -- no son de plataforma porque los clientes las usan, y solo escriben su registro de uso, no datos del cliente
+  ('asistente', 'asistente_reservar'), ('asistente', 'asistente_cerrar'),
   -- RPC de plataforma de solo equipo Neumet (precio mensual y uso, C1 y uso mensual)
   ('plataforma', 'cliente_precios_mensuales'), ('plataforma', 'cliente_precio_mensual_fijar'), ('plataforma', 'uso_clientes_listar');
 

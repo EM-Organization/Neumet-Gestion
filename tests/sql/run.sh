@@ -224,6 +224,10 @@ echo "== migración calidad, corrección y moneda por cliente (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126050000_calidad_moneda.sql"
 echo "== migración calidad, corrección y moneda por cliente (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126050000_calidad_moneda.sql"
+echo "== migración asistente de reportes: cuota y registro (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126090000_asistente_uso.sql"
+echo "== migración asistente de reportes: cuota y registro (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126090000_asistente_uso.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"
@@ -248,6 +252,8 @@ source "$SQL/concurrencia_api_alta.sh"
 source "$SQL/concurrencia_api_distribucion.sh"
 # shellcheck source=tests/sql/concurrencia_vehiculo_eliminar.sh
 source "$SQL/concurrencia_vehiculo_eliminar.sh"
+# shellcheck source=tests/sql/concurrencia_asistente_cuota.sh
+source "$SQL/concurrencia_asistente_cuota.sh"
 # Carga inicial del listado de un cliente (supabase/seed/importar-carga-inicial.mjs) contra esta base, con listado sintético
 # shellcheck source=tests/sql/importar_carga_inicial.sh
 source "$SQL/importar_carga_inicial.sh"
