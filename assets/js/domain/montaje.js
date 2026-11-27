@@ -18,6 +18,15 @@ export const DESTINOS_RETIRO = [
 const DESTINO_IDS = DESTINOS_RETIRO.map(d => d.id);
 export const etiquetaDestinoRetiro = id => (DESTINOS_RETIRO.find(d => d.id === id) || {}).label || String(id);
 
+// Destino que viene marcado al abrir «Retirar». En una rueda en desgaste límite la cubierta está gastada: marcar Stock
+// la devolvería al stock disponible, así que viene marcada Baja. Es solo el valor por defecto; el operario puede
+// elegir otro y la base no cambia. Solo el booleano `true` activa la regla.
+export function destinoRetiroInicial(destinos, enLimite) {
+  const ids = (destinos || []).map(d => d.id);
+  if (enLimite === true && ids.includes('baja')) return 'baja';
+  return ids[0] ?? null;
+}
+
 const vacio = v => v === null || v === undefined || String(v).trim() === '';
 
 // Posiciones sin neumático montado, en orden de carga: las ruedas del tipo de vehículo (1..N) y, al final, el auxilio.

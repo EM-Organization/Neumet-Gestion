@@ -20,7 +20,8 @@ import {
 import { motivosDelTipo, tipoMotivoCambio, TIPO_MOTIVO, MOTIVO_OTRO } from '../domain/motivos.js';
 import { cargarMotivosCliente } from '../core/motivos.js';
 import { fmtNum } from '../domain/formato.js';
-import { cubiertasMontables, etiquetaCubierta, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
+import { cubiertasMontables, etiquetaCondicion, nombreUbicacion, SIN_SUCURSAL } from '../domain/stock-cubiertas.js';
+import { MAX_LISTA, cubiertasParaMontar } from '../domain/montaje.js';
 
 export const EVENTO_CAMBIO = 'neumet:neumatico-cambiado';
 const $ = id => document.getElementById(id);
@@ -65,7 +66,7 @@ function estado() {
     marca: val('cambio-marca'), modelo: val('cambio-modelo'), odometro: val('cambio-odo'),
     numeroQuema: val('cambio-quema'), kmPrevios: val('cambio-km-previos'),
     odometroActual: ctx && ctx.veh ? ctx.veh.odometro_km : null, tipo: ctx && ctx.veh ? tipoLayout(ctx.veh) : null,
-    cubiertaId: val('cambio-cubierta'), cubiertas: ctx ? ctx.cubiertas : [], sucursales: ctx ? ctx.sucursales : [],
+    cubiertaId: ctx ? ctx.cubiertaId : null, cubiertas: ctx ? ctx.cubiertas : [], sucursales: ctx ? ctx.sucursales : [],
     // Solo admin y perfil global gestionan el stock: ahí «Almacenar» devuelve el neumático al stock.
     devolverStock: !!(ctx && ctx.puedeStock), sucursalStock: val('cambio-retorno-suc'), quemaViejo: val('cambio-quema-viejo')
   };
@@ -111,6 +112,23 @@ function actualizar() {
   return r;
 }
 
+// Cubiertas del stock, como en Montar: el buscador filtra y ninguna viene marcada. La elegida que sale del filtro se
+// desmarca, para que lo que se ve marcado sea lo que se envía.
+function pintarLista() {
+  const filtradas = cubiertasParaMontar(ctx.cubiertas, val('cambio-buscar'));
+  const vistas = filtradas.slice(0, MAX_LISTA);
+  if (ctx.cubiertaId !== null && !filtradas.some(c => String(c.id) === String(ctx.cubiertaId))) ctx.cubiertaId = null;
+  if (!vistas.length) {
+    setHtml($('cambio-lista'), html`<div class="mont-vacio">${ctx.cubiertas.length ? 'Ninguna cubierta coincide. Cambiar la búsqueda.' : 'Sin cubiertas en stock. Elegir un lote.'}</div>`);
+    return;
+  }
+  setHtml($('cambio-lista'), html`${vistas.map(c => html`<label class="mont-fila"><input type="radio" name="cambio-cubierta" value="${c.id}" ${String(ctx.cubiertaId) === String(c.id) ? 'checked' : ''} data-change="neumatico-cambiar-cubierta"/>
+    <span class="mont-quema">${c.numero_quema || 'Sin quema'}</span>
+    <span class="mont-desc">${[c.marca, c.modelo].filter(Boolean).join(' ') || 'Sin marca'}</span>
+    <span class="mont-meta">${etiquetaCondicion(c.condicion)} · ${nombreUbicacion(c.sucursal_id, ctx.sucursales)}</span></label>`)}${
+    filtradas.length > vistas.length ? html`<div class="mont-vacio">Se muestran ${vistas.length} de ${filtradas.length}. Usar el buscador para acotar.</div>` : ''}`);
+}
+
 function pintar() {
   const { veh, neum, stock, cubiertas, sucursales } = ctx;
   const hayStock = stock.length > 0, hayCubiertas = cubiertas.length > 0;
@@ -124,11 +142,14 @@ function pintar() {
     hayStock ? radio('cambio-origen', 'stock', 'Lote del stock', !hayCubiertas, 'neumatico-cambiar-resumen') : '',
     radio('cambio-origen', 'nuevo', 'Ingresar uno nuevo', !hayStock && !hayCubiertas, 'neumatico-cambiar-resumen')
   ]));
-  setHtml($('cambio-cubierta'), joinHtml(cubiertas.map(c => html`<option value="${c.id}">${etiquetaCubierta(c, sucursales)}</option>`)));
+  // Nada viene elegido: ni la cubierta ni el lote. Solo el origen por defecto queda fijado (arriba).
+  ctx.cubiertaId = null; $('cambio-buscar').value = ''; pintarLista();
   setHtml($('cambio-retorno-suc'), joinHtml([html`<option value="">${SIN_SUCURSAL}</option>`,
     sucursales.map(x => html`<option value="${x.id}">${x.nombre}</option>`)]));
   $('cambio-quema-viejo').value = '';
-  setHtml($('cambio-stock'), joinHtml(stock.map(s => html`<option value="${s.id}">${etiquetaStock(s)}</option>`)));
+  setHtml($('cambio-stock'), joinHtml([html`<option value="">Elegir lote</option>`,
+    stock.map(s => html`<option value="${s.id}">${etiquetaStock(s)}</option>`)]));
+  $('cambio-stock').value = '';
   pintarMotivos(tipoMotivoCambio(DESTINOS[0].id), MOTIVO_PREDETERMINADO); // el primer destino (baja) viene marcado
   $('cambio-motivo-texto').value = '';
   $('cambio-marca').value = ''; $('cambio-modelo').value = ''; $('cambio-odo').value = '';
@@ -172,7 +193,7 @@ async function abrir(vehiculoId, posicion) {
   const sucursales = rsu.error ? [] : (rsu.data || []);
   // Un cambio pudo empezar mientras se cargaba este: no se reemplaza el contexto del que está en vuelo.
   if (ocupado) { showToast(AVISO_EN_CURSO, true); return; }
-  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, sucursales, puedeStock, catalogo: rm.catalogo, odometroObligatorio: rm.odometroObligatorio };
+  ctx = { veh, neum: { ...neum, vehiculo_id: vehiculoId }, stock, cubiertas, cubiertaId: null, sucursales, puedeStock, catalogo: rm.catalogo, odometroObligatorio: rm.odometroObligatorio };
   pintar();
   $('modal-cambio').classList.add('show');
 }
@@ -181,14 +202,28 @@ async function abrir(vehiculoId, posicion) {
 // porque un botón ajeno con este data-action (o una vista que no filtre) no debe abrir el modal.
 ACTIONS['neumatico-cambiar'] = async function (vehiculoId, posicion) { if (esAdmin()) return; await abrir(Number(vehiculoId), Number(posicion)); };
 ACTIONS['neumatico-cambiar-resumen'] = function () { if (ctx) actualizar(); };
+ACTIONS['neumatico-cambiar-cubierta'] = function (id) { if (ctx) { ctx.cubiertaId = Number(id); actualizar(); } };
 ACTIONS['neumatico-cambiar-cerrar'] = function () { $('modal-cambio').classList.remove('show'); ctx = null; };
 
 // Guarda de rol: defensa en profundidad (el botón no se ofrece al equipo Neumet y la RPC lo rechaza); ningún test la cubre.
 // Se envía desde el submit del formulario (Enter o clic): un solo camino, protegido por `ocupado` contra el doble envío.
 ACTIONS['neumatico-cambiar-confirmar'] = async function () {
   if (!ctx || ocupado || esAdmin()) return;
-  const r = validarCambio(estado());
-  if (!r.ok) { $('cambio-error').textContent = r.error; showToast(r.error, true); return; }
+  // Enter con una sola coincidencia en el buscador elige esa cubierta y envía (docs/14 §5, regla 3), igual que en Montar.
+  // Exige texto: sin él, una única cubierta del stock se enviaría con un Enter suelto.
+  let f = estado();
+  if (f.origen === 'cubierta' && f.cubiertaId === null && val('cambio-buscar').trim()) {
+    const unica = cubiertasParaMontar(ctx.cubiertas, val('cambio-buscar'));
+    if (unica.length === 1) { ctx.cubiertaId = unica[0].id; pintarLista(); f = estado(); }
+  }
+  const r = validarCambio(f);
+  if (!r.ok) {
+    $('cambio-error').textContent = r.error; showToast(r.error, true);
+    // Sin cubierta ni lote elegidos, el foco va al campo que falta
+    if (f.origen === 'cubierta' && f.cubiertaId === null) $('cambio-buscar').focus();
+    else if (f.origen === 'stock' && f.stockId === '') $('cambio-stock').focus();
+    return;
+  }
   ocupado = true; $('cambio-confirmar').disabled = true;
   const mio = ctx; // la respuesta solo toca el modal del neumático que la originó
   const { posicion, vehiculo_id: vehiculoId } = ctx.neum, ctxTipo = tipoLayout(ctx.veh);
@@ -393,6 +428,8 @@ ACTIONS['neumatico-rotar-cerrar'] = function () { $('modal-rotar').classList.rem
 export function init() {
   // «Enter» en cualquier campo envía (docs/14 §5 r.3); el clic en «Confirmar cambio» llega también como submit.
   $('cambio-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS['neumatico-cambiar-confirmar'](); });
+  // El buscador filtra mientras se escribe (data-change solo dispara al salir del campo), como en Montar.
+  $('cambio-buscar').addEventListener('input', () => { if (ctx) { pintarLista(); actualizar(); } });
   // Enter mantenido (autorepetición): solo cuenta la primera pulsación.
   $('cambio-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.repeat) e.preventDefault(); });
   $('rotar-form').addEventListener('submit', e => { e.preventDefault(); ACTIONS['neumatico-rotar-confirmar'](); });

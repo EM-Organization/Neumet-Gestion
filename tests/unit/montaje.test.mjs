@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   posicionesLibres, siguienteLibre, etiquetaPosicion, resumenLibres, cubiertasParaMontar, validarMontaje, validarRetiro,
-  traducirErrorMontaje, traducirErrorRetiro, DESTINOS_RETIRO, MAX_LISTA,
+  traducirErrorMontaje, traducirErrorRetiro, DESTINOS_RETIRO, MAX_LISTA, destinoRetiroInicial,
 } from '../../assets/js/domain/montaje.js';
 import { layoutRuedas } from '../../assets/js/domain/vehiculo-diagrama.js';
 
@@ -203,6 +203,18 @@ test('validarRetiro: sin permiso de stock, destino inválido, odómetro y auxili
   assert.match(validarRetiro({ ...ret, neum: null }).error, /No hay un neumático/);
   assert.match(validarRetiro({ ...ret, posicion: 99 }).resumen, /^Auxilio: sale/);
   assert.deepEqual(DESTINOS_RETIRO.map(d => d.id), ['almacenado', 'reparacion', 'baja']);
+});
+
+// ── Destino inicial de «Retirar» ──
+test('destinoRetiroInicial: en desgaste límite viene Baja; en los demás casos, el primero de la lista', () => {
+  assert.equal(destinoRetiroInicial(DESTINOS_RETIRO, true), 'baja');
+  assert.equal(destinoRetiroInicial(DESTINOS_RETIRO, false), 'almacenado');
+  const sinStock = DESTINOS_RETIRO.filter(d => d.id !== 'almacenado');
+  assert.equal(destinoRetiroInicial(sinStock, false), 'reparacion');
+  assert.equal(destinoRetiroInicial(sinStock, true), 'baja');
+  // Solo el booleano true activa la regla
+  assert.equal(destinoRetiroInicial(DESTINOS_RETIRO, 'true'), 'almacenado');
+  assert.equal(destinoRetiroInicial([], true), null);
 });
 
 // ── Errores ──
