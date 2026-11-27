@@ -19,6 +19,24 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(!/X <Multi> Z/.test($('#stk-lista').textContent)) fail('stock: no muestra el modelo con signos');
   if(!/Sin sucursal/.test($('#stk-lista').textContent) || !/Montevideo/.test($('#stk-lista').textContent)) fail('stock: ubicaciones');
   if(!/^\d+ cubiertas · /.test($('#stk-resumen').textContent)) fail('stock: resumen: ' + $('#stk-resumen').textContent);
+  // Rendimiento: km totales por cubierta («aprox.» y nota si no son confiables; «Sin dato» sin lectura) y CPK solo con permiso de costos.
+  var rendDe = function(q){ var f = filas().filter(function(x){ return x.querySelector('.stk-quema').firstChild.textContent.trim() === q; })[0]; return f ? f.querySelector('.stk-rend') : null; };
+  var rd1 = rendDe('S-001'), rd2 = rendDe('S-002'), rd3 = rendDe('S-010');
+  if(!rd1 || !/^19\.000 km/.test(rd1.textContent)) fail('stock(' + rol + '): rendimiento de S-001: ' + (rd1 && rd1.textContent));
+  if(!rd2 || !/^43\.200 km aprox\./.test(rd2.textContent) || rd2.title.indexOf('Estimado') !== 0) fail('stock(' + rol + '): rendimiento de S-002 sin aprox. o sin nota: ' + (rd2 && rd2.textContent));
+  if(!rd3 || !/Sin dato/.test(rd3.textContent)) fail('stock(' + rol + '): rendimiento de S-010 sin «Sin dato»: ' + (rd3 && rd3.textContent));
+  if(!secUser && (!rd1 || !/UYU 0,100 por km/.test(rd1.textContent))) fail('stock(' + rol + '): CPK de S-001 no se ve con permiso: ' + (rd1 && rd1.textContent));
+  if(secUser && filas().some(function(f){ return /por km/.test(f.querySelector('.stk-rend').textContent); })) fail('stock(sucursal): ve CPK sin permiso de costos');
+  // Exportar CSV: el perfil de sucursal no lo ve; los demás lo ven y, sin cliente elegido (admin), avisa.
+  if(secUser !== (w.getComputedStyle($('#btn-stock-csv')).display === 'none')) fail('stock(' + rol + '): visibilidad de Exportar CSV');
+  if(!secUser && !cliMode){
+    $('#btn-stock-csv').click(); await sleep(300);
+    if($('#toast-msg').textContent !== 'Elegir un cliente para exportar sus cubiertas') fail('stock(admin): aviso sin cliente: ' + $('#toast-msg').textContent);
+  }
+  if(cliMode && !secUser){
+    $('#btn-stock-csv').click(); await sleep(400);
+    if(!/^CSV exportado \(\d+ filas\)$/.test($('#toast-msg').textContent)) fail('stock(global): toast del CSV: ' + $('#toast-msg').textContent);
+  }
   // «Lotes anteriores»: el rol cliente ve un solo cliente (sin columna Cliente) y los encabezados no se fuerzan a mayúsculas.
   if(visible($('#stock-lotes'))){
     var thCli = visible($('#th-stock-cliente'));
