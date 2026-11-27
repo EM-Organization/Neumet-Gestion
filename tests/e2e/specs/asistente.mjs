@@ -139,6 +139,35 @@ export function registrar(env) {
     assert.equal(gc.cuerpo.fuentes[0].tool, 'cpk_por_grupo');
   });
 
+  // Las columnas de cada tool son texto fijo contra el esquema: una que no existe o sin privilegio solo aparece con la base real
+  // (consulta_fallida o sin_permiso). Se recorren las tools que no ejercita la prueba de alcance, con global y con sucursal.
+  test('Asistente de reportes: mediciones, ficha de cubierta y vehículos leen columnas reales con global y sucursal', { skip: motivo }, async () => {
+    await funcion(env);
+    const demo = idCliente(env, 'Demo Transportes');
+    const quema = env.sql(`select n.numero_quema from public.neumaticos n join public.vehiculos v on v.id = n.vehiculo_id
+      join public.sucursales s on s.id = v.sucursal_id
+      where n.cliente_id = ${demo} and s.nombre ilike '%salto%' and n.numero_quema ~ '^[A-Za-z0-9 /-]+$' order by n.id limit 1`);
+    assert.ok(quema, 'hay una cubierta montada en Salto con número de quema');
+    // El rango máximo de mediciones_recientes es de 730 días: se piden los últimos 700, con mañana como fin por la zona horaria
+    const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+    const desde = dia(-700);
+    const hasta = dia(1);
+    const marcas = `[[tool:vehiculos_listar {"limite":5}]] [[tool:ficha_cubierta {"quema":"${quema}"}]]` +
+      ` [[tool:mediciones_recientes {"desde":"${desde}","hasta":"${hasta}","limite":5}]]`;
+    for (const rol of ['global', 'salto']) {
+      const r = await preguntar(env, { rol, pregunta: marcas });
+      assert.equal(r.status, 200, rol);
+      const t = JSON.stringify(r.cuerpo);
+      assert.deepEqual(r.cuerpo.fuentes.map(f => f.tool), ['vehiculos_listar', 'ficha_cubierta', 'mediciones_recientes'], `${rol}: ${t}`);
+      assert.ok(!t.includes('consulta_fallida'), `${rol}: ninguna consulta falla (${t})`);
+      assert.ok(r.cuerpo.fuentes.every(f => f.filas > 0), `${rol}: cada tool trae filas (${t})`);
+      assert.ok(t.includes('servicio') && t.includes('distribucion'), `${rol}: vehiculos_listar trae servicio y distribución`);
+      // Costos de la ficha: el global los ve; la sucursal recibe «sin_permiso» y ningún costo total
+      if (rol === 'global') assert.ok(t.includes('costo_total'), 'el global ve el costo de la ficha');
+      else assert.ok(t.includes('sin_permiso') && !t.includes('costo_total'), 'la sucursal no ve costos en la ficha');
+    }
+  });
+
   test('Asistente de reportes: la cuota de 30 corta con 429 y la pregunta permitida queda registrada', { skip: motivo }, async () => {
     await funcion(env);
     const mvd = USERS.montevideo.sub;

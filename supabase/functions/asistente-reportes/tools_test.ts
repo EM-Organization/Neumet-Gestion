@@ -174,7 +174,7 @@ Deno.test('vehiculos_listar satura el texto y nunca deja separadores del filtro 
     ['cliente_id', 'eq.7'],
     ['or', '(nombre.ilike.*abc*,patente.ilike.*abc*,numero.ilike.*abc*)'],
   ]);
-  assertEquals(consultas[0].columnas, 'id,nombre,patente,numero,tipo_ruedas,sucursal_id,activo');
+  assertEquals(consultas[0].columnas, 'id,nombre,patente,numero,tipo_ruedas,distribucion,servicio,sucursal_id,activo');
 
   const vacio = fakeRest();
   const salida = await ejecutarTool('vehiculos_listar', '{"texto":"(),"}', GLOBAL, vacio.rest);
