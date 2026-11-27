@@ -578,10 +578,12 @@ begin
 
   -- 3. Dirección (D2, D3, RN-07). Una alerta por cubierta: cambia su tipo al cambiar de nivel, sin abrir otra.
   --    Cierre por rotación solo si cambió la posición (D2); si no, reemplazada bajo el retiro, o recuperada.
+  --    sin_datos va primero (Apéndice W.2): la 99 o una falta de medición válida no son una rotación, aunque
+  --    la cubierta haya cambiado de posición.
   update public.alertas a
      set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
-         resuelta_motivo = case when t.posicion is distinct from a.posicion then 'rotacion'
-                                when t.minimo is null then 'sin_datos'
+         resuelta_motivo = case when t.auxilio or t.minimo is null then 'sin_datos'
+                                when t.posicion is distinct from a.posicion then 'rotacion'
                                 when t.minimo < t.umbral_retiro then 'reemplazada'
                                 else 'recuperada' end,
          mm_actual = coalesce(t.minimo, a.mm_actual), vehiculo_id = t.vehiculo_id
@@ -664,10 +666,13 @@ begin
 
   -- 5. Swap (D1): primera rotación de una cubierta de vida 0, a partir de swap_km del tramo abierto. Sin
   --    rotación después del montaje. El cierre es por rotación (cambio de posición o rotación registrada); si no,
-  --    sin_datos cuando deja de cumplirse la apertura.
+  --    sin_datos cuando deja de cumplirse la apertura. La 99 cierra sin_datos aunque haya cambiado de posición
+  --    (Apéndice W.2), igual que en la sección 3.
   update public.alertas a
      set estado = 'resuelta', resuelta_at = v_now, updated_at = v_now, silenciada_hasta = null,
-         resuelta_motivo = case when t.posicion is distinct from a.posicion or t.rota then 'rotacion' else 'sin_datos' end,
+         resuelta_motivo = case when t.auxilio then 'sin_datos'
+                                when t.posicion is distinct from a.posicion or t.rota then 'rotacion'
+                                else 'sin_datos' end,
          km_actual = coalesce(t.km, a.km_actual), vehiculo_id = t.vehiculo_id
     from public.alerta_estado_tiros(p_cliente_id, p_neumaticos) t
    where t.neumatico_id = a.neumatico_id
