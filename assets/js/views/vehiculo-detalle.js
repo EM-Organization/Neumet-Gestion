@@ -730,7 +730,9 @@ export function init() {
     b.dataset.args = JSON.stringify([vehiculoId, Number(b.dataset.posicion), destino]);
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !nulo(seleccion) && $('view-vehiculo-detalle').classList.contains('active')) cerrarPanel();
+    // Un Esc que ya cerró un modal o el menú «Más» (ambos llaman a preventDefault antes que esta vista) no debe cerrar
+    // también el panel de la rueda: el operario vuelve a la rueda con el panel abierto.
+    if (e.key === 'Escape' && !e.defaultPrevented && !nulo(seleccion) && $('view-vehiculo-detalle').classList.contains('active')) cerrarPanel();
   });
 }
 

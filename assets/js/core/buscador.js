@@ -172,7 +172,8 @@ function montar(form) {
   });
 
   form.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !lista.hidden) { cerrar(); input.focus(); return; }
+    // preventDefault: cerrar la lista de resultados no debe cerrar también el panel de una vista abierta (ver vehiculo-detalle).
+    if (e.key === 'Escape' && !lista.hidden) { e.preventDefault(); cerrar(); input.focus(); return; }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const ops = [...lista.querySelectorAll('.busq-op')];
     if (!ops.length) return;
