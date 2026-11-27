@@ -20,8 +20,9 @@ import { esAdmin, esAdminEmpresa } from '../core/auth.js';
 import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.js';
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
-import { severidadLabel } from '../domain/flota.js';
-import { partesRecuadro } from '../domain/alertas.js';
+import { partesRecuadro, presentacionAlerta, detalleAlerta } from '../domain/alertas.js';
+import { avisoPanel, textoKmPrevios, itemsMasCabecera } from '../domain/panel-rueda.js';
+import { menuMas } from '../core/menu-mas.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { etiquetaMotivo } from '../domain/motivos.js';
 import { cargarMotivosCliente } from '../core/motivos.js';
@@ -50,6 +51,7 @@ let vehiculoId = null;
 let filtro = null; // estado elegido en los chips ('limite'|'mayor'|'poco'|'bueno'|'sinDatos'|'acelerado'); solo atenúa, no cambia la selección
 let datos = null; // { veh, filas, alertas, eventos, ref, layout, geo, u, th, porPos, obs, calPorPos }
 let calAbierto = false; // detalle de «mediciones con observaciones» desplegado (se conserva al recargar tras una acción)
+let masAbierto = false; // «Ver más» del panel desplegado (se conserva al recargar; se reinicia al abrir otro vehículo)
 let seleccion = null;
 let focoTrasCarga = null; // rueda a enfocar cuando el detalle se redibuje tras una rotación o un cambio
 let preseleccion = null; // rueda a seleccionar al terminar de cargar (enlace desde Inicio)
@@ -105,7 +107,7 @@ export function abrirDetalle(id, pos = null, origenForzado = null, esUrl = false
     origen = 'inicio';
   }
   vehiculoId = id;
-  seleccion = null; filtro = null;
+  seleccion = null; filtro = null; masAbierto = false;
   preseleccion = nulo(pos) ? null : Number(pos);
   entradaPorUrl = esUrl;
   cacheMediciones.clear();
@@ -134,20 +136,21 @@ function cabecera() {
   const sem = estadoVehiculo(filas, datos.th);
   const ult = filas.reduce((m, f) => (f.ultima_medicion_at && (!m || f.ultima_medicion_at > m) ? f.ultima_medicion_at : m), null);
   const sucursal = !nulo(veh.sucursal_id) ? nombreSucursal(veh.sucursal_id) : '';
+  // El recuadro de alertas va en la fila del título (sin párrafo propio); a la derecha, lo que se hace con el vehículo.
   const recuadro = partesRecuadro(datos.alertas).map((p, i) => html`${i ? ' · ' : ''}${chip(p.color, p.texto, p.simbolo)}`);
+  const alinear = puedeOperar() ? html`<button type="button" class="btn ghost" id="vd-alinear-btn" data-action="vehiculo-alinear" data-vehiculo-id="${vehiculoId}">Registrar alineación</button>` : '';
+  // Sin ítems (Neumet sin operar ni administrar la empresa) no hay menú «Más».
+  const items = itemsMasCabecera({ puedeOperar: puedeOperar(), esAdminEmpresa: esAdminEmpresa(), vehiculoId });
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   setHtml($('vd-cab'), html`
-    <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? tagEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}
-      ${puedeOperar() ? html`<button type="button" class="btn ghost" data-action="vehiculo-cambiar-distribucion" data-vehiculo-id="${vehiculoId}">Distribución y servicio</button>` : ''}
-      ${puedeOperar() ? html`<button type="button" class="btn ghost" id="vd-alinear-btn" data-action="vehiculo-alinear" data-vehiculo-id="${vehiculoId}">Registrar alineación</button>` : ''}
-      ${esAdminEmpresa() ? html`<button type="button" class="btn ghost" data-action="openCicloVida" data-args="[${vehiculoId}, true]">Odómetro y ciclo de vida</button>` : ''}
-      ${esAdminEmpresa() ? html`<button type="button" class="btn ghost vd-cab-eliminar" data-action="vehiculo-eliminar" data-vehiculo-id="${vehiculoId}">Eliminar vehículo</button>` : ''}</div>
-    ${recuadro.length ? html`<p class="vd-p-nota">${recuadro}</p>` : ''}
+    <div class="vd-cab-titulo"><h2>${etiquetaCoche(veh.nombre)}</h2>${filas.length ? tagEstado(sem) : chip('gray', 'Sin neumáticos', '–')}${veh.activo === false ? chip('gray', 'Inactivo', '–') : ''}${recuadro}
+      <div class="vd-cab-acciones">${alinear}${items.length ? menuMas({ etiqueta: 'Más acciones del vehículo', items }) : ''}</div></div>
     <dl class="vd-datos">
       ${dato('Matrícula', veh.patente || '—')}
       ${veh.numero && String(veh.numero) !== String(veh.nombre) ? dato('Número de coche', veh.numero) : ''}
       ${sucursal ? dato('Sucursal', sucursal) : ''}
       ${dato('Odómetro', !nulo(veh.odometro_km) ? html`${fmtNum(veh.odometro_km)} km${veh.odometro_actualizado_at ? html` <small>(al ${fmtFecha(veh.odometro_actualizado_at)})</small>` : ''}` : 'Sin registrar')}
+      ${dato('Neumáticos', plural(contarEstadosFilas(filas, datos.th).total, 'neumático', 'neumáticos'))}
       ${dato('Última medición', ult ? fmtFecha(ult) : 'Nunca')}
     </dl>`);
   setTitulo(etiquetaCoche(veh.nombre), origen); // migas: Origen › Coche NNN
@@ -165,20 +168,19 @@ function resumen() {
     return;
   }
   // Los chips son la leyenda y el filtro a la vez: un chip por estado con neumáticos, de lo más urgente a lo mejor.
-  // La suma de los estados es el total (el auxilio cuenta como mucho «poco desgaste», PR 140); la bandera no es un estado, se cuenta aparte.
+  // No hay chip del total (está en la cabecera); el filtro se quita volviendo a tocar el chip activo.
+  // El rango de umbrales va en el title (hover) y en el aria-label; en pantalla no ocupa lugar. La bandera no es un estado: se cuenta aparte.
   const th = datos.th;
   const n = contarEstadosFilas(filas, th);
   const acelerados = filas.filter(f => banderaDeFila(f).mayorAlNormal).length;
-  const chipFiltro = (clave, etiqueta, contenido) => html`<button type="button" class="vd-chip ${clave === 'acelerado' ? 'vd-chip-flag' : `est-${ESTADOS[clave].estilo}`}"
-    data-action="detalleFiltro" data-args="${JSON.stringify([clave])}" data-filtro="${clave}" aria-pressed="${filtro === clave}" aria-label="${etiqueta}">${contenido}</button>`;
+  const chipFiltro = (clave, etiqueta, contenido, titulo = '') => html`<button type="button" class="vd-chip ${clave === 'acelerado' ? 'vd-chip-flag' : `est-${ESTADOS[clave].estilo}`}"
+    data-action="detalleFiltro" data-args="${JSON.stringify([clave])}" data-filtro="${clave}" aria-pressed="${filtro === clave}" aria-label="${etiqueta}"${titulo ? html` title="${titulo}"` : ''}>${contenido}</button>`;
   const chipEst = id => {
     const e = ESTADOS[id];
     const marca = id === 'sinDatos' ? html`<span class="vd-chip-rayas" aria-hidden="true"></span>` : html`<span class="vd-chip-sim" aria-hidden="true">${e.simbolo}</span>`;
-    const rango = rangoEstado(id, th);
-    return chipFiltro(id, etiquetaChip(id, n[id], th), html`${marca}<span aria-hidden="true">${fmtNum(n[id])} ${e.texto}</span>${rango ? html`<span class="vd-chip-rango" aria-hidden="true">${rango}</span>` : ''}`);
+    return chipFiltro(id, etiquetaChip(id, n[id], th), html`${marca}<span aria-hidden="true">${fmtNum(n[id])} ${e.texto}</span>`, rangoEstado(id, th));
   };
   setHtml($('vd-resumen'), joinHtml([
-    html`<button type="button" class="vd-chip vd-chip-total" data-action="detalleFiltro" data-args="[null]">${plural(n.total, 'neumático', 'neumáticos')}</button>`,
     ...ORDEN_ESTADOS.filter(id => n[id] > 0).map(chipEst),
     acelerados ? chipFiltro('acelerado', `${plural(acelerados, 'neumático', 'neumáticos')} con ${BANDERA.texto.toLowerCase()}`,
       html`<span class="vd-flag-dot" aria-hidden="true">${BANDERA.simbolo}</span><span aria-hidden="true">${fmtNum(acelerados)} ${BANDERA.texto}</span>`) : '',
@@ -307,11 +309,9 @@ function frase(nombre, semanas, yaPaso) {
 
 function seccionMedicion(fila) {
   if (!fila || nulo(huellaMinima(fila))) return html`<p class="vd-p-nota">Este neumático todavía no tiene mediciones completas (faltan huellas).</p>`;
-  // Encabezados cortos: a 390 px la palabra «Promedio» se parte («PROMEDI» / «O»). El texto visible es «Prom.»; el nombre
-  // accesible sigue siendo «Promedio» (aria-label), y la nota de abajo explica que es informativo.
-  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Mínimo</th><th scope="col" title="Promedio" aria-label="Promedio">Prom.</th></tr></thead>
-    <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(huellaMinima(fila))}</td><td>${fmtMedida(fila.promedio)}</td></tr></tbody></table>
-    <p class="vd-p-nota">El mínimo decide el estado; el promedio es informativo.</p>
+  // El promedio no va aquí: está en «Ver datos» del gráfico, y la nota que explica por qué es informativo, en la velocidad.
+  return html`<table class="vd-mm-tabla"><thead><tr><th scope="col">Interna</th><th scope="col">Centro</th><th scope="col">Externa</th><th scope="col">Mínimo</th></tr></thead>
+    <tbody><tr><td>${fmtMedida(fila.mm1)}</td><td>${fmtMedida(fila.mm2)}</td><td>${fmtMedida(fila.mm3)}</td><td>${fmtMedida(huellaMinima(fila))}</td></tr></tbody></table>
     <p class="vd-p-nota">Medido el ${fmtFecha(fila.ultima_medicion_at)}${!nulo(fila.odometro_km) ? html` · ${fmtNum(fila.odometro_km)} km` : ''}</p>`;
 }
 
@@ -324,10 +324,11 @@ function seccionTasa(fila, u, razonMostrada) {
   const est = wearStatus(huellaMinima(fila), datos.th);
   const yaCritico = est === 'mayor' || est === 'limite', yaRetiro = est === 'limite';
   return html`${razonMostrada ? '' : html`<p class="vd-p-texto">Se gasta ${fmtNum(tasa, 2)} mm por semana.</p>`}
-    <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>`;
+    <ul class="vd-alertas">${frase(`${ESTADOS.poco.texto} / ${ESTADOS.mayor.texto.toLowerCase()} (${fmtNum(u.critico, 1)} mm)`, fila.semanas_hasta_critico, yaCritico)}${frase(`${ESTADOS.limite.texto} (${fmtNum(u.retiro, 1)} mm)`, fila.semanas_hasta_retiro, yaRetiro)}</ul>
+    <p class="vd-p-nota">El mínimo decide el estado; el promedio es informativo.</p>`;
 }
 
-// Datos propios del neumático montado: número de quema y km (previos + tramos montados, calculados en v_km_cubierta).
+// Datos propios del neumático montado: km (previos + tramos montados, calculados en v_km_cubierta). El número de quema va en la cabecera del panel.
 function seccionNeumatico(fila) {
   const n = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id) : null;
   if (!n) return html`<p class="vd-p-nota">${ESTADOS.sinDatos.texto} del neumático.</p>`;
@@ -335,8 +336,7 @@ function seccionNeumatico(fila) {
   const dato = (t, v) => html`<div><dt>${t}</dt><dd>${v}</dd></div>`;
   const km = v => (v === null ? 'Sin dato' : `${fmtNum(v)} km`);
   return html`<dl class="vd-datos vd-datos-neum">
-    ${dato('Número de quema', n.numero_quema || 'Sin registrar')}
-    ${dato('Km que ya traía', `${fmtNum(n.km_previos || 0)} km`)}
+    ${dato('Km que ya traía', textoKmPrevios(n.km_previos))}
     ${k.disponible ? html`${dato('Km recorridos', km(k.recorridos))}
     ${dato('En el tramo actual', km(k.tramoActual))}
     ${dato('Km totales', km(k.totales))}` : ''}
@@ -362,14 +362,26 @@ function etiquetasPanel(fila, r) {
   const detalle = [fila && fila.marca, fila && fila.modelo].filter(Boolean).join(' ');
   if (detalle) tags.push(html`<span class="vd-etiqueta vd-etiqueta-neum">${detalle}</span>`);
   if (fila && !nulo(fila.vida)) tags.push(html`<span class="vd-etiqueta vd-etiqueta-vida">${etiquetaVida(fila.vida)}</span>`);
+  // El número de quema sale aquí (identifica la cubierta) y no en «Ver más».
+  const quema = fila && !nulo(fila.neumatico_id) ? datos.neumPorId.get(fila.neumatico_id)?.numero_quema : null;
+  if (quema) tags.push(html`<span class="vd-etiqueta">Quema ${quema}</span>`);
   return joinHtml(tags);
 }
 
+// Un solo aviso de la rueda (domain/panel-rueda.js): el título va en negrita y la proyección, en su propia línea.
+function seccionAviso(aviso) {
+  if (!aviso) return '';
+  return html`<p class="vd-p-razon">${aviso.titulo ? html`<strong>${aviso.titulo}</strong> ` : ''}${aviso.texto}${aviso.proyeccion ? html`<span class="vd-p-linea">${aviso.proyeccion}</span>` : ''}</p>`;
+}
+
+// Alertas abiertas de la posición. Tipo y símbolo salen de presentacionAlerta; el texto, de detalleAlerta. Sin alertas, no aparece.
 function seccionAlertas(pos) {
   const al = datos.alertas.filter(a => Number(a.posicion) === pos).sort((a, b) => Number(b.severidad) - Number(a.severidad));
-  if (!al.length) return html`<p class="vd-p-nota">Sin alertas activas.</p>`;
-  const cls = { 3: 'red', 2: 'orange', 1: 'gray' }, sim = { 3: '✕', 2: '▲', 1: 'i' };
-  return html`<ul class="vd-alertas">${al.map(a => html`<li>${chip(cls[a.severidad] || 'gray', severidadLabel(a.severidad), sim[a.severidad] || 'i')} ${a.mensaje}</li>`)}</ul>`;
+  if (!al.length) return '';
+  return html`<h4>Alertas</h4><ul class="vd-alertas">${al.map(a => {
+    const p = presentacionAlerta(a);
+    return html`<li>${chip(p.color, p.etiqueta, p.simbolo)} ${detalleAlerta(a)}</li>`;
+  })}</ul>`;
 }
 
 // Mediciones con observaciones del neumático montado ahí (sospechosas e invalidadas) y acciones para resolverlas.
@@ -407,12 +419,13 @@ function seccionEventos(pos, fila) {
 
 // RN-08: bajo el límite de retiro (menos de 3 mm en una huella) la cubierta se retira ya y NO se rota a otro eje.
 // Por eso no se ofrece «Rotar» ni se muestra el destino; el retiro sigue en un clic, como antes.
+// El aviso («Retirar ya», la proyección) va arriba, en el estado; el pie solo tiene botones. Bajo retiro, «Retirar» es el primario.
 function acciones(pos, bajoRetiro = false) {
   if (!puedeOperar()) return '';
   const args = JSON.stringify([vehiculoId, pos]);
-  const cambiar = html`<button type="button" class="btn primary" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
+  const cambiar = html`<button type="button" class="btn${bajoRetiro ? '' : ' primary'}" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
   const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
-  if (bajoRetiro) return html`<div class="vd-pie"><p class="vd-p-razon"><strong>Retirar ya.</strong> Bajo el límite de retiro no se rota a otro eje (RN-08).</p><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
+  if (bajoRetiro) return html`<div class="vd-pie"><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
   // Rotar abre el diálogo (motivo y odómetro). El botón lleva data-args='[vehiculoId, posA, posB]', que se actualiza al elegir el destino.
   // «En disco» (valor DESTINO_DISCO) rota la cubierta en su misma posición; el auxilio (99) no se rota en disco (RN-15).
   const destinos = [...datos.layout.ruedas, ...datos.layout.auxilios].filter(r => r.posicion !== pos);
@@ -426,6 +439,7 @@ function acciones(pos, bajoRetiro = false) {
 
 function renderPanel() {
   const body = $('vd-panel-body');
+  tokenGrafico++; // un gráfico pedido antes de redibujar (u otra rueda) no se pinta sobre el panel nuevo
   if (nulo(seleccion)) {
     setHtml(body, html`<p class="vd-panel-vacio">Elegir una rueda del diagrama para ver su estado, mediciones y alertas.</p>`);
     return;
@@ -447,6 +461,8 @@ function renderPanel() {
       ${puedeOperar() ? html`<div class="vd-pie"><div class="vd-p-acciones"><button type="button" class="btn primary" data-action="neumatico-montar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Montar neumático</button></div></div>` : ''}`);
     return;
   }
+  const bajoRetiro = estadoDeFila(fila).id === 'limite';
+  const aviso = avisoPanel({ bajoRetiro, razonAcelerado: ind && ind.mayorAlNormal ? ind.razon : null, semanasRetiro: fila.semanas_hasta_retiro });
   setHtml(body, html`
     <div class="vd-p-head">
       <div><h3 id="vd-panel-titulo" tabindex="-1">${nombrePos(pos, tipoLayout(datos.veh))}</h3>
@@ -455,17 +471,20 @@ function renderPanel() {
     </div>
     <div class="vd-p-scroll">
     <div class="vd-p-estado">${tagEstado(estadoDeFila(fila).id)}${ind && ind.mayorAlNormal ? tagBandera() : ''}</div>
-    ${ind && ind.mayorAlNormal ? html`<p class="vd-p-razon"><strong>${BANDERA.texto}.</strong> ${ind.razon}</p>` : ''}
-    <h4>Neumático</h4>${seccionNeumatico(fila)}
+    ${seccionAviso(aviso)}
     <h4>Última medición (mm)</h4>${seccionMedicion(fila)}
-    <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
-    <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
-    <h4>Alertas</h4>${seccionAlertas(pos)}
+    ${seccionAlertas(pos)}
     ${seccionCalidad(pos)}
-    <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
+    <details class="vd-mas"${masAbierto ? ' open' : ''}><summary>Ver más</summary>
+      <h4>Neumático</h4>${seccionNeumatico(fila)}
+      <h4>Evolución del desgaste</h4><div id="vd-chart-wrap"><p class="vd-p-nota">Cargando mediciones…</p></div>
+      <h4>Velocidad de desgaste</h4>${seccionTasa(fila, u, ind && ind.mayorAlNormal)}
+      <h4>Historial reciente</h4>${seccionEventos(pos, fila)}
+    </details>
     </div>
-    ${acciones(pos, estadoDeFila(fila).id === 'limite')}`);
-  cargarGrafico(pos);
+    ${acciones(pos, bajoRetiro)}`);
+  // El gráfico pide mediciones a la base: solo se carga si «Ver más» está abierto (al abrirlo, en el listener de init).
+  if (masAbierto) cargarGrafico(pos);
 }
 
 async function medicionesDe(pos) {
@@ -681,6 +700,12 @@ export function init() {
   });
   // El evento «toggle» no burbujea: se escucha en captura para recordar si el detalle está desplegado.
   $('vd-calidad').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('cal-detalle')) calAbierto = e.target.open; }, true);
+  // «Ver más» del panel: recuerda si está abierto y, al abrirlo, carga el gráfico de la rueda seleccionada.
+  $('vd-panel-body').addEventListener('toggle', e => {
+    if (!e.target.classList || !e.target.classList.contains('vd-mas')) return;
+    masAbierto = e.target.open;
+    if (masAbierto && !nulo(seleccion)) cargarGrafico(seleccion);
+  }, true);
   const dia = $('vd-diagrama');
   dia.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;

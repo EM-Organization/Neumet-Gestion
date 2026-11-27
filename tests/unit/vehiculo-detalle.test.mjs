@@ -224,12 +224,12 @@ describe('escala de color', () => {
   });
 });
 
-test('panel de alertas del detalle usa la severidad «Alta» del dominio, no «Crítica»', async () => {
+test('panel de alertas del detalle: el tipo sale de presentacionAlerta (domain/alertas.js), no «Crítica» ni severidades a mano', async () => {
   assert.equal(severidadLabel(3), 'Alta');
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../../assets/js/views/vehiculo-detalle.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /Crítica/);
-  assert.match(src, /severidadLabel/);
+  assert.match(src, /presentacionAlerta\(a\)/);
 });
 
 describe('desgaste mayor al normal', () => {
@@ -300,14 +300,16 @@ describe('detalle del vehículo: una sola fuente de estado (docs/21)', () => {
   test('la vista no lleva colores sueltos ni la escala continua vieja', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');
     assert.doesNotMatch(src, /#[0-9a-fA-F]{3,8}\b/, 'sin hex en la vista: los colores salen de variables CSS');
-    assert.doesNotMatch(src, /colorDesgaste|NIVEL_INFO|vd-leyenda|proyeccion/);
+    // «proyeccion» como nombre suelto era la vieja función de la vista; el campo aviso.proyeccion (domain/panel-rueda.js) sí puede estar.
+    assert.doesNotMatch(src, /colorDesgaste|NIVEL_INFO|vd-leyenda|(?<!\.)proyeccion\b/);
     assert.match(src, /wearStatus/);
   });
-  test('los chips filtran por una acción con aria-pressed y el total la limpia', async () => {
+  test('los chips filtran por una acción con aria-pressed; no hay chip del total y tocar el activo limpia el filtro', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');
     assert.match(src, /data-action="detalleFiltro"/);
     assert.match(src, /aria-pressed="\$\{filtro === clave\}"/);
-    assert.match(src, /data-args="\[null\]"/);
+    assert.doesNotMatch(src, /vd-chip-total/);
+    assert.match(src, /clave && clave !== filtro \? clave : null/);
   });
   test('los textos nuevos del detalle: Desgaste acelerado, Ver datos, Última medición (mm)', async () => {
     const src = await leer('../../assets/js/views/vehiculo-detalle.js');

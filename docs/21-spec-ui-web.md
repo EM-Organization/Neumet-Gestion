@@ -132,7 +132,7 @@ El chip junto al título del vehículo («× Mayor desgaste») usa el mismo comp
 Fila de chips al inicio de la tarjeta del esquema. **Es la leyenda y a la vez el filtro**. Reemplaza a la leyenda y a la barra degradada de abajo.
 
 Orden y contenido:
-1. `chip-total`: «{n} neumáticos» (incluye el de auxilio). Fondo blanco, borde 1.5 `NeumetTruckOutline`. Sirve para limpiar el filtro.
+1. Retirado en la ola 5: el total de neumáticos (incluye el de auxilio) va en la ficha, en el dato `Neumáticos`. Para quitar el filtro se pulsa de nuevo el chip del estado activo.
 2. `chip-mayor`, `chip-poco`, `chip-bueno`: símbolo + conteo + nombre + rango, por ejemplo «× 2 Mayor desgaste · 3–5 mm». Solo se muestran los estados con conteo mayor que 0.
 3. `chip-sinDatos`: solo si hay neumáticos sin datos. Muestra el rayado en lugar del símbolo.
 4. `chip-acelerado`: «! {n} Desgaste acelerado». Solo si hay alguno. Va al final.
@@ -226,8 +226,12 @@ Interacción y accesibilidad:
 
 ## 6. Layout
 
-- La **tarjeta del esquema** queda fija: `position: sticky`, desplazamiento superior = alto de la barra superior + 16, alineada al inicio de la cuadrícula, con alto máximo `calc(100vh − barra − 32)`. Solo si el contenido supera ese alto, la propia tarjeta puede tener scroll interno (caso de vehículos con muchos ejes).
-- El **panel del neumático no tiene scroll interno**: crece con la página. Solo desplaza el documento.
+- En escritorio (desde 861 px) la **ficha ocupa el alto de la ventana**: `height: calc(100vh − barra − 56px)` (28 px de margen arriba y 28 abajo, el padding de la página). La **tarjeta del esquema** y el **panel** se estiran dentro de ese alto, así que ninguno depende del desplazamiento de la página. Si el contenido supera el alto, la tarjeta del esquema (caso de vehículos con muchos ejes) y el panel tienen scroll propio.
+- El **pie de acciones** del panel («Cambiar neumático», «Retirar neumático», «Rotar») queda fijo al fondo del panel y fuera de su desplazamiento. En móvil (hasta 860 px) el panel es una hoja inferior, sin cambios.
+- **Leyenda**: la fila de chips ocupa como máximo dos filas en 1280x720 (seis chips, 12 px).
+- **Cabecera**: nombre, estado y recuadro en línea; a la derecha, «Registrar alineación» y el menú «Más» (Distribución y servicio; Odómetro y ciclo de vida; Eliminar vehículo, solo para el administrador de empresa).
+- **Ver más** del panel va cerrado por defecto; el gráfico de mediciones se carga al abrirlo.
+- **Aviso del panel**: un solo aviso por neumático, por prioridad. «Retirar ya.» si está bajo el límite de retiro; si no, la razón del desgaste acelerado con la proyección como segunda línea; si no hay acelerado, la proyección a límite.
 - Los anchos de las dos columnas no cambian.
 - Debajo de 1024 de ancho: una columna, el esquema arriba sin quedar fijo (`TODO-BREAKPOINTS`).
 - Con la tarjeta fija, el hueco que hoy queda bajo la leyenda deja de verse.
@@ -344,7 +348,7 @@ Formato: dado / cuando / entonces.
 11. **Eje.** Con una lectura de 4,7 mm el eje va de 0 a 12 y se ve la banda «Buen estado». Con una de 16,0 mm va de 0 a 16 y el punto no toca el eje.
 12. **Una lectura.** Con una sola lectura se dibuja un punto centrado, sin línea, y su fecha.
 13. **Varias lecturas.** Con dos o más, línea y puntos coloreados por estado.
-14. **Tarjeta fija.** Con la página desplazada 600 de alto, el esquema y los chips siguen visibles. El panel del neumático no contiene ningún elemento con scroll interno.
+14. **Ficha a la altura de la ventana.** En 1280x720 la página no se desplaza: el diagrama empieza a 330 px o menos, la leyenda ocupa dos filas y el borde inferior de «Cambiar neumático» queda a 720 px o menos. El scroll del panel es interno y su pie queda fijo.
 15. **Selección.** Al elegir otro neumático, el panel vuelve al inicio y el neumático elegido muestra el trazo de 3.
 16. **Eliminar.** «Eliminar vehículo» abre el diálogo y no elimina con un solo toque. Foco inicial en «Cancelar», Escape cierra, el foco queda atrapado.
 17. **Acciones.** «Distribución y servicio» y «Eliminar vehículo» están agrupadas a la derecha del título, la destructiva en rojo y última.

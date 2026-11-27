@@ -550,28 +550,25 @@
 /* ── Detalle de vehículo: cabecera, diagrama y panel de neumático ── */
 .vd-cab { margin-bottom: 18px; }
 .vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-/* Acciones de la cabecera (docs/21 §5.7): grupo a la derecha del título, alto 40; la destructiva va última, en rojo y separada.
-   Solo CSS (no se tocan los botones del markup): «Distribución y servicio» empuja el grupo a la derecha; Eliminar, si lo sigue, deja 24 px. */
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"], .vd-cab-titulo > .vd-cab-eliminar { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] { margin-left: auto; }
-.vd-cab-titulo > .vd-cab-eliminar { margin-left: auto; border-color: var(--err); color: var(--err-on-white); }
-.vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] + .vd-cab-eliminar { margin-left: 12px; }
-.vd-cab-titulo > .vd-cab-eliminar:hover:not(:disabled) { background: var(--err-tint); }
-.vd-cab-titulo > .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
+/* Acciones de la cabecera (docs/21 §5.7): «Registrar alineación» y el menú «Más», a la derecha de la fila del título. Ningún botón destructivo aquí: eso va en el menú. */
+.vd-cab-acciones { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.vd-cab-acciones .btn { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
+.vd-cab-titulo .btn:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .vd-cab h2 { font-size: 22px; font-weight: 700; margin: 0; font-family: var(--font-display); overflow-wrap: anywhere; }
 .vd-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
 .vd-datos dt { font-size: 12px; color: var(--text-secondary); }
 .vd-datos dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.vd-layout { display: grid; grid-template-columns: minmax(300px, 420px) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.vd-layout { display: grid; grid-template-columns: minmax(300px, 432px) minmax(300px, 1fr); gap: 20px; align-items: start; }
 .vd-layout > * { min-width: 0; }
 /* Tarjeta fija bajo la barra superior (docs/21 §6); solo si no cabe, su propio contenido se desplaza. */
 .vd-diagrama-card { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); overflow-y: auto; align-self: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .vd-panel { scroll-margin-top: calc(var(--vd-topbar) + 16px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; min-height: 420px; }
-.vd-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.vd-resumen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 /* Chips de estado: leyenda y filtro a la vez (docs/21 §5.1). Alto 32, radio 16, borde 1,5; el estado lo dicen símbolo y texto, no el color. */
-.vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.vd-chip .vd-chip-rango { font-weight: 400; color: var(--n-oliva); }
+.vd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); background: var(--surface); color: var(--n-oscuro); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .vd-chip .vd-chip-sim { font-weight: 800; }
+/* Leyenda en dos filas de tres chips dentro de la columna del diagrama (1280x720). */
+#vd-resumen .vd-chip { font-size: 12px; padding: 0 6px; gap: 4px; }
 .vd-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--n-oscuro); }
 .vd-chip-flag { border-color: var(--n-oscuro); }
 .vd-chip:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
@@ -641,6 +638,9 @@
 .vd-p-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .vd-p-estado { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
 .vd-p-razon { font-size: 13px; background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--text-primary); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+.vd-p-linea { display: block; margin-top: 2px; }
+.vd-mas { margin-top: 8px; }
+.vd-mas > summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 36px; display: flex; align-items: center; }
 .vd-panel h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin: 16px 0 6px; }
 .vd-mm-tabla { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
 .vd-mm-tabla th, .vd-mm-tabla td { padding: 4px 2px; overflow-wrap: anywhere; text-align: center; font-variant-numeric: tabular-nums; }
@@ -669,6 +669,18 @@
 .vd-p-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .vd-pie { flex: none; background: var(--surface); margin: 12px -20px -20px; padding: 12px 20px 16px; border-top: 1px solid var(--border); }
 .vd-panel-backdrop { display: none; }
+/* Escritorio: el panel se queda a la vista al desplazar la ficha, con las acciones en un pie fijo (fuera del desplazamiento).
+   Solo desde 861 px: en móvil el panel es la hoja inferior de la regla de abajo. */
+@media (min-width: 861px) {
+  .vd-panel { position: sticky; top: calc(var(--vd-topbar) + 16px); max-height: calc(100vh - var(--vd-topbar) - 32px); display: flex; flex-direction: column; }
+  #vd-panel-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .vd-p-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  /* La ficha ocupa lo que queda bajo la barra superior (28 px de margen arriba y 28 abajo, el padding de la página):
+     el pie del panel queda a la vista sin desplazar la página. El desplazamiento lo lleva el panel, no la página. */
+  #view-vehiculo-detalle.active { display: flex; flex-direction: column; height: calc(100vh - var(--vd-topbar) - 56px); }
+  #view-vehiculo-detalle.active > .vd-layout { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  #view-vehiculo-detalle.active .vd-diagrama-card { max-height: 100%; }
+}
 @media (max-width: 860px) {
   .vd-layout { grid-template-columns: 1fr; }
   .vd-diagrama-card { position: static; align-self: auto; }
