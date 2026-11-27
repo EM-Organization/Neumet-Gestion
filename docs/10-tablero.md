@@ -1,6 +1,6 @@
 # 10 · Tablero del proyecto
 
-> Actualizado: 2026-11-27 (olas 2 y 3 de F8 en `main`, PR 161 y 162, migraciones `20261126030000` y `20261126040000` aplicadas; ola 4 en `main`, PR 163, migración `20261126050000` aplicada; ola de densidad del panel en `main`, PR 164, sin migración; siguiente en la hoja de ruta: ola 5 de F8; reglas de negocio y decisiones del 25/11, [23](23-reglas-negocio.md)). Fuente de verdad del estado; los PR en GitHub tienen el detalle.
+> Actualizado: 2026-11-27 (olas 2 y 3 de F8 en `main`, PR 161 y 162, migraciones `20261126030000` y `20261126040000` aplicadas; ola 4 en `main`, PR 163, migración `20261126050000` aplicada; ola de densidad del panel en `main`, PR 164, sin migración; correcciones de la auditoría UX en `main`, PR 165, sin migración; siguiente en la hoja de ruta: ola 5 de F8; reglas de negocio y decisiones del 25/11, [23](23-reglas-negocio.md)). Fuente de verdad del estado; los PR en GitHub tienen el detalle.
 > Flujo (oleadas, ver `CLAUDE.md`): un developer por tarea en su worktree → integración en `dev` con revisión del TL sin frenar (checklist en [13-checklist-revision-prs.md](13-checklist-revision-prs.md)) → PR `dev → main` con CI → el PM aplica migraciones, fusiona y despliega.
 > Procedimientos de operación: [11-runbook-operacion.md](11-runbook-operacion.md). Lo que no pudo verificarse desde el repositorio va marcado **[confirmar]**.
 
@@ -72,6 +72,8 @@
 - Configuración de Claude Code versionada: `CLAUDE.md`, skills y subagentes (`.claude/`).
 - Ola de densidad del panel (UX, fuera de la numeración de F8; PR 164, sin migración ni cambios en funciones; en `main` el 27/11/2026). Pedido del dueño: menos información a la vista sin perder datos para decidir. Ficha del vehículo en 1280×720 con «Ver más» y «Más»; Alertas abre en «Abiertas» con cinco columnas; umbrales avanzados plegados; Inicio con «Requieren atención» primero, cifras en cero ocultas y «Últimas mediciones» por vehículo; el panel de rueda e Inicio proyectan el plazo con la huella mínima. Decisiones del dueño del 27/11: «Mayor desgaste» naranja con ◆ y rojo con × solo para «Desgaste límite» (revierte la del 21/11; «Revisar» pasa a ◎) y panel solo para escritorio ([14](14-guia-de-textos.md)).
   - Clics de las tareas frecuentes (nueva referencia): ver un neumático crítico 1; cambiar 3 (sin desplazar la página); rotar 8; reconocer desde Inicio 2; silenciar o resolver 3. Suben 1 clic, solo en usos poco frecuentes: «Distribución y servicio», «Odómetro y ciclo de vida» y «Eliminar vehículo» (menú «Más»); km, costos, gráfico, velocidad e historial («Ver más»); alertas reconocidas o silenciadas (su filtro); ajustes avanzados de umbrales.
+- Correcciones P1 de la auditoría de UX del 27/11 (fuera de la numeración de F8; PR 165, sin migración ni cambios en funciones; en `main` el 27/11/2026). Todo diálogo entra a 1280×720 («Agregar vehículo» quedaba cortado); «Cambiar» no trae elegida ninguna cubierta ni lote del stock; «Retirar» en una rueda en desgaste límite propone «Baja»; Esc cierra solo la capa de arriba.
+  - Clics desde la ficha: cambiar con cubierta del stock 3 → 4 y con lote 4 → 5 (antes se podía registrar una cubierta que no era la colocada; con la quema escrita y Enter son 2 clics); retirar y dar de baja en desgaste límite 4 → 3 (si la empresa quitó el motivo «desgaste» del catálogo de baja, hay que elegirlo). El resto no cambia.
 
 ## Pendientes
 
@@ -118,6 +120,19 @@
   - Neumáticos: «Enviar a recauchutar» en cubiertas nuevas, «Sin dato» doble y «Lotes anteriores» siempre abierto.
   - Reportes: «0 km» sin dato y ▲ para «Muestra baja». «Montar cubierta nueva»: 9 campos con el resumen cortado. Mediciones: la leyenda fija de `index.html` no usa los colores de estado.
   - Smoke `cliente` (Stock, menú «Más» con teclado): falló una vez en local; el CI del PR 164 pasó.
+- Auditoría de UX del 27/11, P2 sin resolver (panel local con datos simulados):
+  - Rotar: el botón no es primario, los destinos no muestran el código de posición ni la cubierta montada, el motivo no tiene valor inicial y desde la ficha son 7 clics.
+  - Ficha: «Retirar» y «Cambiar» intercambian lugar según el estado de la rueda; a 720 px se corta el tercer eje; «Desgaste límite» y «1 cambiar» repiten lo mismo.
+  - Inicio: «× 1 cambiar» no se entiende; 2 vehículos en atención frente a «alertas abiertas (1)»; «1 más.» no se puede pulsar; «Desgaste alto» frente a «Desgaste acelerado»; «Últimas mediciones» densa y con nota difícil.
+  - Mediciones a revisar: tres botones por fila sin acción principal y valores en mm sin nombre de zona.
+  - Stock: ocho columnas, «Enviar a recauchutar» también en cubiertas nuevas y «Sin dato» repetido.
+  - El panel no explica que las mediciones se toman con la aplicación móvil.
+- Auditoría de UX del 27/11, P3 sin resolver: Umbrales con dos botones primarios y «Ajustes avanzados» mal ubicado; Reportes con la columna «Neumáticos» desalineada, «Muestra baja» con el símbolo de «Poco desgaste» y dos «Exportar CSV»; Alertas con dos ayudas al mismo lugar y contadores en cero; Sucursales con «Guardar nombre» y «Eliminar» visibles en cada fila; textos «36,7 semanas», «Bloquear de nuevo» y «Lote del stock».
+- Correcciones P1 de la auditoría (PR 165), ajustes menores (no bloquean):
+  - `core/nav.js`: el Esc que cierra la barra lateral en pantallas angostas no llama a `preventDefault` y cierra también el panel de rueda.
+  - `views/cambio-neumatico.js` (`pintarLista`): una cubierta elegida que siguiera en el filtro pero más allá de `MAX_LISTA` quedaría elegida sin verse; no ocurre con el orden actual.
+  - `views/clientes.js`: el oyente global de Esc cierra el diálogo de cliente sin mirar qué capa está abierta (solo admin).
+- `CLAUDE.md` describe el front como sitio sin build, pero `vercel.json` corre `npm run build` y publica `dist`: alinear el documento.
 - Ola 4 de F8, ajustes menores (no bloquean):
   - Dos filas de auditoría por cambio de moneda (`FIJAR_MONEDA` y `trg_audit_clientes`); unificar si se ordena la auditoría de `clientes`.
   - `medicion_corregir` fija el rango 0 a 30 mm; `medicion_evaluar_calidad` lo recibe por parámetro. Unificar si el máximo pasa a ser por cliente.
