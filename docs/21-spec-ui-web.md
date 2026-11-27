@@ -59,7 +59,7 @@ Ver `neumet-web-tokens.json`. Resumen:
 - Contrastes (calculados): trazos y símbolos ≥ 3:1 sobre blanco; texto ≥ 4.5:1. Los rellenos se parecen en luminosidad entre sí: se distinguen por tono, trazo y símbolo, **nunca solo por relleno**.
 - Texto sobre rellenos de estado: `NeumetDeepOlive` (≥ 9.9:1) o `NeumetOliveDark` (≥ 5.5:1).
 - Está prohibido interpolar colores entre estados: cada neumático usa exactamente uno de los cinco.
-- **Decisión del dueño (2026-11-27), que revierte la del 2026-11-21:** «Mayor desgaste» es naranja con ◆ y «Desgaste límite» es rojo con ×. Antes compartían rojo y ×, así que no se distinguían. El rojo queda solo para lo crítico (lo que hay que cambiar ya). El ◆ también es el símbolo de la alerta «Revisar», que es amarilla (`domain/alertas.js`): el símbolo coincide, el color no, y el texto dice cuál es. Contraste: símbolo sobre relleno ≥ 4,5 (mayor 6,35; límite 7,04); borde sobre blanco ≥ 3 (mayor 4,50; límite 6,04). Mayor y poco (ámbar #B9791A) se distinguen por tono y símbolo, no solo por relleno.
+- **Decisión del dueño (2026-11-27), que revierte la del 2026-11-21:** «Mayor desgaste» es naranja con ◆ y «Desgaste límite» es rojo con ×. Antes compartían rojo y ×, así que no se distinguían. El rojo queda solo para lo crítico (lo que hay que cambiar ya). ◆ es solo de este estado: la alerta «Revisar» (amarilla, `domain/alertas.js`) lleva ◎, para que un símbolo tenga un solo significado (docs/14 §3). Contraste: símbolo sobre relleno ≥ 4,5 (mayor 6,35; límite 7,04); borde sobre blanco ≥ 3 (mayor 4,50; límite 6,04). Mayor y poco (ámbar #B9791A) se distinguen por tono y símbolo, no solo por relleno.
 
 ## 4. Modelo de estado único
 

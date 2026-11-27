@@ -34,9 +34,9 @@ export function filtrarPorEstadoAlerta(alertas, estado = '', ahora = Date.now())
 export const sinReconocer = (alertas, ahora = Date.now()) => contarPorEstadoAlerta(alertas, ahora).abierta;
 
 // Presentación de cada tipo de v_alertas (columnas tipo y color). La alerta roja es `limite`: así lo fija alertas_tipo_ck en la base.
-// Rojo solo para lo crítico (neumático en desgaste límite); lo demás es amarillo y lleva ◆. Nunca ▲: ya significa «Poco
-// desgaste» y «N bajos» (docs/14 §3).
-export const SIMBOLO_REVISAR = '◆';
+// Rojo solo para lo crítico (neumático en desgaste límite); lo demás es amarillo y lleva ◎. Nunca ▲ («Poco desgaste»,
+// «N bajos») ni ◆ («Mayor desgaste»): un símbolo, un significado (docs/14 §3).
+export const SIMBOLO_REVISAR = '◎';
 export const PRESENTACION_ALERTA = Object.freeze({
   limite: { etiqueta: ESTADOS.limite.texto, simbolo: ESTADOS.limite.simbolo, color: 'red', accion: 'Cambiar' },
   direccion_aviso: { etiqueta: 'Pasar atrás', simbolo: SIMBOLO_REVISAR, color: 'orange', accion: 'Revisar' },
@@ -80,7 +80,7 @@ export function detalleAlerta(a) {
   return prefijo ? mensaje.slice(prefijo.length).trim() : mensaje;
 }
 
-// Recuadro de Inicio y del detalle: «× N cambiar · ◆ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
+// Recuadro de Inicio y del detalle: «× N cambiar · ◎ N revisar». Sin silenciadas (tienen plazo y no piden nada hasta vencer).
 // «Cambiar» es el neumático en desgaste límite (tipo `limite` o color rojo de la base); el resto, «revisar».
 export function conteoRecuadro(alertas, ahora = Date.now()) {
   const c = { cambiar: 0, revisar: 0 };
@@ -92,7 +92,7 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
   return c;
 }
 
-// Partes del recuadro «× N cambiar · ◆ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
+// Partes del recuadro «× N cambiar · ◎ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
 // (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero no se muestra: «× 2 cambiar» sin
 // «0 revisar», y el rojo queda para lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
 export function partesRecuadro(alertas, ahora = Date.now()) {

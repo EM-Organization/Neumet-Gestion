@@ -42,10 +42,16 @@ function filtros() {
   };
 }
 
-// Posición de la alerta: mini vehículo con la rueda resaltada y su nombre en texto; «—» si la alerta es del vehículo.
-function celdaPosicion(a) {
-  if (a.posicion === null || a.posicion === undefined) return '—';
-  return html`<div class="pos-mini">${miniVehiculo(modeloMini(porVeh.get(a.vehiculo_id), { destacadas: [a.posicion], tipo: tipos.get(a.vehiculo_id) }))}<span>${nombrePosicion(a.posicion, tipos.get(a.vehiculo_id))}</span></div>`;
+// Vehículo y posición en una celda de dos líneas: el mini vehículo con la rueda resaltada a la izquierda; a la derecha, el
+// vehículo (enlace a su ficha) con su matrícula y, debajo, el nombre de la posición. Una alerta del vehículo entero no
+// lleva mini ni posición.
+function celdaVehiculo(a, cli) {
+  const conRueda = a.posicion !== null && a.posicion !== undefined;
+  const mini = conRueda ? miniVehiculo(modeloMini(porVeh.get(a.vehiculo_id), { destacadas: [a.posicion], tipo: tipos.get(a.vehiculo_id) })) : '';
+  return html`<div class="pos-mini alert-vp">${mini}<div>
+    <button type="button" class="alert-veh" data-action="verVehiculo" data-args="${JSON.stringify(argPosicion(a))}">${etiquetaCoche(a.vehiculo_nombre)}</button>${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}
+    ${conRueda ? html`<div class="alert-pos">${nombrePosicion(a.posicion, tipos.get(a.vehiculo_id))}</div>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}
+  </div></div>`;
 }
 
 // Argumentos de verVehiculo: el vehículo y, si la alerta es de una rueda, su posición.
@@ -81,7 +87,7 @@ function fila(a, mostrarCliente) {
     ? html`<button type="button" class="btn ghost stk-btn" data-action="alertasReconocer" data-args="${JSON.stringify([a.alerta_id])}">Reconocer</button>`
     : '';
   return html`<tr data-severidad="${a.severidad}" data-tipo="${a.tipo}" data-estado="${estado}" data-vehiculo="${a.vehiculo_id}" data-posicion="${a.posicion ?? ''}">
-    <td data-label="Vehículo y posición"><button type="button" class="alert-veh" data-action="verVehiculo" data-args="${JSON.stringify(argPosicion(a))}">${etiquetaCoche(a.vehiculo_nombre)}</button>${a.patente ? html` <span class="dash-fleet-pat">${a.patente}</span>` : ''}${cli ? html`<div class="flota-cliente">${cli}</div>` : ''}${celdaPosicion(a)}</td>
+    <td data-label="Vehículo y posición">${celdaVehiculo(a, cli)}</td>
     <td data-label="Problema"><span class="alerta-tipo">${chip(tipo.color, tipo.etiqueta, tipo.simbolo)}</span>${dato ? html` <span class="alerta-dato">${dato}</span>` : ''}${estadoHtml}</td>
     <td data-label="Abierta hace" title="${fmtFechaHora(a.abierta_at)}">${tiempoRelativo(a.abierta_at)}</td>
     <td data-label="Reconocer">${reconocer}</td>

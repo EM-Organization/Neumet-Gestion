@@ -782,6 +782,13 @@
 /* La fila entera abre la ficha de su vehículo (views/alertas.js, abrirFila): el cursor lo dice. */
 .alert-tabla tbody tr { cursor: pointer; }
 .alert-tabla td { padding-top: 8px; padding-bottom: 8px; }
+/* Vehículo y posición en dos líneas: el mini va a la izquierda y más bajo, así la fila no apila tres renglones. */
+.alert-vp { gap: 8px; }
+.alert-tabla .alert-vp .mini-veh { height: 36px; }
+.alert-pos { font-size: 13px; color: var(--text-secondary); }
+/* El vehículo abre su ficha: se ve como enlace, no como botón con el borde del navegador, y conserva el foco visible. */
+.alert-veh { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.alert-veh:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; border-radius: 2px; }
 /* El chip de tipo va en .alerta-tipo: sin salto, «Desgaste límite» no se parte en dos líneas en el móvil. Va aquí y no en .badge, que es de todas las vistas. */
 .alerta-tipo { white-space: nowrap; }
 @media (max-width: 640px) {
@@ -940,7 +947,6 @@
 .menu-mas-item:focus-visible, .menu-mas-btn:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
 .menu-mas-item.menu-mas-del { color: var(--text-secondary); }
 .menu-mas-item.menu-mas-del:hover, .menu-mas-item.menu-mas-del:focus-visible { background: var(--danger-bg); color: var(--danger); }
-.alert-ver { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
 /* Encabezados de «Lotes anteriores» en texto natural, sin mayúsculas forzadas (docs/14). */
 .th-natural th { text-transform: none; letter-spacing: normal; }
 
