@@ -239,6 +239,17 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(!/Retirar ya/.test($('#vd-panel').textContent)) fail('detalle RN-08: bajo retiro falta el aviso «Retirar ya»');
   if(!/Alertas/.test($('#vd-panel').textContent)) fail('detalle: la posición 4 tiene una alerta y el panel debe mostrar «Alertas»');
   if(!$('#vd-panel [data-action="neumatico-retirar"]')) fail('detalle RN-08: bajo retiro falta el botón Retirar neumático');
+  // H2: en desgaste límite «Retirar» abre con Baja marcada (no Stock, que devolvería la cubierta gastada al stock).
+  $('#vd-panel [data-action="neumatico-retirar"]').click(); await sleep(700);
+  if(!$('#modal-retirar').classList.contains('show')) fail('detalle RN-08: Retirar no abrió el diálogo');
+  else {
+    var destinoRet = $('input[name="ret-destino"]:checked');
+    if(!destinoRet || destinoRet.value !== 'baja') fail('detalle RN-08: en desgaste límite Retirar debe venir con Baja marcada: '+(destinoRet && destinoRet.value));
+    if($('#ret-motivo').dataset.tipo !== 'baja') fail('detalle RN-08: el motivo debe ser del catálogo de baja: '+$('#ret-motivo').dataset.tipo);
+    if($('#ret-stock-wrap').style.display !== 'none') fail('detalle RN-08: con Baja no debe mostrarse el retorno a stock');
+    if(!/obligatorio/.test($('#ret-motivo-opt').textContent)) fail('detalle RN-08: el motivo de baja debe figurar como obligatorio');
+    $('#modal-retirar [data-action="neumatico-retirar-cerrar"]').click(); await sleep(300);
+  }
   // Móvil (390 px): el encabezado visible de la última columna es «Prom.»; «Promedio» queda como nombre accesible.
   // El promedio ya no es columna de la tabla de mediciones: va en «Ver datos» del gráfico (la tabla decide por el mínimo).
   var thMM = $('#vd-panel .vd-mm-tabla thead');

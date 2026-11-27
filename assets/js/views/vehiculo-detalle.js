@@ -424,7 +424,9 @@ function acciones(pos, bajoRetiro = false) {
   if (!puedeOperar()) return '';
   const args = JSON.stringify([vehiculoId, pos]);
   const cambiar = html`<button type="button" class="btn${bajoRetiro ? '' : ' primary'}" data-action="neumatico-cambiar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${args}">Cambiar neumático</button>`;
-  const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}">Retirar neumático</button>`;
+  // El tercer argumento solo fija el destino por defecto del diálogo (Baja en desgaste límite); el operario puede cambiarlo.
+  const argsRetirar = JSON.stringify([vehiculoId, pos, bajoRetiro]);
+  const retirar = html`<button type="button" class="btn${bajoRetiro ? ' primary' : ''}" data-action="neumatico-retirar" data-vehiculo-id="${vehiculoId}" data-posicion="${pos}" data-args="${argsRetirar}">Retirar neumático</button>`;
   if (bajoRetiro) return html`<div class="vd-pie"><div class="vd-p-acciones">${retirar}${cambiar}</div></div>`;
   // Rotar abre el diálogo (motivo y odómetro). El botón lleva data-args='[vehiculoId, posA, posB]', que se actualiza al elegir el destino.
   // «En disco» (valor DESTINO_DISCO) rota la cubierta en su misma posición; el auxilio (99) no se rota en disco (RN-15).

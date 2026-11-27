@@ -163,6 +163,8 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   br.click();
   if(!await esperar(function(){ return $('#modal-retirar').classList.contains('show'); }, 'el modal de retirar')) return;
   if(Array.prototype.map.call(all('input[name="ret-destino"]'), function(i){ return i.value; }).join() !== 'almacenado,reparacion,baja') fail('montar: destinos del retiro');
+  // Sin desgaste límite (P4 no está en límite) el destino inicial sigue siendo Stock
+  if(!$('input[name="ret-destino"][value="almacenado"]').checked) fail('montar: sin desgaste límite, Retirar debe venir con Stock marcado');
   if(!/quema N-77/.test(txt('#ret-actual')) || !visible('#ret-stock-wrap') || visible('#ret-quema-wrap')) fail('montar: el neumático con quema vuelve al stock sin pedir quema: ' + txt('#ret-actual'));
   d.querySelector('input[name="ret-destino"][value="baja"]').click(); await sleep(100);
   if(visible('#ret-stock-wrap') || !/obligatorio/.test(txt('#ret-motivo-opt'))) fail('montar: la baja pide motivo y oculta el stock');
