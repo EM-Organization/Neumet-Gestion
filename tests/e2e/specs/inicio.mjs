@@ -10,8 +10,10 @@ import { ESTADOS } from '../../../assets/js/domain/estado-desgaste.js';
 export const LEER_INICIO = `(() => {
   const c = document.querySelector('#inicio-contenido');
   const num = e => Number(e.textContent.replace(/\\D/g, ''));
-  // Las cifras que valen 0 no se dibujan: se devuelven en orden fijo (nuevo, poco, mayor, límite, desconocido) y las ausentes valen 0.
-  const cifras = ['ok', 'bajo', 'mayor', 'limite', 'neutral'].map(k => { const s = c.querySelector('.inicio-cifra .inicio-punto.' + k); return s ? num(s.parentElement.querySelector('strong')) : 0; });
+  // Las cifras que valen 0 no se dibujan: se devuelven por clave de estado, solo las dibujadas (una ausente no está en el objeto).
+  const CLAVE = { ok: 'nuevo', bajo: 'poco_desgaste', mayor: 'mayor_desgaste', limite: 'desgaste_limite', neutral: 'desconocido' };
+  const cifras = {};
+  c.querySelectorAll('.inicio-cifra').forEach(li => { cifras[CLAVE[li.querySelector('.inicio-punto').className.replace('inicio-punto', '').trim()]] = num(li.querySelector('strong')); });
   const frase = (c.querySelector('#inicio-h-resumen') || {}).textContent || '';
   const alertas = c.querySelector('[data-action="alertasVerAbiertas"]');
   // Hay dos líneas con esa clase: el recuadro de alertas (en «Requieren atención») y la de dispositivos. Se separan por el texto.
@@ -78,6 +80,14 @@ export function textoPeorEsperado(filas) {
 // Espera a que Inicio esté pintado entero (el resumen se dibuja junto con el resto), sin contar cifras: las que valen 0 no se dibujan.
 export const INICIO_LISTO = `!!document.querySelector('#inicio-h-resumen')`;
 
+// La verdad de las proporciones por clave de estado (un cero es un cero, aunque no se dibuje) y su versión visible, sin ceros.
+export const verdadCifras = e => ({ nuevo: e.nuevo, poco_desgaste: e.pocoDesgaste, mayor_desgaste: e.mayorDesgaste, desgaste_limite: e.limite, desconocido: e.desconocido });
+export const visiblesDe = v => Object.fromEntries(Object.entries(v).filter(([, n]) => n > 0));
+
+// Expresión para la página: la cifra dibujada de una clave de estado, o 0 si no se dibuja. Se busca por su punto de color, no por posición.
+const PUNTO = { nuevo: 'ok', poco_desgaste: 'bajo', mayor_desgaste: 'mayor', desgaste_limite: 'limite', desconocido: 'neutral' };
+export const CIFRA_EN_PANTALLA = clave => `(() => { const li = [...document.querySelectorAll('#inicio-contenido .inicio-cifra')].find(x => x.querySelector('.inicio-punto.${PUNTO[clave]}')); return li ? Number(li.querySelector('strong').textContent.replace(/\\D/g, '')) : 0; })()`;
+
 export function registrar(env) {
   for (const rol of ['admin', 'global', 'salto', 'montevideo']) {
     test(`Inicio (${rol}): muestra datos y cifras coherentes con la base`, async () => {
@@ -87,11 +97,10 @@ export function registrar(env) {
         const e = cifrasInicio(env, rol);
         const buenos = e.nuevo + e.pocoDesgaste;
         assert.ok(e.alertas > 0 && e.limite > 0, 'el demo debe tener alertas y desgaste límite (si no, la prueba no prueba nada)');
-        // Proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido (los ceros valen 0 en la lectura).
-        const porEstado = [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido];
-        assert.deepEqual(l.cifras, porEstado, `proporciones de Inicio (${rol})`);
-        // Las cifras que valen 0 no se dibujan (RN de Inicio): solo se dibujan las no cero.
-        assert.equal(l.dibujadas, porEstado.filter(n => n > 0).length, `cifras dibujadas de Inicio (${rol}): solo las no cero`);
+        // Proporciones por clave de estado. La verdad sale de SQL con sus ceros; una cifra en cero no se dibuja, así que se compara lo no cero.
+        const verdad = verdadCifras(e);
+        assert.deepEqual(l.cifras, visiblesDe(verdad), `proporciones de Inicio (${rol})`);
+        assert.equal(l.dibujadas, Object.keys(visiblesDe(verdad)).length, `cifras dibujadas de Inicio (${rol}): solo las no cero`);
         const m = l.frase.match(/^(?:(\d[\d.]*) de )?(\d[\d.]*) neumáticos? están en buen estado o con poco desgaste$|^Los (\d[\d.]*) neumáticos están en buen estado o con poco desgaste$/);
         assert.ok(m, `frase de resumen inesperada: ${l.frase}`);
         const total = Number((m[2] || m[3]).replace(/\D/g, ''));

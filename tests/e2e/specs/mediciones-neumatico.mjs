@@ -27,7 +27,8 @@ const rueda = (p, pos) => p.eval(`(() => { const g = document.querySelector('#vd
 // Neumáticos en desgaste límite que muestra Inicio (proporciones: nuevo, poco desgaste, mayor desgaste, desgaste límite, desconocido).
 const limiteInicio = async p => {
   await p.esperar(INICIO_LISTO, { que: 'proporciones de Inicio' });
-  return (await p.eval(LEER_INICIO)).cifras[3];
+  // Una cifra que no se dibuja vale 0 (LEER_INICIO solo devuelve las dibujadas).
+  return (await p.eval(LEER_INICIO)).cifras.desgaste_limite ?? 0;
 };
 
 // Filas de la tabla de alertas de un camión: [{tipo, posicion}]. La posición sale del botón «Ver vehículo» (la celda muestra el nombre).
