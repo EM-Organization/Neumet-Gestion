@@ -141,12 +141,11 @@ export function umbralesDe(row) {
   return u;
 }
 
-// Paleta apagada (salvia, ámbar suave, terracota, rojo, vino) en armonía con la marca; el estado nunca depende solo del color.
-export const COLORES = {
-  verde: [156, 190, 160], amarillo: [238, 208, 130], naranja: [230, 165, 120], rojo: [212, 118, 106], rojoIntenso: [140, 62, 70],
-};
-const mezcla = (a, b, t) => a.map((c, i) => Math.round(c + (b[i] - c) * t));
-const aHex = rgb => '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');
+// Un color discreto por nivel, con los trazos de tokens.css (`--est-*-stroke`): el mini de Inicio y Alertas y el diagrama
+// del detalle se leen igual. Sin degradé: un tramo, un color (decisión del 2026-11-27). El estado nunca depende solo del
+// color: el diagrama y las alertas llevan símbolo y texto. tests/unit/vehiculo-detalle.test.mjs compara estos hex con tokens.css.
+export const COLOR_NIVEL = Object.freeze({ ok: '#4F6B26', bajo: '#B9791A', critico: '#C2570C', retiro: '#B3362A' });
+const aRgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 
 // Nivel de la rueda según los mm medios: 'ok' (>= bajo) · 'bajo' · 'critico' (< crítico) · 'retiro' (< retiro) · 'sin_datos'.
 // La base usa < umbral_retiro_mm para «desgaste límite»: 3,0 mm es «mayor desgaste», 2,99 es límite.
@@ -160,23 +159,14 @@ export function nivelDesgaste(mm, u) {
 }
 
 /**
- * Color continuo para los mm medios y los umbrales del cliente (u = { bajo, critico, retiro }):
- *   >= bajo            verde pleno
- *   [critico, bajo)    amarillo (justo bajo `bajo`) -> naranja (en `critico`)
- *   (retiro, critico)  naranja -> rojo
- *   <= retiro          rojo intenso
+ * Color del tramo que corresponde a los mm medios según los umbrales del cliente (u = { bajo, critico, retiro }):
+ * bueno (verde), poco (ámbar), mayor (naranja) o límite (rojo), según COLOR_NIVEL.
  * Devuelve { hex, nivel, rgb }. Sin dato: hex null (la vista dibuja gris con patrón).
  */
 export function colorDesgaste(mm, u) {
   const nivel = nivelDesgaste(mm, u);
   if (nivel === 'sin_datos') return { hex: null, nivel, rgb: null };
-  const v = Number(mm);
-  let rgb;
-  if (nivel === 'ok') rgb = COLORES.verde;
-  else if (nivel === 'retiro') rgb = COLORES.rojoIntenso;
-  else if (v >= u.critico) rgb = mezcla(COLORES.amarillo, COLORES.naranja, (u.bajo - v) / (u.bajo - u.critico));
-  else rgb = mezcla(COLORES.naranja, COLORES.rojo, (u.critico - v) / (u.critico - u.retiro));
-  return { hex: aHex(rgb), nivel, rgb };
+  return { hex: COLOR_NIVEL[nivel], nivel, rgb: aRgb(COLOR_NIVEL[nivel]) };
 }
 
 // Símbolo y texto de estado (nunca solo color). Las claves son niveles internos del diagrama; las etiquetas reflejan
@@ -185,8 +175,8 @@ export function colorDesgaste(mm, u) {
 export const NIVEL_INFO = {
   ok: { simbolo: '✓', texto: 'Buen estado' },
   bajo: { simbolo: '▲', texto: 'Poco desgaste' },
-  critico: { simbolo: '✕', texto: 'Mayor desgaste' },
-  retiro: { simbolo: '■', texto: 'Desgaste límite' },
+  critico: { simbolo: '◆', texto: 'Mayor desgaste' },
+  retiro: { simbolo: '×', texto: 'Desgaste límite' },
   sin_datos: { simbolo: '–', texto: 'Sin datos' },
 };
 
@@ -206,12 +196,13 @@ export function colorTexto(rgb) {
   return contraste(rgb, TEXTO_CLARO) >= contraste(rgb, TEXTO_OSCURO) ? '#ffffff' : '#000000';
 }
 
-// Muestras para la leyenda: mm representativos de cada tramo. Los rangos reflejan las categorías de producto.
+// Muestras para la leyenda: un rango por tramo. El color sale de la clave, no de un mm de muestra: el mm del tramo de
+// límite (= retiro) cae en «mayor» por la regla de nivelDesgaste (< retiro), y la leyenda tiene que mostrar rojo.
 export function muestrasLeyenda(u) {
   return [
-    { clave: 'ok', mm: u.bajo, rango: `≥ ${u.bajo} mm` },
-    { clave: 'bajo', mm: (u.bajo + u.critico) / 2, rango: `${u.critico} – ${u.bajo} mm` },
-    { clave: 'critico', mm: (u.critico + u.retiro) / 2, rango: `${u.retiro} – ${u.critico} mm` },
-    { clave: 'retiro', mm: u.retiro, rango: `< ${u.retiro} mm` },
-  ].map(m => ({ ...m, ...colorDesgaste(m.mm, u), ...NIVEL_INFO[m.clave] }));
+    { clave: 'ok', rango: `≥ ${u.bajo} mm` },
+    { clave: 'bajo', rango: `${u.critico} – ${u.bajo} mm` },
+    { clave: 'critico', rango: `${u.retiro} – ${u.critico} mm` },
+    { clave: 'retiro', rango: `< ${u.retiro} mm` },
+  ].map(m => ({ ...m, nivel: m.clave, hex: COLOR_NIVEL[m.clave], rgb: aRgb(COLOR_NIVEL[m.clave]), ...NIVEL_INFO[m.clave] }));
 }

@@ -83,6 +83,11 @@ describe('modeloMini', () => {
     assert.equal(m.ruedas.find(r => r.posicion === 1).fill, colorDesgaste(12, { bajo: 8, critico: 5, retiro: 3 }).hex);
     assert.equal(m.ruedas.find(r => r.posicion === 2).nivel, 'critico');
   });
+  test('el mini pinta el tramo, no un degradé: mayor naranja (#C2570C), límite rojo (#B3362A)', () => {
+    const m = modeloMini([{ posicion: 1, mm1: 4, mm2: 4, mm3: 4 }, { posicion: 2, mm1: 2, mm2: 2, mm3: 2 }]);
+    assert.equal(m.ruedas.find(r => r.posicion === 1).fill, '#C2570C');
+    assert.equal(m.ruedas.find(r => r.posicion === 2).fill, '#B3362A');
+  });
   test('usa umbrales por defecto si la fila no los trae', () => {
     const m = modeloMini([{ posicion: 1, mm1: 6, mm2: 6, mm3: 6 }]);
     assert.equal(m.ruedas.find(r => r.posicion === 1).fill, colorDesgaste(6, UMBRALES_DEFECTO).hex);

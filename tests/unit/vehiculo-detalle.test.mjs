@@ -175,22 +175,19 @@ describe('escala de color', () => {
     assert.equal(nivelDesgaste(null, u), 'sin_datos');
     assert.equal(nivelDesgaste('', u), 'sin_datos');
   });
-  test('>= bajo: verde pleno, siempre el mismo; < retiro: rojo intenso', () => {
-    assert.equal(colorDesgaste(8, u).hex, colorDesgaste(20, u).hex);
-    assert.equal(colorDesgaste(2.99, u).hex, colorDesgaste(0.5, u).hex);
-    assert.equal(colorDesgaste(8, u).hex, '#9cbea0');
-    assert.equal(colorDesgaste(2.99, u).hex, '#8c3e46');
-    assert.equal(colorDesgaste(3, u).hex, '#d4766a', '3,0 mm es mayor desgaste: color intermedio, no rojo intenso');
+  test('un color por tramo (decisión del 2026-11-27): bueno verde, poco ámbar, mayor naranja, límite rojo', () => {
+    assert.equal(colorDesgaste(20, u).hex, '#4F6B26');
+    assert.equal(colorDesgaste(8, u).hex, '#4F6B26');
+    assert.equal(colorDesgaste(7.999, u).hex, '#B9791A');
+    assert.equal(colorDesgaste(5, u).hex, '#B9791A');
+    assert.equal(colorDesgaste(4.9, u).hex, '#C2570C');
+    assert.equal(colorDesgaste(3, u).hex, '#C2570C', '3,0 mm es mayor desgaste: naranja, no rojo');
+    assert.equal(colorDesgaste(2.99, u).hex, '#B3362A', '2,99 mm ya es desgaste límite: rojo');
+    assert.equal(colorDesgaste(0.5, u).hex, '#B3362A');
   });
-  test('tramos: amarillo bajo el umbral bajo, naranja en crítico, rojo cerca del retiro', () => {
-    assert.equal(colorDesgaste(7.999, u).hex, '#eed082');
-    assert.equal(colorDesgaste(5, u).hex, '#e6a578');
-    assert.equal(colorDesgaste(3.0001, u).hex, '#d4766a');
-  });
-  test('continua dentro de cada tramo (sin saltos) y sin dato = hex null', () => {
-    const paso = (a, b) => colorDesgaste(a, u).rgb.reduce((s, c, i) => s + Math.abs(c - colorDesgaste(b, u).rgb[i]), 0);
-    assert.ok(paso(6.5, 6.4) < 12);
-    assert.ok(paso(4.05, 4.0) < 12);
+  test('sin degradé: todo el tramo tiene el mismo color; sin dato = hex null', () => {
+    assert.equal(colorDesgaste(6.5, u).hex, colorDesgaste(6.4, u).hex);
+    assert.equal(colorDesgaste(4.05, u).hex, colorDesgaste(4.0, u).hex);
     assert.equal(colorDesgaste(null, u).hex, null);
   });
   test('respeta umbrales personalizados del cliente', () => {
