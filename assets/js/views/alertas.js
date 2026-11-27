@@ -106,8 +106,14 @@ function fillFiltros() {
   }
 }
 
-// Aviso para el administrador de empresa: el umbral de desgaste límite se edita solo en Empresa > Umbrales.
-const pintarAviso = () => { $('alert-umbral-aviso').hidden = !esAdminEmpresa(); };
+// Aviso para el administrador de empresa. El texto va desde aquí porque el HTML todavía trae el de la versión anterior
+// (solo «desgaste límite»); al corregir el HTML, esta asignación sobra.
+const AVISO_UMBRALES = 'Los umbrales de las alertas se ajustan en Empresa > Umbrales.';
+const pintarAviso = () => {
+  const aviso = $('alert-umbral-aviso');
+  aviso.textContent = AVISO_UMBRALES;
+  aviso.hidden = !esAdminEmpresa();
+};
 
 export async function load() {
   $('alert-msg').textContent = '';
