@@ -119,10 +119,33 @@ export function unevenWear(row, irregularidadMm){
   return {diff, side:Number(row.mm1)<Number(row.mm3)?'interno':'externo'};
 }
 
+// Desgaste lateral (R1, RN-05): la diferencia entre el borde interno (mm1) y el externo (mm3), sin el centro. Es un
+// problema de alineación, no de presión, por eso tiene su propio cálculo y su propio aviso (`lateral`) separado del
+// rango de las tres huellas. Misma regla que la base: round(|mm1 − mm3|, 1) >= irregularidad_mm (>=, como unevenWear).
+// Devuelve {diff, lado} con lado = el borde más gastado ('interno' si mm1 < mm3, 'externo' si mm3 < mm1), o null si
+// falta mm1 o mm3, si no llega al umbral o si los dos bordes son iguales (sin lado que nombrar aunque el umbral fuera 0).
+export function asimetriaLateral(row, irregularidadMm){
+  if(!row || sinMedida(row.mm1) || sinMedida(row.mm3)) return null;
+  const mm1=Number(row.mm1), mm3=Number(row.mm3);
+  const diff=aDecima(Math.abs(mm1-mm3));
+  const umbral=Number(irregularidadMm ?? IRREGULARIDAD_MM_DEFECTO);
+  if(!(diff>=umbral) || diff===0) return null;
+  return {diff, lado: mm1<mm3 ? 'interno' : 'externo'};
+}
+
+// Tipo de aviso de desgaste de una cubierta (decisión 1 de la ola 3): 'lateral' o 'irregular', nunca los dos a la vez.
+// El lateral va primero: una cubierta con asimetría lateral también tiene rango >= a esa asimetría, y sin esta
+// exclusión contaría dos veces como desgaste. Sin lateral, el rango de las tres huellas (unevenWear) decide 'irregular'.
+export function clasificarDesgaste(row, irregularidadMm){
+  if(asimetriaLateral(row, irregularidadMm)) return 'lateral';
+  return unevenWear(row, irregularidadMm) ? 'irregular' : null;
+}
+
 // Análisis completo de una rueda a partir de su historial ascendente. null si no hay historial.
 // `irregularidadMm`: umbral de desgaste desparejo del cliente (ver unevenWear).
 // `estado`: fila de v_estado_neumaticos de la posición, si se leyó. Sin mm1 o mm3 el desparejo lo decide la base (ver unevenWear).
-// Campos: lastAvg, mmPerWeek, mmPerDay, days, daysUntilLimit, unevenWear, unevenSide (null si el desparejo no tiene lado).
+// Campos: lastAvg, mmPerWeek, mmPerDay, days, daysUntilLimit, unevenWear, unevenSide (null si el desparejo no tiene lado),
+// lateralWear y lateralSide (solo si hay asimetría lateral; no reemplazan a unevenWear, que sigue siendo el rango).
 export function analyzeTire(hist, irregularidadMm, estado){
   if(!hist || hist.length<1) return null;
   const lastAvg=avgMm(hist[hist.length-1]);
@@ -134,7 +157,10 @@ export function analyzeTire(hist, irregularidadMm, estado){
     result.days=rate.days;
     result.daysUntilLimit=daysUntil(lastAvg,rate.mmPerDay);
   }
-  const u=unevenWear(estado ?? hist[hist.length-1], irregularidadMm);
+  const fila=estado ?? hist[hist.length-1];
+  const u=unevenWear(fila, irregularidadMm);
   if(u){ result.unevenWear=u.diff; result.unevenSide=u.side; }
+  const lat=asimetriaLateral(fila, irregularidadMm);
+  if(lat){ result.lateralWear=lat.diff; result.lateralSide=lat.lado; }
   return result;
 }

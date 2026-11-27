@@ -63,13 +63,19 @@
   var kmc = [
     {neumatico_id:1,cliente_id:1,vehiculo_id:10,km_previos:15000,km_en_vehiculos:0,km_tramo_actual:4000,km_totales:19000,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
     {neumatico_id:2,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:1200,km_tramo_actual:null,km_totales:1200,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
-    {neumatico_id:3,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false}
+    {neumatico_id:3,cliente_id:1,vehiculo_id:10,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false},
+    // Cubiertas de stock (sin vehículo): la columna Rendimiento de Stock (S-001, S-002, S-010).
+    {neumatico_id:31,cliente_id:1,vehiculo_id:null,km_previos:0,km_en_vehiculos:0,km_tramo_actual:19000,km_totales:19000,km_confiable:true,tramos_con_dato:1,tramos_sin_dato:0,odometro_anomalo:false},
+    {neumatico_id:32,cliente_id:1,vehiculo_id:null,km_previos:42000,km_en_vehiculos:1200,km_tramo_actual:null,km_totales:43200,km_confiable:false,tramos_con_dato:1,tramos_sin_dato:1,odometro_anomalo:false},
+    {neumatico_id:33,cliente_id:1,vehiculo_id:null,km_previos:0,km_en_vehiculos:null,km_tramo_actual:null,km_totales:null,km_confiable:false,tramos_con_dato:0,tramos_sin_dato:1,odometro_anomalo:false}
   ];
   // v_costo_cubierta: 1 con costo y CPK confiable, 2 con CPK provisional (estimado), 3 sin costos.
   var costoc = [
     {neumatico_id:1,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'1900.00',costo_por_concepto:{compra:'1900.00'},km_totales:19000,km_recorridos:4000,km_confiable:true,cpk:'0.475000',cpk_provisional:null,cpk_carcasa:'0.100000'},
     {neumatico_id:2,vehiculo_id:10,tiene_costo:true,moneda:'UYU',monedas:['UYU'],moneda_mixta:false,costo_total:'600.00',costo_por_concepto:{compra:'600.00'},km_totales:1200,km_recorridos:1200,km_confiable:false,cpk:null,cpk_provisional:'0.500000',cpk_carcasa:null},
-    {neumatico_id:3,vehiculo_id:10,tiene_costo:false,moneda:null,monedas:null,moneda_mixta:false,costo_total:null,costo_por_concepto:null,km_totales:null,km_recorridos:null,km_confiable:false,cpk:null,cpk_provisional:null,cpk_carcasa:null}
+    {neumatico_id:3,vehiculo_id:10,tiene_costo:false,moneda:null,monedas:null,moneda_mixta:false,costo_total:null,costo_por_concepto:null,km_totales:null,km_recorridos:null,km_confiable:false,cpk:null,cpk_provisional:null,cpk_carcasa:null},
+    // Cubierta de stock 31 (S-001): CPK de carcasa confiable (la columna Rendimiento lo muestra solo con permiso de costos).
+    {neumatico_id:31,cliente_id:1,vehiculo_id:null,tiene_costo:true,moneda:"UYU",monedas:["UYU"],moneda_mixta:false,costo_total:"1900.00",costo_por_concepto:{compra:"1900.00"},km_totales:19000,km_recorridos:19000,km_confiable:true,cpk:"0.100000",cpk_provisional:null,cpk_carcasa:"0.100000"}
   ];
   // cpk_por_grupo: una marca con muestra suficiente y otra con muestra baja y sin km confiables.
   var cpkg = [
@@ -87,6 +93,8 @@
   var mot = [
     ['baja','desgaste','Desgaste',1],['baja','danio','Daño',2],['baja','venta','Venta',3],['baja','chatarra','Chatarra',4],['baja','devolucion_proveedor','Devolución al proveedor',5],['baja','otro','Otro',9],
     ['rotacion','swap_20000','Swap a 20.000 km',1],['rotacion','diferencia_huellas','Diferencia entre huellas',2],['rotacion','paso_direccional_a_traccion','Direccional pasa a tracción o eje loco',3],['rotacion','paso_a_eje_loco','Paso a eje loco',4],['rotacion','otro','Otro',9],
+    ['rotacion_disco','desgaste_lateral','Desgaste lateral',1],['rotacion_disco','swap_20000','Swap a 20.000 km',2],['rotacion_disco','otro','Otro',9],
+    ['alineacion','desgaste_lateral','Desgaste lateral',1],['alineacion','control','Control de rutina',2],['alineacion','reparacion_tren','Reparación del tren delantero',3],['alineacion','otro','Otro',9],
     ['cambio','desgaste','Desgaste',1],['cambio','danio','Daño o pinchazo',2],['cambio','desgaste_irregular','Desgaste irregular',3],['cambio','otro','Otro',9],
     ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9]
   ].map(function(r){ return {tipo:r[0],codigo:r[1],etiqueta:r[2],orden:r[3],activo:true,cliente_id:null}; });

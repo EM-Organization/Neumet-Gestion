@@ -9,6 +9,7 @@ import { flujo, irA, texto, abrirDetallePorMatricula } from '../lib/flujo.mjs';
 import { DEMO, json } from '../lib/verdad.mjs';
 import { nombrePos } from '../../../assets/js/domain/cambio-neumatico.js';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
+import { fmtNum } from '../../../assets/js/domain/formato.js';
 
 const OTRA = `(select id from public.clientes where nombre = 'Otra Empresa SA')`;
 const RECHAZO = [{ ruta: /rpc\/(stock_cubierta_|neumatico_cambiar)/, status: [400, 403, 404, 409, 500] }];
@@ -94,6 +95,36 @@ export function registrar(env) {
       await p.esperar(`document.querySelectorAll('#stk-lista .stk-fila').length === ${otras.length}`, { que: 'solo las del cliente ajeno' });
       assert.deepEqual((await quemasUI(p)).sort(), otras.map(c => c.numero_quema).sort());
       assert.match(await texto(p, '#stk-lista'), /Otra Empresa SA/);
+    });
+  });
+
+  test('Stock (global): la columna Rendimiento coincide con v_km_cubierta y el CSV cuenta todos los neumáticos del cliente', async () => {
+    const esperadas = cubiertas(env, `n.cliente_id = ${DEMO}`);
+    const km = json(env, `select n.numero_quema, k.km_totales, k.km_confiable from public.neumaticos n
+      left join public.v_km_cubierta k on k.neumatico_id = n.id where n.cliente_id = ${DEMO} and n.vehiculo_id is null order by n.numero_quema`);
+    const porQuema = new Map(km.map(k => [k.numero_quema, k]));
+    const total = Number(env.sql(`select count(*) from public.neumaticos where cliente_id = ${DEMO}`));
+    await flujo(env, 'rendimiento-global', 'global', async p => {
+      await abrirStock(p, esperadas.length);
+      const ui = await p.eval(`[...document.querySelectorAll('#stk-lista .stk-fila')].map(f => ({
+        quema: f.querySelector('.stk-quema').firstChild.textContent.trim(), rend: f.querySelector('.stk-rend').firstChild.textContent.trim() }))`);
+      assert.deepEqual(ui, esperadas.map(c => {
+        const k = porQuema.get(c.numero_quema);
+        const rend = k && k.km_totales !== null ? `${fmtNum(k.km_totales)} km${k.km_confiable ? '' : ' aprox.'}` : 'Sin dato';
+        return { quema: c.numero_quema, rend };
+      }));
+      await p.click('#btn-stock-csv');
+      await toast(p, /^CSV exportado/);
+      assert.equal(await p.eval(`document.querySelector('#toast-msg').textContent`), `CSV exportado (${total} filas)`);
+    });
+  });
+
+  test('Stock (salto): la sucursal no pide costos de las cubiertas (v_costo_cubierta) y no ve el botón de exportar', async () => {
+    await flujo(env, 'rendimiento-sucursal', 'salto', async p => {
+      const desde = env.peticiones.length;
+      await abrirStock(p, 0);
+      assert.equal(await p.eval(`!!document.querySelector('#btn-stock-csv').offsetParent`), false, 'sin Exportar CSV');
+      assert.deepEqual(env.peticiones.slice(desde).filter(r => /v_costo_/.test(r.path)), []);
     });
   });
 

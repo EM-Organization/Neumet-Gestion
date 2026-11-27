@@ -558,5 +558,10 @@
   "archivo": "supabase/migrations/20261126030000_ejes_direccion_alertas.sql",
   "linea": 415,
   "texto": "from public.perfiles p where p.user_id = auth.uid();"
+ },
+ {
+  "archivo": "supabase/migrations/20261126040000_disco_alineacion.sql",
+  "linea": 493,
+  "texto": "from public.perfiles p where p.user_id = auth.uid();"
  }
 ]

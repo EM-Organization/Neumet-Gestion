@@ -72,3 +72,9 @@ test('validarDatosRotacion: motivo de rotación y odómetro obligatorio (RN-12, 
   assert.match(validarDatosRotacion({ ...base, motivoCodigo: 'otro' }).error, /Escribir el motivo/);
   assert.deepEqual(validarDatosRotacion({ ...base, motivoCodigo: 'otro', motivoTexto: 'Huellas' }).params.p_motivo_texto, 'Huellas');
 });
+
+test('TIPO_MOTIVO: rotación en disco y alineación usan sus catálogos propios', () => {
+  assert.equal(TIPO_MOTIVO.rotarDisco, 'rotacion_disco');
+  assert.equal(TIPO_MOTIVO.alinear, 'alineacion');
+});
+

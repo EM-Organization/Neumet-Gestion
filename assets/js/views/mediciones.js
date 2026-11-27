@@ -8,7 +8,7 @@ import { isClienteMode, currentClienteId, currentClienteNombre } from '../core/a
 import { contextoListo, filtrarConsulta } from '../core/seccional.js';
 import { registerView } from '../core/nav.js';
 import { ACTIONS } from '../core/actions.js';
-import { UMBRALES, wearStatus, huellaMinima, analyzeTire, MEDICIONES_ZONAS } from '../domain/desgaste.js';
+import { UMBRALES, wearStatus, huellaMinima, analyzeTire, clasificarDesgaste, MEDICIONES_ZONAS } from '../domain/desgaste.js';
 import { med } from './mediciones-state.js';
 import { fmtNum } from '../domain/formato.js';
 import { ESTADOS, BUENO_O_POCO } from '../domain/estado-desgaste.js';
@@ -43,6 +43,10 @@ function mRenderAnalysis(pos){
   const block = document.getElementById('med-analysis-block');
   const cards = document.getElementById('med-analysis-cards');
   const a = analyzeTire(med.tireData[pos], irregularidadMm, med.estado?.[pos]);
+  // Un solo aviso de desgaste por cubierta (decisión 1 de la ola 3): «lateral» o «irregular», nunca los dos a la vez.
+  const hist = med.tireData[pos];
+  const fila = med.estado?.[pos] ?? (hist && hist.length ? hist[hist.length - 1] : null);
+  const tipoDesgaste = fila ? clasificarDesgaste(fila, irregularidadMm) : null;
 
   if(!a){ block.style.display='none'; return; }
 
@@ -76,8 +80,18 @@ function mRenderAnalysis(pos){
       </div>`);
   }
 
-  // Desgaste desparejo
-  if(a.unevenWear != null){
+  // Desgaste lateral (R1): diferencia entre el borde interno y el externo. Es de alineación, no de presión.
+  if(tipoDesgaste === 'lateral'){
+    items.push(html`
+      <div class="analysis-card warn">
+        <div class="ac-label">Desgaste lateral</div>
+        <div class="ac-value warn">${fmtNum(a.lateralWear,1)} mm</div>
+        <div class="ac-sub">Revisar alineación. Más gastado el lado ${a.lateralSide}.</div>
+      </div>`);
+  }
+
+  // Desgaste desparejo (rango de las tres huellas): solo si la cubierta no tiene el aviso lateral.
+  if(tipoDesgaste === 'irregular' && a.unevenWear != null){
     items.push(html`
       <div class="analysis-card warn">
         <div class="ac-label">Desgaste desparejo</div>

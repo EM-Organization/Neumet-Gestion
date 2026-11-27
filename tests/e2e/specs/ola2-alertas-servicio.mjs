@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { flujo, irA, abrirDetallePorMatricula } from '../lib/flujo.mjs';
 
 const AVISO_UMBRALES = 'Los umbrales de las alertas se ajustan en Empresa > Umbrales.';
-const TIPOS = ['limite', 'direccion_aviso', 'direccion_limite', 'irregular', 'swap', 'km_por_mm'];
+const TIPOS = ['limite', 'direccion_aviso', 'direccion_limite', 'irregular', 'lateral', 'swap', 'km_por_mm'];
 
 const vehId = (env, patente) => Number(env.sql(`select id from public.vehiculos where patente = '${patente}'`));
 const rpcsDesde = (env, desde, nombre) => env.peticiones.slice(desde).filter(r => r.path.startsWith(`/rpc/${nombre}`));

@@ -304,6 +304,71 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     w.__cicloFx.rpcDelay = 0; cambioMod.config.timeoutMs = 20000;
     d.removeEventListener('neumet:neumatico-cambiado', cuentaEv);
     for(var u = 0; u < 20 && $('#vd-panel-body').children.length === 0; u++) await sleep(50);
+    // Ola 3 (RN-15, RN-16): rotar en disco desde el select «En disco» y registrar alineación desde la cabecera.
+    var esperarFila = async function(){ for(var k = 0; k < 40 && !$('#vd-rotar-destino'); k++) await sleep(50); };
+    var abrirDisco = async function(){ await esperarFila(); var s = $('#vd-rotar-destino'); s.value = 'disco'; s.dispatchEvent(new w.Event('change',{bubbles:true})); $('#vd-rotar-btn').click(); await esperarRotar(); };
+    var motivosDe = function(){ return Array.prototype.map.call($('#rotar-motivo').options, function(o){ return o.value; }).join('|'); };
+    var r3d = $('#vd-diagrama .vd-rueda[data-pos="3"]');
+    r3d.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400);
+    await esperarFila();
+    var selD = $('#vd-rotar-destino');
+    if(!selD || selD.options[1].value !== 'disco' || selD.options[1].textContent !== 'En disco (misma posición)') fail('disco: «En disco» debe ser la primera opción del select');
+    selD.value = 'disco'; selD.dispatchEvent(new w.Event('change',{bubbles:true}));
+    if($('#vd-rotar-btn').dataset.args !== '[10,3,"disco"]') fail('disco: data-args de Rotar: '+$('#vd-rotar-btn').dataset.args);
+    var nDisco = rpcs('neumatico_rotar_disco').length;
+    $('#vd-rotar-btn').click(); await esperarRotar();
+    if($('#rotar-title').textContent !== 'Rotar en disco') fail('disco: título del diálogo: '+$('#rotar-title').textContent);
+    if($('#rotar-sub').textContent.indexOf('se invierten interior y exterior') === -1) fail('disco: subtítulo: '+$('#rotar-sub').textContent);
+    if(motivosDe() !== '|desgaste_lateral|swap_20000|otro') fail('disco: motivos del modo disco: '+motivosDe());
+    $('#rotar-form').requestSubmit(); await sleep(150);   // sin motivo: no sale la RPC
+    if(rpcs('neumatico_rotar_disco').length !== nDisco) fail('disco: sin motivo no debe llamar a la RPC');
+    $('#rotar-motivo').value = 'desgaste_lateral'; $('#rotar-motivo').dispatchEvent(new w.Event('change',{bubbles:true}));
+    // Enter mantenido: se ignora (como en Montar), sin enviar.
+    var kr = new w.KeyboardEvent('keydown',{key:'Enter',repeat:true,bubbles:true,cancelable:true}); $('#rotar-form').dispatchEvent(kr);
+    if(!kr.defaultPrevented) fail('disco: Enter mantenido debe ignorarse');
+    // Doble envío (dos Enter seguidos): una sola llamada a la RPC.
+    $('#rotar-form').requestSubmit(); $('#rotar-form').requestSubmit(); await sleep(500);
+    if($('#modal-rotar').classList.contains('show')) fail('disco: el diálogo debe cerrarse tras el éxito');
+    var rd = rpcs('neumatico_rotar_disco');
+    if(rd.length !== nDisco + 1) fail('disco: una sola llamada a neumatico_rotar_disco ('+(rd.length - nDisco)+')');
+    else {
+      var ad = rd[nDisco].args;
+      if(ad.p_vehiculo_id !== 10 || ad.p_posicion !== 3 || ad.p_odometro_km !== null || ad.p_motivo_codigo !== 'desgaste_lateral' || ad.p_motivo_texto !== null) fail('disco: args de neumatico_rotar_disco: '+JSON.stringify(ad));
+    }
+    if($('#toast-msg').textContent.indexOf('rotada en disco en Camión 01') === -1) fail('disco: aviso de éxito: '+$('#toast-msg').textContent);
+    // Error 22023 en línea: el diálogo sigue abierto, el botón vuelve y el reintento sale bien.
+    await sleep(400); await abrirDisco();
+    $('#rotar-motivo').value = 'swap_20000'; $('#rotar-motivo').dispatchEvent(new w.Event('change',{bubbles:true}));
+    var ceDisco = w.console.error, regDisco = [];
+    w.console.error = function(){ regDisco.push(arguments[0] && arguments[0].message); };
+    w.__cicloFx.rpcError = {code:'22023', message:'el auxilio no se rota en disco'};
+    $('#rotar-form').requestSubmit(); await sleep(300);
+    w.__cicloFx.rpcError = null; w.console.error = ceDisco;
+    if(regDisco.length !== 1) fail('disco: el error 22023 debe registrarse una vez en consola ('+regDisco.length+')');
+    if($('#rotar-error').textContent !== 'El auxilio no se rota en disco') fail('disco: error en línea: '+$('#rotar-error').textContent);
+    if(!$('#modal-rotar').classList.contains('show')) fail('disco: con error el diálogo debe quedar abierto');
+    if($('#rotar-confirmar').disabled) fail('disco: con error el botón debe rehabilitarse');
+    $('#rotar-form').requestSubmit(); await sleep(400);
+    // nDisco + 1 es la rotación de éxito, + 1 la que falló con 22023 y + 1 el reintento.
+    if(rpcs('neumatico_rotar_disco').length !== nDisco + 3) fail('disco: el reintento debe llamar a la RPC una vez ('+(rpcs('neumatico_rotar_disco').length - nDisco)+')');
+    // Alineación (RN-16): botón en la cabecera; motivos de alineación; una llamada a vehiculo_alinear.
+    await sleep(400); await esperarFila();
+    var bAl = $('#vd-alinear-btn');
+    if(!bAl) fail('alinear: falta el botón «Registrar alineación» en la cabecera');
+    else {
+      bAl.click(); await esperarRotar();
+      if($('#rotar-title').textContent !== 'Registrar alineación') fail('alinear: título del diálogo: '+$('#rotar-title').textContent);
+      if(motivosDe() !== '|desgaste_lateral|control|reparacion_tren|otro') fail('alinear: motivos de alineación: '+motivosDe());
+      $('#rotar-motivo').value = 'control'; $('#rotar-motivo').dispatchEvent(new w.Event('change',{bubbles:true}));
+      var nAl = rpcs('vehiculo_alinear').length;
+      var ka = new w.KeyboardEvent('keydown',{key:'Enter',repeat:true,bubbles:true,cancelable:true}); $('#rotar-form').dispatchEvent(ka);
+      if(!ka.defaultPrevented) fail('alinear: Enter mantenido debe ignorarse');
+      $('#rotar-form').requestSubmit(); await sleep(500);
+      var ra = rpcs('vehiculo_alinear');
+      if(ra.length !== nAl + 1) fail('alinear: una sola llamada a vehiculo_alinear ('+(ra.length - nAl)+')');
+      else if(ra[nAl].args.p_vehiculo_id !== 10 || ra[nAl].args.p_motivo_codigo !== 'control' || ra[nAl].args.p_odometro_km !== null) fail('alinear: args de vehiculo_alinear: '+JSON.stringify(ra[nAl].args));
+      if($('#toast-msg').textContent !== 'Alineación registrada en 2 neumáticos en Camión 01') fail('alinear: aviso de éxito: '+$('#toast-msg').textContent);
+    }
     // Cambiar: abre el modal real del taller con el neumatico de P3
     r3 = $('#vd-diagrama .vd-rueda[data-pos="3"]');
     r3.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(400);
@@ -446,6 +511,8 @@ window.detalleAdminFlow = async function(w, d, sleep, fail, log){
   if(!b){ fail('detalle(admin): sin botón de detalle del vehículo 10'); return; }
   b.click(); await sleep(900);
   if(all('#vd-diagrama .vd-rueda').length !== 10){ fail('detalle(admin): el detalle no mostró las 10 ruedas'); return; }
+  // Ola 3: registrar alineación es una acción de escritura; el equipo Neumet no la ve (puedeOperar).
+  if($('#vd-alinear-btn')) fail('detalle(admin): el equipo Neumet no debe ver «Registrar alineación»');
   var prohibidas = '[data-action="neumatico-cambiar"],[data-action="neumatico-rotar-pos"],[data-action="neumatico-retirar"],[data-action="neumatico-montar"],[data-action="detalleRegistrarCosto"]';
   if(all('[data-action="vehiculo-eliminar"]').length) fail('detalle(admin): el equipo Neumet no debe ver «Eliminar vehículo»');
   if(all(prohibidas).length) fail('detalle(admin): acciones de escritura en la vista: ' + Array.prototype.map.call(all(prohibidas), function(x){ return x.dataset.action; }).join(','));

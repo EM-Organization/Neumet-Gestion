@@ -3,7 +3,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   UMBRALES, WEAR, LIFE_LIMIT_MM, wearStatus, avgMm, tireStatus, wearClass, countByStatus,
-  wearRate, daysUntil, dateUntil, unevenWear, analyzeTire, IRREGULARIDAD_MM_DEFECTO
+  wearRate, daysUntil, dateUntil, unevenWear, analyzeTire, IRREGULARIDAD_MM_DEFECTO, asimetriaLateral, clasificarDesgaste
 } from '../../assets/js/domain/desgaste.js';
 
 const DAY = 86400000;
@@ -245,5 +245,70 @@ describe('analyzeTire', () => {
   });
   test('sin mm1 y sin fila de estado no hay aviso, como antes', () => {
     assert.equal(analyzeTire([row(null, 10, 7)], 2).unevenWear, undefined);
+  });
+});
+
+describe('asimetriaLateral y clasificarDesgaste (R1: el lateral se mide entre bordes, separado del rango; docs/18 §8)', () => {
+  const fila = (mm1, mm2, mm3, extra = {}) => ({ mm1, mm2, mm3, ...extra });
+  test('T04: asimetría de 2,5 mm por el externo; se clasifica como lateral', () => {
+    assert.deepEqual(asimetriaLateral(fila(9, 8, 6.5), 2), { diff: 2.5, lado: 'externo' });
+    assert.equal(clasificarDesgaste(fila(9, 8, 6.5), 2), 'lateral');
+  });
+  // Separa T04 (lateral) de T05 y T06 (irregular): si clasificarDesgaste usara el rango para el lateral, T05 y T06 también saldrían lateral.
+  test('T05 y T06 no tienen asimetría lateral: son irregular por rango, nunca lateral', () => {
+    assert.equal(asimetriaLateral(fila(9, 6.5, 9), 2), null);
+    assert.equal(clasificarDesgaste(fila(9, 6.5, 9), 2), 'irregular');
+    assert.equal(asimetriaLateral(fila(6, 8.6, 6), 2), null);
+    assert.equal(clasificarDesgaste(fila(6, 8.6, 6), 2), 'irregular');
+  });
+  test('T07 parejo: sin lateral ni irregular', () => {
+    assert.equal(asimetriaLateral(fila(9, 8, 9), 2), null);
+    assert.equal(clasificarDesgaste(fila(9, 8, 9), 2), null);
+  });
+  test('borde lateral exacto al umbral: 10/9/8 es lateral por el externo', () => {
+    assert.deepEqual(asimetriaLateral(fila(10, 9, 8), 2), { diff: 2, lado: 'externo' });
+    assert.equal(clasificarDesgaste(fila(10, 9, 8), 2), 'lateral');
+  });
+  test('lado interno: 6,5/8/9 es lateral por el interno', () => {
+    assert.deepEqual(asimetriaLateral(fila(6.5, 8, 9), 2), { diff: 2.5, lado: 'interno' });
+    assert.equal(clasificarDesgaste(fila(6.5, 8, 9), 2), 'lateral');
+  });
+  test('coma flotante: 8,7 − 6,7 da 2 exacto, no 1,999…', () => {
+    const r = asimetriaLateral(fila(8.7, 8, 6.7), 2);
+    assert.equal(r.diff, 2);
+    assert.equal(r.lado, 'externo');
+    assert.equal(clasificarDesgaste(fila(8.7, 8, 6.7), 2), 'lateral');
+  });
+  test('lateral de 1,9 con rango de 2,0: no es lateral, es irregular', () => {
+    assert.equal(asimetriaLateral(fila(10, 8, 8.1), 2), null);
+    assert.equal(clasificarDesgaste(fila(10, 8, 8.1), 2), 'irregular');
+  });
+  test('todo por debajo de 2,0: sin aviso', () => {
+    assert.equal(asimetriaLateral(fila(9.9, 9, 8), 2), null);
+    assert.equal(clasificarDesgaste(fila(9.9, 9, 8), 2), null);
+  });
+  test('sin mm3 no hay lateral: lo decide unevenWear con la fila (desgaste_irregular)', () => {
+    assert.equal(asimetriaLateral(fila(9, 8, null), 2), null);
+    assert.equal(clasificarDesgaste(fila(9, 8, null), 2), null);
+    assert.equal(clasificarDesgaste(fila(9, 8, null, { desgaste_irregular: true, diferencia_huellas_mm: 2 }), 2), 'irregular');
+  });
+  test('umbral del cliente de 3,0: T04 ya no alcanza ni lateral ni irregular', () => {
+    assert.equal(asimetriaLateral(fila(9, 8, 6.5), 3), null);
+    assert.equal(clasificarDesgaste(fila(9, 8, 6.5), 3), null);
+  });
+  test('umbral nulo: usa 2,0 por defecto', () => {
+    assert.deepEqual(asimetriaLateral(fila(9, 8, 6.5), undefined), { diff: 2.5, lado: 'externo' });
+    assert.equal(clasificarDesgaste(fila(9, 8, 6.5), null), 'lateral');
+  });
+  test('bordes iguales no tienen lado que nombrar, aunque el umbral fuera 0', () => {
+    assert.equal(asimetriaLateral(fila(9, 8, 9), 0), null);
+    assert.equal(asimetriaLateral(null, 2), null);
+  });
+  test('analyzeTire agrega lateralWear y lateralSide y deja unevenWear (el rango, RN-06)', () => {
+    const a = analyzeTire([row(9, 8, 6.5)], 2);
+    assert.equal(a.lateralWear, 2.5); assert.equal(a.lateralSide, 'externo');
+    assert.equal(a.unevenWear, 2.5); assert.equal(a.unevenSide, 'externo');
+    const b = analyzeTire([row(9, 8, 9)], 2);
+    assert.equal('lateralWear' in b, false); assert.equal('lateralSide' in b, false);
   });
 });
