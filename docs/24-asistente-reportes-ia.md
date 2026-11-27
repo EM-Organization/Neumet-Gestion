@@ -22,7 +22,7 @@ Lo que queda fuera:
 
 Orden de la vista `assets/js/views/reportes.js`, de arriba hacia abajo:
 
-1. **Asistente**: un campo de texto con el ejemplo «Preguntar por la flota, por ejemplo: CPK por marca del último trimestre», el botón «Preguntar» (o Enter) y el historial de la conversación de la sesión.
+1. **Asistente**: un campo de texto con el ejemplo «Por ejemplo: costo por km por marca» (sucursal: «Por ejemplo: cubiertas para cambiar»), el botón «Preguntar» (o Enter) y el historial de la conversación de la sesión.
 2. **Reportes listos**: botones que envían una pregunta ya armada, con el período elegido en un selector (mes o trimestre; por defecto, el último cerrado).
 
    | Botón | Regla | Qué muestra |
