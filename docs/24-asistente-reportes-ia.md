@@ -1,6 +1,6 @@
 # 24 · Asistente de reportes con IA
 
-> **Estado: diseño en revisión (2026-11-27), sin código.** Es la primera etapa del pendiente «Asistente LLM» de la ola 7 de F8 ([10](10-tablero.md), [23](23-reglas-negocio.md) §4). Mientras el dueño no apruebe este documento, no se escribe código, no se aplican migraciones ni se despliegan funciones. Rama: `feat/reportes-ia`.
+> **Estado: código del catálogo, prompt y formato en `feat/reportes-ia-t3` (oleada 2026-11-27, tarea T3), a integrar en `feat/reportes-ia`.** Sin desplegar: no hay función desplegada, ni migración aplicada, ni cambios en producción. Es la primera etapa del pendiente «Asistente LLM» de la ola 7 de F8 ([10](10-tablero.md), [23](23-reglas-negocio.md) §4).
 
 ## 1. Propósito
 
@@ -79,18 +79,24 @@ Es el punto central del diseño. La visibilidad se hace cumplir en la base, no e
 
 Cada tool se declara en formato OpenAI de function calling (lo acepta OpenRouter) con descripción en español, un esquema JSON estricto y el rol mínimo. La lista vive en un solo módulo de la función (`tools.ts`), con la RPC o la vista de origen.
 
-| Tool | Origen | Argumentos | Roles | Estado del origen |
-|---|---|---|---|---|
-| `estado_flota` | `v_estado_neumaticos` | `vehiculo_id?`, `estado?`, `limite` | todos | En `main` |
-| `cpk_por_grupo` | RPC `cpk_por_grupo(grupo, desde, hasta, cliente_id)` | `grupo` (de `GRUPOS`), `desde?`, `hasta?` | admin y global (columnas de costo) | En `main` |
-| `reporte_periodo` | RPC `reporte_periodo` (ola 7, apéndice AG) | `tipo` (`mensual` o `trimestral`), `periodo` | admin y global | Planificada, sin crear |
-| `rendimiento_descartadas` | Vista o RPC de la ola 7 | `desde?`, `hasta?`, `grupo` | admin y global | Planificada, sin crear |
-| `alertas_activas` | `alertas` | `tipo?`, `vehiculo_id?`, `limite` | todos | En `main` |
-| `mediciones_recientes` | `mediciones` | `desde`, `hasta`, `vehiculo_id?`, `limite` | todos | En `main` |
-| `vehiculos_listar` | `vehiculos` | `texto?` (nombre o patente), `limite` | todos | En `main` |
-| `ficha_cubierta` | `neumaticos` + `eventos_neumatico` | `quema` | todos (costos según rol) | En `main` |
+| Tool | Origen | Argumentos | Roles |
+|---|---|---|---|
+| `estado_flota` | `v_estado_neumaticos` | `vehiculo_id?`, `estado?`, `limite?` | todos |
+| `cpk_por_grupo` | RPC `cpk_por_grupo(p_grupo, p_desde, p_hasta, p_cliente_id)` | `grupo` (requerido: `marca`, `modelo`, `sucursal`, `vida`, `banda`), `desde?`, `hasta?` | admin y global (columnas de costo) |
+| `reporte_periodo` | RPC `reporte_periodo` (ola 7, apéndice AG) | `tipo` (`mensual` o `trimestral`), `periodo` | admin y global. **No declarada**: depende de la ola 7 |
+| `rendimiento_descartadas` | Vista o RPC de la ola 7 | `desde?`, `hasta?`, `grupo` | admin y global. **No declarada**: depende de la ola 7 |
+| `alertas_activas` | `v_alertas` (sin las resueltas) | `tipo?`, `vehiculo_id?`, `limite?` | todos |
+| `mediciones_recientes` | `mediciones` (sin las invalidadas) | `desde`, `hasta` (requeridos), `vehiculo_id?`, `limite?` | todos |
+| `vehiculos_listar` | `vehiculos` | `texto?` (nombre, patente o número), `limite?` | todos |
+| `ficha_cubierta` | `neumaticos` + `eventos_neumatico` + `v_km_cubierta` + `v_costo_cubierta` | `quema` (requerido) | todos (costos solo si el perfil ve precios) |
 
-- Las columnas que devuelve cada tool se fijan en la etapa de código contra [08](08-esquema-datos.md); son las mínimas que necesita la pregunta. Nunca `select *`.
+- Columnas fijadas en `tools.ts`, nunca `select *`, y verificadas contra las migraciones: [08](08-esquema-datos.md) va por detrás en varias de ellas, así que manda la migración. Son las mínimas que necesita la pregunta:
+  - `estado_flota`: `vehiculo_id,vehiculo_nombre,patente,posicion,idneumatico,marca,modelo,vida,estado,minimo,promedio,ultima_medicion_at,dias_desde_medicion,sin_medir,tasa_mm_semana,semanas_hasta_retiro,rol_eje,estado_direccion`.
+  - `cpk_por_grupo`: las de la RPC menos `cliente_id`: `grupo,clave,moneda,n_neumaticos,n_sin_km,km_recorridos,costo_total,cpk,muestra_baja`. Filtra por fecha de alta de la cubierta (cohorte).
+  - `alertas_activas`: `vehiculo_id,vehiculo_nombre,patente,posicion,idneumatico,tipo,severidad,mensaje,estado,abierta_at,ultima_medicion_at`.
+  - `mediciones_recientes`: `created_at,vehiculo_id,posicion,idneumatico,mm1,mm2,mm3,promedio,odometro_km,vehiculos(nombre,patente)`.
+  - `vehiculos_listar`: `id,nombre,patente,numero,tipo_ruedas,sucursal_id,activo`. El spec pedía `distribucion` y `servicio`, pero no existen en las migraciones de la rama: `tipo_ruedas` (10 o 16) reemplaza a la distribución, y `servicio` (RN-31) se suma cuando su migración llegue a `main`.
+  - `ficha_cubierta`: neumáticos `id,numero_quema,idneumatico,marca,modelo,vida,estado,condicion,posicion,vehiculo_id,km_previos,fecha_baja,motivo_baja,created_at,vehiculos(nombre,patente)`; eventos `tipo,created_at,odometro_km,posicion_origen,posicion_destino,motivo_codigo,motivo_texto`; km `km_totales,km_en_vehiculos,km_tramo_actual,km_confiable`; costo `moneda,costo_total,cpk,cpk_provisional,km_recorridos`.
 - Los reportes mensual, trimestral y de descartadas dependen de la migración de la ola 7 (`20261126080000`, planificada). Si el código del asistente llega antes, esas tools no se declaran y sus botones no se muestran.
 - El ahorro (RN-24) lo calcula `reporte_periodo`, no el modelo. Con `precio_referencia_nueva` nulo, la tool devuelve `ahorro: null` y el asistente informa «Falta el precio de referencia de la cubierta nueva».
 
@@ -113,14 +119,14 @@ Proveedor: **OpenRouter** (API compatible con OpenAI, `https://openrouter.ai/api
 | Respaldo | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | Por token, bajo (verificar en la página del modelo) |
 
 - Identificadores verificados el 2026-11-27 con la documentación de OpenRouter que pasó el dueño (`https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b/llms.txt`) y catálogos públicos. El sufijo `:free` es obligatorio: `nvidia/nemotron-3-ultra-550b-a55b` sin sufijo es la variante de pago (de 0,25 a 0,75 USD por millón de tokens de entrada, según el proveedor) y **no se usa**; ante un fallo se pasa a DeepSeek, no a esa variante. La etapa de código los confirma con `GET /api/v1/models` y deja los dos en variables de entorno (`ASISTENTE_MODELO`, `ASISTENTE_MODELO_RESPALDO`), para cambiarlos sin desplegar código.
-- **Respaldo**: se pide con el campo `models: [principal, respaldo]` de OpenRouter, que pasa al segundo si el primero falla, está saturado o devuelve 429. El respaldo se usa solo en ese caso. La respuesta informa qué modelo respondió y queda en el registro (§9).
+- **Respaldo**: lo hace la función, no el campo `models` de OpenRouter. Ante 404, 429, 502, 503 o un error de red, vuelve a pedir la vuelta con `ASISTENTE_MODELO_RESPALDO`. Ante 400, 401, 402 o 403 no reintenta: son errores de código o de cuenta, y el respaldo los taparía. La respuesta informa qué modelo respondió y queda en el registro (§9).
 - La documentación de OpenRouter confirma que Nemotron 3 Ultra acepta `tools`, `tool_choice`, `temperature`, `seed`, `max_tokens` y `reasoning`. Se usa `temperature` baja (0,2) y `max_tokens` acotado para respuestas estables. DeepSeek V4.1 Flash también acepta `tools` y `tool_choice`. Si alguno no los respeta en el endpoint gratuito, la etapa de código lo detecta en la evaluación (§8.4) y se avisa al dueño antes de seguir.
 - **Errores de OpenRouter** (`{"error": {"code", "message"}}`):
 
   | Código | Significado | Qué hace la función |
   |---|---|---|
   | 429 | Límite de peticiones | Pasa a DeepSeek |
-  | 502 | Falló el proveedor (no se cobra) | Pasa a DeepSeek |
+  | 502, 503 | Falló el proveedor (no se cobra) | Pasa a DeepSeek |
   | 404 | Modelo desconocido o sin proveedor (por ejemplo, si retiran el gratuito) | Pasa a DeepSeek y queda registrado para avisar al dueño |
   | 400 | Petición mal armada | No reintenta; es un error de código y queda en el registro |
   | 401, 402, 403 | Clave inválida, sin créditos o tope de gasto alcanzado | No reintenta; el panel muestra «El asistente no está disponible en este momento» |
