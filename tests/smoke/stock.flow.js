@@ -264,7 +264,7 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
 
   // Buscador global: una quema en stock lo encuentra y abre Stock filtrado
   nav('inicio'); await sleep(400);
-  var inp = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input');
+  var inp = $('#busq-global-input');
   inp.value = 's-010'; inp.dispatchEvent(new w.Event('input', {bubbles: true})); await sleep(700);
   var op = all('.busq-resultados .busq-op').filter(function(b){ return /Quema S-010/.test(b.textContent); })[0];
   if(!op) { fail('buscador: no encontró la cubierta S-010 en stock: ' + all('.busq-resultados').map(function(u){ return u.textContent; }).join('|')); return; }
@@ -274,7 +274,7 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if($('#search-stock').value !== 'S-010' || quemas().join() !== 'S-010') fail('buscador: Stock no quedó filtrado por la quema: ' + $('#search-stock').value + ' / ' + quemas().join());
   // Enter con una única coincidencia abre Stock directamente
   nav('inicio'); await sleep(300);
-  var inp2 = $('#view-inicio.active #busq-inicio-input') || $('#busq-global-input');
+  var inp2 = $('#busq-global-input');
   inp2.value = 'S-011'; inp2.dispatchEvent(new w.Event('input', {bubbles: true})); await sleep(500);
   inp2.form.dispatchEvent(new w.Event('submit', {bubbles: true, cancelable: true})); await sleep(700);
   if(!$('#view-stock').classList.contains('active') || quemas().join() !== 'S-011') fail('buscador: Enter no abrió Stock filtrado: ' + quemas().join());

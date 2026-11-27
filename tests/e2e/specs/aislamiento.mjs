@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { flujo, filasVehiculos, irA, dormir, texto } from '../lib/flujo.mjs';
 import { ALCANCE, DEMO, cifrasInicio, json, vehiculosVisibles } from '../lib/verdad.mjs';
-import { LEER_INICIO, INICIO_LISTO } from './inicio.mjs';
+import { LEER_INICIO, INICIO_LISTO, CIFRA_EN_PANTALLA, verdadCifras, visiblesDe } from './inicio.mjs';
 import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 
 // Pide a la API con el JWT de la sesión (el mismo que usa el panel). Devuelve las filas de todas las páginas.
@@ -131,9 +131,9 @@ export function registrar(env) {
         await p.eval(`(() => { const s = document.querySelector('#sec-select'); s.value = '${id}'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
         await irA(p, 'inicio');
         const e = cifrasInicio(env, rol);
-        await p.esperar(`${INICIO_LISTO} && (() => { const c = document.querySelectorAll('#inicio-contenido .inicio-cifra strong'); const a = document.querySelector('#inicio-contenido [data-args=\\'["alertas"]\\']'); return Number(c[3].textContent) === ${e.limite} && a && Number(a.textContent.replace(/\\D/g, '')) === ${e.alertas}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertas} alertas` });
+        await p.esperar(`${INICIO_LISTO} && ${CIFRA_EN_PANTALLA('desgaste_limite')} === ${e.limite} && (() => { const a = document.querySelector('#inicio-contenido [data-action="alertasVerAbiertas"]'); return a && Number(a.textContent.replace(/\\D/g, '')) === ${e.alertasAbiertas}; })()`, { que: `Inicio de ${valor || 'todas'} con ${e.alertasAbiertas} alertas abiertas` });
         const l = await p.eval(LEER_INICIO);
-        assert.deepEqual(l.cifras, [e.nuevo, e.pocoDesgaste, e.mayorDesgaste, e.limite, e.desconocido], `proporciones de Inicio (${valor || 'todas'})`);
+        assert.deepEqual(l.cifras, visiblesDe(verdadCifras(e)), `proporciones de Inicio (${valor || 'todas'})`);
         await irA(p, 'vehiculos');
         await p.esperar(`document.querySelectorAll('#veh-lista .veh-fila').length === ${n}`, { que: `${n} vehículos (${valor || 'todas'})` });
       }

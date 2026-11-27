@@ -9,7 +9,7 @@
   var estado = [
     e(1,10,'Camión 01','AB123CD',1,'nuevo',13), e(1,10,'Camión 01','AB123CD',2,'nuevo',12),
     e(1,12,'Unidad <Crítica>','CR0001',1,'desgaste_limite',2.9), e(1,12,'Unidad <Crítica>','CR0001',2,'desgaste_limite',2.8),
-    e(2,11,'Camión 02','XY987ZZ',1,'desgaste_limite',2.7), e(2,11,'Camión 02','XY987ZZ',2,'nuevo',9,{semanas_hasta_retiro:6.4}),
+    e(2,11,'Camión 02','XY987ZZ',1,'desgaste_limite',2.7), e(2,11,'Camión 02','XY987ZZ',2,'nuevo',9,{umbral_retiro_mm:3,tasa_mm_semana:1}),
     e(2,13,'Camión 03','NN0003',1,'desconocido',null,{sin_medir:true})
   ];
   // v_alertas desde la migración 20261118500000: solo la alerta crítica con estado (abierta, reconocida; silencio).
