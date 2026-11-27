@@ -968,3 +968,16 @@
     display: block;
   }
 }
+
+/* ── Selector de distribución con pictogramas (alta de vehículo y cambio de distribución) ──
+   Tarjetas de radio dentro de un fieldset. La tarjeta marcada se ve por el borde, el fondo y el radio, no solo por el color. */
+.dist-opciones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.dist-op { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 8px; font-size: 13px; line-height: 1.3; text-align: center; cursor: pointer; background: var(--surface); }
+.dist-op input { margin: 0; }
+.dist-op:has(input:checked) { border-color: var(--accent-dark); box-shadow: 0 0 0 3px var(--accent-light); background: var(--surface-2); }
+.dist-op:focus-within { outline: 2px solid var(--accent-dark); outline-offset: 1px; }
+.dist-dibujo { width: 48px; height: 80px; color: var(--text-secondary); fill: currentColor; }
+.dist-dibujo line { stroke: currentColor; stroke-width: 2; }
+.dist-op:has(input:checked) .dist-dibujo { color: var(--text-primary); }
+.dist-sin-dibujo { width: 48px; height: 80px; }
+@media (max-width: 640px) { .dist-opciones { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

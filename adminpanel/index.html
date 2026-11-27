@@ -1253,9 +1253,9 @@
     <div class="modal-body" id="veh-nuevo-body">
       <div class="field"><label for="veh-nuevo-numero">Número de coche</label><input type="text" id="veh-nuevo-numero" maxlength="50" autocomplete="off"/></div>
       <div class="field"><label for="veh-nuevo-patente">Matrícula <span class="label-opt">(opcional)</span></label><input type="text" id="veh-nuevo-patente" maxlength="20" autocomplete="off" autocapitalize="characters"/></div>
-      <div class="field"><label for="veh-nuevo-distribucion">Distribución de neumáticos</label>
-        <select id="veh-nuevo-distribucion" aria-describedby="veh-nuevo-distribucion-ayuda"></select>
-        <div class="field-hint" id="veh-nuevo-distribucion-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4.</div></div>
+      <fieldset class="cambio-grupo" id="veh-nuevo-distribucion" aria-describedby="veh-nuevo-distribucion-ayuda"><legend>Distribución de neumáticos</legend>
+        <div class="dist-opciones"></div>
+        <div class="field-hint" id="veh-nuevo-distribucion-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4.</div></fieldset>
       <div class="field" id="veh-nuevo-tipo-campo" hidden><label for="veh-nuevo-ruedas">Tipo de ruedas</label>
         <select id="veh-nuevo-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
         <div class="field-hint">El vehículo queda sin distribución definida.</div></div>
@@ -1278,9 +1278,9 @@
       <div class="modal-sub" id="veh-dist-sub"></div>
     </div>
     <div class="modal-body">
-      <div class="field"><label for="veh-dist-distribucion">Distribución de neumáticos</label>
-        <select id="veh-dist-distribucion" aria-describedby="veh-dist-ayuda"></select>
-        <div class="field-hint" id="veh-dist-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4. Los neumáticos montados conservan su posición.</div></div>
+      <fieldset class="cambio-grupo" id="veh-dist-distribucion" aria-describedby="veh-dist-ayuda"><legend>Distribución de neumáticos</legend>
+        <div class="dist-opciones"></div>
+        <div class="field-hint" id="veh-dist-ayuda">Ejes de adelante hacia atrás. Simple: 2 neumáticos por eje. Doble: 4. Los neumáticos montados conservan su posición.</div></fieldset>
       <div class="field" id="veh-dist-tipo-campo" hidden><label for="veh-dist-ruedas">Tipo de ruedas</label>
         <select id="veh-dist-ruedas"><option value="10">10 ruedas</option><option value="16">16 ruedas</option></select>
         <div class="field-hint">El vehículo queda sin distribución definida.</div></div>

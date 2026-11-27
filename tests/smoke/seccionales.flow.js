@@ -227,24 +227,27 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('.nav-item[data-view="vehiculos"]').click(); await sleep(700);
   if (!visible($('#btn-veh-agregar')) || $('#btn-veh-agregar').textContent.trim() !== 'Agregar vehículo') fail('vehiculos: falta el botón «Agregar vehículo» del administrador de empresa');
   var nv = function(id){ return $('#veh-nuevo-' + id); };
+  // Distribución: tarjetas de radio. Elegir es un clic en la tarjeta; '' no deja ninguna marcada.
+  var nvDist = function(){ var c = $('#veh-nuevo-distribucion input[name="distribucion"]:checked'); return c ? c.value : ''; };
+  var elegirNvDist = function(v){ var r = $('#veh-nuevo-distribucion input[value="' + v + '"]'); if (r) r.click(); else d.querySelectorAll('#veh-nuevo-distribucion input').forEach(function(x){ x.checked = false; }); };
   $('#btn-veh-agregar').click(); await sleep(200);
   if (!$('#modal-veh-nuevo').classList.contains('show')) { fail('vehiculos: «Agregar vehículo» no abrió el diálogo'); return; }
   if (d.activeElement !== nv('numero')) fail('vehiculos: el foco no quedó en el número de coche');
   var ops = Array.prototype.map.call(nv('sucursal').options, function(o){ return o.textContent; });
   if (ops[0] !== 'Sin sucursal' || ops.length !== 3) fail('vehiculos: opciones de sucursal del alta: ' + ops.join('|'));
   // Distribución de neumáticos: sin preselección, el catálogo completo y «Otra distribución» al final
-  var dops = Array.prototype.map.call(nv('distribucion').options, function(o){ return o.value + '=' + o.textContent; });
-  if (dops.join('|') !== '=Elegir distribución…|4x2=4x2 · 6 ruedas (simple, doble)|6x2=6x2 · 8 ruedas (simple, doble, simple) · bus convencional|6x4=6x4 · 10 ruedas (simple, doble, doble)|8x2=8x2 · 10 ruedas (simple, simple, doble, simple) · bus doble piso|8x4=8x4 · 12 ruedas (simple, simple, doble, doble)|otra=Otra distribución') fail('vehiculos: opciones de distribución del alta: ' + dops.join('|'));
-  if (nv('distribucion').value !== '' || !nv('tipo-campo').hidden) fail('vehiculos: el alta debe abrir sin distribución elegida y sin pedir el tipo de ruedas');
+  var dops = Array.prototype.map.call(d.querySelectorAll('#veh-nuevo-distribucion input[name="distribucion"]'), function(o){ return o.value + '=' + o.closest('label').textContent.replace(/\s+/g, ' ').trim(); });
+  if (dops.join('|') !== '4x2=4x2 · 6 ruedas (simple, doble)|6x2=6x2 · 8 ruedas (simple, doble, simple) · bus convencional|6x4=6x4 · 10 ruedas (simple, doble, doble)|8x2=8x2 · 10 ruedas (simple, simple, doble, simple) · bus doble piso|8x4=8x4 · 12 ruedas (simple, simple, doble, doble)|otra=Otra distribución') fail('vehiculos: opciones de distribución del alta: ' + dops.join('|'));
+  if (nvDist() !== '' || !nv('tipo-campo').hidden) fail('vehiculos: el alta debe abrir sin distribución elegida y sin pedir el tipo de ruedas');
   nv('numero').value = ' '; $('#veh-nuevo-guardar').click(); await sleep(100);
   if (nv('error').textContent.indexOf('número de coche') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: falta validación del número de coche');
   // Sin distribución no se crea: elegirla es obligatorio
   nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(100);
   if (nv('error').textContent.indexOf('distribución de neumáticos') === -1 || fx.rpcs.some(function(r){ return r.name === 'vehiculo_crear'; })) fail('vehiculos: el alta no exigió la distribución: ' + nv('error').textContent);
   // «Otra distribución» pide el tipo de ruedas; una del catálogo lo oculta (la base lo deriva)
-  nv('distribucion').value = 'otra'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true }));
+  elegirNvDist('otra');
   if (nv('tipo-campo').hidden) fail('vehiculos: «Otra distribución» debe pedir el tipo de ruedas');
-  nv('distribucion').value = '8x4'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true }));
+  elegirNvDist('8x4');
   if (!nv('tipo-campo').hidden) fail('vehiculos: con una distribución del catálogo no se pide el tipo de ruedas');
   if (nv('error').textContent !== '') fail('vehiculos: elegir distribución debe limpiar el error previo');
   nv('numero').value = '321'; nv('patente').value = 'QQ 0001'; nv('sucursal').value = '2';
@@ -259,7 +262,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   // Duplicado: el diálogo queda abierto con el mensaje
   $('#btn-veh-agregar').click(); await sleep(200);
   if (nv('numero').value !== '') fail('vehiculos: el diálogo reabierto debe empezar vacío');
-  nv('distribucion').value = '6x2'; nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(400);
+  elegirNvDist('6x2'); nv('numero').value = '321'; $('#veh-nuevo-guardar').click(); await sleep(400);
   if (toast().indexOf('número de coche') === -1 || nv('error').textContent.indexOf('número de coche') === -1 || !$('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: sin mensaje de número duplicado: ' + toast());
   $('#modal-veh-nuevo [data-action="vehiculoAgregarCerrar"]').click(); await sleep(150);
   if ($('#modal-veh-nuevo').classList.contains('show')) fail('vehiculos: Cancelar no cerró el diálogo');
@@ -452,7 +455,7 @@ window.sucursalesClienteFlow = async function(w, d, sleep, fail, log){
   $('#btn-veh-agregar').click(); await sleep(200);
   if (!/Cargar neumáticos ahora/.test($('#modal-veh-nuevo label.sec-check').textContent) || !nv('cargar').checked) fail('vehiculos: «Cargar neumáticos ahora» debe venir marcada por defecto');
   // «Otra distribución» (lo que no está en el catálogo): sin distribución y con el tipo de ruedas elegido
-  nv('distribucion').value = 'otra'; nv('distribucion').dispatchEvent(new w.Event('change', { bubbles: true })); nv('ruedas').value = '10';
+  elegirNvDist('otra'); nv('ruedas').value = '10';
   nv('numero').value = '322'; nv('cargar').checked = true;
   $('#veh-nuevo-guardar').click(); await sleep(1200);
   var cr2 = fx.rpcs.filter(function(r){ return r.name === 'vehiculo_crear'; }).pop();

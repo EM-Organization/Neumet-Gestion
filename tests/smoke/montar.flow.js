@@ -6,6 +6,9 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   var fx = w.__montarFx, $ = function(s){ return d.querySelector(s); }, all = function(s){ return d.querySelectorAll(s); };
   var txt = function(s){ var e = $(s); return e ? e.textContent.replace(/\s+/g, ' ').trim() : ''; };
   var rpcs = function(n){ return fx.rpcs.filter(function(r){ return r.name === n; }); };
+  // Distribución: tarjetas de radio (fieldset #veh-dist-distribucion). Elegir es un clic en la tarjeta; '' no deja ninguna marcada.
+  var elegirDist = function(v){ var r = $('#veh-dist-distribucion input[value="' + v + '"]'); if(r){ r.click(); return; } all('#veh-dist-distribucion input').forEach(function(x){ x.checked = false; }); $('#veh-dist-distribucion').dispatchEvent(new w.Event('change', {bubbles: true})); };
+  var valorDist = function(){ var c = $('#veh-dist-distribucion input[name="distribucion"]:checked'); return c ? c.value : ''; };
   var poner = function(sel, v){ var e = $(sel); e.value = v; e.dispatchEvent(new w.Event('change', {bubbles: true})); };
   var teclear = function(sel, v){ var e = $(sel); e.value = v; e.dispatchEvent(new w.Event('input', {bubbles: true})); };
   var esperar = async function(cond, que){ for(var t = 0; t < 60; t++){ if(cond()) return true; await sleep(50); } fail('montar: timeout esperando ' + que); return false; };
@@ -198,15 +201,20 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   var bd = $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]');
   if(!bd || bd.textContent.trim() !== 'Distribución y servicio') { fail('distribución: falta «Distribución y servicio» en la cabecera'); return; }
   bd.click();
-  if(!await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').options.length === 7; }, 'el diálogo de distribución')) return;
-  if($('#veh-dist-distribucion').value !== 'otra') fail('distribución: un vehículo sin distribución debe preseleccionar «Otra»: ' + $('#veh-dist-distribucion').value);
-  poner('#veh-dist-distribucion', ''); $('#veh-dist-form').requestSubmit(); await sleep(100);
+  if(!await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && all('#veh-dist-distribucion input[name="distribucion"]').length === 6; }, 'el diálogo de distribución')) return;
+  if(valorDist() !== 'otra') fail('distribución: un vehículo sin distribución debe preseleccionar «Otra»: ' + valorDist());
+  elegirDist(''); $('#veh-dist-form').requestSubmit(); await sleep(100);
   if(rpcs('vehiculo_cambiar_distribucion').length || !/Falta elegir la distribución/.test(txt('#veh-dist-error'))) fail('distribución: sin elegir no debe llegar a la RPC: ' + txt('#veh-dist-error'));
-  poner('#veh-dist-distribucion', 'otra');
+  elegirDist('otra');
   if($('#veh-dist-tipo-campo').hidden) fail('distribución: «Otra» debe pedir el tipo de ruedas');
-  poner('#veh-dist-distribucion', '6x2');
+  elegirDist('6x2');
   if(!$('#veh-dist-tipo-campo').hidden) fail('distribución: con una del catálogo no se pide el tipo de ruedas');
-  $('#veh-dist-form').requestSubmit(); $('#veh-dist-form').requestSubmit();
+  // Enter sobre la tarjeta marcada guarda una sola vez; el Enter repetido del teclado no guarda.
+  var tarjeta = $('#veh-dist-distribucion input[value="6x2"]');
+  tarjeta.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', repeat: true, bubbles: true, cancelable: true})); await sleep(100);
+  if(rpcs('vehiculo_cambiar_distribucion').length) fail('distribución: un Enter repetido no debe guardar');
+  tarjeta.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true}));
+  tarjeta.dispatchEvent(new w.KeyboardEvent('keydown', {key: 'Enter', bubbles: true, cancelable: true}));
   await esperar(function(){ return rpcs('vehiculo_cambiar_distribucion').length >= 1; }, 'la RPC de distribución');
   await sleep(500);
   if(rpcs('vehiculo_cambiar_distribucion').length !== 1) fail('distribución: el doble envío llegó a la RPC ' + rpcs('vehiculo_cambiar_distribucion').length + ' veces');
@@ -229,7 +237,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   }
   // Con 6x2 elegida, el diálogo la trae preseleccionada.
   $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click();
-  await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && $('#veh-dist-distribucion').value === '6x2'; }, 'la distribución actual preseleccionada');
+  await esperar(function(){ return $('#modal-veh-dist').classList.contains('show') && valorDist() === '6x2'; }, 'la distribución actual preseleccionada');
   $('#veh-dist-form').querySelector('[data-action="vehiculo-cambiar-distribucion-cerrar"]').click(); await sleep(100);
   // Servicio (camión o bus): el diálogo trae el de la base; cambiarlo llama a vehiculo_fijar_servicio, sin cambio no llama; un 42501 avisa y deja reintentar.
   var abrirServicio = function(){ $('#vd-cab [data-action="vehiculo-cambiar-distribucion"]').click(); return esperar(function(){ return $('#modal-veh-dist').classList.contains('show'); }, 'el diálogo de servicio'); };
@@ -253,7 +261,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   vh.distribucion = null; vh.tipo_ruedas = 10; vh.servicio = null;
   var nDist = rpcs('vehiculo_cambiar_distribucion').length, nServ = rpcs('vehiculo_fijar_servicio').length;
   $('#toast-msg').textContent = '';
-  await abrirServicio(); if($('#veh-dist-distribucion').value !== 'otra') fail('solo servicio: sin distribución debe preseleccionar «Otra»: ' + $('#veh-dist-distribucion').value);
+  await abrirServicio(); if(valorDist() !== 'otra') fail('solo servicio: sin distribución debe preseleccionar «Otra»: ' + valorDist());
   var totalA = fx.rpcs.length;
   poner('#veh-dist-servicio', 'camion'); $('#veh-dist-form').requestSubmit();
   await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === nServ + 1 && cerrado(); }, 'la RPC de servicio sin distribución');
@@ -264,7 +272,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   // Con distribución: cambiar solo el servicio no llama a vehiculo_cambiar_distribucion, y el diálogo trae la de la base.
   vh.distribucion = '6x2'; vh.tipo_ruedas = 10;
   nDist = rpcs('vehiculo_cambiar_distribucion').length; nServ = rpcs('vehiculo_fijar_servicio').length;
-  await abrirServicio(); if($('#veh-dist-distribucion').value !== '6x2') fail('solo servicio con distribución: el diálogo debe traer 6x2: ' + $('#veh-dist-distribucion').value);
+  await abrirServicio(); if(valorDist() !== '6x2') fail('solo servicio con distribución: el diálogo debe traer 6x2: ' + valorDist());
   poner('#veh-dist-servicio', 'bus'); $('#veh-dist-form').requestSubmit();
   await esperar(function(){ return rpcs('vehiculo_fijar_servicio').length === nServ + 1 && cerrado(); }, 'la RPC de servicio con distribución');
   if(rpcs('vehiculo_cambiar_distribucion').length !== nDist) fail('solo servicio con distribución: llamó a vehiculo_cambiar_distribucion');
