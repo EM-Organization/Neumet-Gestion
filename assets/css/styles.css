@@ -551,7 +551,7 @@
 .vd-cab { margin-bottom: 18px; }
 .vd-cab-titulo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* Acciones de la cabecera (docs/21 §5.7): grupo a la derecha del título, alto 40; la destructiva va última, en rojo y separada.
-   Solo CSS (no se tocan los botones del markup): Cambiar distribución empuja el grupo a la derecha; Eliminar, si lo sigue, deja 24 px. */
+   Solo CSS (no se tocan los botones del markup): «Distribución y servicio» empuja el grupo a la derecha; Eliminar, si lo sigue, deja 24 px. */
 .vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"], .vd-cab-titulo > .vd-cab-eliminar { min-height: 40px; border: 1.5px solid var(--n-oliva); background: transparent; color: var(--n-oscuro); }
 .vd-cab-titulo > [data-action="vehiculo-cambiar-distribucion"] { margin-left: auto; }
 .vd-cab-titulo > .vd-cab-eliminar { margin-left: auto; border-color: var(--err); color: var(--err-on-white); }
