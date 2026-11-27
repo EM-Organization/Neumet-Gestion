@@ -28,26 +28,26 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   var enlDisp = $('#inicio-contenido [data-action="irA"][data-args=\'["dispositivos"]\']');
   if(cliMode && enlDisp) fail('inicio(cliente): enlaza a Dispositivos');
   if(!cliMode && !enlDisp) fail('inicio(admin): los dispositivos sin actividad no enlazan a Dispositivos');
-  // Últimas mediciones (fixture de flota.fixture.js): 3 vehículos, comparativa solo con medición previa
+  // Últimas mediciones (fixture de flota.fixture.js): 4 vehículos, una fila cada uno con su peor cambio
   var um = all('#inicio-contenido #inicio-h-ultimas ~ ul > li');
   if(um.length !== 4) fail('inicio('+rol+'): últimas mediciones: se esperaban 4 vehículos, hay '+um.length);
   else {
     var t0 = um[0].textContent.replace(/\s+/g, ' ');
     if(!/Coche 101/.test(t0) || /Camión/.test(t0) || /Coche 101 · Coche/.test(t0) || !/AB123CD/.test(t0) || !/14\/6\/2026/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta nombre, matrícula, coche o fecha: '+t0);
-    if(!/13,0 → 12,6 mm/.test(t0) || !/\u22120,4/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta la comparativa: '+t0);
-    var sin = um[0].querySelectorAll('.um-sin');
-    if(sin.length !== 1 || !/15,5 mm/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): el neumático sin medición previa debe mostrar solo los mm y "Sin previa"');
-    if(/→/.test(um[0].querySelector('.um-neu:nth-child(3)').textContent)) fail('inicio('+rol+'): comparativa sin medición previa');
+    // Una fila por vehículo: el peor cambio (estado primero, luego la mayor caída) y su diferencia en mm.
+    if(!/Buen estado/.test(t0) ||!/\u22120,4/.test(t0)) fail('inicio('+rol+'): últimas mediciones: falta la comparativa: '+t0);
+    // Sin repetir «(informativo)» por fila: va una vez en el pie del bloque.
+    var infos = ($('#inicio-h-ultimas').parentNode.textContent.match(/\(informativo\)/g) || []).length;
+    if(infos !== 1 || /\(informativo\)/.test(t0)) fail('inicio('+rol+'): "(informativo)" debe aparecer una vez en Últimas mediciones: '+infos);
     // RN-01 (regresión): sin fila en v_estado_neumaticos no hay huellas, así que el mini no pinta ninguna rueda por desgaste.
     // El promedio de la visita (3,67) se muestra solo como dato informativo; no puede dar un mínimo ni un estado.
     var t3 = um[3].textContent.replace(/\s+/g, ' ');
     if(um[3].querySelectorAll('.mini-veh .mv-rueda[fill]').length) fail('inicio('+rol+'): visita sin huellas (v_estado vacío) pinta ruedas por desgaste (RN-01): '+t3);
-    if(!/3,6 mm \(informativo\)|3,7 mm \(informativo\)/.test(t3)) fail('inicio('+rol+'): el promedio de la visita debe rotularse como informativo: '+t3);
+    if(!/Sin datos · Sin medición previa/.test(t3)) fail('inicio('+rol+'): visita sin huellas: debe decir Sin datos y Sin medición previa: '+t3);
     var t2 = um[2].textContent.replace(/\s+/g, ' ');
-    if(!/7,3 → 2,7 mm/.test(t2) || !/\u22124,6/.test(t2) || !um[2].querySelector('.um-dif.alto')) fail('inicio('+rol+'): desgaste alto no destacado: '+t2);
-    if(!/9,0 → 9,2 mm/.test(t2) || !/\+0,2/.test(t2)) fail('inicio('+rol+'): diferencia positiva: '+t2);
+    // Camión 02: el de desgaste límite gana al que sube (+0,2): el estado manda sobre la caída.
+    if(!/Desgaste límite/.test(t2) ||!/\u22124,6/.test(t2) || /\+0,2/.test(t2)) fail('inicio('+rol+'): el peor cambio de Camión 02 debe ser el de desgaste límite −4,6 mm: '+t2);
     if(um[1].textContent.indexOf('<Crítica>') === -1 || um[1].innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre en últimas mediciones sin escapar');
-    if(um[2].querySelectorAll('.um-dif.sube').length !== 0) fail('inicio: +0,2 no debería marcarse como lectura mayor');
     um[1].querySelector('[data-action="verVehiculo"]').click(); await sleep(700);
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio('+rol+'): la fila de últimas mediciones no abre el detalle');
     $('.nav-item[data-view="inicio"]').click(); await sleep(500);
@@ -73,9 +73,9 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(d.body.innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre de vehículo sin escapar');
   log.push('inicio('+rol+'): '+txt.slice(0,160));
   // Orden: Requieren atención + Próximos cambios, luego el resumen de proporciones, luego Últimas mediciones
-  var hPx = $('#inicio-h-proximos'), hRs = $('#inicio-h-resumen'), hUl = $('#inicio-h-ultimas');
+  var hAt = $('#inicio-h-atencion'), hPx = $('#inicio-h-proximos'), hRs = $('#inicio-h-resumen'), hUl = $('#inicio-h-ultimas');
   var antes = function(a, b){ return !!(a.compareDocumentPosition(b) & w.Node.DOCUMENT_POSITION_FOLLOWING); };
-  if(!hPx || !hRs || !hUl || !antes(hPx, hRs) || !antes(hRs, hUl)) fail('inicio('+rol+'): el resumen "N de M neumáticos" debe ir después de Próximos cambios y antes de Últimas mediciones');
+  if(!hAt || !hPx || !hRs || !hUl || !antes(hAt, hPx) || !antes(hPx, hRs) || !antes(hRs, hUl)) fail('inicio('+rol+'): el orden debe ser Requieren atención, Próximos cambios, resumen y Últimas mediciones');
   // Sin las secciones el resto del recorrido solo lanzaría un TypeError («reading 'closest'») que tapa la causa real ya registrada arriba.
   if(!hPx) return;
   // Sin etiquetas «P1, P2…»: posiciones con nombre y mini vehículo
@@ -98,28 +98,22 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(argsPx.length !== 2 || !sel || Number(sel.dataset.pos) !== Number(argsPx[1])) fail('inicio('+rol+'): "Ver coche" no selecciona la rueda '+argsPx[1]);
     $('.nav-item[data-view="inicio"]').click(); await sleep(600);
   }
-  // Buscador destacado: bloque propio, centrado y alto
-  var hero = $('.inicio-hero'), inpH = $('#busq-inicio-input');
-  if(!hero || !hero.contains(inpH)) fail('inicio('+rol+'): el buscador debe estar en el bloque .inicio-hero');
-  else {
-    var rh = hero.getBoundingClientRect(), ri = inpH.getBoundingClientRect();
-    if(ri.height < 48) fail('inicio('+rol+'): buscador poco alto: '+ri.height);
-    if(Math.abs((ri.left + ri.width / 2) - (rh.left + rh.width / 2)) > 2) fail('inicio('+rol+'): buscador no centrado');
-    if(w.getComputedStyle(hero).backgroundColor === w.getComputedStyle(cont.querySelector('.inicio-card')).backgroundColor) fail('inicio('+rol+'): el bloque del buscador no se distingue de las tarjetas');
-  }
+  // Sin buscador propio en Inicio: el de la barra superior es el único y se ve en esta pantalla.
+  if($('.inicio-hero') || $('#busq-inicio')) fail('inicio('+rol+'): sobra el buscador grande de Inicio');
+  if(!visible($('#busq-global-input'))) fail('inicio('+rol+'): el buscador de la barra no se ve en Inicio');
 
-  // --- Buscador de Inicio: Enter abre el detalle con una coincidencia; lista si hay varias ---
-  var bi = $('#busq-inicio-input');
-  if(!bi || !visible(bi)) fail('inicio('+rol+'): falta el buscador prominente');
+  // --- Buscador de Inicio (el de la barra): Enter abre el detalle con una coincidencia; lista si hay varias ---
+  var bi = $('#busq-global-input');
+  if(!bi || !visible(bi)) fail('inicio('+rol+'): falta el buscador de la barra');
   else {
     if(bi.placeholder !== 'Matrícula, número de coche o quema') fail('inicio: placeholder del buscador: '+bi.placeholder);
     var escribirB = async function(inp, v){ inp.value = v; inp.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(350); };
     var enviar = async function(inp){ inp.form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true})); await sleep(700); };
     await escribirB(bi, 'cam'); await enviar(bi);
-    if(all('#busq-inicio-res .busq-op').length < 2) fail('inicio: varias coincidencias deben mostrar lista');
+    if(all('#busq-global-res .busq-op').length < 2) fail('inicio: varias coincidencias deben mostrar lista');
     if($('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: con varias coincidencias no debe abrir el detalle');
     await escribirB(bi, 'sab 1234'); // matrícula guardada como SAB-1234, escrita con espacio
-    if(all('#busq-inicio-res .busq-op').length !== 1) fail('inicio: la matrícula con guion/espacio no se encuentra');
+    if(all('#busq-global-res .busq-op').length !== 1) fail('inicio: la matrícula con guion/espacio no se encuentra');
     await escribirB(bi, 'ab123cd'); await enviar(bi);
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio: Enter con una coincidencia no abre el detalle');
     if($('.nav-item.active').dataset.view !== 'vehiculos') fail('detalle: el menú debe resaltar Vehículos');
@@ -132,15 +126,15 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     $('.nav-item[data-view="inicio"]').click(); await sleep(400);
     // Por número de quema: el resultado nombra la quema y Enter abre el vehículo donde está montado el neumático
     await escribirB(bi, 'q 7788');
-    var opq = all('#busq-inicio-res .busq-op');
-    if(opq.length !== 1 || opq[0].textContent.indexOf('Quema Q-7788') === -1) fail('inicio: la quema no lista el vehículo con su quema: '+$('#busq-inicio-res').textContent);
+    var opq = all('#busq-global-res .busq-op');
+    if(opq.length !== 1 || opq[0].textContent.indexOf('Quema Q-7788') === -1) fail('inicio: la quema no lista el vehículo con su quema: '+$('#busq-global-res').textContent);
     await enviar(bi);
     if(!$('#view-vehiculo-detalle').classList.contains('active') || $('#vd-cab').textContent.indexOf('Camión 01') === -1) fail('inicio: la quema no abre el vehículo donde está montado');
     $('.nav-item[data-view="inicio"]').click(); await sleep(400);
     await escribirB(bi, 'Q-9999');
-    if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: una quema inexistente debe decir que no hay coincidencias');
+    if(!/Ningún vehículo coincide/.test($('#busq-global-res').textContent)) fail('inicio: una quema inexistente debe decir que no hay coincidencias');
     await escribirB(bi, 'zzz'); 
-    if(!/Ningún vehículo coincide/.test($('#busq-inicio-res').textContent)) fail('inicio: falta el mensaje sin coincidencias');
+    if(!/Ningún vehículo coincide/.test($('#busq-global-res').textContent)) fail('inicio: falta el mensaje sin coincidencias');
     bi.value = ''; bi.dispatchEvent(new w.Event('input',{bubbles:true})); await sleep(100);
   }
   // Lista "Requieren atención" -> detalle
@@ -208,7 +202,7 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(!$('#view-'+vv) || !$('#view-'+vv).classList.contains('active')) fail('menu('+rol+'): '+vv+' no muestra su vista');
     if(all('.view.active').length !== 1) fail('menu('+rol+'): más de una vista activa en '+vv);
     if(!$('#breadcrumb-current').textContent.trim()) fail('menu('+rol+'): '+vv+' sin título');
-    var bus = vv === 'inicio' ? '#busq-inicio-input' : vv === 'vehiculos' ? '#search-vehiculos' : '#busq-global-input';
+    var bus = vv === 'vehiculos' ? '#search-vehiculos' : '#busq-global-input';
     if(!visible($(bus))) fail('buscador ('+rol+'): no hay buscador visible en '+vv);
   }
   // --- Buscador global (barra superior, atajo "/") desde otra pantalla ---
