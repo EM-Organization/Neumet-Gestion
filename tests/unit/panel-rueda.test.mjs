@@ -1,7 +1,7 @@
 // Lógica del panel de una rueda y del menú «Más» de la cabecera del detalle de vehículo (domain/panel-rueda.js).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { avisoPanel, textoKmPrevios, itemsMasCabecera } from '../../assets/js/domain/panel-rueda.js';
+import { avisoPanel, textoKmPrevios, itemsMasCabecera, textoSemanas } from '../../assets/js/domain/panel-rueda.js';
 
 describe('avisoPanel: un solo aviso por rueda, por prioridad', () => {
   test('bajo el límite de retiro: «Retirar ya.» sin RN-08 ni proyección', () => {
@@ -15,7 +15,7 @@ describe('avisoPanel: un solo aviso por rueda, por prioridad', () => {
     const a = avisoPanel({ bajoRetiro: false, razonAcelerado: 'Se gasta 1,20 mm por semana…', semanasRetiro: 1 });
     assert.equal(a.titulo, null);
     assert.equal(a.texto, 'Se gasta 1,20 mm por semana…');
-    assert.equal(a.proyeccion, 'Llega a desgaste límite en unas 1,0 semanas');
+    assert.equal(a.proyeccion, 'Llega a desgaste límite en 1 semana');
   });
   test('sin desgaste acelerado, la proyección a límite es el aviso', () => {
     assert.deepEqual(avisoPanel({ bajoRetiro: false, razonAcelerado: null, semanasRetiro: 12.345 }),
@@ -27,6 +27,21 @@ describe('avisoPanel: un solo aviso por rueda, por prioridad', () => {
   test('acelerado sin semanas: solo la razón', () => {
     assert.deepEqual(avisoPanel({ bajoRetiro: false, razonAcelerado: 'Razón', semanasRetiro: undefined }),
       { titulo: null, texto: 'Razón', proyeccion: null });
+  });
+});
+
+describe('textoSemanas: concordancia y decimales', () => {
+  test('un entero no lleva decimal y la concordancia sigue al número', () => {
+    assert.equal(textoSemanas(1), 'en 1 semana');
+    assert.equal(textoSemanas(2), 'en unas 2 semanas');
+  });
+  test('un valor que al redondear da entero se escribe sin decimal', () => {
+    assert.equal(textoSemanas(1.04), 'en 1 semana');
+    assert.equal(textoSemanas(1.96), 'en unas 2 semanas');
+  });
+  test('con decimal, un decimal y plural', () => {
+    assert.equal(textoSemanas(2.5), 'en unas 2,5 semanas');
+    assert.equal(textoSemanas(12.345), 'en unas 12,3 semanas');
   });
 });
 

@@ -296,7 +296,7 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   // con el foco inicial en «Cancelar» (la salida segura; Enter no elimina) y, al cancelar, el foco vuelve al botón que lo abrió.
   var estados = vivos().map(function(x){ return [x, x.estado]; });
   estados.forEach(function(e){ e[0].estado = 'baja'; });
-  be.focus(); be.click();
+  bm.click(); be.focus(); be.click();
   var abrio = await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar sin neumáticos');
   await sleep(200);
   if(abrio){
@@ -310,10 +310,10 @@ window.montarFlow = async function(w, d, sleep, fail, log){
   estados.forEach(function(e){ e[0].estado = e[1]; });
   var conQuema = vivos()[0].numero_quema;
   vivos()[0].numero_quema = null; // un neumático sin quema no puede volver al stock
-  be.focus(); be.click();
+  bm.click(); be.focus(); be.click();
   if(!await esperar(function(){ return $('#modal-veh-eliminar').classList.contains('show'); }, 'el diálogo de eliminar')) return;
   // Accesibilidad del alertdialog (docs/21 §5.5), con neumáticos: rol, foco inicial en «Cancelar» y no en el radio,
-  // Tab que no sale del diálogo y Escape que cierra y devuelve el foco a «Eliminar vehículo».
+  // Tab que no sale del diálogo y Escape que cierra y devuelve el foco al botón «Más».
   var dlgEl = $('#modal-veh-eliminar .modal');
   if(dlgEl.getAttribute('role') !== 'alertdialog' || dlgEl.getAttribute('aria-modal') !== 'true') fail('eliminar: el diálogo debe ser role="alertdialog" aria-modal: ' + dlgEl.getAttribute('role'));
   if(dlgEl.getAttribute('aria-labelledby') !== 'veh-elim-title') fail('eliminar: el alertdialog debe nombrarse con su título');

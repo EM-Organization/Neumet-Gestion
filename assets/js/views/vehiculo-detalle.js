@@ -21,7 +21,7 @@ import { contextoListo, filtrarFilas, nombreSucursal } from '../core/seccional.j
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import { fmtNum, fmtFecha, plural } from '../domain/formato.js';
 import { partesRecuadro, presentacionAlerta, detalleAlerta } from '../domain/alertas.js';
-import { avisoPanel, textoKmPrevios, itemsMasCabecera } from '../domain/panel-rueda.js';
+import { avisoPanel, textoKmPrevios, itemsMasCabecera, textoSemanas } from '../domain/panel-rueda.js';
 import { menuMas } from '../core/menu-mas.js';
 import { TIPO_LABEL } from '../domain/ciclo-vida.js';
 import { etiquetaMotivo } from '../domain/motivos.js';
@@ -304,7 +304,7 @@ function dibujarDiagrama() {
 function frase(nombre, semanas, yaPaso) {
   if (yaPaso) return html`<li>${nombre}: ya se alcanzó.</li>`;
   if (nulo(semanas)) return '';
-  return html`<li>${nombre}: en unas ${fmtNum(semanas, 1)} semanas.</li>`;
+  return html`<li>${nombre}: ${textoSemanas(semanas)}.</li>`;
 }
 
 function seccionMedicion(fila) {
