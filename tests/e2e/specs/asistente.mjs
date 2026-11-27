@@ -55,13 +55,20 @@ async function arrancar(env) {
 }
 
 // Una llamada HTTP a la función por el web (como la haría el panel): Bearer del rol, o ninguno si `sinBearer`.
-async function preguntar(env, { rol, pregunta = '¿Qué vehículos hay?', clienteId = null, sinBearer = false, cuerpo }) {
+// Las peticiones van sin `flujo()`, así que llevan su propia etiqueta (si no, heredan la del flujo anterior). `rechazo` es el
+// status que la prueba afirma para el `asistente_reservar` que la función llama a PostgREST: solo ese rechazo queda declarado.
+async function preguntar(env, { rol, pregunta = '¿Qué vehículos hay?', clienteId = null, sinBearer = false, cuerpo, rechazo = null }) {
   const token = sinBearer ? null : env.sesion(rol).jwt;
+  env.web.setTag('asistente/directo');
+  const desde = env.peticiones.length;
   const r = await fetch(env.web.origin + RUTA, {
     method: 'POST',
     headers: { 'content-type': 'application/json', apikey: CLAVE, ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(cuerpo ?? { pregunta, historial: [], cliente_id: clienteId })
   });
+  if (rechazo !== null) {
+    for (const p of env.peticiones.slice(desde)) if (p.path === '/rpc/asistente_reservar' && p.status === rechazo) p.esperada = true;
+  }
   return { status: r.status, cuerpo: await r.json().catch(() => null) };
 }
 
@@ -88,11 +95,11 @@ export function registrar(env) {
     await funcion(env);
     assert.equal((await preguntar(env, { rol: 'global', sinBearer: true })).status, 401);
     for (const rol of ['sinperfil', 'api']) {
-      const r = await preguntar(env, { rol });
+      const r = await preguntar(env, { rol, rechazo: 403 });
       assert.equal(r.status, 403, rol);
       assert.equal(r.cuerpo.ok, false, rol);
     }
-    const admin = await preguntar(env, { rol: 'admin', clienteId: null });
+    const admin = await preguntar(env, { rol: 'admin', clienteId: null, rechazo: 400 });
     assert.equal(admin.status, 400);
     assert.equal(admin.cuerpo.error, 'cliente_requerido');
   });
