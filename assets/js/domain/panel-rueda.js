@@ -7,9 +7,18 @@ const nulo = v => v === null || v === undefined;
 // si el resultado es entero se escribe sin decimal («2», no «2,0»).
 export function textoSemanas(semanas) {
   const r = Math.round(semanas * 10) / 10;
+  if (r < 1) return 'en menos de 1 semana'; // «en unas 0 semanas» o «0,4 semanas» no se leen bien
   if (r === 1) return 'en 1 semana';
   if (Number.isInteger(r)) return `en unas ${fmtNum(r)} semanas`;
   return `en unas ${fmtNum(r, 1)} semanas`;
+}
+
+// Semanas hasta un umbral por la huella mínima (RN-01), la misma que decide el estado. v_estado_neumaticos.semanas_hasta_*
+// todavía proyecta con el promedio (G-04, pendiente en docs/08): con 3,2 mm de mínimo y 6 de promedio anunciaría semanas de más.
+// Sin tasa positiva o sin mínimo no hay proyección (null); por debajo del umbral, 0.
+export function semanasHasta(minimo, umbral, tasa) {
+  if (nulo(minimo) || nulo(umbral) || nulo(tasa) || !(Number(tasa) > 0)) return null;
+  return Math.max(Number(minimo) - Number(umbral), 0) / Number(tasa);
 }
 
 // Un solo aviso por rueda, por prioridad: bajo el límite de retiro manda retirar (no se rota); si no, el desgaste acelerado

@@ -93,16 +93,29 @@ export function conteoRecuadro(alertas, ahora = Date.now()) {
 }
 
 // Partes del recuadro «× N cambiar · ◆ N revisar», cada una con su color y su símbolo: el texto dice lo mismo que el color
-// (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero va en gris, así el rojo queda para
-// lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
+// (RN-20). «Amarillo» es la clase orange, la de PRESENTACION_ALERTA. Una cifra en cero no se muestra: «× 2 cambiar» sin
+// «0 revisar», y el rojo queda para lo que hay que cambiar. Vacío si no hay nada que contar, así el recuadro no aparece.
 export function partesRecuadro(alertas, ahora = Date.now()) {
   const { cambiar, revisar } = conteoRecuadro(alertas, ahora);
-  if (!cambiar && !revisar) return [];
   const { simbolo, accion, color } = presentacionAlerta({ tipo: 'limite' });
-  return [
-    { color: cambiar ? color : 'gray', simbolo, texto: `${cambiar} ${accion.toLowerCase()}` },
-    { color: revisar ? 'orange' : 'gray', simbolo: SIMBOLO_REVISAR, texto: `${revisar} revisar` },
-  ];
+  const partes = [];
+  if (cambiar) partes.push({ color, simbolo, texto: `${cambiar} ${accion.toLowerCase()}` });
+  if (revisar) partes.push({ color: 'orange', simbolo: SIMBOLO_REVISAR, texto: `${revisar} revisar` });
+  return partes;
+}
+
+// Tiempo desde que la alerta quedó abierta, en español («hace 3 días»). `ahora` va como parámetro para probarlo sin el reloj.
+// Sin fecha, «–».
+export function tiempoRelativo(iso, ahora = Date.now()) {
+  const t = ts(iso);
+  if (t === null) return '–';
+  const min = Math.floor((ahora - t) / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'hace 1 día' : `hace ${d} días`;
 }
 
 export function hastaSilencio(dias = DIAS_SILENCIO, ahora = Date.now()) {
