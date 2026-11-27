@@ -127,12 +127,12 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   var cab = $('#vd-cab').textContent;
   log.push('detalle-cab='+cab.replace(/\s+/g,' ').slice(0,120));
   ['Camión 01','AB123CD','07','123.456 km','Última medición'].forEach(function(t){ if(cab.indexOf(t) === -1) fail('detalle: cabecera sin "'+t+'"'); });
-  etiquetaPinta($('#vd-cab .vd-tag'), 'mayor', 'Desgaste límite de la cabecera');
+  etiquetaPinta($('#vd-cab .vd-tag'), 'limite', 'Desgaste límite de la cabecera');
   // «Eliminar vehículo» (solo admin de empresa) vive en el menú «Más» de la cabecera, nunca como botón suelto.
   if(Array.prototype.some.call(all('#vd-cab .btn'), function(b){ return b.textContent.trim() === 'Eliminar vehículo'; })) fail('detalle: «Eliminar vehículo» no debe ser un botón suelto en la cabecera');
   var menuCab = $('#vd-cab [data-menu-mas]');
   if(!menuCab || !/Eliminar vehículo/.test(menuCab.textContent)) fail('detalle: el menú «Más» de la cabecera debe contener «Eliminar vehículo»');
-  if(!$('#vd-cab .vd-tag.est-mayor')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de mayor desgaste');
+  if(!$('#vd-cab .vd-tag.est-limite')) fail('detalle: el estado del vehículo (peor neumático) debe ser una etiqueta con estilo de desgaste límite');
 
   // Diagrama: 10 ruedas con una clase por estado, mm y símbolo (el color nunca va solo)
   var ruedas = all('#vd-diagrama .vd-rueda');
@@ -140,7 +140,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
   if(ruedas.length !== 10) fail('detalle: se esperaban 10 ruedas, hay '+ruedas.length);
   var estilos = {};
   Array.prototype.forEach.call(ruedas, function(g){
-    var m = /est-(bueno|poco|mayor|sinDatos)/.exec(g.getAttribute('class')); if(!m) { fail('detalle: rueda sin clase de estado'); return; }
+    var m = /est-(bueno|poco|mayor|limite|sinDatos)/.exec(g.getAttribute('class')); if(!m) { fail('detalle: rueda sin clase de estado'); return; }
     estilos[m[1]] = (estilos[m[1]] || 0) + 1;
     if(!g.querySelector('.vd-mm').textContent) fail('detalle: rueda sin mm');
     if(m[1] !== 'sinDatos' && !g.querySelector('.vd-sim').textContent) fail('detalle: rueda sin símbolo');
@@ -148,7 +148,7 @@ window.detalleFlow = async function(w, d, sleep, fail, log){
     if(g.querySelector('rect.vd-goma').hasAttribute('fill')) fail('detalle: el relleno de la rueda debe venir del CSS, no de un atributo');
   });
   log.push('estilos='+JSON.stringify(estilos));
-  if(estilos.bueno !== 5 || estilos.poco !== 2 || estilos.mayor !== 2 || estilos.sinDatos !== 1) fail('detalle: estilos de las ruedas: '+JSON.stringify(estilos));
+  if(estilos.bueno !== 5 || estilos.poco !== 2 || estilos.mayor !== 1 || estilos.limite !== 1 || estilos.sinDatos !== 1) fail('detalle: estilos de las ruedas: '+JSON.stringify(estilos));
   if(all('#vd-diagrama .vd-bandera').length < 1) fail('detalle: falta la insignia de desgaste acelerado');
   var r4 = $('#vd-diagrama .vd-rueda[data-pos="4"]'), r5 = $('#vd-diagrama .vd-rueda[data-pos="5"]');
   if(!/^Posición P4, .+, 2,5 milímetros, desgaste límite$/.test(r4.getAttribute('aria-label'))) fail('detalle: aria-label de la rueda 4: '+r4.getAttribute('aria-label'));

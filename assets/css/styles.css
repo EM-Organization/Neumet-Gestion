@@ -574,18 +574,18 @@
 .vd-chip:focus-visible { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
 .est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
 .est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
-.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); } .est-limite { background: var(--est-limite-fill); border-color: var(--est-limite-stroke); }
 .est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
 .vd-chip.est-bueno .vd-chip-sim, .vd-tag.est-bueno .vd-chip-sim { color: var(--est-bueno-sym); }
 .vd-chip.est-poco .vd-chip-sim, .vd-tag.est-poco .vd-chip-sim { color: var(--est-poco-sym); }
-.vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); }
+.vd-chip.est-mayor .vd-chip-sim, .vd-tag.est-mayor .vd-chip-sim { color: var(--est-mayor-sym); } .vd-chip.est-limite .vd-chip-sim, .vd-tag.est-limite .vd-chip-sim { color: var(--est-limite-sym); }
 .vd-chip-rayas { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: repeating-linear-gradient(45deg, var(--est-sinDatos-fill) 0 5px, var(--est-hatch) 5px 6px); border: 1px dashed var(--est-sinDatos-stroke); }
 .vd-flag-dot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--est-bandera); color: var(--n-blanco); font-size: 11px; font-weight: 800; line-height: 1; flex: none; }
 /* Etiqueta de estado (panel y título): mismo estilo que el chip, alto 28, sin conteo ni rango. */
 .vd-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px solid var(--n-oliva); font-size: 13px; font-weight: 600; color: var(--n-oscuro); background: var(--surface); }
 .vd-tag.est-bueno { background: var(--est-bueno-fill); border-color: var(--est-bueno-stroke); }
 .vd-tag.est-poco { background: var(--est-poco-fill); border-color: var(--est-poco-stroke); }
-.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); }
+.vd-tag.est-mayor { background: var(--est-mayor-fill); border-color: var(--est-mayor-stroke); } .vd-tag.est-limite { background: var(--est-limite-fill); border-color: var(--est-limite-stroke); }
 .vd-tag.est-sinDatos { background: var(--est-sinDatos-fill); border-color: var(--est-sinDatos-stroke); border-style: dashed; }
 .vd-tag.vd-tag-flag { border-color: var(--n-oscuro); background: var(--surface); }
 .vd-tag .vd-chip-sim { font-weight: 800; }
@@ -601,11 +601,11 @@
 .vd-rueda rect.vd-goma { stroke-width: 2; }
 .vd-rueda.est-bueno rect.vd-goma { fill: var(--est-bueno-fill); stroke: var(--est-bueno-stroke); }
 .vd-rueda.est-poco rect.vd-goma { fill: var(--est-poco-fill); stroke: var(--est-poco-stroke); }
-.vd-rueda.est-mayor rect.vd-goma { fill: var(--est-mayor-fill); stroke: var(--est-mayor-stroke); }
+.vd-rueda.est-mayor rect.vd-goma { fill: var(--est-mayor-fill); stroke: var(--est-mayor-stroke); } .vd-rueda.est-limite rect.vd-goma { fill: var(--est-limite-fill); stroke: var(--est-limite-stroke); }
 .vd-rueda.est-sinDatos rect.vd-goma { fill: url(#vd-sin-datos); stroke: var(--est-sinDatos-stroke); stroke-dasharray: 4 3; }
 .vd-rueda.est-bueno .vd-sim { fill: var(--est-bueno-sym); }
 .vd-rueda.est-poco .vd-sim { fill: var(--est-poco-sym); }
-.vd-rueda.est-mayor .vd-sim { fill: var(--est-mayor-sym); }
+.vd-rueda.est-mayor .vd-sim { fill: var(--est-mayor-sym); } .vd-rueda.est-limite .vd-sim { fill: var(--est-limite-sym); }
 .vd-rueda.est-sinDatos .vd-sim { fill: var(--est-sinDatos-sym); }
 .vd-rueda:hover rect.vd-goma { stroke-width: 2.6; }
 .vd-rueda:focus-visible rect.vd-goma { outline: 3px solid var(--n-oscuro); outline-offset: 2px; }
@@ -654,12 +654,12 @@
 .vd-g-grid { stroke: rgba(56,52,36,0.10); stroke-width: 1; }
 .vd-g-eje { fill: var(--n-oliva); font-size: 11px; font-family: var(--font); }
 .vd-g-banda { fill-opacity: 0.55; stroke: none; }
-.vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }
+.vd-g-banda.est-bueno { fill: var(--est-bueno-fill); } .vd-g-banda.est-poco { fill: var(--est-poco-fill); } .vd-g-banda.est-mayor { fill: var(--est-mayor-fill); }  .vd-g-banda.est-limite { fill: var(--est-limite-fill); }
 .vd-g-rotulo { font-size: 12px; font-weight: 600; font-family: var(--font); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }
+.vd-g-rotulo.est-bueno { fill: var(--est-bueno-sym); } .vd-g-rotulo.est-poco { fill: var(--est-poco-sym); } .vd-g-rotulo.est-mayor { fill: var(--est-mayor-sym); }  .vd-g-rotulo.est-limite { fill: var(--est-limite-sym); }
 .vd-g-serie { fill: none; stroke: var(--n-oscuro); stroke-width: 2; stroke-linejoin: round; }
 .vd-g-punto { stroke: var(--n-blanco); stroke-width: 2; }
-.vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
+.vd-g-punto.est-bueno { fill: var(--est-bueno-stroke); } .vd-g-punto.est-poco { fill: var(--est-poco-stroke); } .vd-g-punto.est-mayor { fill: var(--est-mayor-stroke); }  .vd-g-punto.est-limite { fill: var(--est-limite-stroke); } .vd-g-punto.est-sinDatos { fill: var(--est-sinDatos-stroke); }
 .vd-datos-det { margin-top: 8px; font-size: 13px; }
 .vd-datos-scroll { max-width: 100%; overflow-x: auto; }
 .vd-datos-det summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
@@ -786,6 +786,9 @@
 .alert-acciones { display:flex; gap:6px; flex-wrap:wrap; }
 /* Seis columnas con acciones: con el relleno general (16 px) la tabla mide ~700 px y a 940 px de pantalla las acciones se salían de la tarjeta (con la barra lateral quedan 656 px). */
 .alert-tabla th, .alert-tabla td { padding-left: 8px; padding-right: 8px; }
+/* La fila entera abre la ficha de su vehículo (views/alertas.js, abrirFila): el cursor lo dice. */
+.alert-tabla tbody tr { cursor: pointer; }
+.alert-tabla td { padding-top: 8px; padding-bottom: 8px; }
 /* El chip de tipo va en .alerta-tipo: sin salto, «Desgaste límite» no se parte en dos líneas en el móvil. Va aquí y no en .badge, que es de todas las vistas. */
 .alerta-tipo { white-space: nowrap; }
 @media (max-width: 640px) {

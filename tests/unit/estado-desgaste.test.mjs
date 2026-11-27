@@ -66,12 +66,16 @@ describe('wearStatus', () => {
     assert.equal(wearStatus(3.9, o), 'limite');
     assert.equal(wearStatus(3.9, th), 'mayor');
   });
-  test('«Desgaste límite» usa el estilo visual de «mayor» pero conserva nombre propio', () => {
-    assert.equal(ESTADOS.limite.estilo, 'mayor');
-    assert.equal(ESTADOS.limite.texto, 'Desgaste límite');
-    assert.equal(ESTADOS.limite.simbolo, ESTADOS.mayor.simbolo);
+  test('«Mayor desgaste» es naranja con ◆; «Desgaste límite», rojo con × (decisión del 2026-11-27)', () => {
+    assert.deepEqual([ESTADOS.mayor.simbolo, ESTADOS.mayor.estilo], ['◆', 'mayor']);
+    assert.deepEqual([ESTADOS.limite.simbolo, ESTADOS.limite.estilo, ESTADOS.limite.texto], ['×', 'limite', 'Desgaste límite']);
     assert.equal(ESTADOS.bueno.texto, 'Buen estado');
     assert.equal(ESTADOS.sinDatos.texto, 'Sin datos');
+  });
+  test('ningún símbolo ni estilo de color se repite entre estados', () => {
+    const e = Object.values(ESTADOS);
+    assert.equal(new Set(e.map(x => x.simbolo)).size, Object.keys(ESTADOS).length);
+    assert.equal(new Set(e.map(x => x.estilo)).size, Object.keys(ESTADOS).length);
   });
   test('estado de la base -> estado del detalle', () => {
     assert.deepEqual(['nuevo', 'poco_desgaste', 'mayor_desgaste', 'desgaste_limite', 'desconocido', 'otro'].map(estadoDeBase),
@@ -147,9 +151,9 @@ describe('eje y bandas del gráfico', () => {
   test('el eje siempre deja margen sobre «buen» con otros umbrales', () => {
     assert.equal(ejeY(2, { buen: 10, poco: 6, mayor: 4 }).max, 14);
   });
-  test('bandas: 0..mayor con estilo mayor y sin rótulo; las otras con «Nombre · rango»', () => {
+  test('bandas: 0..mayor con estilo limite y sin rótulo; mayor..poco con estilo mayor; las otras con «Nombre · rango»', () => {
     const b = bandasGrafico(th, 12);
-    assert.deepEqual(b.map(x => [x.id, x.estilo, x.desde, x.hasta]), [['limite', 'mayor', 0, 3], ['mayor', 'mayor', 3, 5], ['poco', 'poco', 5, 8], ['bueno', 'bueno', 8, 12]]);
+    assert.deepEqual(b.map(x => [x.id, x.estilo, x.desde, x.hasta]), [['limite', 'limite', 0, 3], ['mayor', 'mayor', 3, 5], ['poco', 'poco', 5, 8], ['bueno', 'bueno', 8, 12]]);
     assert.equal(b[0].rotulo, null);
     assert.equal(b[1].rotulo, 'Mayor desgaste · 3–5 mm');
     assert.equal(b[3].rotulo, 'Buen estado · ≥ 8 mm');

@@ -10,10 +10,10 @@ export function chip(cls, texto, simbolo = '●') {
 }
 
 const ESTADO_NEUMATICO = {
-  nuevo: { cls: 'green', lbl: ESTADOS.bueno.texto, sim: '✓' },
-  poco_desgaste: { cls: 'blue', lbl: ESTADOS.poco.texto, sim: '▲' },
-  mayor_desgaste: { cls: 'orange', lbl: ESTADOS.mayor.texto, sim: '✕' },
-  desgaste_limite: { cls: 'red', lbl: ESTADOS.limite.texto, sim: '■' },
+  nuevo: { cls: 'green', lbl: ESTADOS.bueno.texto, sim: ESTADOS.bueno.simbolo },
+  poco_desgaste: { cls: 'blue', lbl: ESTADOS.poco.texto, sim: ESTADOS.poco.simbolo },
+  mayor_desgaste: { cls: 'orange', lbl: ESTADOS.mayor.texto, sim: ESTADOS.mayor.simbolo },
+  desgaste_limite: { cls: 'red', lbl: ESTADOS.limite.texto, sim: ESTADOS.limite.simbolo },
   desconocido: { cls: 'gray', lbl: ESTADOS.sinDatos.texto, sim: '–' },
 };
 export const SIMBOLO_ESTADO_NEUMATICO = Object.fromEntries(Object.entries(ESTADO_NEUMATICO).map(([k, v]) => [k, v.sim]));

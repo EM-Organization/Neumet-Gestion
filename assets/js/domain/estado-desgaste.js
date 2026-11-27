@@ -2,9 +2,11 @@
 // el punto del gráfico y la banda donde cae (docs/21, criterio 1). Lógica pura, sin DOM ni supabase.
 //
 // Cuatro estados de la especificación más uno propio del producto, `limite` («Desgaste límite», por debajo del umbral
-// más bajo): usa el estilo visual de `mayor` pero conserva nombre y conteo propios (decisión del 2026-11-21,
-// TODO-BELOW-MAYOR). Los umbrales salen siempre de la configuración del cliente (umbral_bajo/critico/retiro_mm); aquí
-// solo se les da el nombre de la especificación: { buen, poco, mayor }.
+// más bajo), con nombre y conteo propios (TODO-BELOW-MAYOR). Los umbrales salen siempre de la configuración del cliente
+// (umbral_bajo/critico/retiro_mm); aquí solo se les da el nombre de la especificación: { buen, poco, mayor }.
+// Colores (decisión del 2026-11-27, que revierte la del 2026-11-21): «Mayor desgaste» es naranja con ◆ y «Desgaste
+// límite» es rojo con ×. Antes compartían rojo y ×, así que no se distinguían entre sí. El rojo queda solo para lo
+// crítico (lo que hay que cambiar ya), y el ◆ naranja es el mismo símbolo que usan las alertas de «revisar».
 import { fmtNum, plural } from './formato.js';
 import { TOKENS } from './tokens-detalle.js';
 import { esAuxilio } from './auxilio.js';
@@ -37,12 +39,12 @@ export function wearStatus(valor, th) {
   return 'limite'; // TODO(neumet-web: TODO-BELOW-MAYOR): comportamiento actual, ver docs/21
 }
 
-// `estilo`: qué juego de variables CSS `--est-<estilo>-*` usa. `limite` comparte el de `mayor`.
+// `estilo`: qué juego de variables CSS `--est-<estilo>-*` usa (assets/css/tokens.css). Cada estado tiene el suyo y su símbolo.
 export const ESTADOS = Object.freeze({
   bueno: { id: 'bueno', texto: 'Buen estado', simbolo: '✓', estilo: 'bueno' },
   poco: { id: 'poco', texto: 'Poco desgaste', simbolo: '▲', estilo: 'poco' },
-  mayor: { id: 'mayor', texto: 'Mayor desgaste', simbolo: '×', estilo: 'mayor' },
-  limite: { id: 'limite', texto: 'Desgaste límite', simbolo: '×', estilo: 'mayor' },
+  mayor: { id: 'mayor', texto: 'Mayor desgaste', simbolo: '◆', estilo: 'mayor' },
+  limite: { id: 'limite', texto: 'Desgaste límite', simbolo: '×', estilo: 'limite' },
   sinDatos: { id: 'sinDatos', texto: 'Sin datos', simbolo: '', estilo: 'sinDatos' },
 });
 export const BANDERA = Object.freeze({ id: 'acelerado', texto: 'Desgaste acelerado', simbolo: '!' });
@@ -142,11 +144,11 @@ export function ejeY(lecturaMax, th) {
 }
 
 // Bandas del gráfico, de abajo hacia arriba: son las del modelo de estados. La inferior (0 a `mayor`) usa el estilo
-// de `mayor` y no lleva rótulo propio (TODO-BELOW-MAYOR): el chip «Desgaste límite» la nombra.
+// de `limite` y no lleva rótulo propio (TODO-BELOW-MAYOR): el chip «Desgaste límite» la nombra.
 export function bandasGrafico(th, max) {
   const rotulo = id => `${ESTADOS[id].texto} · ${rangoEstado(id, th)}`;
   return [
-    { id: 'limite', estilo: 'mayor', desde: 0, hasta: th.mayor, rotulo: null },
+    { id: 'limite', estilo: 'limite', desde: 0, hasta: th.mayor, rotulo: null },
     { id: 'mayor', estilo: 'mayor', desde: th.mayor, hasta: th.poco, rotulo: rotulo('mayor') },
     { id: 'poco', estilo: 'poco', desde: th.poco, hasta: th.buen, rotulo: rotulo('poco') },
     { id: 'bueno', estilo: 'bueno', desde: th.buen, hasta: max, rotulo: rotulo('bueno') },

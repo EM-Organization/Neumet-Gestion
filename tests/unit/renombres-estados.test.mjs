@@ -16,6 +16,9 @@ test('Flota y diagrama usan los mismos nombres que estado-desgaste.js', () => {
   for (const e of ['nuevo', 'poco_desgaste', 'mayor_desgaste', 'desgaste_limite', 'desconocido']) assert.equal(estadoLabel(e), textoEstadoBase(e));
   assert.deepEqual([NIVEL_INFO.ok.texto, NIVEL_INFO.bajo.texto, NIVEL_INFO.critico.texto, NIVEL_INFO.retiro.texto, NIVEL_INFO.sin_datos.texto],
     [ESTADOS.bueno.texto, ESTADOS.poco.texto, ESTADOS.mayor.texto, ESTADOS.limite.texto, ESTADOS.sinDatos.texto]);
+  // El diagrama no puede importar ESTADOS (ciclo, ver nombres-estado-fuente): sus símbolos se comprueban aquí.
+  assert.deepEqual([NIVEL_INFO.ok.simbolo, NIVEL_INFO.bajo.simbolo, NIVEL_INFO.critico.simbolo, NIVEL_INFO.retiro.simbolo],
+    [ESTADOS.bueno.simbolo, ESTADOS.poco.simbolo, ESTADOS.mayor.simbolo, ESTADOS.limite.simbolo]);
 });
 
 test('el HTML y las vistas no muestran los nombres viejos como estado', () => {

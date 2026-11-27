@@ -1,6 +1,6 @@
 # NEUMET Gestión (web) — Especificación de arreglos de UI: detalle de vehículo
 
-Versión 1 · 2026-11-21 · Idioma de la interfaz: **español únicamente**.
+Versión 1 · 2026-11-21 (colores de mayor y límite, §3: 2026-11-27) · Idioma de la interfaz: **español únicamente**.
 Acompaña a `neumet-web-tokens.json` (estados, medidas del gráfico, contrastes) y a `neumet-tokens.json` (paleta base). Si hay conflicto, manda el archivo de tokens.
 Pantalla: «Detalle de vehículo» (migas «Vehículos › Coche N»). Capturas de referencia: Coche 192 y Coche 179.
 
@@ -50,14 +50,16 @@ Ver `neumet-web-tokens.json`. Resumen:
 |---|---|---|---|---|
 | `bueno` | #E4EAD3 (`NeumetSuccessTint`) | 2 #4F6B26 (`NeumetSuccess`) | ✓ #4F6B26 | Buen estado |
 | `poco` | #F8E4B5 | 2 #B9791A | ▲ #7A4E08 | Poco desgaste |
-| `mayor` | #F7E3E0 (`NeumetErrorTint`) | 2 #B3362A (`NeumetError`) | × #8E2419 (`NeumetErrorOnWhite`) | Mayor desgaste |
+| `mayor` | #FDE3CF | 2 #C2570C | ◆ #8A3A00 | Mayor desgaste |
+| `limite` | #F7E3E0 (`NeumetErrorTint`) | 2 #B3362A (`NeumetError`) | × #8E2419 (`NeumetErrorOnWhite`) | Desgaste límite |
 | `sinDatos` | #EBEBEB (`NeumetLightGrey`) con rayado de 45° (`NeumetTruckOutline`, 1 de grosor, 5 de separación) | 2 punteado #857F66 (`NeumetInputBorder`) | — | Sin datos |
 
 - Bandera «Desgaste acelerado»: círculo de 16, relleno `NeumetDeepOlive`, «!» blanco, aro blanco de 2.
 - Selección del neumático: trazo de 3 `NeumetDeepOlive` (en lugar de los 2 del estado). Foco de teclado: contorno de 3 `NeumetGoldDeep` con separación de 2.
 - Contrastes (calculados): trazos y símbolos ≥ 3:1 sobre blanco; texto ≥ 4.5:1. Los rellenos se parecen en luminosidad entre sí: se distinguen por tono, trazo y símbolo, **nunca solo por relleno**.
 - Texto sobre rellenos de estado: `NeumetDeepOlive` (≥ 9.9:1) o `NeumetOliveDark` (≥ 5.5:1).
-- Está prohibido interpolar colores entre estados: cada neumático usa exactamente uno de los cuatro.
+- Está prohibido interpolar colores entre estados: cada neumático usa exactamente uno de los cinco.
+- **Decisión del dueño (2026-11-27), que revierte la del 2026-11-21:** «Mayor desgaste» es naranja con ◆ y «Desgaste límite» es rojo con ×. Antes compartían rojo y ×, así que no se distinguían. El rojo queda solo para lo crítico (lo que hay que cambiar ya). El ◆ también es el símbolo de la alerta «Revisar», que es amarilla (`domain/alertas.js`): el símbolo coincide, el color no, y el texto dice cuál es. Contraste: símbolo sobre relleno ≥ 4,5 (mayor 6,35; límite 7,04); borde sobre blanco ≥ 3 (mayor 4,50; límite 6,04). Mayor y poco (ámbar #B9791A) se distinguen por tono y símbolo, no solo por relleno.
 
 ## 4. Modelo de estado único
 
@@ -123,7 +125,7 @@ Con umbrales 8, 5 y 3: Coche 192 debe sumar 2 `mayor`, 5 `poco`, 2 `bueno` y 1 b
 
 ### 4.5 Estado del vehículo
 
-El chip junto al título del vehículo («× Mayor desgaste») usa el mismo componente de etiqueta (5.3). Regla: la actual (`TODO-VEHICLE-STATUS-RULE`; en las capturas coincide con el peor estado entre sus neumáticos). Si el neumático de auxilio entra o no en el cálculo: `TODO-AUX-IN-STATUS`.
+El chip junto al título del vehículo («◆ Mayor desgaste») usa el mismo componente de etiqueta (5.3). Regla: la actual (`TODO-VEHICLE-STATUS-RULE`; en las capturas coincide con el peor estado entre sus neumáticos). Si el neumático de auxilio entra o no en el cálculo: `TODO-AUX-IN-STATUS`.
 
 ## 5. Componentes
 
@@ -133,7 +135,7 @@ Fila de chips al inicio de la tarjeta del esquema. **Es la leyenda y a la vez el
 
 Orden y contenido:
 1. Retirado en la ola 5: el total de neumáticos (incluye el de auxilio) va en la ficha, en el dato `Neumáticos`. Para quitar el filtro se pulsa de nuevo el chip del estado activo.
-2. `chip-mayor`, `chip-poco`, `chip-bueno`: símbolo + conteo + nombre + rango, por ejemplo «× 2 Mayor desgaste · 3–5 mm». Solo se muestran los estados con conteo mayor que 0.
+2. `chip-mayor`, `chip-poco`, `chip-bueno`: símbolo + conteo + nombre + rango, por ejemplo «◆ 2 Mayor desgaste · 3–5 mm». Solo se muestran los estados con conteo mayor que 0.
 3. `chip-sinDatos`: solo si hay neumáticos sin datos. Muestra el rayado en lugar del símbolo.
 4. `chip-acelerado`: «! {n} Desgaste acelerado». Solo si hay alguno. Va al final.
 
@@ -180,7 +182,7 @@ Bandas (de abajo hacia arriba), a todo el ancho del área de trazado:
 
 | Rango | Relleno | Rótulo |
 |---|---|---|
-| 0 a `mayor` | estilo `mayor` | sin rótulo propio (`TODO-BELOW-MAYOR`) |
+| 0 a `mayor` | estilo `limite` | sin rótulo propio (`TODO-BELOW-MAYOR`) |
 | `mayor` a `poco` | estilo `mayor` | «Mayor desgaste · {mayor}–{poco} mm» |
 | `poco` a `buen` | estilo `poco` | «Poco desgaste · {poco}–{buen} mm» |
 | `buen` al máximo | estilo `bueno` | «Buen estado · ≥ {buen} mm» |
