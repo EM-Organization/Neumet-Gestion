@@ -181,10 +181,8 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   for (var k in grupos) {
     if (grupos[k].length > 1 && new Set(grupos[k]).size !== 1) fail('empresa: los inputs de umbrales no están alineados verticalmente');
   }
-  // Solo los tres umbrales a la vista; el resto va en «Ajustes avanzados», cerrado al cargar
-  // Se consulta cada vez: cada guardado repinta la vista y el elemento anterior queda desconectado
-  var detAv = function () { return $('#emp-umb-campos details.umb-avanzados'); };
-  if (!detAv() || detAv().open !== false) fail('empresa: Ajustes avanzados debe existir y cargar cerrado');
+  // Todos los ajustes a la vista, sin desplegable
+  if ($('#emp-umb-campos details') || !visible($('#eu-swap_km'))) fail('empresa: todos los ajustes de umbrales deben estar a la vista');
   if (!visible($('#eu-umbral_bajo_mm'))) fail('empresa: el umbral bajo no está a la vista');
   if (!$('#eu-alerta_histeresis_mm') || $('#eu-alerta_histeresis_mm').value !== '0,5') fail('empresa: la histéresis actual no se cargó');
   if (!$('#eu-caida_brusca_mm') || $('#eu-caida_brusca_mm').value !== '5') fail('empresa: la caída brusca actual no se cargó: ' + ($('#eu-caida_brusca_mm') && $('#eu-caida_brusca_mm').value));
@@ -203,19 +201,17 @@ window.empresaFlow = async function (w, d, sleep, fail, log) {
   if (!cfg || cfg.args.p_caida_brusca_mm !== 4.5) fail('empresa: la caída brusca no llega a alerta_configurar ' + JSON.stringify(cfg));
   if (!/Umbrales actualizados/.test(toast())) fail('empresa: sin aviso al guardar umbrales: ' + toast());
   if (d.activeElement !== $('#emp-umb-guardar')) fail('empresa: tras guardar umbrales el foco debe volver a Guardar, está en ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
-  // Si el operario ya puso el foco en otro campo mientras guardaba, no se le quita (campo a la vista: el desplegable sigue cerrado)
+  // Si el operario ya puso el foco en otro campo mientras guardaba, no se le quita 
   $('#eu-umbral_bajo_mm').focus(); $('#emp-umb-form').requestSubmit(); await sleep(500);
   if (d.activeElement !== $('#eu-umbral_bajo_mm')) fail('empresa: guardar umbrales le robó el foco al campo en uso: ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
-  if (detAv().open !== false) fail('empresa: guardar umbrales abrió Ajustes avanzados sin error');
   if (w.__saludFx && w.__saludFx.updates.length !== upd0) fail('empresa: guardó con UPDATE directo sobre clientes');
   var nCfg = fx.rpcs.length;
   $('#eu-umbral_bajo_mm').value = '2'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !$('#emp-umb-error').classList.contains('show')) fail('empresa: umbrales inválidos llegaron a la base o no se avisó');
-  // Error en un campo avanzado: se abre el desplegable, se enfoca el campo y el error lo nombra
+  // Error en un ajuste: se enfoca el campo y el error lo nombra
   llenar(); $('#eu-alerta_histeresis_mm').value = '5'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !/margen para cerrar la alerta/i.test($('#emp-umb-error').textContent)) fail('empresa: margen fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
-  if (detAv().open !== true) fail('empresa: el error en un campo avanzado no abrió Ajustes avanzados');
-  if (d.activeElement !== $('#eu-alerta_histeresis_mm')) fail('empresa: el error en un campo avanzado no enfocó el campo: ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
+  if (d.activeElement !== $('#eu-alerta_histeresis_mm')) fail('empresa: el error no enfocó el campo: ' + (d.activeElement && (d.activeElement.id || d.activeElement.tagName)));
   llenar(); $('#eu-caida_brusca_mm').value = '31'; $('#emp-umb-form').requestSubmit(); await sleep(200);
   if (fx.rpcs.length !== nCfg || !/hasta 30/.test($('#emp-umb-error').textContent)) fail('empresa: caída brusca fuera de rango llegó a la base o no se avisó: ' + $('#emp-umb-error').textContent);
   llenar(); $('#eu-caida_brusca_mm').value = '0'; $('#emp-umb-form').requestSubmit(); await sleep(200);

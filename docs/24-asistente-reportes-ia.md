@@ -22,7 +22,7 @@ Lo que queda fuera:
 
 Orden de la vista `assets/js/views/reportes.js`, de arriba hacia abajo:
 
-1. **Asistente**: un campo de texto con el ejemplo «Por ejemplo: costo por km por marca» (sucursal: «Por ejemplo: cubiertas para cambiar»), el botón «Preguntar» (o Enter) y el historial de la conversación de la sesión.
+1. **Asistente** (bloque principal y única acción primaria): selector de cliente (solo equipo Neumet), campo de texto con el ejemplo «Por ejemplo: costo por km por marca» (sucursal: «Por ejemplo: cubiertas para cambiar»), «Preguntar» (o Enter), botones de un clic junto al campo y la conversación de la sesión debajo. Además de los reportes listos disponibles hay preguntas de ejemplo («Cubiertas para cambiar», «Últimas mediciones por vehículo», «Costo por km por marca», esta solo con costos). En la conversación, un reporte listo se muestra con su título, no con el texto enviado al modelo.
 2. **Reportes listos**: botones que envían una pregunta ya armada, con el período elegido en un selector (mes o trimestre; por defecto, el último cerrado).
 
    | Botón | Regla | Qué muestra |
@@ -33,7 +33,7 @@ Orden de la vista `assets/js/views/reportes.js`, de arriba hacia abajo:
    | Rendimiento de descartadas | RN-27 | km por vida y km por mm de las bajas, por marca, modelo y motivo |
    | Alertas de la flota | RN-20 | Cubiertas para cambiar y para revisar, por vehículo |
 
-3. **Exportaciones actuales**: el CSV de mediciones, el imprimible y la tabla de CPK por grupo siguen como están, más abajo.
+3. **Exportar datos** (más abajo y con botones secundarios): bloque «Mediciones» (CSV e imprimible) y bloque «Costo por km» (agrupación, fechas, CSV y la tabla plegada tras «Ver tabla»: ver la tabla cuesta 1 clic).
 
 Reglas de la interfaz:
 

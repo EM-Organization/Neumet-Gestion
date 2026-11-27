@@ -532,17 +532,19 @@
         </div>
         <form class="ficha-card" id="emp-umb-form" novalidate>
           <div class="ficha-card-title">Umbrales de desgaste</div>
-          <div class="ficha-sub">Se aplican a los estados de la flota. Cada umbral debe ser menor que el anterior: buen estado, poco desgaste y mayor desgaste, de mayor a menor. Por debajo del último: desgaste límite.</div>
-          <div class="ficha-umbrales" id="emp-umb-campos"></div>
-          <div class="login-error" id="emp-umb-error" role="alert"></div>
-          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button></div>
+          <div class="ficha-sub">Se aplican a los estados de toda la flota. Se miden sobre la huella mínima.</div>
+          <div id="emp-umb-campos"></div>
+          <div class="umb-barra">
+            <div class="login-error" id="emp-umb-error" role="alert"></div>
+            <button type="submit" class="btn primary" id="emp-umb-guardar">Guardar umbrales</button>
+          </div>
         </form>
         <form class="ficha-card" id="emp-moneda-form" novalidate>
           <div class="ficha-card-title">Moneda de los costos</div>
           <div class="ficha-sub">Moneda con la que se precargan los costos nuevos. Los costos ya cargados no cambian.</div>
           <div class="field"><label for="emp-moneda">Moneda</label><select id="emp-moneda"></select></div>
           <div class="login-error" id="emp-moneda-error" role="alert"></div>
-          <div class="ficha-form-actions"><button type="submit" class="btn primary" id="emp-moneda-guardar">Guardar moneda</button></div>
+          <div class="ficha-form-actions"><button type="submit" class="btn" id="emp-moneda-guardar">Guardar moneda</button></div>
         </form>
       </div>
 
@@ -901,19 +903,23 @@
             <select id="rep-cliente" data-change="repClienteChange"></select>
           </label>
           <form id="asis-form" class="asis-form">
-            <label class="asis-etiqueta" for="asis-pregunta">Pregunta sobre la flota</label>
+            <label class="asis-etiqueta" for="asis-pregunta">Preguntar sobre la flota</label>
             <div class="asis-entrada">
               <textarea id="asis-pregunta" rows="2" maxlength="500" placeholder="Por ejemplo: costo por km por marca"></textarea>
               <button type="submit" id="asis-enviar" class="btn primary">Preguntar</button>
             </div>
           </form>
-          <p class="asis-nota">Las preguntas y los datos consultados se procesan con un proveedor externo de IA.</p>
+          <div class="asis-sugerencias" role="group" aria-label="Reportes listos y preguntas de ejemplo">
+            <div id="asis-listos" class="asis-listos"></div>
+            <div id="asis-ejemplos" class="asis-listos"></div>
+          </div>
           <div id="asis-estado" class="asis-estado" role="status" aria-live="polite"></div>
           <div id="asis-historial" class="asis-historial"></div>
-          <div class="asis-etiqueta asis-listos-titulo">Reportes listos</div>
-          <div id="asis-listos" class="asis-listos"></div>
+          <p class="asis-nota">Las preguntas y los datos consultados se procesan con un proveedor externo de IA.</p>
         </div>
+        <h3 class="rep-export-titulo">Exportar datos</h3>
         <div class="rep-card">
+          <div class="rep-cpk-titulo">Mediciones</div>
           <div class="rep-filters">
             <label class="rep-field">Vehículo
               <select id="rep-vehiculo" data-change="repVehiculoChange"></select>
@@ -924,11 +930,11 @@
             <label class="rep-field">Hasta
               <input type="date" id="rep-hasta"/>
             </label>
-          </div>
-          <div class="rep-actions">
-            <button class="btn primary" id="rep-csv-btn" data-action="repExportCsv">Exportar CSV</button>
-            <button class="btn" id="rep-print-btn" data-action="repPrint">Reporte imprimible</button>
-            <button class="btn ghost" id="rep-ver-vehiculo" data-action="repVerVehiculo" hidden>Ver vehículo</button>
+            <div class="rep-actions">
+              <button class="btn" id="rep-csv-btn" data-action="repExportCsv">Exportar CSV</button>
+              <button class="btn" id="rep-print-btn" data-action="repPrint">Reporte imprimible</button>
+              <button class="btn ghost" id="rep-ver-vehiculo" data-action="repVerVehiculo" hidden>Ver vehículo</button>
+            </div>
           </div>
           <div class="rep-progress" id="rep-progress" role="status" aria-live="polite"></div>
         </div>
@@ -950,12 +956,12 @@
             <label class="rep-field">Alta hasta
               <input type="date" id="rep-cpk-hasta" data-change="repCpkCargar"/>
             </label>
+            <div class="rep-actions">
+              <button class="btn" id="rep-cpk-csv" data-action="repCpkCsv">Exportar CSV</button>
+            </div>
           </div>
           <p class="rep-cpk-aviso">Comparar marcas sin ajustar por eje, carga y época puede engañar.</p>
           <div id="rep-cpk-tabla" aria-live="polite"></div>
-          <div class="rep-actions">
-            <button class="btn" id="rep-cpk-csv" data-action="repCpkCsv">Exportar CSV</button>
-          </div>
         </div>
       </div>
 

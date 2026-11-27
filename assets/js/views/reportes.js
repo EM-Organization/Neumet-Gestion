@@ -118,8 +118,10 @@ function renderCpk() {
     <td class="mono-cell" data-label="Km">${fmtNum(f.km)} km</td>
     <td class="mono-cell" data-label="Costo">${fmtMonto(f.costo, f.moneda)}</td>
     <td class="mono-cell" data-label="Costo por km">${f.textoCpk}</td></tr>`));
-  setHtml(cont, html`<table class="ciclo-tabla rep-cpk-tabla"><thead><tr><th scope="col">${CPK_GRUPO_LABEL[cpkGrupo]}</th><th scope="col">Neumáticos</th><th scope="col">Km</th><th scope="col">Costo</th><th scope="col">Costo por km</th></tr></thead><tbody>${cuerpo}</tbody></table>
-    <p class="rep-cpk-nota">${NOTA_CPK_BASE}</p>${hayFiltroSeccional() && cpkGrupo !== 'sucursal' ? html`<p class="rep-cpk-nota">${NOTA_SUCURSAL_SELECTOR}</p>` : ''}`);
+  const abierta = !!cont.querySelector('details')?.open; // reagrupar no cierra lo que ya se abrió
+  setHtml(cont, html`<details class="rep-cpk-detalle"><summary>Ver tabla</summary><div class="rep-cpk-scroll"><table class="ciclo-tabla rep-cpk-tabla"><thead><tr><th scope="col">${CPK_GRUPO_LABEL[cpkGrupo]}</th><th scope="col">Neumáticos</th><th scope="col">Km</th><th scope="col">Costo</th><th scope="col">Costo por km</th></tr></thead><tbody>${cuerpo}</tbody></table></div>
+    <p class="rep-cpk-nota">${NOTA_CPK_BASE}</p>${hayFiltroSeccional() && cpkGrupo !== 'sucursal' ? html`<p class="rep-cpk-nota">${NOTA_SUCURSAL_SELECTOR}</p>` : ''}</details>`);
+  cont.querySelector('details').open = abierta;
 }
 
 function exportCpkCsv() {
