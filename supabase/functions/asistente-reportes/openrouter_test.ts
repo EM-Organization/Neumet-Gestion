@@ -236,3 +236,22 @@ Deno.test('elegirModelos: un respaldo de pago cae al de por defecto', () => {
   const env = (n: string) => (n === 'ASISTENTE_MODELO_RESPALDO' ? 'nvidia/nemotron-3-ultra-550b-a55b' : undefined);
   assertEquals(elegirModelos(env).respaldo, MODELO_RESPALDO_DEFECTO);
 });
+
+Deno.test('elegirModelos: cualquier nvidia/nemotron de pago como respaldo cae al de por defecto con aviso', () => {
+  const env = (n: string) => (n === 'ASISTENTE_MODELO_RESPALDO' ? 'nvidia/nemotron-3-ultra-550b-a55b-v2' : undefined);
+  const r = elegirModelos(env);
+  assertEquals(r.respaldo, MODELO_RESPALDO_DEFECTO);
+  assertEquals(r.avisos, [{ event: 'modelo_respaldo_sin_free', modelo: 'nvidia/nemotron-3-ultra-550b-a55b-v2' }]);
+});
+
+Deno.test('elegirModelos: un respaldo nvidia/nemotron con :free se respeta', () => {
+  const env = (n: string) => (n === 'ASISTENTE_MODELO_RESPALDO' ? 'nvidia/nemotron-otro:free' : undefined);
+  assertEquals(elegirModelos(env).respaldo, 'nvidia/nemotron-otro:free');
+});
+
+Deno.test('elegirModelos: un principal nvidia/nemotron de pago (otra variante) cae al de por defecto con aviso', () => {
+  const env = (n: string) => (n === 'ASISTENTE_MODELO' ? 'nvidia/nemotron-3-ultra-550b-a55b-v2' : undefined);
+  const r = elegirModelos(env);
+  assertEquals(r.principal, MODELO_PRINCIPAL_DEFECTO);
+  assertEquals(r.avisos, [{ event: 'modelo_principal_sin_free', modelo: 'nvidia/nemotron-3-ultra-550b-a55b-v2' }]);
+});

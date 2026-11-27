@@ -73,7 +73,7 @@ export function mensajeError(status, codigo) {
   if (status === 429) return { texto: `Se alcanzó el límite de ${LIMITE_DIARIO} preguntas por día. Volver a intentar mañana.`, reintentar: false };
   if (status === 503) return { texto: 'El asistente no está disponible en este momento.', reintentar: false };
   if (status === 403) return { texto: 'Este perfil no tiene acceso al asistente.', reintentar: false };
-  if (status === 401) return { texto: 'La sesión venció. Volver a ingresar.', reintentar: false };
+  if (status === 401) return { texto: 'La sesión venció. Volver a iniciar sesión.', reintentar: false };
   if (status === 400 && codigo === 'cliente_requerido') return { texto: TEXTO_ELEGIR_CLIENTE, reintentar: false };
   return { texto: TEXTO_SIN_RESPUESTA, reintentar: true };
 }

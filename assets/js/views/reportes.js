@@ -56,8 +56,10 @@ export async function load() {
     if (error) { showToast(userError(error), true); return; }
     nombresClientes = new Map((data || []).map(c => [String(c.id), c.nombre]));
     fillSelect($('rep-cliente'), 'Todos los clientes', (data || []).map(c => ({ id: c.id, label: c.nombre })));
+    asistente.reiniciar(); // el selector acaba de volver a «Todos los clientes»: la conversación de antes ya no corresponde
+  } else {
+    asistente.refrescar();
   }
-  asistente.refrescar(); // el selector de cliente acaba de reiniciarse: el asistente ajusta lo habilitado (sin tocar lo escrito)
   await loadVehiculos();
   $('rep-ver-vehiculo').hidden = true;
   await cargarCpk();

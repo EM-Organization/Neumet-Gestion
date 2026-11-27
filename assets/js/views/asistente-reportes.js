@@ -7,8 +7,9 @@
 //   conversación y libera `enCurso`. Una respuesta que llega con una generación vieja se descarta sin pintar ni mostrar errores.
 // - Fallo a mitad: la pregunta queda «Sin respuesta», no entra a los turnos que se envían y «Volver a intentar» la reenvía.
 // - Respuesta que nunca llega: AbortController a los 60 s, mismo manejo que un error de red.
-// - Recarga que pisa texto: `refrescar()` (lo llama el load() de Reportes) solo ajusta lo habilitado; no toca el campo
-//   ni la conversación. Una navegación entre vistas conserva lo escrito.
+// - Volver a Reportes: el load() reinicia el selector de cliente; `reiniciar()` vacía la conversación y descarta lo en
+//   vuelo (misma guarda de generación), pero no toca lo escrito en el campo. Con cliente de empresa, `refrescar()` solo
+//   ajusta lo habilitado y no toca nada más.
 // - Operaciones simultáneas: el chat no escribe en la base (solo llama a la función), y la vista de Reportes de abajo
 //   no comparte estado con él.
 import { db } from '../core/supabase.js';
@@ -25,6 +26,10 @@ import {
 const $ = id => document.getElementById(id);
 const TIEMPO_MAXIMO_MS = 60000;
 const TEXTO_CONSULTANDO = 'Consultando datos';
+// El ejemplo del campo no nombra costos cuando el perfil no los ve (sucursal): una pregunta que no puede hacer confunde.
+const EJEMPLO_CON_COSTOS = 'Por ejemplo: costo por km por marca';
+// Ambos ejemplos entran en dos líneas del campo a 390 px (el campo tiene dos filas).
+const EJEMPLO_SIN_COSTOS = 'Por ejemplo: cubiertas para cambiar';
 
 let conversacion = [];   // {pregunta, respuesta: {bloques, fuentes, ...} | null, fallida}; solo de la sesión, nunca en localStorage
 let enCurso = false;
@@ -75,6 +80,7 @@ function pintarControles() {
   const habilitado = puedePreguntar() && !enCurso;
   $('asis-pregunta').disabled = !habilitado;
   $('asis-enviar').disabled = !habilitado;
+  $('asis-pregunta').placeholder = puedeVerCostos() ? EJEMPLO_CON_COSTOS : EJEMPLO_SIN_COSTOS;
   document.querySelectorAll('#asis-listos button').forEach(b => { b.disabled = !habilitado; });
 }
 
@@ -184,8 +190,8 @@ function alPulsar(e) {
   if (e.target.closest('[data-asis-reintentar]')) reintentar();
 }
 
-// Lo llama ACTIONS.repClienteChange: el cliente cambió, así que lo que había en vuelo y la conversación ya no sirven.
-export function clienteCambio() {
+// Vacía la conversación y descarta lo que esté en vuelo, sin tocar el campo.
+function descartarConversacion() {
   generacion++;
   if (controlador) controlador.abort();
   controlador = null;
@@ -193,11 +199,22 @@ export function clienteCambio() {
   conversacion = [];
   reintento = null;
   estadoTexto = '';
-  $('asis-pregunta').value = '';
   pintarTodo();
 }
 
-// Lo llama el load() de Reportes: ajusta lo habilitado al cliente elegido y a los reportes del perfil, sin tocar el campo ni la conversación.
+// Lo llama ACTIONS.repClienteChange: el cliente cambió, así que lo que había en vuelo, la conversación y lo escrito ya no sirven.
+export function clienteCambio() {
+  descartarConversacion();
+  $('asis-pregunta').value = '';
+}
+
+// Lo llama el load() de Reportes cuando reinicia el selector de cliente (al volver a la vista): la conversación de la
+// visita anterior no corresponde al cliente que ahora queda elegido. Lo escrito en el campo se conserva.
+export function reiniciar() {
+  descartarConversacion();
+}
+
+// Lo llama el load() de Reportes en la vista de cliente de empresa: ajusta lo habilitado y los textos, sin tocar el campo ni la conversación.
 export function refrescar() {
   pintarTodo();
 }
