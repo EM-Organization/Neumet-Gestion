@@ -36,3 +36,8 @@ verify_jwt = false
 
 [functions.reponer-acceso-usuario]
 verify_jwt = false
+
+# Valida el JWT del llamante (auth.getUser) y delega el acceso en PostgREST con ese mismo JWT (RLS y privilegios por
+# columna); el preflight CORS (OPTIONS) no lleva token.
+[functions.asistente-reportes]
+verify_jwt = false
