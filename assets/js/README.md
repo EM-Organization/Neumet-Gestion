@@ -45,10 +45,11 @@ domain/
   salud.js              PURO: estados de dispositivos (los usa la vista Dispositivos)
   rendimiento-cubierta.js PURO: columna Rendimiento de Stock (km y CPK por cubierta) y CSV de cubiertas con km y CPK por vida (T3, P1-10)
   camion.js             disposición de ruedas por tipo de vehículo (datos)
+  asistente.js          PURO: asistente de reportes (docs/24): periodos cerrados, reportes listos, historial que se envía, mensajes de error y forma de la respuesta
 views/
   inicio.js  clientes.js  vehiculos.js  dispositivos.js (estado + actividad, solo administración)  balance.js (+ balance-chart.js)
   mediciones.js (+ mediciones-camion.js, mediciones-dispositivo.js, mediciones-state.js, report.js)
-  stock.js  reportes.js  neumaticos.js (pestañas Stock | Recauchutado del ítem «Neumáticos»; cada pestaña sigue siendo la vista `stock` / `recauchutado`)
+  stock.js  reportes.js (+ asistente-reportes.js: el campo de preguntas y los reportes listos de la misma vista; `reportes.js` lo inicia en `init()`, lo refresca en `load()` y le avisa el cambio de cliente)  neumaticos.js (pestañas Stock | Recauchutado del ítem «Neumáticos»; cada pestaña sigue siendo la vista `stock` / `recauchutado`)
   flota.js (flota con prioridades)  alertas.js (centro de alertas)
   empresa-usuarios.js  empresa-umbrales.js (menú Empresa, solo `esAdminEmpresa()`; se registran con `soloEmpresa: true`)
   uso.js (Uso mensual por cliente, solo administración: registra la isla Svelte `uso`; sin vista vieja, con la bandera apagada muestra un aviso estático)
