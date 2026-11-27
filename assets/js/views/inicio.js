@@ -17,7 +17,7 @@ import { chip, estadoVacio, estadoCarga, estadoError, miniVehiculo } from '../co
 import { fetchAll, PAGE_SIZE } from '../domain/reportes.js';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
-  clientesConUrgencias, textoSemanas, ultimasMediciones, MAX_ULTIMAS, cifrasVisibles, peorCambio,
+  clientesConUrgencias, textoSemanas, ultimasMediciones, MAX_ULTIMAS, cifrasVisibles, peorCambio, desgasteAlto, ruedaParaVer,
 } from '../domain/inicio.js';
 import { fmtNum, fmtFecha, fmtFechaLarga, plural } from '../domain/formato.js';
 import { etiquetaCoche } from '../domain/coche.js';
@@ -134,12 +134,19 @@ function lineaDispositivos(d, cliente) {
 const signo = dif => (dif > 0 ? '+' : dif < 0 ? '\u2212' : '');
 const textoDif = dif => `${signo(dif)}${fmtNum(Math.abs(dif), 1)}`;
 
-// Una fila por vehículo: su peor cambio (posición, estado y caída en mm) y la fecha de la medición. «Ver coche N» abre la
-// ficha con esa rueda seleccionada. Los mm son promedios de la visita, no huellas: por eso el bloque lleva el «(informativo)».
+// Una fila por vehículo: su peor cambio (posición, estado y caída en mm), el desgaste alto si lo hubo y la fecha de la medición.
+// «Ver coche N» abre la ficha con la rueda de ruedaParaVer seleccionada. Los mm son promedios de la visita, no huellas: por eso el bloque lleva el «(informativo)».
 const textoPeorCambio = (p, tipo) => [
   nombrePosicion(p.posicion, tipo), ESTADOS[p.estado].texto,
   p.comparativa ? `${textoDif(p.comparativa.dif)} mm` : 'Sin medición previa',
 ].join(' · ');
+
+// Desgaste alto escrito, nunca solo con color: en la misma rueda del peor cambio basta la marca; en otra, se nombra con su caída.
+function textoAlto(a, peor, tipo) {
+  const mas = n => `${n} ${n === 1 ? 'rueda' : 'ruedas'} más`;
+  if (peor && a.posicion === peor.posicion) return `Desgaste alto${a.otras ? `, también en ${mas(a.otras)}` : ''}`;
+  return `Desgaste alto en ${nombrePosicion(a.posicion, tipo)} (${textoDif(-a.caida)} mm)${a.otras ? ` y ${mas(a.otras)}` : ''}`;
+}
 
 function filaMedida(v, porVeh) {
   // Colores del estado actual del vehículo (v_estado_neumaticos, con las tres huellas). Si el vehículo no tiene filas ahí,
@@ -151,11 +158,14 @@ function filaMedida(v, porVeh) {
     return f ? estadoDeBase(estadoContable(f)) : 'sinDatos';
   };
   const peor = peorCambio(v.neumaticos.map(n => ({ posicion: n.posicion, estado: estadoDe(n.posicion), comparativa: n.comparativa })));
+  const alto = desgasteAlto(v.neumaticos);
+  const tipo = tipoDe(v.vehiculo_id);
+  const detalle = [peor ? textoPeorCambio(peor, tipo) : '', alto ? textoAlto(alto, peor, tipo) : ''].filter(Boolean).join(' · ');
+  // La primera destacada es la que «Ver vehículo» preselecciona (ruedaParaVer).
+  const ver = ruedaParaVer(peor, alto);
+  const destacadas = ver === null ? [] : [...new Set([ver, peor ? peor.posicion : ver])];
   const coche = v.numero && etiquetaCoche(v.numero) !== etiquetaCoche(v.nombre) ? `Coche ${v.numero} · ` : '';
-  return filaMini(v, filas, {
-    destacadas: peor ? [peor.posicion] : [], detalle: peor ? textoPeorCambio(peor, tipoDe(v.vehiculo_id)) : '',
-    pos: `${coche}${fmtFecha(v.medido_at)}`,
-  });
+  return filaMini(v, filas, { destacadas, detalle, pos: `${coche}${fmtFecha(v.medido_at)}` });
 }
 
 // `ultimas` = filas de ultimas_mediciones; null si la consulta falló (el resto de Inicio sigue mostrándose).

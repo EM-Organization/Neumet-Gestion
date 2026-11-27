@@ -207,3 +207,18 @@ export function peorCambio(neumaticos) {
   lista.sort((a, b) => rangoEstado(a.estado) - rangoEstado(b.estado) || b.caida - a.caida || a.posicion - b.posicion);
   return lista[0];
 }
+
+// Desgaste alto de una visita: las ruedas que perdieron más de DESGASTE_ALTO_MM frente a su medición anterior (nivel 'alto' de
+// comparativaDesgaste). La fila de Últimas mediciones muestra el peor cambio por estado; esta marca va aparte para que una
+// caída fuera de lo común en otra rueda no quede oculta. Devuelve la de mayor caída (a igual caída, la primera posición)
+// y cuántas más hay, o null.
+export function desgasteAlto(neumaticos) {
+  const altos = (neumaticos || []).filter(n => n.comparativa && n.comparativa.nivel === 'alto')
+    .sort((a, b) => a.comparativa.dif - b.comparativa.dif || a.posicion - b.posicion);
+  if (!altos.length) return null;
+  return { posicion: altos[0].posicion, caida: -altos[0].comparativa.dif, otras: altos.length - 1 };
+}
+
+// Rueda que «Ver vehículo» deja seleccionada en la ficha. Con desgaste alto, la de mayor caída: es lo que solo este bloque
+// revela (el peor estado ya lo listan Requieren atención y los colores del mini). Si no, la del peor cambio. Sin ninguna, null.
+export const ruedaParaVer = (peor, alto) => (alto ? alto.posicion : peor ? peor.posicion : null);

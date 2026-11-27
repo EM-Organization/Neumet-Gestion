@@ -45,8 +45,15 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
     if(um[3].querySelectorAll('.mini-veh .mv-rueda[fill]').length) fail('inicio('+rol+'): visita sin huellas (v_estado vacío) pinta ruedas por desgaste (RN-01): '+t3);
     if(!/Sin datos · Sin medición previa/.test(t3)) fail('inicio('+rol+'): visita sin huellas: debe decir Sin datos y Sin medición previa: '+t3);
     var t2 = um[2].textContent.replace(/\s+/g, ' ');
-    // Camión 02: el de desgaste límite gana al que sube (+0,2): el estado manda sobre la caída.
-    if(!/Desgaste límite/.test(t2) ||!/\u22124,6/.test(t2) || /\+0,2/.test(t2)) fail('inicio('+rol+'): el peor cambio de Camión 02 debe ser el de desgaste límite −4,6 mm: '+t2);
+    // Camión 02: el de desgaste límite (−0,4) es el peor cambio aunque la otra rueda cayó más: el estado manda sobre la caída.
+    // Regresión (revisión de T6): la caída de 1,8 mm de la otra rueda es desgaste alto y no puede quedar oculta; «Ver» abre esa rueda.
+    if(!/Desgaste límite · \u22120,4 mm · Desgaste alto en \S.* \(\u22121,8 mm\)/.test(t2)) fail('inicio('+rol+'): Camión 02 debe mostrar el peor cambio y el desgaste alto de la otra rueda: '+t2);
+    var argsAlto = JSON.parse(um[2].querySelector('[data-action="verVehiculo"]').getAttribute('data-args'));
+    if(argsAlto[1] !== 2) fail('inicio('+rol+'): «Ver» de Camión 02 debe preseleccionar la rueda con desgaste alto (2): '+JSON.stringify(argsAlto));
+    // Unidad <Crítica>: el desgaste alto está en la misma rueda del peor cambio: basta la marca, sin repetir la posición.
+    var t1 = um[1].textContent.replace(/\s+/g, ' ');
+    if(!/\u22122,4 mm · Desgaste alto(?! en)/.test(t1)) fail('inicio('+rol+'): Unidad <Crítica> sin «Desgaste alto» en su peor cambio: '+t1);
+    if(/Desgaste alto/.test(t0) || /Desgaste alto/.test(t3)) fail('inicio('+rol+'): «Desgaste alto» en un vehículo sin caídas de más de 1 mm');
     if(um[1].textContent.indexOf('<Crítica>') === -1 || um[1].innerHTML.indexOf('<Crítica>') !== -1) fail('inicio: nombre en últimas mediciones sin escapar');
     um[1].querySelector('[data-action="verVehiculo"]').click(); await sleep(700);
     if(!$('#view-vehiculo-detalle').classList.contains('active')) fail('inicio('+rol+'): la fila de últimas mediciones no abre el detalle');

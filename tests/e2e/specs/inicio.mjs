@@ -38,7 +38,8 @@ export const LEER_ULTIMAS = `(() => {
     filas: filas.map(li => ({
       patente: (li.querySelector('.dash-fleet-pat') || {}).textContent || '',
       detalle: ((li.querySelector('.inicio-fila-causa') || {}).textContent || '').replace(/\\s+/g, ' ').trim(),
-      destacadas: li.querySelectorAll('.mini-veh .mv-dest').length })),
+      destacadas: li.querySelectorAll('.mini-veh .mv-dest').length,
+      ver: JSON.parse((li.querySelector('[data-action="verVehiculo"]') || { getAttribute: () => '[]' }).getAttribute('data-args'))[1] ?? null })),
     informativos: caja ? (caja.innerText.match(/\\(informativo\\)/g) || []).length : -1 };
 })()`;
 
@@ -74,7 +75,26 @@ export function textoPeorEsperado(filas) {
   const peor = [...filas].sort((a, b) => estado(a) - estado(b) || caida(b) - caida(a) || a.posicion - b.posicion)[0];
   const dif = peor.antes === null ? null : redondeo(peor.ahora, peor.antes);
   const cambio = dif === null ? 'Sin medición previa' : `${dif > 0 ? '+' : dif < 0 ? '−' : ''}${f1(Math.abs(dif))} mm`;
-  return [nombrePosicion(peor.posicion), ESTADOS[CLAVE_BASE[peor.estado ?? 'desconocido']].texto, cambio].join(' · ');
+  const partes = [nombrePosicion(peor.posicion), ESTADOS[CLAVE_BASE[peor.estado ?? 'desconocido']].texto, cambio];
+  // Desgaste alto: más de 1 mm perdido entre visitas. Se marca aunque no sea la rueda del peor cambio (no se oculta).
+  const altos = filas.filter(f => f.antes !== null && -redondeo(f.ahora, f.antes) > 1)
+    .sort((a, b) => redondeo(a.ahora, a.antes) - redondeo(b.ahora, b.antes) || a.posicion - b.posicion);
+  if (altos.length) {
+    const a = altos[0], otras = altos.length - 1, mas = n => `${n} ${n === 1 ? 'rueda' : 'ruedas'} más`;
+    partes.push(a.posicion === peor.posicion
+      ? `Desgaste alto${otras ? `, también en ${mas(otras)}` : ''}`
+      : `Desgaste alto en ${nombrePosicion(a.posicion)} (−${f1(-redondeo(a.ahora, a.antes))} mm)${otras ? ` y ${mas(otras)}` : ''}`);
+  }
+  return partes.join(' · ');
+}
+// Rueda que «Ver» preselecciona: la del desgaste alto de mayor caída si lo hay; si no, la del peor cambio (ruedaParaVer).
+export function ruedaVerEsperada(filas) {
+  const altos = filas.filter(f => f.antes !== null && -redondeo(f.ahora, f.antes) > 1)
+    .sort((a, b) => redondeo(a.ahora, a.antes) - redondeo(b.ahora, b.antes) || a.posicion - b.posicion);
+  if (altos.length) return altos[0].posicion;
+  const estado = f => RANGO.indexOf(f.estado ?? 'desconocido');
+  const caida = f => (f.antes === null ? 0 : Math.max(0, -redondeo(f.ahora, f.antes)));
+  return [...filas].sort((a, b) => estado(a) - estado(b) || caida(b) - caida(a) || a.posicion - b.posicion)[0].posicion;
 }
 
 // Espera a que Inicio esté pintado entero (el resumen se dibuja junto con el resto), sin contar cifras: las que valen 0 no se dibujan.
@@ -149,11 +169,14 @@ export function registrar(env) {
         const vehEsp = [...new Set(esp.map(f => f.patente))];
         assert.equal(vehEsp.length, Math.min(8, (await vehiculosVisibles(env, rol)).length), 'el demo debe tener al menos 8 vehículos medidos (o todos los del alcance)');
         assert.ok(esp.some(f => f.antes !== null) && esp.some(f => f.antes === null), 'el demo debe traer neumáticos con y sin medición previa');
+        // El demo trae un desgaste alto (más de 1 mm entre visitas) en la sucursal Montevideo: ahí se prueba que no se oculta.
+        if (rol === 'montevideo') assert.ok(esp.some(f => f.antes !== null && f.antes - f.ahora > 1), 'el demo debe traer un desgaste alto en Montevideo (si no, la prueba no prueba nada)');
         const ult = await p.eval(LEER_ULTIMAS);
         assert.deepEqual(ult.filas.map(f => f.patente), vehEsp, `últimas mediciones (${rol}): vehículos y orden`);
         for (const f of ult.filas) {
           assert.equal(f.detalle, textoPeorEsperado(esp.filter(e => e.patente === f.patente)), `últimas mediciones (${rol}): peor cambio de ${f.patente}`);
           assert.ok(f.destacadas >= 1, `últimas mediciones (${rol}): ${f.patente} sin rueda resaltada`);
+          assert.equal(f.ver, ruedaVerEsperada(esp.filter(e => e.patente === f.patente)), `últimas mediciones (${rol}): rueda que abre «Ver» en ${f.patente}`);
         }
         // «(informativo)» va una sola vez, en el pie de la lista, y no en cada fila.
         assert.equal(ult.informativos, 1, `últimas mediciones (${rol}): «(informativo)» una sola vez`);

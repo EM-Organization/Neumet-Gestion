@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   estadoInicio, resumenNeumaticos, requierenAtencion, proximosCambios, resumenDispositivos, ultimaMedicion,
-  clientesConUrgencias, textoSemanas, ultimasMediciones, comparativaDesgaste, semanasRetiroDe, cifrasVisibles, peorCambio,
+  clientesConUrgencias, textoSemanas, ultimasMediciones, comparativaDesgaste, semanasRetiroDe, cifrasVisibles, peorCambio, desgasteAlto, ruedaParaVer,
 } from '../../assets/js/domain/inicio.js';
 
 // Fila de v_estado_neumaticos con los campos que usa Inicio.
@@ -203,6 +203,31 @@ test('peorCambio: empate total gana la primera posición, venga como venga; sin 
   assert.equal(peorCambio([{ posicion: 3, estado: 'bueno', comparativa: null }, { posicion: 1, estado: 'bueno', comparativa: null }]).posicion, 1);
   assert.equal(peorCambio([]), null);
   assert.equal(peorCambio(null), null);
+});
+
+// Regresión (revisión de T6): con una fila por vehículo, una caída de más de 1 mm en una rueda que no es la del peor estado
+// quedaba oculta. desgasteAlto la recupera y «Ver vehículo» abre esa rueda.
+test('desgasteAlto: la caída fuera de lo común no se pierde aunque otra rueda tenga peor estado', () => {
+  const neus = [
+    { posicion: 1, estado: 'mayor', comparativa: comparativaDesgaste(6.0, 6.2) },   // peor estado, caída 0,2
+    { posicion: 2, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.6) }, // caída 1,6: alto
+    { posicion: 3, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.2) }, // caída 1,2: alto
+    { posicion: 4, estado: 'bueno', comparativa: comparativaDesgaste(10.0, 11.0) }, // caída 1,0: no es alto (más de 1 mm)
+  ];
+  const peor = peorCambio(neus);
+  assert.equal(peor.posicion, 1);
+  assert.deepEqual(desgasteAlto(neus), { posicion: 2, caida: 1.6, otras: 1 });
+  assert.equal(ruedaParaVer(peor, desgasteAlto(neus)), 2);
+});
+
+test('desgasteAlto: empate en caída gana la primera posición; sin alto, null y se ve la rueda del peor cambio', () => {
+  const c = comparativaDesgaste(8, 9.5);
+  assert.deepEqual(desgasteAlto([{ posicion: 3, comparativa: c }, { posicion: 2, comparativa: c }]), { posicion: 2, caida: 1.5, otras: 1 });
+  const sinAlto = [{ posicion: 1, estado: 'bueno', comparativa: comparativaDesgaste(9.6, 9.0) }, { posicion: 2, estado: 'bueno', comparativa: null }];
+  assert.equal(desgasteAlto(sinAlto), null);
+  assert.equal(desgasteAlto(null), null);
+  assert.equal(ruedaParaVer(peorCambio(sinAlto), null), 1);
+  assert.equal(ruedaParaVer(null, null), null);
 });
 
 test('resumenDispositivos y ultimaMedicion', () => {
