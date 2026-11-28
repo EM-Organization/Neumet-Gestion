@@ -37,7 +37,7 @@ select test.eq('CA-01: abre una alerta roja límite con el mínimo como valor',
   (select a.tipo || '|' || a.mm_actual::text from public.alertas a join public.neumaticos n on n.id = a.neumatico_id
     where n.idneumatico = 'HM-CA1' and a.estado <> 'resuelta'), 'limite|2.80');
 select test.eq('v_alertas muestra el mensaje con el mínimo (coherente con la decisión)',
-  (select mensaje from public.v_alertas where idneumatico = 'HM-CA1'), 'Desgaste límite: 2,8 mm (umbral 3 mm)');
+  (select mensaje from public.v_alertas where idneumatico = 'HM-CA1'), 'Desgaste límite: 2,8 mm');
 select test.eq('CA-01 cuenta como límite en v_estado (solo HM-CA1 en este punto)',
   (select count(*) from public.v_estado_neumaticos
     where cliente_id = 1 and idneumatico like 'HM-%' and estado = 'desgaste_limite'), 1::bigint);

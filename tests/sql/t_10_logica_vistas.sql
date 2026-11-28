@@ -141,6 +141,8 @@ select test.denied('umbrales incoherentes (retiro >= crítico)',
   $$update public.clientes set umbral_retiro_mm=6 where id=1$$, '23514');
 select test.denied('umbrales incoherentes (crítico >= bajo)',
   $$update public.clientes set umbral_critico_mm=9 where id=1$$, '23514');
-select test.denied('neumático vida 4', $$update public.neumaticos set vida=4 where id=1$$, '23514');
+select test.denied('neumático vida negativa', $$update public.neumaticos set vida=-1 where id=1$$, '23514');
+update public.neumaticos set vida=4 where id=1;
+select test.eq('neumático vida 4 se acepta: la vida no tiene tope (ola 5)', (select vida from public.neumaticos where id=1), 4);
 select test.denied('neumático estado inválido', $$update public.neumaticos set estado='perdido' where id=1$$, '23514');
 rollback;

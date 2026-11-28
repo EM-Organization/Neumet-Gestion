@@ -1,6 +1,5 @@
 // Lógica pura del cambio de neumático en el taller (sin DOM ni red): validación del formulario, armado de los
 // parámetros de la RPC neumatico_cambiar y traducción de sus errores. docs/08 apéndice (autorización de escritura).
-import { VIDA_MAX } from './ciclo-vida.js';
 import { normalizarQuema, parseKmPrevios } from './quema.js';
 import { cubiertasMontables, nombreUbicacion } from './stock-cubiertas.js';
 import { nombrePosicion } from './posicion.js';
@@ -44,9 +43,6 @@ export function validarCambio(f) {
   if (!n) return { ok: false, error: 'No hay un neumático montado en esa posición' };
   if (n.estado === 'baja') return { ok: false, error: 'El neumático de esa posición ya está dado de baja' };
   if (!DESTINO_IDS.includes(f.destino)) return { ok: false, error: 'Elegir el destino del neumático retirado' };
-  if (f.destino === 'reencauche' && (n.vida || 0) >= VIDA_MAX) {
-    return { ok: false, error: `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja` };
-  }
   // RN-14: el motivo sale del catálogo del tipo (baja o cambio). Sin texto libre salvo «otro».
   const mot = validarMotivo(f.catalogo, tipoMotivoCambio(f.destino), f.motivoCodigo, f.motivoTexto);
   if (!mot.ok) return mot;
@@ -160,7 +156,6 @@ export function traducirErrorCambio(err) {
     if (msg.includes('neumático')) return 'Ya no hay un neumático montado en esa posición. Actualizar la pantalla';
     return 'No se encontró el vehículo o el neumático. Actualizar la pantalla';
   }
-  if (msg.includes('vida máxima')) return `El neumático ya alcanzó la vida máxima (${VIDA_MAX} recauchutados): dar de baja`;
   if (msg.includes('dado de baja')) return 'Ese neumático ya está dado de baja';
   if (msg.includes('odometro obligatorio')) return 'Indicar la lectura del odómetro del vehículo';
   if (msg.includes('motivo')) return `Elegir un motivo de la lista. Con «otro», escribirlo (máx. ${MAX_MOTIVO_TEXTO} caracteres)`;

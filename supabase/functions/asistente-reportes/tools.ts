@@ -269,7 +269,7 @@ const estadoFlota: Herramienta = {
 const cpkPorGrupo: Herramienta = {
   nombre: 'cpk_por_grupo',
   descripcion:
-    'Costo por km (CPK) ponderado por grupo: marca, modelo, sucursal, vida (0 banda original, 1 a 3 recauchutado) ' +
+    'Costo por km (CPK) ponderado por grupo: marca, modelo, sucursal, vida (0 banda original, 1 o más recauchutado) ' +
     'o banda. desde y hasta filtran las cubiertas dadas de alta en ese rango. Una fila por grupo y moneda; ' +
     'muestra_baja indica menos de 5 cubiertas. Solo para quien ve costos.',
   campos: {

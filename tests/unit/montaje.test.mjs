@@ -126,9 +126,10 @@ test('validarMontaje: campos de la cubierta nueva', () => {
   assert.match(validarMontaje({ ...base, precio: 'abc' }).error, /precio/i);
   assert.match(validarMontaje({ ...base, fechaCompra: '2027-01-01' }).error, /futura/);
   assert.match(validarMontaje({ ...base, fechaCompra: '10/01/2026' }).error, /fecha/i);
-  assert.match(validarMontaje({ ...base, vida: '4' }).error, /0 a 3/);
-  assert.match(validarMontaje({ ...base, vida: '-1' }).error, /0 a 3/);
-  assert.match(validarMontaje({ ...base, vida: '1.5' }).error, /0 a 3/);
+  assert.equal(validarMontaje({ ...base, vida: '4' }).ok, true, 'sin tope: 4 es válido');
+  assert.equal(validarMontaje({ ...base, vida: '12' }).ok, true);
+  assert.match(validarMontaje({ ...base, vida: '-1' }).error, /número entero/);
+  assert.match(validarMontaje({ ...base, vida: '1.5' }).error, /número entero/);
   assert.equal(validarMontaje({ ...base, vida: '3' }).ok, true);
   assert.equal(validarMontaje({ ...base, vida: '' }).params.p_nuevo.vida, 0, 'vacío = banda original');
 });
@@ -150,7 +151,7 @@ const CAT = [
   { tipo: 'baja', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
   { tipo: 'desmontaje', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
   { tipo: 'cambio', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
-  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Primera rotación', orden: 1, activo: true },
   { tipo: 'rotacion', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
 ];
 const ret = { vehiculoId: 7, posicion: 3, neum, destino: 'almacenado', catalogo: CAT, motivoCodigo: 'otro', motivoTexto: 'Retiro de prueba', sucursalStock: '4', quema: '', odometro: '', odometroActual: 1000, puedeStock: true, tipoRuedas: 10 };

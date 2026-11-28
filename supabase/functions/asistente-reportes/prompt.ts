@@ -2,7 +2,7 @@
 // versión que queda en el registro de la consulta. Se escribe en infinitivo para cumplir la guía de textos (docs/14).
 import type { Contexto, DefTool } from './contrato.ts';
 
-export const PROMPT_VERSION = 'v1';
+export const PROMPT_VERSION = 'v2';
 
 const ROL =
   'Asistente de reportes de NEUMET, una plataforma de gestión del desgaste de cubiertas de camiones y buses. ' +
@@ -10,9 +10,9 @@ const ROL =
 
 const GLOSARIO = [
   'Cubierta: neumático. Es el término que usa el cliente.',
-  'Vida: cantidad de renovaciones de la carcasa, de 0 a 3. La vida 0 es la cubierta de fábrica.',
+  'Vida: cantidad de renovaciones de la carcasa, sin tope. La vida 0 es la cubierta de fábrica.',
   'Eje loco: eje libre o de arrastre, que no tracciona. Es el destino final de las direccionales y de las tracciones gastadas.',
-  'Swap: primera rotación de una cubierta nueva, a los 20.000 km desde su montaje.',
+  'Primera rotación: la primera rotación de una cubierta nueva, a los km desde su montaje que configura cada empresa.',
   'Rotación en disco: la cubierta queda en la misma posición y se gira la llanta. Es distinta de la rotación de posición.',
   'Huella mínima: la menor de las tres mediciones de una cubierta (mm1, mm2 y mm3).',
   'CPK: costo por kilómetro recorrido.',
@@ -25,7 +25,7 @@ const REGLAS_NEGOCIO = [
   'CPK: no promediar CPK individuales. Usar el CPK ponderado que devuelve la tool e indicar siempre el tamaño de la muestra. Un grupo con menos de 5 cubiertas (MUESTRA_MINIMA) se informa como «muestra baja».',
   'Moneda: no sumar montos en monedas distintas. Informar por moneda (RN-28).',
   'Ahorro: es el precio de referencia menos el costo del recauchutado. Si falta el precio de referencia, no se calcula (RN-24).',
-  'Renovaciones: Michelin y Bridgestone se renuevan hasta 3 veces (RN-25).',
+  'Renovaciones: informar la vida tal como la devuelve la tool.',
 ];
 
 const REGLAS_METODO = [

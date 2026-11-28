@@ -67,8 +67,8 @@ export function presentacionAlerta(a) {
 // Sin prefijo, el texto queda igual; sin mensaje, da cadena vacía.
 const PREFIJO_MENSAJE_BASE = Object.freeze({ lateral: 'Revisar alineación' });
 export function detalleAlerta(a) {
-  // El mensaje de la base para la primera rotación es jerga («Hacer el swap: …») y repite el umbral que ya dice el chip:
-  // el detalle se compone con los km del tramo, o queda vacío si no hay dato.
+  // El mensaje de la base para la primera rotación («Primera rotación: 38.000 km desde el montaje») repite la etiqueta
+  // del chip: el detalle se compone con los km del tramo, o queda vacío si no hay dato.
   if (a && a.tipo === 'swap') {
     const km = a.km_actual == null || a.km_actual === '' ? NaN : Number(a.km_actual);
     return Number.isFinite(km) ? `${fmtNum(km)} km desde el montaje` : '';

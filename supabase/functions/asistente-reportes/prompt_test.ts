@@ -17,8 +17,15 @@ const SUCURSAL: Contexto = { ...base, rol: 'sucursal', sucursalId: 3, sucursalNo
 
 const EMOJI = /\p{Extended_Pictographic}/u;
 
-Deno.test('PROMPT_VERSION es v1', () => {
-  assertEquals(PROMPT_VERSION, 'v1');
+Deno.test('PROMPT_VERSION es v2', () => {
+  assertEquals(PROMPT_VERSION, 'v2');
+});
+
+Deno.test('el prompt no fija los km de la primera rotación ni un máximo de renovaciones', () => {
+  const prompt = armarPrompt(GLOBAL, toolsParaRol(GLOBAL));
+  for (const prohibido of ['20.000', 'RN-25', 'hasta 3', 'de 0 a 3', 'vida máxima']) {
+    assert(!prompt.includes(prohibido), `el prompt no debe decir «${prohibido}»`);
+  }
 });
 
 Deno.test('el prompt global trae cliente, fecha, reglas clave y solo las tools recibidas', () => {

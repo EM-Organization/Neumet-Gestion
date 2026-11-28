@@ -228,6 +228,10 @@ echo "== migración asistente de reportes: cuota y registro (1/2)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126090000_asistente_uso.sql"
 echo "== migración asistente de reportes: cuota y registro (2/2: idempotencia)"
 PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126090000_asistente_uso.sql"
+echo "== migración ola 5: compra por lote, vida sin tope y semanas (1/2)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126100000_compra_lote_vida.sql"
+echo "== migración ola 5: compra por lote, vida sin tope y semanas (2/2: idempotencia)"
+PGOPTIONS="-c client_min_messages=warning" run -1 -f "$MIG/20261126100000_compra_lote_vida.sql"
 
 # --- 3. Datos y aserciones ---------------------------------------------------
 echo "== fixtures"

@@ -442,7 +442,7 @@
             </div>
             <button class="btn primary" id="btn-cubierta-nueva" style="display:none" data-action="cubiertaNueva">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              Agregar cubierta
+              Agregar cubiertas
             </button>
           </div>
           <div class="toolbar">
@@ -1181,8 +1181,8 @@
             <input id="mont-precio" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" data-change="neumatico-montar-resumen"/></div>
         </div>
         <div class="field"><label for="mont-vida">Recauchutados previos</label>
-          <select id="mont-vida" data-change="neumatico-montar-resumen">
-            <option value="0">0 (banda original)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+          <input id="mont-vida" type="number" min="0" step="1" value="0" inputmode="numeric" data-change="neumatico-montar-resumen"/>
+          <div class="field-hint">0 si la banda es original.</div></div>
       </div>
       <div class="field"><label for="mont-odo">Odómetro del vehículo <span class="label-opt" id="mont-odo-opt">(opcional)</span></label>
         <input id="mont-odo" type="number" inputmode="numeric" min="0" step="1" data-change="neumatico-montar-resumen"/>
@@ -1408,36 +1408,79 @@
   </form>
 </div>
 
-<!-- Modal Cubierta de stock (alta y edición) -->
+<!-- Modal Editar cubierta de stock (el alta va por lote: modal-lote) -->
 <div class="modal-backdrop" id="modal-cubierta" data-backdrop-close="cubiertaCerrar">
   <form class="modal modal-wide" id="cubierta-form" novalidate>
     <div class="modal-header">
-      <div class="modal-title" id="cubierta-title">Agregar cubierta</div>
+      <div class="modal-title" id="cubierta-title">Editar cubierta</div>
     </div>
     <div class="modal-body">
-      <div class="field" id="cb-cliente-wrap"><label for="cb-cliente">Cliente</label>
-        <select id="cb-cliente" data-change="cubiertaCliente"></select></div>
       <div class="field-row">
         <div class="field"><label for="cb-quema">Número de quema</label>
-          <input type="text" id="cb-quema" maxlength="40" autocomplete="off"/>
-          <div class="field-hint" id="cb-quema-hint">Único por cliente.</div></div>
+          <input type="text" id="cb-quema" maxlength="40" autocomplete="off" disabled/>
+          <div class="field-hint" id="cb-quema-hint">La quema identifica a la cubierta y no se edita.</div></div>
         <div class="field"><label for="cb-marca">Marca</label><input type="text" id="cb-marca" maxlength="60" placeholder="Michelin" autocomplete="off"/></div>
       </div>
       <div class="field-row">
         <div class="field"><label for="cb-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="cb-modelo" maxlength="60" placeholder="X Multi Z" autocomplete="off"/></div>
-        <div class="field"><label for="cb-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="cb-fecha"/></div>
+        <div class="field"><label for="cb-medida">Medida <span class="label-opt">(opcional)</span></label><input type="text" id="cb-medida" maxlength="30" placeholder="295/80 R22.5" autocomplete="off"/></div>
+        <div class="field"><label for="cb-dot">DOT <span class="label-opt">(opcional)</span></label><input type="text" id="cb-dot" maxlength="4" inputmode="numeric" placeholder="0825" autocomplete="off"/>
+          <div class="field-hint">Semana y año, 4 dígitos.</div></div>
       </div>
       <div class="field-row">
-        <div class="field"><label for="cb-precio">Precio <span class="label-opt">(opcional)</span></label><input type="number" id="cb-precio" min="0" step="0.01" inputmode="decimal" placeholder="0.00"/></div>
-        <div class="field" id="cb-sucursal-wrap"><label for="cb-sucursal">Sucursal</label><select id="cb-sucursal"></select></div>
-        <div class="field" id="cb-condicion-wrap"><label for="cb-condicion">Condición</label><select id="cb-condicion"></select>
-          <div class="field-hint">Nuevo pasa a Usado al montarse en un vehículo.</div></div>
+        <div class="field"><label for="cb-mm">Profundidad inicial (mm) <span class="label-opt">(opcional)</span></label><input type="number" id="cb-mm" min="0.1" max="30" step="0.1" inputmode="decimal" placeholder="16"/></div>
+        <div class="field"><label for="cb-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="cb-fecha"/></div>
+        <div class="field" id="cb-precio-wrap"><label for="cb-precio">Precio <span class="label-opt">(opcional)</span></label><input type="number" id="cb-precio" min="0" step="0.01" inputmode="decimal" placeholder="0.00"/></div>
       </div>
+      <div class="field-row">
+        <div class="field"><label for="cb-proveedor">Proveedor <span class="label-opt">(opcional)</span></label><input type="text" id="cb-proveedor" maxlength="80" autocomplete="off"/></div>
+        <div class="field"><label for="cb-factura">Factura <span class="label-opt">(opcional)</span></label><input type="text" id="cb-factura" maxlength="60" autocomplete="off"/></div>
+        <div class="field"><label for="cb-soporte">Soporte <span class="label-opt">(opcional)</span></label><input type="text" id="cb-soporte" maxlength="200" autocomplete="off"/></div>
+      </div>
+      <div class="field" id="cb-condicion-wrap"><label for="cb-condicion">Condición</label><select id="cb-condicion"></select>
+        <div class="field-hint">Solo se cambia a Reparado o Recauchutado.</div></div>
       <div id="cb-error" class="cambio-error" role="alert"></div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn ghost" data-action="cubiertaCerrar">Cancelar</button>
       <button type="submit" class="btn primary" id="cb-guardar">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal Agregar cubiertas por lote (stock): datos comunes arriba y una fila Quema | DOT por cubierta -->
+<div class="modal-backdrop" id="modal-lote" data-backdrop-close="loteCerrar">
+  <form class="modal modal-wide" id="lote-form" novalidate>
+    <div class="modal-header">
+      <div class="modal-title" id="lote-title">Agregar cubiertas</div>
+    </div>
+    <div class="modal-body">
+      <div class="lote-grid">
+        <div class="field" id="lt-cliente-wrap"><label for="lt-cliente">Cliente</label>
+          <select id="lt-cliente" data-change="loteCliente"></select></div>
+        <div class="field"><label for="lt-marca">Marca *</label><input type="text" id="lt-marca" maxlength="60" placeholder="Michelin" autocomplete="off"/></div>
+        <div class="field"><label for="lt-modelo">Modelo <span class="label-opt">(opcional)</span></label><input type="text" id="lt-modelo" maxlength="60" placeholder="X Multi Z" autocomplete="off"/></div>
+        <div class="field"><label for="lt-medida">Medida <span class="label-opt">(opcional)</span></label><input type="text" id="lt-medida" maxlength="30" placeholder="295/80 R22.5" autocomplete="off"/></div>
+        <div class="field"><label for="lt-mm">Profundidad inicial (mm) *</label><input type="number" id="lt-mm" min="0.1" max="30" step="0.1" inputmode="decimal" placeholder="16"/></div>
+        <div class="field"><label for="lt-fecha">Fecha de compra <span class="label-opt">(opcional)</span></label><input type="date" id="lt-fecha"/></div>
+        <div class="field" id="lt-precio-wrap"><label for="lt-precio">Precio por cubierta <span class="label-opt">(opcional)</span></label><input type="number" id="lt-precio" min="0" step="0.01" inputmode="decimal" placeholder="0.00"/></div>
+        <div class="field"><label for="lt-proveedor">Proveedor <span class="label-opt">(opcional)</span></label><input type="text" id="lt-proveedor" maxlength="80" autocomplete="off"/></div>
+        <div class="field"><label for="lt-factura">Factura <span class="label-opt">(opcional)</span></label><input type="text" id="lt-factura" maxlength="60" autocomplete="off"/></div>
+        <div class="field"><label for="lt-soporte">Soporte <span class="label-opt">(opcional)</span></label><input type="text" id="lt-soporte" maxlength="200" autocomplete="off"/></div>
+        <div class="field"><label for="lt-sucursal">Sucursal</label><select id="lt-sucursal"></select></div>
+      </div>
+      <div class="lote-cab" aria-hidden="true"><span></span><span>Número de quema *</span><span>DOT</span><span></span></div>
+      <div id="lote-filas" class="lote-filas"></div>
+      <div class="lote-acciones">
+        <button type="button" class="btn ghost" data-action="loteAgregarFila">Agregar fila</button>
+        <span class="field-hint">DOT: semana y año, 4 dígitos (0825). Enter pasa de la quema al DOT y del DOT a una cubierta nueva.</span>
+      </div>
+      <div id="lote-error" class="cambio-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <span class="field-hint lote-ayuda">* Obligatorio</span>
+      <button type="button" class="btn ghost" data-action="loteCerrar">Cancelar</button>
+      <button type="submit" class="btn primary" id="lt-guardar" disabled>Guardar</button>
     </div>
   </form>
 </div>

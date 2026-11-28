@@ -2,7 +2,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  rendimientoFila, filasCubiertasCsv, cubiertasCsv, COLUMNAS_CSV, COLUMNAS_CSV_SIN_COSTOS, SIN_DATO,
+  rendimientoFila, filasCubiertasCsv, cubiertasCsv, cabeceraCubiertasCsv, COLUMNAS_CSV, COLUMNAS_CSV_SIN_COSTOS,
+  COLUMNAS_COMPRA, SIN_DATO,
 } from '../../assets/js/domain/rendimiento-cubierta.js';
 import { NOTA_FALTAN_LECTURAS, NOTA_SIN_DATO } from '../../assets/js/domain/km-cubierta.js';
 import { nombrePosicion } from '../../assets/js/domain/posicion.js';
@@ -95,7 +96,8 @@ describe('CSV de cubiertas', () => {
   test('encabezado exacto con costos y sin costos', () => {
     assert.deepEqual(COLUMNAS_CSV, ['cpk_total', 'moneda', 'km_total', 'km_vida_0', 'km_vida_1', 'km_vida_2', 'km_vida_3',
       'cpk_vida_0', 'cpk_vida_1', 'cpk_vida_2', 'cpk_vida_3', 'quema', 'idneumatico', 'marca', 'modelo', 'vida', 'situacion',
-      'vehiculo', 'posicion', 'km_confiable']);
+      'vehiculo', 'posicion', 'km_confiable', 'medida', 'dot', 'profundidad_inicial_mm', 'fecha_compra', 'proveedor', 'factura',
+      'soporte', 'ubicacion', 'precio_compra', 'precio_por_mm']);
     const sin = parsearCsv(cubiertasCsv(neumaticos, km, costos, vidas, { conCostos: false, enReca }))[0];
     assert.deepEqual(sin, COLUMNAS_CSV_SIN_COSTOS);
     assert.deepEqual(parsearCsv(cubiertasCsv(neumaticos, km, costos, vidas, { conCostos: true, enReca }))[0], COLUMNAS_CSV);
@@ -169,5 +171,63 @@ describe('CSV de cubiertas', () => {
     const csv = parsearCsv(cubiertasCsv([neumaticos[3]], [], [], [], { conCostos: true, enReca: new Set() }));
     assert.equal(csv.length, 2);
     assert.deepEqual(csv[1].slice(0, 4), ['', '', '', '']);
+  });
+
+  test('las cabeceras terminan en las columnas de compra (con costos, además precio_compra y precio_por_mm)', () => {
+    assert.deepEqual(COLUMNAS_CSV_SIN_COSTOS.slice(-COLUMNAS_COMPRA.length), COLUMNAS_COMPRA);
+    assert.deepEqual(COLUMNAS_CSV.slice(-2), ['precio_compra', 'precio_por_mm']);
+    const sin = parsearCsv(cubiertasCsv(neumaticos, km, costos, vidas, { conCostos: false, enReca }))[0];
+    assert.equal(sin.some(c => c.startsWith('precio')), false, 'sin costos no hay columnas de precio');
+  });
+
+  test('dot, factura y medida se exportan; las celdas sin dato quedan vacías, sin null ni undefined', () => {
+    const compra = [
+      { ...neumaticos[0], dot: '0825', factura: 'A-1', medida: '11R22.5', profundidad_inicial_mm: 16, sucursal_id: 1, fecha_compra: '2026-03-02' },
+      { ...neumaticos[1] },
+    ];
+    const sucursales = [{ id: 1, nombre: 'Montevideo' }];
+    const filas = filasCubiertasCsv(compra, km, costos, vidas, { conCostos: true, enReca, sucursales });
+    const ver = (quema, campo) => fila(filas, quema)[COLUMNAS_CSV.indexOf(campo)];
+    assert.equal(ver('R91-1', 'dot'), '0825');
+    assert.equal(ver('R91-1', 'factura'), 'A-1');
+    assert.equal(ver('R91-1', 'medida'), '11R22.5');
+    assert.equal(ver('R91-1', 'profundidad_inicial_mm'), 16);
+    assert.equal(ver('R91-1', 'ubicacion'), 'Montevideo');
+    assert.equal(ver('S-001', 'dot'), '');
+    assert.equal(ver('S-001', 'factura'), '');
+    assert.equal(ver('S-001', 'profundidad_inicial_mm'), '');
+    assert.equal(ver('S-001', 'ubicacion'), 'Sin sucursal');
+    const texto = cubiertasCsv(compra, km, costos, vidas, { conCostos: true, enReca, sucursales });
+    assert.doesNotMatch(texto, /null|undefined/);
+  });
+
+  test('precio_por_mm con el umbral del cliente a 2 decimales; sin umbral o sin dato, vacío', () => {
+    const conPrecio = [{ ...neumaticos[0], precio_unidad: 450000, profundidad_inicial_mm: 16 }];
+    const ver = (umbral, campo) => fila(filasCubiertasCsv(conPrecio, km, costos, vidas, { conCostos: true, enReca, umbral }), 'R91-1')[COLUMNAS_CSV.indexOf(campo)];
+    assert.equal(ver(2, 'precio_compra'), 450000);
+    assert.equal(ver(2, 'precio_por_mm'), 32142.86);
+    assert.equal(ver(null, 'precio_por_mm'), null);
+    assert.equal(ver(16, 'precio_por_mm'), null, 'sin mm por gastar');
+  });
+
+  test('vidas 4 o más suman su par km_vida_N, cpk_vida_N tras cpk_vida_3 y el resto de columnas no cambia', () => {
+    const vidasMas = [...vidas, { neumatico_id: 5, vida: 5, moneda: 'UYU', km_recorridos: 8000, km_confiable: true, cpk: 800 / 8000 }];
+    const cab = cabeceraCubiertasCsv({ conCostos: true, vidas: vidasMas });
+    const i = n => cab.indexOf(n);
+    assert.deepEqual(cab.slice(i('cpk_vida_3') + 1, i('quema')), ['km_vida_4', 'cpk_vida_4', 'km_vida_5', 'cpk_vida_5']);
+    assert.equal(cab.length, COLUMNAS_CSV.length + 4);
+    const csv = parsearCsv(cubiertasCsv(neumaticos, km, costos, vidasMas, { conCostos: true, enReca }));
+    const linea = csv.find(c => c[i('quema')] === 'S-005');
+    assert.equal(linea.length, cab.length, 'todas las filas tienen las columnas del encabezado');
+    assert.equal(linea[i('km_vida_5')], '8000');
+    assert.equal(linea[i('cpk_vida_5')], '0.1');
+    assert.equal(linea[i('km_vida_4')], '');
+    assert.equal(linea[i('km_total')], '');
+  });
+
+  test('sin vidas 4 o más la cabecera es la de siempre; sin costos nunca hay vidas extra', () => {
+    assert.deepEqual(cabeceraCubiertasCsv({ conCostos: true, vidas }), COLUMNAS_CSV);
+    const vidasMas = [...vidas, { neumatico_id: 5, vida: 5, km_recorridos: 8000, km_confiable: true, cpk: 0.1 }];
+    assert.deepEqual(cabeceraCubiertasCsv({ conCostos: false, vidas: vidasMas }), COLUMNAS_CSV_SIN_COSTOS);
   });
 });

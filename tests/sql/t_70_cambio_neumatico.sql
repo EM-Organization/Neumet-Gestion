@@ -143,14 +143,18 @@ select test.denied('odómetro negativo', $$select public.neumatico_cambiar(1::bi
 select test.denied('nuevo sin marca', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"modelo":"M"}', p_motivo_codigo => 'desgaste')$$, '22023');
 select test.denied('precio negativo', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":-5}', p_motivo_codigo => 'desgaste')$$, '23514');
 select test.denied('precio no numérico', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","precio":"abc"}', p_motivo_codigo => 'desgaste')$$, '22023');
-select test.denied('vida fuera de rango', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","vida":4}', p_motivo_codigo => 'desgaste')$$, '23514');
+select test.denied('vida negativa', $$select public.neumatico_cambiar(1::bigint,1::smallint,'baja','x',null,null,'{"marca":"M","vida":-1}', p_motivo_codigo => 'desgaste')$$, '23514');
 select test.eq('ningún rechazo tocó el stock', (select cantidad from public.stock_neumaticos where id=701), 2);
 select test.eq('ningún rechazo tocó los neumáticos', (select count(*) from public.neumaticos where vehiculo_id=1 and estado='montado'), 8::bigint);
 reset role;
--- vida máxima
+-- Vida sin tope (ola 5): un reencauche con vida 3 pasa
 update public.neumaticos set vida = 3 where idneumatico = 'T-1-1';
 select test.become('authenticated', test.u_cli_a());
-select test.denied('reencauche con vida máxima', $$select public.neumatico_cambiar(1::bigint,1::smallint,'reencauche',null,null,701, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba')$$, '23514');
+do $$
+begin
+  perform public.neumatico_cambiar(1::bigint,1::smallint,'reencauche',null,null,701, p_motivo_codigo => 'otro', p_motivo_texto => 'Motivo de prueba');
+  raise notice 'ok   - reencauche con vida 3 pasa (vida sin tope)';
+end $$;
 reset role;
 rollback to s0;
 

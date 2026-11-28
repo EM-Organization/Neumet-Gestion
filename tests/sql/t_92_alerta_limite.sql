@@ -86,7 +86,7 @@ select test.eq('A: reabierta sin reconocimiento ni resolución previos',
 select test.eq('A: dato no medido: A91-3 sin mediciones no genera alerta', test.nal91('A91-3'), 0::bigint);
 select test.eq('A: v_alertas expone alerta_id, estado y severidad crítica',
   (select alerta_id || '|' || estado || '|' || severidad || '|' || mensaje from public.v_alertas where idneumatico = 'A91-1' and tipo = 'limite'),
-  test.aid91('A91-1') || '|abierta|3|Desgaste límite: 2,9 mm (umbral 3 mm)');
+  test.aid91('A91-1') || '|abierta|3|Desgaste límite: 2,9 mm');
 
 -- Lote de la API: varias mediciones de varios neumáticos en UNA sentencia, una alerta por neumático.
 insert into public.mediciones (vehiculo_id, cliente_id, posicion, idneumatico, mm1, mm2, mm3, created_at) values

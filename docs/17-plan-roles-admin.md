@@ -90,6 +90,7 @@ Quitar acceso solo es seguro si **todas** las rutas de autorización lo respetan
 | `asistente_reservar` (cuota y alcance del asistente de reportes) | `20261126090000_asistente_uso.sql:102` | Lee el perfil del llamante: sin perfil, `api` o empresa dada de baja → 42501; admin debe elegir cliente; el perfil de cliente fija el alcance (global o sucursal). Solo inserta su registro de uso; no autoriza datos |
 | Panel, `resolverRol` | `assets/js/core/auth.js:57` | Lee el propio perfil; sin fila deja «Sin acceso» (salvo `clienteVinculado`, ver abajo) |
 | `medicion_corregir` (ola 4) | `20261126050000_calidad_moneda.sql:327` | Deriva el rol de auditoría (`admin_empresa` o `sucursal`) sin citar el rol administrador global, porque la RPC está en el grupo «recorta» de `t_96`. La autorización es `medicion_autorizar` |
+| `stock_cubiertas_agregar_lote` (ola 5) | `20261126100000_compra_lote_vida.sql:128` | Autoriza antes de validar con `sucursal_autorizar_gestion(p_cliente_id)`: solo el perfil global (sin sucursal) gestiona el stock; sucursal, sin perfil, `api` y un global con cliente ajeno → 42501 |
 
 **Excluido con motivo, por archivo y línea.** Cada resultado de los cuatro `grep` (77 pares archivo:línea sobre la rama del plan; con la migración A la referencia de la prueba, `tests/unit/datos/inventario-perfiles.json`, llegó a 98 (101 en `main`, 95 tras el PR 9a): los 77 más los 14 de la migración A y los del PR 3 que se detallan en la sección 10, clasificados en la tabla de arriba y en esta lista) está en la tabla o en esta lista; ninguno queda fuera. Ninguno de los de esta lista lee o escribe filas de `perfiles` en tiempo de ejecución:
 
@@ -275,7 +276,7 @@ La firma exacta de la API de Auth se confirma contra la versión de `supabase-js
 | `neumatico_cambiar`, `neumatico_montar`, `neumatico_desmontar`, `neumatico_rotar` | Ninguno |
 | `recauchutado_enviar`, `recauchutado_dictaminar`, `recauchutado_aceptar`, `recauchutado_rechazar` | Ninguno |
 | `medicion_invalidar`, `medicion_revalidar` | Ninguno |
-| `medicion_corregir`, `cliente_fijar_moneda` | Ninguno (ola 4) |
+| `medicion_corregir`, `cliente_fijar_moneda`, `stock_cubiertas_agregar_lote` | Ninguno (ola 4; el lote, ola 5) |
 | `vehiculo_crear`, `vehiculo_mover_sucursal`, `vehiculo_registrar_odometro` | Ninguno (PR 9a) |
 | `stock_cubierta_agregar`, `stock_cubierta_editar`, `stock_cubierta_eliminar`, `stock_cubierta_mover` | Ninguno (PR 9a) |
 | `sucursal_crear`, `sucursal_renombrar`, `sucursal_eliminar` | Ninguno (PR 9a) |

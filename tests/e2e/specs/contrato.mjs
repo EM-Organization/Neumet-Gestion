@@ -36,7 +36,7 @@ export function registrar(env) {
     for (const r of ['/vehiculos', '/neumaticos', '/mediciones', '/eventos_neumatico', '/stock_neumaticos', '/perfiles', '/clientes', '/sucursales', '/dispositivos', '/gastos',
       '/v_estado_neumaticos', '/v_alertas', '/v_salud_dispositivos', '/v_resumen_flota_cliente',
       '/rpc/neumatico_rotar', '/rpc/neumatico_cambiar', '/rpc/vehiculo_registrar_odometro', '/rpc/get_unregistered_devices',
-      '/rpc/stock_cubierta_agregar', '/rpc/stock_cubierta_editar', '/rpc/stock_cubierta_mover', '/rpc/stock_cubierta_eliminar']) {
+      '/rpc/stock_cubiertas_agregar_lote', '/rpc/stock_cubierta_editar', '/rpc/stock_cubierta_mover', '/rpc/stock_cubierta_eliminar']) {
       assert.ok(recursos.has(r), `los E2E no ejercitaron ${r}`);
     }
     console.log(`# contrato (A): ${reqs.length} peticiones, ${recursos.size} recursos distintos, ${reqs.filter(r => r.status >= 400).length} rechazos esperados`);

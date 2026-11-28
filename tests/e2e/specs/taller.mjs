@@ -28,6 +28,9 @@ const rpcsDesde = (env, desde, nombre) => env.peticiones.slice(desde).filter(r =
 const rpc = (p, nombre, args) => p.eval(`import('/assets/js/core/supabase.js').then(m => m.db.rpc(${JSON.stringify(nombre)}, ${JSON.stringify(args)})).then(r => ({ data: r.data, error: r.error && { code: r.error.code, message: r.error.message } }))`);
 
 export async function seleccionarRueda(p, pos) {
+  // Tras confirmar un cambio o una rotación, la vista recarga y vacía #vd-diagrama hasta que llegan los datos:
+  // la rueda puede no existir todavía, así que se espera a que el diagrama la dibuje antes de tocarla.
+  await p.esperar(`!!document.querySelector('#vd-diagrama .vd-rueda[data-pos="${pos}"]')`, { que: `rueda ${pos} en el diagrama` });
   await p.click(`#vd-diagrama .vd-rueda[data-pos="${pos}"]`);
   await p.esperar(`document.querySelector('#vd-panel').classList.contains('abierto') && document.querySelector('#vd-rotar-btn') && document.querySelector('#vd-rotar-btn').dataset.posicion === '${pos}'`, { que: `panel de la rueda ${pos}` });
 }

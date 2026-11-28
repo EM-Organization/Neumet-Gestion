@@ -169,7 +169,7 @@ select test.denied('proveedor obligatorio', format('select public.recauchutado_e
 select test.denied('fecha futura', format('select public.recauchutado_enviar(%s, ''Prov'', current_date + 30)', test.id91('R91-1')), '23514');
 select test.denied('cubierta montada: retirarla antes', format('select public.recauchutado_enviar(%s, ''Prov'')', test.id91('R91-5')), '55000');
 select test.denied('cubierta dada de baja', format('select public.recauchutado_enviar(%s, ''Prov'')', test.id91('R91-6')), '55000');
-select test.denied('vida máxima (3 recauchutados)', format('select public.recauchutado_enviar(%s, ''Prov'')', test.id91('R91-3')), '23514');
+select test.eq('vida 3 se envía: la vida no tiene tope (ola 5)', (select public.recauchutado_enviar(test.id91('R91-3'), 'Prov') ->> 'estado'), 'enviado');
 select test.denied('cubierta inexistente: 42501 para un no-admin', 'select public.recauchutado_enviar(999999, ''Prov'')');
 select test.eq('enviar: devuelve el proceso', (select public.recauchutado_enviar(test.id91('R91-1'), 'Recauchutadora Sur', null, 'Lote 7') ->> 'estado'), 'enviado');
 reset role;
