@@ -4,7 +4,6 @@
 import { layoutRuedas, POS_AUXILIO } from './vehiculo-diagrama.js';
 import { normalizarQuema, parseKmPrevios, MAX_QUEMA } from './quema.js';
 import { cubiertasMontables, filtrarCubiertas, parsePrecio, parseFecha, etiquetaCubierta, MAX_TXT } from './stock-cubiertas.js';
-import { VIDA_MAX } from './ciclo-vida.js';
 import { nombrePosicion } from './posicion.js';
 import { validarMotivo, validarOdometroObligatorio, tipoMotivoRetiro, etiquetaMotivo, MAX_MOTIVO_TEXTO } from './motivos.js';
 
@@ -67,7 +66,8 @@ export function cubiertasParaMontar(cubiertas, texto) {
 
 function vida(v) {
   const s = vacio(v) ? '0' : String(v).trim();
-  if (!/^\d$/.test(s) || Number(s) > VIDA_MAX) return { ok: false, error: `Los recauchutados previos van de 0 a ${VIDA_MAX}` };
+  // Contador sin tope: entero no negativo (la base no rechaza ninguna vida >= 0).
+  if (!/^\d+$/.test(s)) return { ok: false, error: 'Los recauchutados previos deben ser un número entero' };
   return { ok: true, valor: Number(s) };
 }
 
@@ -192,7 +192,7 @@ export function traducirErrorMontaje(err) {
   if (e.msg.includes('stock lo gestiona')) return 'Este usuario no puede usar el stock. Cargar el neumático a mano';
   if (e.msg.includes('marca')) return 'Falta la marca del neumático (hasta 60 caracteres)';
   if (e.msg.includes('km previos')) return 'Los km que ya traía el neumático deben ser un número entero mayor o igual a 0';
-  if (e.msg.includes('vida')) return `Los recauchutados previos van de 0 a ${VIDA_MAX}`;
+  if (e.msg.includes('vida')) return 'Los recauchutados previos deben ser un número entero';
   if (e.msg.includes('fecha')) return 'La fecha de compra no es válida';
   if (e.msg.includes('precio')) return 'El precio no es válido';
   if (e.code === '22023' || e.code === '22004' || e.code === '23514') return 'Datos del formulario inválidos';

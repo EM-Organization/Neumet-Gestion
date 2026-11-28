@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {
   CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, parsePrecio, parseFecha,
   validarCubierta, validarEdicion, argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas,
-  etiquetaCubierta, cubiertasMontables, traducirErrorStock, buscarCubiertas, resolverBusquedaConStock
+  etiquetaCubierta, cubiertasMontables, traducirErrorStock, buscarCubiertas, resolverBusquedaConStock,
+  validarLote, paramsLote, precioPorMm, parseDot, parseMmInicial, errorLote, filasLote, MAX_LOTE,
 } from '../../assets/js/domain/stock-cubiertas.js';
 
 const sucursales = [{ id: 1, nombre: 'Montevideo' }, { id: 2, nombre: 'Salto' }];
@@ -241,5 +242,121 @@ describe('buscador: cubiertas en stock por quema', () => {
     const r = resolverBusquedaConStock(vehiculos, [], 'DEMO001');
     assert.equal(r.accion, 'abrir'); assert.equal(r.vehiculo.id, 10);
     assert.equal(resolverBusquedaConStock(vehiculos, null, 'S-001').accion, 'ninguno');
+  });
+});
+
+// Alta por lote (F8 ola 5). Fecha fija «hoy» 2026-11-28 (sábado, semana ISO 48) para que el DOT futuro sea determinista.
+const HOY = '2026-11-28';
+const base = { marca: 'Michelin', mmIniciales: '16', filas: [{ quema: 'L-1', dot: '' }] };
+
+describe('validarLote', () => {
+  test('marca vacía y mm iniciales ausentes, cero o mayores a 30 dan error; 30 es válido', () => {
+    assert.match(validarLote({ ...base, marca: '' }, { hoy: HOY }).error, /marca/);
+    assert.match(validarLote({ ...base, mmIniciales: '' }, { hoy: HOY }).error, /mm iniciales/);
+    assert.equal(validarLote({ ...base, mmIniciales: '0' }, { hoy: HOY }).ok, false);
+    assert.equal(validarLote({ ...base, mmIniciales: '30.1' }, { hoy: HOY }).ok, false);
+    assert.equal(validarLote({ ...base, mmIniciales: '30' }, { hoy: HOY }).ok, true);
+    assert.equal(validarLote({ ...base, mmIniciales: '16,5' }, { hoy: HOY }).ok, true);
+  });
+
+  test('DOT: 0825 y 5325 (semana 53 de 2025) son válidos; semana 00 o 54, año ausente o letras dan el texto de la base', () => {
+    const con = dot => validarLote({ ...base, filas: [{ quema: 'L-1', dot }] }, { hoy: HOY });
+    assert.equal(con('0825').ok, true);
+    assert.equal(con('5325').ok, true);
+    assert.equal(con('').ok, true, 'DOT vacío es opcional');
+    for (const malo of ['5425', '0025', '825', '08A5']) {
+      const r = con(malo);
+      assert.equal(r.ok, false, malo);
+      assert.equal(r.error, 'DOT inválido: deben ser 4 dígitos, semana y año (por ejemplo 0825)');
+      assert.equal(r.fila, 0);
+    }
+  });
+
+  test('DOT posterior a la semana actual es error; la semana actual es válida', () => {
+    assert.equal(parseDot('4826', HOY).ok, true, 'semana 48 de 2026, la de hoy');
+    assert.equal(parseDot('4926', HOY).error, 'El DOT no puede ser posterior a la semana actual');
+    assert.equal(parseDot('0127', HOY).error, 'El DOT no puede ser posterior a la semana actual');
+  });
+
+  test('quema repetida se detecta sin distinguir mayúsculas ni espacios y nombra la quema y la fila', () => {
+    const r = validarLote({ ...base, filas: [{ quema: 'L-9' }, { quema: ' l-9 ' }] }, { hoy: HOY });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'Quema repetida en el lote: l-9');
+    assert.equal(r.fila, 1);
+  });
+
+  test('1 a 200 cubiertas es válido; 201 da error', () => {
+    const filas = n => Array.from({ length: n }, (_, i) => ({ quema: `Q-${i + 1}` }));
+    assert.equal(MAX_LOTE, 200);
+    assert.equal(validarLote({ ...base, filas: filas(200) }, { hoy: HOY }).ok, true);
+    assert.equal(validarLote({ ...base, filas: filas(201) }, { hoy: HOY }).error, 'El lote debe tener entre 1 y 200 cubiertas');
+  });
+
+  test('sin filas con contenido da «Agregar al menos una cubierta»', () => {
+    assert.equal(validarLote({ ...base, filas: [] }, { hoy: HOY }).error, 'Agregar al menos una cubierta');
+    assert.equal(validarLote({ ...base, filas: [{ quema: '', dot: '' }, { quema: '  ' }] }, { hoy: HOY }).error, 'Agregar al menos una cubierta');
+  });
+
+  test('las filas vacías intermedias se ignoran y no cuentan para el límite', () => {
+    const r = validarLote({ ...base, filas: [{ quema: 'A-1' }, { quema: '' }, { quema: 'A-2', dot: '0825' }] }, { hoy: HOY });
+    assert.equal(r.ok, true);
+    assert.deepEqual(filasLote([{ quema: 'A-1' }, { quema: '', dot: '' }, { quema: 'A-2' }]).map(x => x.fila), [0, 2]);
+  });
+
+  test('admin sin cliente elegido da «Falta el cliente»', () => {
+    assert.equal(validarLote(base, { esAdmin: true, hoy: HOY }).error, 'Falta el cliente');
+    assert.equal(validarLote({ ...base, clienteId: '7' }, { esAdmin: true, hoy: HOY }).ok, true);
+  });
+});
+
+describe('paramsLote', () => {
+  test('no manda campos vacíos, el precio solo con costos y los números como número', () => {
+    const f = { ...base, precio: '450000', proveedor: '', sucursalId: '', filas: [{ quema: 'L-1' }, { quema: 'L-2', dot: '0825' }] };
+    const sinCostos = paramsLote(f, { hoy: HOY });
+    assert.deepEqual(sinCostos.p_comun, { marca: 'Michelin', profundidad_inicial_mm: 16 });
+    assert.equal(typeof sinCostos.p_comun.profundidad_inicial_mm, 'number');
+    assert.deepEqual(sinCostos.p_cubiertas, [{ numero_quema: 'L-1' }, { numero_quema: 'L-2', dot: '0825' }]);
+    assert.equal(sinCostos.p_cliente_id, null);
+    const conCostos = paramsLote(f, { hoy: HOY, conCostos: true });
+    assert.equal(conCostos.p_comun.precio, 450000);
+  });
+
+  test('admin manda p_cliente_id como número; sucursal, cuando se elige, va en p_comun', () => {
+    const r = paramsLote({ ...base, clienteId: '7', sucursalId: '3' }, { esAdmin: true, hoy: HOY });
+    assert.equal(r.p_cliente_id, 7);
+    assert.equal(r.p_comun.sucursal_id, 3);
+  });
+
+  test('las fechas de compra vacías no salen y las ocupadas van como AAAA-MM-DD', () => {
+    assert.equal('fecha_compra' in paramsLote(base, { hoy: HOY }).p_comun, false);
+    assert.equal(paramsLote({ ...base, fechaCompra: '2026-03-02' }, { hoy: HOY }).p_comun.fecha_compra, '2026-03-02');
+  });
+});
+
+describe('precioPorMm', () => {
+  test('precio entre los mm que se gastan hasta el umbral, a 2 decimales', () => {
+    assert.equal(precioPorMm(450000, 16, 2), 32142.86);
+    assert.equal(precioPorMm('450000', '16', '2'), 32142.86);
+  });
+
+  test('sin dato o sin mm por gastar da null («—» en pantalla)', () => {
+    assert.equal(precioPorMm(450000, 2, 2), null);
+    assert.equal(precioPorMm(450000, 1, 2), null);
+    assert.equal(precioPorMm(null, 16, 2), null);
+    assert.equal(precioPorMm(450000, null, 2), null);
+    assert.equal(precioPorMm(450000, 16, null), null);
+  });
+});
+
+describe('parseMmInicial y errorLote', () => {
+  test('mm iniciales vacío es null; con coma es válido', () => {
+    assert.deepEqual(parseMmInicial(''), { ok: true, valor: null });
+    assert.deepEqual(parseMmInicial('16,5'), { ok: true, valor: 16.5 });
+  });
+
+  test('un 23505 o un 22023 de quema repetida devuelven la quema para marcar la fila', () => {
+    assert.equal(errorLote({ code: '23505', message: 'Ya existe una cubierta con la quema L-1' }).quema, 'L-1');
+    assert.equal(errorLote({ code: '22023', message: 'Quema repetida en el lote: L-1' }).quema, 'L-1');
+    assert.equal(errorLote({ code: '42501', message: 'permission denied' }).quema, null);
   });
 });

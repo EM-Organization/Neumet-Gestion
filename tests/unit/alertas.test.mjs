@@ -104,10 +104,10 @@ describe('presentación de cada tipo', () => {
     assert.equal(presentacionAlerta({ tipo: 'swap' }).etiqueta, 'Primera rotación');
   });
   test('detalleAlerta de swap compone los km del tramo desde km_actual, sin el mensaje de la base', () => {
-    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: 38000, umbral_km: 20000, mensaje: 'Hacer el swap: 38.000 km desde el montaje (swap a los 20.000 km)' }), '38.000 km desde el montaje');
+    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: 38000, umbral_km: 20000, mensaje: 'Primera rotación: 38.000 km desde el montaje' }), '38.000 km desde el montaje');
   });
   test('detalleAlerta de swap sin km_actual da cadena vacía: el chip ya dice qué hacer', () => {
-    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: null, mensaje: 'Hacer el swap: 38.000 km desde el montaje (swap a los 20.000 km)' }), '');
+    assert.equal(detalleAlerta({ tipo: 'swap', km_actual: null, mensaje: 'Primera rotación: 38.000 km desde el montaje' }), '');
   });
   test('ningún resultado de presentacionAlerta ni de detalleAlerta nombra «swap», en ningún tipo', () => {
     for (const t of Object.keys(PRESENTACION_ALERTA)) {
@@ -117,10 +117,10 @@ describe('presentación de cada tipo', () => {
     }
   });
   test('detalleAlerta quita el prefijo «<etiqueta>:» que trae la base: el chip ya nombra el tipo', () => {
-    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: 'Desgaste límite: 2,9 mm (umbral 3 mm)' }), '2,9 mm (umbral 3 mm)');
+    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: 'Desgaste límite: 2,9 mm' }), '2,9 mm');
   });
   test('detalleAlerta deja igual un mensaje sin prefijo', () => {
-    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: '2,9 mm (umbral 3 mm)' }), '2,9 mm (umbral 3 mm)');
+    assert.equal(detalleAlerta({ tipo: 'limite', mensaje: '2,9 mm' }), '2,9 mm');
   });
   test('detalleAlerta de un mensaje nulo da cadena vacía', () => {
     assert.equal(detalleAlerta({ tipo: 'limite', mensaje: null }), '');

@@ -10,7 +10,7 @@ const CAT = [
   { tipo: 'baja', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
   { tipo: 'baja', codigo: 'viejo', etiqueta: 'Viejo', orden: 2, activo: false },
   { tipo: 'cambio', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
-  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Primera rotación', orden: 1, activo: true },
   { tipo: 'rotacion', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
 ];
 

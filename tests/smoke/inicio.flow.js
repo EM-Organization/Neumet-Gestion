@@ -243,11 +243,11 @@ window.inicioFlow = async function(w, d, sleep, fail, log, cliMode){
   if(!$('.skip-link')) fail('a11y: falta el enlace "Saltar al contenido"');
 
   // --- Modal: role=dialog, foco dentro, Tab atrapado, Esc cierra y devuelve el foco ---
-  // El administrador de empresa abre el alta de cubierta (Stock); el equipo Neumet, el ciclo de vida desde Vehículos
+  // El administrador de empresa abre el alta por lote de cubiertas (Stock); el equipo Neumet, el ciclo de vida desde Vehículos
   // (ya no tiene formularios de alta: docs/17 PR 9).
   // El usuario de sucursal no tiene ningún diálogo de alta: su cobertura es la de los otros dos perfiles.
   var sinDialogo = /[?&]secuser=1/.test(window.location.search);
-  var modalSel = cliMode ? '#modal-cubierta' : '#modal-ciclo';
+  var modalSel = cliMode ? '#modal-lote' : '#modal-ciclo';
   if(!sinDialogo){
   $('.nav-item[data-view="' + (cliMode ? 'stock' : 'vehiculos') + '"]').click(); await sleep(500);
   var abre = cliMode ? $('#btn-cubierta-nueva') : $('#tbody-vehiculos [data-va="ciclo"]');
