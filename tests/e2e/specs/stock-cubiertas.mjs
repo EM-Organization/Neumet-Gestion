@@ -12,7 +12,7 @@ import { etiquetaCoche } from '../../../assets/js/domain/coche.js';
 import { fmtNum } from '../../../assets/js/domain/formato.js';
 
 const OTRA = `(select id from public.clientes where nombre = 'Otra Empresa SA')`;
-const RECHAZO = [{ ruta: /rpc\/(stock_cubierta_|neumatico_cambiar)/, status: [400, 403, 404, 409, 500] }];
+const RECHAZO = [{ ruta: /rpc\/(stock_cubierta_|stock_cubiertas_agregar_lote|neumatico_cambiar)/, status: [400, 403, 404, 409, 500] }];
 const ETQ = { nuevo: 'Nuevo', usado: 'Usado', reparado: 'Reparado', recauchutado: 'Recauchutado' };
 
 const cubiertas = (env, donde = 'true') => json(env, `select n.id, n.cliente_id, n.numero_quema, n.marca, n.modelo, n.condicion, n.estado, n.vehiculo_id, n.posicion, n.sucursal_id,
@@ -38,6 +38,8 @@ const rpc = (p, nombre, args) => p.eval(`import('/assets/js/core/supabase.js').t
 const leerApi = (p, ruta) => p.eval(`fetch('/rest/v1/${ruta}', { headers: { Authorization: 'Bearer ' + window.__E2E.jwt, apikey: 'x' } }).then(r => r.json())`);
 const elegir = (p, sel, valor) => p.eval(`(() => { const s = document.querySelector(${JSON.stringify(sel)}); s.value = ${JSON.stringify(String(valor))}; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
 const poner = (p, sel, valor) => p.eval(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); e.value = ${JSON.stringify(String(valor))}; e.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+// Fila i del lote de alta (quema o DOT); el alta por lote reemplazó al formulario de una cubierta.
+const ponerFila = (p, i, campo, valor) => p.eval(`(() => { const e = document.querySelectorAll(${JSON.stringify(campo === 'dot' ? '#lote-filas .lote-dot' : '#lote-filas .lote-quema')})[${i}]; e.value = ${JSON.stringify(valor)}; e.dispatchEvent(new Event('input', { bubbles: true })); })()`);
 const toast = (p, re) => p.esperar(`${re}.test(document.querySelector('#toast-msg').textContent)`, { que: `aviso ${re}` });
 const quemasUI = p => p.eval(`[...document.querySelectorAll('#stk-lista .stk-fila')].map(f => f.querySelector('.stk-quema').firstChild.textContent.trim())`);
 
@@ -227,22 +229,27 @@ export function registrar(env) {
     await flujo(env, 'alta', 'global', async p => {
       await abrirStock(p, antesN);
       await p.click('#btn-cubierta-nueva');
-      await p.esperar(`document.querySelector('#modal-cubierta').classList.contains('show')`, { que: 'modal de alta' });
-      assert.equal(await p.eval(`!!document.querySelector('#cb-cliente-wrap').offsetParent`), false, 'el global no elige cliente');
-      assert.deepEqual(await p.eval(`[...document.querySelectorAll('#cb-sucursal option')].map(o => o.textContent)`), ['Sin sucursal', 'Montevideo', 'Salto']);
-      // Quema repetida en el cliente (sin distinguir mayúsculas): mensaje claro y nada cambia
-      await poner(p, '#cb-quema', 's-001'); await poner(p, '#cb-marca', 'Marca E2E');
-      await p.click('#cb-guardar');
-      await p.esperar(`/Ese número de quema ya está registrado/.test(document.querySelector('#cb-error').textContent)`, { que: 'aviso de quema repetida' });
-      assert.equal(await p.eval(`document.querySelector('#modal-cubierta').classList.contains('show')`), true);
+      await p.esperar(`document.querySelector('#modal-lote').classList.contains('show')`, { que: 'modal de alta por lote' });
+      assert.equal(await p.eval(`!!document.querySelector('#lt-cliente-wrap').offsetParent`), false, 'el global no elige cliente');
+      assert.deepEqual(await p.eval(`[...document.querySelectorAll('#lt-sucursal option')].map(o => o.textContent)`), ['Sin sucursal', 'Montevideo', 'Salto']);
+      // Quema repetida en el cliente: el RPC rechaza el lote entero, el aviso va a la fila y nada cambia
+      await poner(p, '#lt-marca', 'Marca E2E'); await poner(p, '#lt-mm', '16');
+      await ponerFila(p, 0, 'quema', 's-001'); await ponerFila(p, 0, 'dot', '0826');
+      await p.click('#lt-guardar');
+      await p.esperar(`/Ya existe una cubierta con la quema s-001/i.test(document.querySelector('#lote-error').textContent)`, { que: 'aviso de quema repetida' });
+      assert.equal(await p.eval(`document.querySelector('#modal-lote').classList.contains('show')`), true);
       assert.equal(cubiertas(env, `n.cliente_id = ${DEMO}`).length, antesN);
       // «OTRA-Q1» pertenece a otro cliente: para Demo es una quema libre (única por cliente)
-      await poner(p, '#cb-quema', ' OTRA-Q1 '); await poner(p, '#cb-modelo', 'Modelo E2E');
-      await poner(p, '#cb-fecha', '2026-02-03'); await poner(p, '#cb-precio', '123.45');
-      await elegir(p, '#cb-sucursal', salto);
-      await p.click('#cb-guardar');
-      await toast(p, /Cubierta agregada/);
-      await p.esperar(`document.querySelectorAll('#stk-lista .stk-fila').length === ${antesN + 1} && !document.querySelector('#modal-cubierta').classList.contains('show')`, { que: 'cubierta nueva en la lista' });
+      // Lote de dos: la primera fila es la de la quema repetida, corregida; la segunda, nueva
+      await ponerFila(p, 0, 'quema', ' OTRA-Q1 ');
+      await p.click('#modal-lote [data-action="loteAgregarFila"]');
+      await ponerFila(p, 1, 'quema', 'OTRA-Q2'); await ponerFila(p, 1, 'dot', '0826');
+      await poner(p, '#lt-modelo', 'Modelo E2E');
+      await poner(p, '#lt-fecha', '2026-02-03'); await poner(p, '#lt-precio', '123.45');
+      await elegir(p, '#lt-sucursal', salto);
+      await p.click('#lt-guardar');
+      await toast(p, /2 cubiertas agregadas al stock/);
+      await p.esperar(`document.querySelectorAll('#stk-lista .stk-fila').length === ${antesN + 2} && !document.querySelector('#modal-lote').classList.contains('show')`, { que: 'cubiertas nuevas en la lista' });
     }, { http: RECHAZO });
     const c = unaCubierta(env, 'OTRA-Q1');
     assert.deepEqual({ ...c, id: 0, idneumatico: /^CB-\d+-[0-9a-f]{8}$/.test(c.idneumatico) }, {

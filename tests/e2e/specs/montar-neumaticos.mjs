@@ -86,7 +86,7 @@ export function registrar(env) {
       await p.click('#mont-tab-nuevo');
       await p.escribir('#mont-marca', 'Goodyear'); await p.escribir('#mont-modelo', 'G661'); await p.escribir('#mont-quema', 'E2EM-N1');
       assert.equal(await visible(p, '#mont-tabs'), true, 'con stock hay dos orígenes: se ven las pestañas');
-      await p.escribir('#mont-km-previos', '1500'); await elegir(p, '#mont-vida', 1); await p.eval(`document.querySelector('#mont-fecha').value = '2026-03-04'`); await p.escribir('#mont-odo', '2500');
+      await p.escribir('#mont-km-previos', '1500'); await await p.escribir('#mont-vida', '1'); await p.eval(`document.querySelector('#mont-fecha').value = '2026-03-04'`); await p.escribir('#mont-odo', '2500');
       // «Enter» en el último campo envía el formulario (docs/14 §5, regla 3): sin hacer clic en «Montar».
       await p.enter();
       await enEstado(p, /Montado: Delantera derecha\. Siguiente posición libre: Eje 2 izquierda exterior/);
