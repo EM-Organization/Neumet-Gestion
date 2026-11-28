@@ -163,7 +163,7 @@ select test.denied('campo desconocido', $$select public.neumatico_montar(871::bi
 select test.denied('km previos negativos', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","km_previos":-1}')$$, '23514');
 select test.denied('km previos decimales', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","km_previos":10.5}')$$, '23514');
 select test.denied('km previos texto', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","km_previos":"10"}')$$, '22023');
-select test.denied('vida 4', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","vida":4}')$$, '23514');
+select test.denied('vida negativa', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","vida":-1}')$$, '23514');
 select test.denied('vida decimal', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","vida":1.5}')$$, '23514');
 select test.denied('precio negativo', $$select public.neumatico_montar(871::bigint, 1::smallint, null, '{"marca":"M","precio":-1}')$$, '23514');
 select test.denied('fecha futura', format('select public.neumatico_montar(871::bigint, 1::smallint, null, ''{"marca":"M","fecha_compra":"%s"}'')', current_date + 30), '23514');
