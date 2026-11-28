@@ -14,7 +14,7 @@ export function textoSemanas(semanas) {
 }
 
 // Semanas hasta un umbral por la huella mínima (RN-01), la misma que decide el estado. v_estado_neumaticos.semanas_hasta_*
-// todavía proyecta con el promedio (G-04, pendiente en docs/08): con 3,2 mm de mínimo y 6 de promedio anunciaría semanas de más.
+// proyecta con la mínima desde la migración de la ola 5 (G-04): con promedio, 3,2 mm de mínimo y 6 de promedio anunciarían semanas de más.
 // Sin tasa positiva o sin mínimo no hay proyección (null); por debajo del umbral, 0.
 export function semanasHasta(minimo, umbral, tasa) {
   if (nulo(minimo) || nulo(umbral) || nulo(tasa) || !(Number(tasa) > 0)) return null;
