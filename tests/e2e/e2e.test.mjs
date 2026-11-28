@@ -36,6 +36,7 @@ import { registrar as motivosOdometro } from './specs/motivos-odometro.mjs';
 import { registrar as ola2AlertasServicio } from './specs/ola2-alertas-servicio.mjs';
 import { registrar as ola3DiscoAlineacion } from './specs/ola3-disco-alineacion.mjs';
 import { registrar as ola4CalidadMoneda } from './specs/ola4-calidad-moneda.mjs';
+import { registrar as ola5CompraVida } from './specs/ola5-compra-vida.mjs';
 import { registrar as asistente } from './specs/asistente.mjs';
 
 const env = await iniciarEntorno();
@@ -74,5 +75,6 @@ motivosOdometro(env);
 ola2AlertasServicio(env);
 ola3DiscoAlineacion(env);
 ola4CalidadMoneda(env);
+ola5CompraVida(env);
 asistente(env);
 contrato(env);
