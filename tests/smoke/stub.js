@@ -3,7 +3,7 @@
   var asCliente = /[?&](cliente|secuser)=1/.test(window.parent.location.search);
   var D = function(d){ return new Date(Date.now()-d*86400000).toISOString(); };
   var cl = [
-    {id:1,nombre:'Transportes Alfa',precio_mensual:50000,created_at:D(40),auth_user_id:'u-1',caida_brusca_mm:5,moneda_default:'USD'},
+    {id:1,nombre:'Transportes Alfa',precio_mensual:50000,created_at:D(40),auth_user_id:'u-1',caida_brusca_mm:5,moneda_default:'USD',umbral_retiro_mm:2},
     {id:2,nombre:'Minera <Beta> & Cía',precio_mensual:75000,created_at:D(20),auth_user_id:null,caida_brusca_mm:5,moneda_default:'USD'}
   ];
   // Los flujos cambian la moneda del cliente (costos, recauchutado) por esta referencia antes de abrir un formulario.
@@ -29,7 +29,7 @@
   var neu = [1,2,3].map(function(p){ return {id:p,vehiculo_id:10,cliente_id:1,posicion:p,marca:'Michelin',modelo:'X <MultiWay>',fecha_compra:'2025-01-10',precio_unidad:450000,notas:'ok',stock_id:p===1?1:null,numero_quema:p===3?null:'Q-778'+(p+7),km_previos:p===1?15000:0,vehiculos:{nombre:veh[0].nombre}}; });
   // Cubiertas de stock: neumáticos sin vehículo (vehiculo_id nulo), con condición y sucursal.
   var cub = [
-    {id:31,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',marca:'Michelin',modelo:'X <Multi> Z',condicion:'nuevo',sucursal_id:1,sucursales:{nombre:'Montevideo'},fecha_compra:'2026-01-10',precio_unidad:455,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
+    {id:31,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-001',medida:'205/55 R16',dot:'0825',profundidad_inicial_mm:16,proveedor:'Neumáticos Sur',factura:'F-1042',soporte:'Remito 88',marca:'Michelin',modelo:'X <Multi> Z',condicion:'nuevo',sucursal_id:1,sucursales:{nombre:'Montevideo'},fecha_compra:'2026-01-10',precio_unidad:455,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
     {id:32,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-002',marca:'Pirelli',modelo:null,condicion:'usado',sucursal_id:null,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:0,km_previos:42000,clientes:{nombre:cl[0].nombre}},
     {id:33,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-010',marca:'Goodyear',modelo:'G661',condicion:'reparado',sucursal_id:2,sucursales:{nombre:'Salto'},fecha_compra:'2025-11-02',precio_unidad:410.5,estado:'almacenado',vida:0,km_previos:0,clientes:{nombre:cl[0].nombre}},
     {id:34,vehiculo_id:null,cliente_id:1,posicion:null,numero_quema:'S-011',marca:'Bridgestone',modelo:'R249',condicion:'recauchutado',sucursal_id:2,fecha_compra:null,precio_unidad:null,estado:'almacenado',vida:3,km_previos:0,clientes:{nombre:cl[0].nombre}},
@@ -94,8 +94,8 @@
   // Catálogo de motivos (base, cliente_id nulo): las mismas filas que siembra la migración 20261126020000.
   var mot = [
     ['baja','desgaste','Desgaste',1],['baja','danio','Daño',2],['baja','venta','Venta',3],['baja','chatarra','Chatarra',4],['baja','devolucion_proveedor','Devolución al proveedor',5],['baja','otro','Otro',9],
-    ['rotacion','swap_20000','Swap a 20.000 km',1],['rotacion','diferencia_huellas','Diferencia entre huellas',2],['rotacion','paso_direccional_a_traccion','Direccional pasa a tracción o eje loco',3],['rotacion','paso_a_eje_loco','Paso a eje loco',4],['rotacion','otro','Otro',9],
-    ['rotacion_disco','desgaste_lateral','Desgaste lateral',1],['rotacion_disco','swap_20000','Swap a 20.000 km',2],['rotacion_disco','otro','Otro',9],
+    ['rotacion','swap_20000','Primera rotación',1],['rotacion','diferencia_huellas','Diferencia entre huellas',2],['rotacion','paso_direccional_a_traccion','Direccional pasa a tracción o eje loco',3],['rotacion','paso_a_eje_loco','Paso a eje loco',4],['rotacion','otro','Otro',9],
+    ['rotacion_disco','desgaste_lateral','Desgaste lateral',1],['rotacion_disco','swap_20000','Primera rotación',2],['rotacion_disco','otro','Otro',9],
     ['alineacion','desgaste_lateral','Desgaste lateral',1],['alineacion','control','Control de rutina',2],['alineacion','reparacion_tren','Reparación del tren delantero',3],['alineacion','otro','Otro',9],
     ['cambio','desgaste','Desgaste',1],['cambio','danio','Daño o pinchazo',2],['cambio','desgaste_irregular','Desgaste irregular',3],['cambio','otro','Otro',9],
     ['desmontaje','desgaste','Desgaste',1],['desmontaje','danio','Daño o pinchazo',2],['desmontaje','traslado','Pasa a otro vehículo o al stock',3],['desmontaje','otro','Otro',9],

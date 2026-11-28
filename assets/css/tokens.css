@@ -193,6 +193,23 @@
   .stk-acc { grid-area: acc; justify-content: flex-start; flex-wrap: wrap; margin-top: 4px; }
 }
 
+/* Alta por lote (modal-lote): datos comunes en tres columnas y una fila por cubierta (Quema | DOT | Quitar). La fila con
+   error se marca con el borde rojo y el texto del pie: el color no es lo único que lo dice (docs/14). */
+.lote-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lote-cab, .lote-fila { display: grid; grid-template-columns: 24px minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; }
+.lote-cab { margin-top: 18px; font-size: 12px; font-weight: 600; color: var(--text-tertiary); }
+.lote-filas { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; padding: 2px; }
+.lote-n { color: var(--text-tertiary); font-size: 12px; text-align: center; }
+.lote-fila input { min-width: 0; }
+.lote-fila-error input { border-color: var(--danger); }
+.lote-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.lote-acciones .field-hint { margin: 0; }
+.lote-ayuda { margin-right: auto; }
+@media (max-width: 760px) {
+  .lote-grid { grid-template-columns: 1fr; }
+  .lote-cab, .lote-fila { grid-template-columns: 24px minmax(0, 1fr) 96px auto; }
+}
+
 /* Empresa > Usuarios: «Quitar» con el estilo de baja del panel (rojo solo al pasar el mouse, docs/14) y, en móvil, el alcance y el estado
    bajan a la celda del usuario para que las acciones queden a la vista sin desplazar la tabla. */
 .icon-btn.con-texto { width: auto; height: 30px; padding: 0 12px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; }

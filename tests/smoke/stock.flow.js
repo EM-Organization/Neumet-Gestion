@@ -27,6 +27,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   if(!rd3 || !/Sin dato/.test(rd3.textContent)) fail('stock(' + rol + '): rendimiento de S-010 sin «Sin dato»: ' + (rd3 && rd3.textContent));
   if(!secUser && (!rd1 || !/UYU 0,100 por km/.test(rd1.textContent))) fail('stock(' + rol + '): CPK de S-001 no se ve con permiso: ' + (rd1 && rd1.textContent));
   if(secUser && filas().some(function(f){ return /por km/.test(f.querySelector('.stk-rend').textContent); })) fail('stock(sucursal): ve CPK sin permiso de costos');
+  // Precio por mm (455 / (16 − 2 del umbral del cliente) = 32,50): el administrador de empresa lo ve; el perfil de sucursal, no.
+  // El equipo Neumet no se comprueba aquí: su lista de clientes la sirve clientes.fixture.js, sin umbral.
+  if(rol !== 'admin' && /\$ 32,50 por mm/.test($('#stk-lista').textContent) === !!secUser) fail('stock(' + rol + '): precio por mm de S-001: ' + $('#stk-lista').textContent.slice(0, 200));
   // Exportar CSV: el perfil de sucursal no lo ve; los demás lo ven y, sin cliente elegido (admin), avisa.
   if(secUser !== (w.getComputedStyle($('#btn-stock-csv')).display === 'none')) fail('stock(' + rol + '): visibilidad de Exportar CSV');
   if(!secUser && !cliMode){
@@ -86,7 +89,7 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
     if(all('#stk-lista [data-action^="cubierta"]').length) fail('stock(admin): ve acciones de escritura sobre cubiertas');
     var n0 = fx.rpcs.length;
     ['cubiertaNueva', 'cubiertaEditar', 'cubiertaMover', 'cubiertaEliminar', 'cubiertaGuardar'].forEach(function(a){ if(w.document.querySelector('#view-stock [data-action="' + a + '"]') && visible(w.document.querySelector('#view-stock [data-action="' + a + '"]'))) fail('stock(admin): ve ' + a); });
-    if(fx.rpcs.length !== n0 || fx.rpcs.some(function(r){ return /^stock_cubierta_/.test(r.name); })) fail('stock(admin): el equipo Neumet llamó a una RPC de escritura de cubiertas');
+    if(fx.rpcs.length !== n0 || fx.rpcs.some(function(r){ return /^stock_cubiertas?_/.test(r.name); })) fail('stock(admin): el equipo Neumet llamó a una RPC de escritura de cubiertas');
     log.push('stock-flow(admin): solo lectura');
     return;
   }
@@ -106,53 +109,60 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
       });
     });
     medidas.push(anchos[wi] + ':' + Math.round(maxFila));
-    if(anchos[wi] >= 940 && maxFila > 110) fail('stock(' + anchos[wi] + 'px): las filas miden ' + Math.round(maxFila) + ' px: las acciones se apilan');
+    // Las acciones de cada fila van en una sola línea: sus botones comparten la misma altura de arriba. No se mide la altura de
+    // la fila porque ahora muestra también la medida, el DOT y el precio por mm (F8 ola 5).
+    if(anchos[wi] >= 940) all('#stk-lista .stk-fila').forEach(function(f){
+      var bs = Array.prototype.slice.call(f.querySelectorAll('.stk-acc > button, .stk-acc > .menu-mas'));
+      if(bs.some(function(b){ return Math.abs(b.getBoundingClientRect().top - bs[0].getBoundingClientRect().top) > 2; })) fail('stock(' + anchos[wi] + 'px): las acciones se apilan');
+    });
   }
   marco.style.width = anchoOriginal; await sleep(250);
   log.push('stock-anchos(altura máxima de fila): ' + medidas.join(' '));
 
-  // Agregar cubierta: validación local, error de la base y éxito
+  // Agregar cubiertas por lote (modal-lote, solo el administrador de la empresa): validación local, quema repetida que devuelve
+  // la base, doble envío y éxito con los argumentos de stock_cubiertas_agregar_lote (sin cliente: lo toma de la empresa).
   $('#btn-cubierta-nueva').click(); await sleep(300);
-  if(!$('#modal-cubierta').classList.contains('show')) { fail('stock: el modal de alta no se abrió'); return; }
-  if(visible($('#cb-cliente-wrap')) !== !cliMode) fail('stock: el selector de cliente solo es para el admin');
-  if(visible($('#cb-condicion-wrap'))) fail('stock: el alta no ofrece condición (nace «Nuevo»)');
-  if(!visible($('#cb-sucursal-wrap'))) fail('stock: falta la sucursal en el alta');
-  var opcionesSuc = all('#cb-sucursal option').map(function(o){ return o.textContent; });
-  if(opcionesSuc[0] !== 'Sin sucursal' || opcionesSuc.indexOf('Montevideo') === -1 || opcionesSuc.indexOf('Ajena') !== -1) fail('stock: sucursales del alta: ' + opcionesSuc.join('|'));
-  var antes = rpcs('stock_cubierta_agregar').length;
-  // «Enter» en un campo envía el formulario (docs/14 §5, regla 3): con la quema vacía muestra el error y no llama a la RPC.
-  $('#cubierta-form').requestSubmit(); await sleep(200);
-  if(rpcs('stock_cubierta_agregar').length !== antes || !/número de quema/.test($('#cb-error').textContent)) fail('stock: Enter con la quema vacía: ' + $('#cb-error').textContent);
-  $('#cb-guardar').click(); await sleep(200);
-  if(rpcs('stock_cubierta_agregar').length !== antes || !/número de quema/.test($('#cb-error').textContent)) fail('stock: quema vacía llegó a la RPC: ' + $('#cb-error').textContent);
-  $('#cb-quema').value = ' S-100 '; $('#cb-guardar').click(); await sleep(200);
-  if(rpcs('stock_cubierta_agregar').length !== antes || !/marca/.test($('#cb-error').textContent)) fail('stock: marca vacía llegó a la RPC');
-  $('#cb-marca').value = 'Pirelli'; $('#cb-precio').value = '-3'; $('#cb-guardar').click(); await sleep(200);
-  if(rpcs('stock_cubierta_agregar').length !== antes) fail('stock: precio negativo llegó a la RPC');
-  $('#cb-precio').value = '';
-  var ce = w.console.error; w.console.error = function(){};
-  fx.rpcError = {code: '23505', message: 'el número de quema ya está registrado en otro neumático'};
-  $('#cb-guardar').click(); await sleep(300);
-  w.console.error = ce; fx.rpcError = null;
-  if(rpcs('stock_cubierta_agregar').length !== antes + 1) fail('stock: el intento con quema repetida no llamó a la RPC');
-  if(!/Ese número de quema ya está registrado/.test($('#cb-error').textContent) || !$('#modal-cubierta').classList.contains('show')) fail('stock: quema repetida sin mensaje o modal cerrado');
-  if($('#cb-guardar').disabled) fail('stock: botón bloqueado tras el error');
-  $('#cb-modelo').value = 'FH88'; $('#cb-fecha').value = '2026-05-01'; $('#cb-precio').value = '390.5'; $('#cb-sucursal').value = '1';
-  if(!cliMode) $('#cb-cliente').value = '1';
-  // Doble Enter: se envía una sola vez.
-  $('#cubierta-form').requestSubmit(); $('#cubierta-form').requestSubmit(); await sleep(500);
-  if(rpcs('stock_cubierta_agregar').length !== antes + 2) fail('stock: doble Enter llegó a la RPC ' + (rpcs('stock_cubierta_agregar').length - antes - 1) + ' veces');
-  var alta = rpcs('stock_cubierta_agregar'), a = alta[alta.length - 1].args;
-  var esperado = {p_numero_quema: 'S-100', p_marca: 'Pirelli', p_modelo: 'FH88', p_fecha_compra: '2026-05-01', p_precio: 390.5, p_sucursal_id: 1};
-  if(!cliMode) esperado.p_cliente_id = 1;
-  if(JSON.stringify(a) !== JSON.stringify(esperado)) fail('stock: args de stock_cubierta_agregar: ' + JSON.stringify(a));
-  if($('#modal-cubierta').classList.contains('show')) fail('stock: el modal no se cerró tras guardar');
-  if($('#toast-msg').textContent !== 'Cubierta agregada') fail('stock: aviso de alta: ' + $('#toast-msg').textContent);
+  if(!$('#modal-lote').classList.contains('show')) { fail('stock: el modal de alta por lote no se abrió'); return; }
+  if(visible($('#lt-cliente-wrap'))) fail('stock: el administrador de empresa no elige cliente al dar de alta');
+  if(!visible($('#lt-precio-wrap'))) fail('stock: el alta por lote no muestra el precio con permiso de costos');
+  var opcionesSuc = all('#lt-sucursal option').map(function(o){ return o.textContent; });
+  if(opcionesSuc[0] !== 'Sin sucursal' || opcionesSuc.indexOf('Montevideo') === -1 || opcionesSuc.indexOf('Ajena') !== -1) fail('stock: sucursales del alta por lote: ' + opcionesSuc.join('|'));
+  var antes = rpcs('stock_cubiertas_agregar_lote').length;
+  var quemaEn = function(i){ return all('#lote-filas .lote-quema')[i]; }, dotEn = function(i){ return all('#lote-filas .lote-dot')[i]; };
+  // Datos comunes del lote (la validación mira primero los comunes, luego las filas).
+  $('#lt-marca').value = 'Pirelli'; $('#lt-medida').value = '205/55 R16'; $('#lt-mm').value = '16'; $('#lt-fecha').value = '2026-05-01';
+  $('#lt-precio').value = '390.5'; $('#lt-proveedor').value = 'Neumáticos Sur'; $('#lt-factura').value = 'F-77'; $('#lt-soporte').value = 'Remito 12';
+  $('#lt-sucursal').value = '1';
+  // «Enter» con la quema vacía (la fila tiene DOT): el error va a la fila y no se llama a la RPC (docs/14 §5, regla 3).
+  dotEn(0).value = '0826';
+  $('#lote-form').requestSubmit(); await sleep(200);
+  if(rpcs('stock_cubiertas_agregar_lote').length !== antes || !/número de quema/.test($('#lote-error').textContent)) fail('stock: lote con la quema vacía: ' + $('#lote-error').textContent);
+  quemaEn(0).value = ' S-100 '; dotEn(0).value = '0826';
+  $('#lt-marca').value = ''; $('#lote-form').requestSubmit(); await sleep(200);
+  if(rpcs('stock_cubiertas_agregar_lote').length !== antes || !/Falta la marca/.test($('#lote-error').textContent)) fail('stock: lote sin marca llegó a la RPC: ' + $('#lote-error').textContent);
+  $('#lt-marca').value = 'Pirelli';
+  $('#modal-lote [data-action="loteAgregarFila"]').click(); await sleep(100);
+  quemaEn(1).value = 'S-101';
+  // La base rechaza una quema repetida: el modal sigue abierto, la fila queda marcada y las filas conservan sus datos.
+  fx.rpcError = {code: '23505', message: 'Ya existe una cubierta con la quema S-101'};
+  $('#lote-form').requestSubmit(); await sleep(300);
+  fx.rpcError = null;
+  if(rpcs('stock_cubiertas_agregar_lote').length !== antes + 1) fail('stock: el lote con quema repetida no llamó a la RPC');
+  if(!/Ya existe una cubierta con la quema S-101/.test($('#lote-error').textContent) || !$('#modal-lote').classList.contains('show')) fail('stock: quema repetida del lote sin mensaje o modal cerrado: ' + $('#lote-error').textContent);
+  if(!all('#lote-filas .lote-fila')[1].classList.contains('lote-fila-error') || quemaEn(0).value.trim() !== 'S-100' || dotEn(0).value !== '0826' || quemaEn(1).value.trim() !== 'S-101') fail('stock: el lote no marcó la fila repetida o perdió datos');
+  // Doble Enter: se envía una sola vez; con la base bien, el modal se cierra y el aviso cuenta las cubiertas.
+  $('#lote-form').requestSubmit(); $('#lote-form').requestSubmit(); await sleep(500);
+  if(rpcs('stock_cubiertas_agregar_lote').length !== antes + 2) fail('stock: doble Enter en el lote llegó a la RPC ' + (rpcs('stock_cubiertas_agregar_lote').length - antes - 1) + ' veces');
+  var lote = rpcs('stock_cubiertas_agregar_lote'), la = lote[lote.length - 1].args;
+  var esperadoLote = {p_comun: {marca: 'Pirelli', medida: '205/55 R16', profundidad_inicial_mm: 16, fecha_compra: '2026-05-01', precio: 390.5, proveedor: 'Neumáticos Sur', factura: 'F-77', soporte: 'Remito 12', sucursal_id: 1}, p_cubiertas: [{numero_quema: 'S-100', dot: '0826'}, {numero_quema: 'S-101'}], p_cliente_id: null};
+  if(JSON.stringify(la) !== JSON.stringify(esperadoLote)) fail('stock: args de stock_cubiertas_agregar_lote: ' + JSON.stringify(la));
+  if($('#modal-lote').classList.contains('show')) fail('stock: el modal de lote no se cerró tras guardar');
+  if($('#toast-msg').textContent !== '2 cubiertas agregadas al stock') fail('stock: aviso del lote: ' + $('#toast-msg').textContent);
 
   // Editar: la quema no se edita; solo se envía lo que cambió; la condición solo admite Reparado o Recauchutado
   d.querySelector('[data-cubierta="31"] [data-action="cubiertaEditar"]').click(); await sleep(300);
   if(!$('#cb-quema').disabled || $('#cb-quema').value !== 'S-001') fail('stock: la quema debe verse y no editarse');
-  if(visible($('#cb-sucursal-wrap')) || !visible($('#cb-condicion-wrap'))) fail('stock: edición: sucursal oculta y condición visible');
+  if(!visible($('#cb-condicion-wrap')) || $('#cb-dot').value !== '0825') fail('stock: edición: la condición debe verse y el DOT venir cargado');
   var cond = all('#cb-condicion option').map(function(o){ return o.textContent; });
   if(cond.join('|') !== 'Nuevo (actual)|Reparado|Recauchutado') fail('stock: opciones de condición: ' + cond.join('|'));
   $('#cb-guardar').click(); await sleep(200);
@@ -161,6 +171,11 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   var ed = rpcs('stock_cubierta_editar');
   if(ed.length !== 1 || JSON.stringify(ed[0].args) !== JSON.stringify({p_id: 31, p_datos: {marca: 'Michelin XZ', condicion: 'reparado'}})) fail('stock: args de stock_cubierta_editar: ' + JSON.stringify(ed.map(function(e){ return e.args; })));
   if($('#modal-cubierta').classList.contains('show')) fail('stock: el modal de edición no se cerró');
+  // El DOT se corrige aparte: solo viaja ese campo (la marca y la condición ya están guardadas en la lista).
+  d.querySelector('[data-cubierta="31"] [data-action="cubiertaEditar"]').click(); await sleep(300);
+  $('#cb-dot').value = '1024'; $('#cb-guardar').click(); await sleep(400);
+  var ed2 = rpcs('stock_cubierta_editar');
+  if(ed2.length !== 2 || JSON.stringify(ed2[1].args) !== JSON.stringify({p_id: 31, p_datos: {dot: '1024'}})) fail('stock: args de la corrección del DOT: ' + JSON.stringify(ed2.map(function(e){ return e.args; })));
 
   // Acciones de la fila: «Enviar a recauchutar» queda a la vista; Editar, Cambiar sucursal y Eliminar van en el menú «Más» (H1 de la auditoría:
   // cuatro botones se apilaban y desbordaban la tarjeta).
@@ -230,9 +245,9 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   fx.failTable = null; w.console.error = ceR;
   if($('#modal-reca').classList.contains('show') || /ya no se puede enviar/.test($('#toast-msg').textContent)) fail('stock: con la lectura caída «Enviar a recauchutar» no debe abrir el modal ni avisar «ya no se puede»: ' + $('#toast-msg').textContent);
 
-  // Con la vida máxima (S-011, recauchutada 3 veces) no se ofrece «Enviar a recauchutar»: no hay más recauchutados posibles.
+  // Con la vida 3 (S-011, recauchutada 3 veces) sigue ofreciéndose «Enviar a recauchutar»: la vida no tiene tope (F8 ola 5).
   var textos34 = visibles(d.querySelector('[data-cubierta="34"]')) + '#' + itemsMenu(d.querySelector('[data-cubierta="34"]'));
-  if(textos34 !== 'Más#Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 no debe ofrecer «Enviar a recauchutar»: ' + textos34);
+  if(textos34 !== 'Enviar a recauchutar|Más#Editar|Cambiar sucursal|Eliminar') fail('stock: una cubierta en vida 3 debe ofrecer «Enviar a recauchutar»: ' + textos34);
 
   // Cambiar sucursal: destino distinto; mismo destino no llama a la RPC
   d.querySelector('[data-cubierta="31"] [data-action="cubiertaMover"]').click(); await sleep(300);
@@ -279,5 +294,5 @@ window.stockFlow = async function(w, d, sleep, fail, log, cliMode, secUser){
   inp2.form.dispatchEvent(new w.Event('submit', {bubbles: true, cancelable: true})); await sleep(700);
   if(!$('#view-stock').classList.contains('active') || quemas().join() !== 'S-011') fail('buscador: Enter no abrió Stock filtrado: ' + quemas().join());
   set('#search-stock', ''); await sleep(100);
-  log.push('stock-flow(' + rol + '): altas=' + rpcs('stock_cubierta_agregar').length + ' ediciones=' + ed.length + ' traslados=' + mv.length + ' bajas=' + el.length);
+  log.push('stock-flow(' + rol + '): lotes=' + rpcs('stock_cubiertas_agregar_lote').length + ' ediciones=' + ed.length + ' traslados=' + mv.length + ' bajas=' + el.length);
 };

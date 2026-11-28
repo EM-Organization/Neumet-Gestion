@@ -3,10 +3,17 @@
 // las RPC stock_cubierta_* (la autorización real vive en la base). docs/08 apéndice «Stock individual de cubiertas».
 // Tests: tests/unit/stock-cubiertas.test.mjs
 import { claveBusqueda, resolverBusqueda } from './vehiculo-busqueda.js';
-import { normalizarQuema } from './quema.js';
+import { normalizarQuema, claveQuema } from './quema.js';
 
 export const MAX_TXT = 60;
 export const MAX_PRECIO = 9999999999.99;
+// Límites de los datos de compra y de la banda: los mismos que la base (stock_cubierta_* y stock_cubiertas_agregar_lote).
+export const MAX_MEDIDA = 30;
+export const MAX_PROVEEDOR = 80;
+export const MAX_FACTURA = 60;
+export const MAX_SOPORTE = 200;
+export const MAX_MM_INICIAL = 30;
+export const MAX_LOTE = 200;
 
 // Condición de la banda. «Nuevo» pasa solo a «Usado» al primer montaje; «Reparado» y «Recauchutado» las marca el cliente.
 export const CONDICIONES = [
@@ -52,10 +59,10 @@ export function parseFecha(texto, hoy = new Date().toISOString().slice(0, 10)) {
   return { ok: true, valor: s };
 }
 
-function textoCorto(valor, etiqueta, obligatorio) {
+function textoCorto(valor, etiqueta, obligatorio, max = MAX_TXT) {
   const t = String(valor ?? '').trim();
   if (!t) return obligatorio ? { ok: false, error: `Falta ${etiqueta}` } : { ok: true, valor: null };
-  if (t.length > MAX_TXT) return { ok: false, error: `${etiqueta[0].toUpperCase()}${etiqueta.slice(1)} admite hasta ${MAX_TXT} caracteres` };
+  if (t.length > max) return { ok: false, error: `${etiqueta[0].toUpperCase()}${etiqueta.slice(1)} admite hasta ${max} caracteres` };
   return { ok: true, valor: t };
 }
 
@@ -102,6 +109,26 @@ export function validarEdicion(actual, f, { hoy } = {}) {
   if (fecha.valor !== (prev.fecha_compra ?? null)) datos.fecha_compra = fecha.valor;
   const precioPrev = prev.precio_unidad === null || prev.precio_unidad === undefined ? null : Number(prev.precio_unidad);
   if (precio.valor !== precioPrev) datos.precio = precio.valor;
+  // Datos de compra y de la banda: lo que se vacía se manda como null (la base lo borra).
+  const medida = textoCorto(x.medida, 'la medida', false, MAX_MEDIDA);
+  if (!medida.ok) return medida;
+  const dot = parseDot(x.dot, hoy);
+  if (!dot.ok) return dot;
+  const mm = parseMmInicial(x.mmIniciales);
+  if (!mm.ok) return mm;
+  const proveedor = textoCorto(x.proveedor, 'el proveedor', false, MAX_PROVEEDOR);
+  if (!proveedor.ok) return proveedor;
+  const factura = textoCorto(x.factura, 'la factura', false, MAX_FACTURA);
+  if (!factura.ok) return factura;
+  const soporte = textoCorto(x.soporte, 'el soporte', false, MAX_SOPORTE);
+  if (!soporte.ok) return soporte;
+  const cambiosCompra = [
+    ['medida', medida.valor, prev.medida ?? null], ['dot', dot.valor, prev.dot ?? null],
+    ['profundidad_inicial_mm', mm.valor, numOrNull(prev.profundidad_inicial_mm)],
+    ['proveedor', proveedor.valor, prev.proveedor ?? null], ['factura', factura.valor, prev.factura ?? null],
+    ['soporte', soporte.valor, prev.soporte ?? null],
+  ];
+  for (const [campo, nuevo, previo] of cambiosCompra) if (nuevo !== previo) datos[campo] = nuevo;
   if (!vacio(x.condicion) && x.condicion !== prev.condicion) {
     if (!CONDICIONES_MANUALES.some(c => c.id === x.condicion)) {
       return { ok: false, error: 'La condición solo puede cambiarse a Reparado o Recauchutado' };
@@ -110,6 +137,148 @@ export function validarEdicion(actual, f, { hoy } = {}) {
   }
   if (!Object.keys(datos).length) return { ok: false, error: 'No hay cambios para guardar' };
   return { ok: true, args: { p_id: Number(prev.id), p_datos: datos } };
+}
+
+// ---- Datos de compra, DOT y alta por lote --------------------------------------------------------------------------
+// La base valida lo mismo (stock_cubiertas_agregar_lote es todo o nada). Aquí se evita el viaje con lo que ya se sabe
+// mal, con los mismos textos que la base para que el operario vea una sola redacción.
+const hoyIso = () => new Date().toISOString().slice(0, 10);
+function numOrNull(v) { return vacio(v) || !Number.isFinite(Number(v)) ? null : Number(v); }
+
+export const MENSAJE_MM = `Los mm iniciales deben estar entre 0,1 y ${MAX_MM_INICIAL}`;
+// Mm iniciales de la banda: número mayor que 0 y hasta 30, con coma o punto. Vacío = null (lo decide cada formulario).
+export function parseMmInicial(texto) {
+  if (vacio(texto)) return { ok: true, valor: null };
+  const s = String(texto).trim().replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return { ok: false, error: MENSAJE_MM };
+  const n = Number(s);
+  if (n <= 0 || n > MAX_MM_INICIAL) return { ok: false, error: MENSAJE_MM };
+  return { ok: true, valor: n };
+}
+
+export const MENSAJE_DOT = 'DOT inválido: deben ser 4 dígitos, semana y año (por ejemplo 0825)';
+export const MENSAJE_DOT_FUTURO = 'El DOT no puede ser posterior a la semana actual';
+
+// Semana ISO de una fecha «AAAA-MM-DD»: el jueves de su semana decide el año y el número de semana.
+function semanaIso(fecha) {
+  const d = new Date(`${fecha}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
+  const anio = d.getUTCFullYear();
+  const diaDelAnio = Math.round((d - Date.UTC(anio, 0, 1)) / 86400000);
+  return { anio, semana: Math.floor(diaDelAnio / 7) + 1 };
+}
+
+// DOT: cuatro dígitos WWYY (semana 01 a 53 y año de dos cifras). Una semana posterior a la actual no existe todavía.
+export function parseDot(texto, hoy = hoyIso()) {
+  if (vacio(texto)) return { ok: true, valor: null };
+  const s = String(texto).trim();
+  const m = /^(\d{2})(\d{2})$/.exec(s);
+  if (!m || Number(m[1]) < 1 || Number(m[1]) > 53) return { ok: false, error: MENSAJE_DOT };
+  const cuando = (2000 + Number(m[2])) * 100 + Number(m[1]);
+  const actual = semanaIso(hoy);
+  if (cuando > actual.anio * 100 + actual.semana) return { ok: false, error: MENSAJE_DOT_FUTURO };
+  return { ok: true, valor: s };
+}
+
+// Datos comunes del lote ya parseados (null si no se escribieron). El precio solo se lee con `conCostos`.
+function comunLote(f = {}, { hoy = hoyIso(), conCostos = false } = {}) {
+  const comun = {
+    marca: null, modelo: null, medida: null, profundidad_inicial_mm: null, fecha_compra: null, precio: null,
+    proveedor: null, factura: null, soporte: null, sucursal_id: idONull(f.sucursalId),
+  };
+  const sin = error => ({ ok: false, error, comun });
+  const marca = textoCorto(f.marca, 'la marca', true);
+  if (!marca.ok) return sin(marca.error);
+  comun.marca = marca.valor;
+  const modelo = textoCorto(f.modelo, 'el modelo', false);
+  if (!modelo.ok) return sin(modelo.error);
+  comun.modelo = modelo.valor;
+  const medida = textoCorto(f.medida, 'la medida', false, MAX_MEDIDA);
+  if (!medida.ok) return sin(medida.error);
+  comun.medida = medida.valor;
+  const mm = parseMmInicial(f.mmIniciales);
+  if (!mm.ok) return sin(mm.error);
+  if (mm.valor === null) return sin('Faltan los mm iniciales');
+  comun.profundidad_inicial_mm = mm.valor;
+  const fecha = parseFecha(f.fechaCompra, hoy);
+  if (!fecha.ok) return sin(fecha.error);
+  comun.fecha_compra = fecha.valor;
+  if (conCostos) {
+    const precio = parsePrecio(f.precio);
+    if (!precio.ok) return sin(precio.error);
+    comun.precio = precio.valor;
+  }
+  const proveedor = textoCorto(f.proveedor, 'el proveedor', false, MAX_PROVEEDOR);
+  if (!proveedor.ok) return sin(proveedor.error);
+  comun.proveedor = proveedor.valor;
+  const factura = textoCorto(f.factura, 'la factura', false, MAX_FACTURA);
+  if (!factura.ok) return sin(factura.error);
+  comun.factura = factura.valor;
+  const soporte = textoCorto(f.soporte, 'el soporte', false, MAX_SOPORTE);
+  if (!soporte.ok) return sin(soporte.error);
+  comun.soporte = soporte.valor;
+  return { ok: true, comun };
+}
+
+// Filas con algo escrito, con su posición en el formulario: las vacías (también las de en medio) se ignoran.
+export function filasLote(filas) {
+  return (filas || [])
+    .map((f, fila) => ({ fila, quema: String(f?.quema ?? '').trim(), dot: String(f?.dot ?? '').trim() }))
+    .filter(x => x.quema !== '' || x.dot !== '');
+}
+
+// Alta por lote. f: datos comunes (marca, modelo, medida, mmIniciales, fechaCompra, precio, proveedor, factura, soporte,
+// sucursalId, clienteId solo admin) y filas [{quema, dot}]. Un error de una fila trae `fila` (su índice en el formulario).
+export function validarLote(f = {}, { esAdmin = false, hoy = hoyIso(), conCostos = false } = {}) {
+  const comun = comunLote(f, { hoy, conCostos });
+  if (!comun.ok) return { ok: false, error: comun.error };
+  if (esAdmin && vacio(f.clienteId)) return { ok: false, error: 'Falta el cliente' };
+  const filas = filasLote(f.filas);
+  if (!filas.length) return { ok: false, error: 'Agregar al menos una cubierta' };
+  if (filas.length > MAX_LOTE) return { ok: false, error: `El lote debe tener entre 1 y ${MAX_LOTE} cubiertas` };
+  const vistas = new Set();
+  for (const x of filas) {
+    if (!x.quema) return { ok: false, error: 'Falta el número de quema', fila: x.fila };
+    const q = normalizarQuema(x.quema);
+    if (!q.ok) return { ok: false, error: q.error, fila: x.fila };
+    const clave = claveQuema(x.quema);
+    if (vistas.has(clave)) return { ok: false, error: `Quema repetida en el lote: ${x.quema}`, fila: x.fila };
+    vistas.add(clave);
+    const dot = parseDot(x.dot, hoy);
+    if (!dot.ok) return { ok: false, error: dot.error, fila: x.fila };
+  }
+  return { ok: true };
+}
+
+// Argumentos de stock_cubiertas_agregar_lote con un formulario ya validado. En p_comun solo van las claves con valor,
+// los números van como número y el precio solo si el usuario ve costos.
+export function paramsLote(f = {}, { esAdmin = false, hoy = hoyIso(), conCostos = false } = {}) {
+  const { comun } = comunLote(f, { hoy, conCostos });
+  const pComun = Object.fromEntries(Object.entries(comun).filter(([, v]) => v !== null && v !== undefined));
+  const cubiertas = filasLote(f.filas).map(x => {
+    const numero_quema = normalizarQuema(x.quema).valor;
+    return x.dot ? { numero_quema, dot: x.dot } : { numero_quema };
+  });
+  return { p_comun: pComun, p_cubiertas: cubiertas, p_cliente_id: esAdmin ? Number(f.clienteId) : null };
+}
+
+// Error de la RPC del lote -> { mensaje, quema }. `quema` nombra la fila que hay que marcar (la base la escribe en el mensaje).
+export function errorLote(err) {
+  const msg = err && err.message ? String(err.message) : '';
+  const nombrada = /(?:Quema repetida en el lote: |Ya existe una cubierta con la quema )(.+)$/.exec(msg);
+  if (nombrada) return { mensaje: msg, quema: nombrada[1].trim() };
+  if (err && err.code === '22023' && msg) return { mensaje: msg, quema: null };
+  return { mensaje: traducirErrorStock(err), quema: null };
+}
+
+// Precio por mm de banda que se gasta: el precio entre los mm que la cubierta pierde hasta el umbral de retiro.
+// Sin dato, o sin mm por gastar, es null (la pantalla muestra «—»).
+export function precioPorMm(precio, mm, umbral) {
+  const p = numOrNull(precio);
+  const m = numOrNull(mm);
+  const u = numOrNull(umbral);
+  if (p === null || m === null || u === null || m - u <= 0) return null;
+  return Math.round((p / (m - u)) * 100) / 100;
 }
 
 export const argsMoverCubierta = (id, sucursalId) => ({ p_id: Number(id), p_sucursal_id: idONull(sucursalId) });

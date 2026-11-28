@@ -9,7 +9,6 @@ export const ESTADOS = [
 ];
 export const etiquetaEstado = id => (ESTADOS.find(e => e.id === id) || {}).label || String(id ?? '—');
 export const estaAbierto = estado => estado === 'enviado' || estado === 'apto';
-export const VIDA_MAXIMA = 3;
 
 // La «vida» es jerga de base de datos (docs/14 §5, regla 8): el operario ve la banda. 0 = banda original; N = recauchutado nº N.
 export const etiquetaBanda = vida => (Number(vida) > 0 ? `Recauchutado nº ${Number(vida)}` : 'Banda original');
@@ -24,10 +23,11 @@ export function accionesDe(estado) {
   return [];
 }
 
-// Cubiertas que pueden enviarse: sin montar, con vida por debajo del máximo y sin proceso abierto.
+// Cubiertas que pueden enviarse: las que no tienen un proceso abierto. La vida es un contador sin tope (decisión del
+// dueño, 2026-11-28): una cubierta con tres o más recauchutados también se envía.
 export function cubiertasEnviables(cubiertas, procesos) {
   const abiertas = new Set((procesos || []).filter(p => estaAbierto(p.estado)).map(p => String(p.neumatico_id)));
-  return (cubiertas || []).filter(c => (c.vida ?? 0) < VIDA_MAXIMA && !abiertas.has(String(c.id)));
+  return (cubiertas || []).filter(c => !abiertas.has(String(c.id)));
 }
 
 // Identificador visible de una cubierta (el mismo que ve el operario en las listas): quema, o el id de dispositivo si no tiene.
@@ -142,7 +142,6 @@ export function traducirErrorRecauchutado(err) {
     if (msg.includes('ya está en recauchutado')) return 'La cubierta ya está en recauchutado';
     return 'El proceso ya cambió de estado. Actualizar la lista';
   }
-  if (code === '23514' && msg.includes('vida máxima')) return 'La carcasa ya alcanzó la vida máxima (3 recauchutados)';
   if (msg.includes('fecha')) return 'La fecha no es válida';
   if (code === '22023' || code === '22004' || code === '22003' || code === '23514') return 'Datos del formulario inválidos';
   return ERROR_GENERICO_RECAUCHUTADO;

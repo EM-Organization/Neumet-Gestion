@@ -15,7 +15,7 @@
       return q;
     };
     c.rpc = function(name, args){
-      if(!/^(stock_cubierta_|recauchutado_enviar$)/.test(name)) return rpc.apply(c, arguments); // «Enviar a recauchutar» desde Stock
+      if(!/^(stock_cubierta_|stock_cubiertas_agregar_lote$|recauchutado_enviar$)/.test(name)) return rpc.apply(c, arguments); // alta por lote y «Enviar a recauchutar» desde Stock
       fx.rpcs.push({name: name, args: args});
       return Promise.resolve(fx.rpcError ? {data: null, error: fx.rpcError} : {data: {id: 99, movido: true}, error: null});
     };

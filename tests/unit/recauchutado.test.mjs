@@ -23,10 +23,10 @@ describe('estados y acciones', () => {
     assert.deepEqual(accionesDe('rechazado'), []);
     assert.deepEqual(accionesDe(undefined), []);
   });
-  test('cubiertas enviables: sin vida máxima y sin proceso abierto', () => {
-    const cub = [{ id: 1, vida: 0 }, { id: 2, vida: 3 }, { id: 3, vida: 1 }, { id: 4 }];
+  test('cubiertas enviables: la vida no limita, solo excluye el proceso abierto', () => {
+    const cub = [{ id: 1, vida: 0 }, { id: 2, vida: 3 }, { id: 3, vida: 1 }, { id: 4 }, { id: 5, vida: 7 }];
     const proc = [{ neumatico_id: 3, estado: 'apto' }, { neumatico_id: 1, estado: 'rechazado' }];
-    assert.deepEqual(cubiertasEnviables(cub, proc).map(c => c.id), [1, 4]);
+    assert.deepEqual(cubiertasEnviables(cub, proc).map(c => c.id), [1, 2, 4, 5]);
     assert.deepEqual(cubiertasEnviables(null, null), []);
   });
 });
@@ -96,7 +96,6 @@ describe('traducirErrorRecauchutado', () => {
     assert.match(traducirErrorRecauchutado({ code: '55000', message: 'la cubierta está montada: retirarla' }), /montada/);
     assert.match(traducirErrorRecauchutado({ code: '55000', message: 'la cubierta ya está en recauchutado' }), /ya está en recauchutado/);
     assert.match(traducirErrorRecauchutado({ code: '55000', message: 'el recauchutado ya tiene dictamen' }), /cambió de estado/);
-    assert.match(traducirErrorRecauchutado({ code: '23514', message: 'la carcasa ya alcanzó la vida máxima' }), /vida máxima/);
     assert.match(traducirErrorRecauchutado({ code: '23514', message: 'fecha inválida' }), /fecha/);
     assert.match(traducirErrorRecauchutado({ code: '22023', message: 'x' }), /inválidos/);
     assert.equal(traducirErrorRecauchutado({ message: 'boom' }), ERROR_GENERICO_RECAUCHUTADO);

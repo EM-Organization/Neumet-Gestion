@@ -6,7 +6,6 @@ export const TIPO_LABEL = {
   alta_stock:'Alta en stock', traslado:'Traslado', cambio_condicion:'Cambio de condición',
   envio_recauchutado:'Envío a recauchutar', dictamen_recauchutado:'Dictamen de recauchutado', rechazo_recauchutado:'Rechazo de recauchutado'
 };
-export const VIDA_MAX = 3;
 
 // Texto -> entero >= 0, o null si vacío/inválido. Rechaza decimales y notación científica.
 export function parseEnteroNoNeg(v){

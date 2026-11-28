@@ -13,12 +13,13 @@ import { COLUMNAS_COSTO } from '../domain/costos.js';
 import { rendimientoFila, cubiertasCsv } from '../domain/rendimiento-cubierta.js';
 import { puedeVerCostos } from './costos.js';
 import { traerPrecios, conValor } from '../core/precios.js';
-import { fmtFecha, fmtPesos, plural } from '../domain/formato.js';
-import { VIDA_MAXIMA } from '../domain/recauchutado.js';
+import { fmtFecha, fmtPesos, fmtNum, plural } from '../domain/formato.js';
+import { claveQuema } from '../domain/quema.js';
 import { pestanasVisibles, PESTANA_RECAUCHUTADO } from '../domain/neumaticos.js';
 import {
-  CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarCubierta, validarEdicion,
-  argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock, ERROR_GENERICO
+  CONDICIONES, CONDICIONES_MANUALES, etiquetaCondicion, claseCondicion, nombreUbicacion, validarEdicion,
+  argsMoverCubierta, filtrarCubiertas, ordenarCubiertas, resumenCubiertas, traducirErrorStock, ERROR_GENERICO,
+  validarLote, paramsLote, errorLote, precioPorMm, filasLote, MAX_LOTE
 } from '../domain/stock-cubiertas.js';
 
 let sucIni=''; // última sucursal de la barra aplicada como valor inicial del filtro
@@ -44,8 +45,23 @@ export async function loadStockAssignments(){
 // autorización (admin o perfil global del propio cliente) se verifica en la base. El perfil de sucursal no ve el stock.
 const $=id=>document.getElementById(id);
 let enReca=new Set(), cubiertas=[], sucursales=[], clientes=[], cubiertaModal=null, moverId=null, cargaN=0, guardandoCb=false;
+let loteModal=null, guardandoLote=false; // alta por lote abierta y envío en curso (un solo envío a la vez)
+let umbralCliente=null; // umbral de retiro (mm) del cliente del perfil; el admin lo lee de la lista de clientes
 let rendKm=new Map(), rendCosto=new Map(); // neumatico_id → fila de v_km_cubierta / v_costo_cubierta (columna Rendimiento)
 let exportando=false; // doble clic en «Exportar CSV»: una exportación a la vez
+
+// Espera máxima de la base para el alta por lote. Si vence NO se reintenta: el lote pudo haberse aplicado igual y
+// repetirlo daría quemas repetidas. Configurable para las pruebas.
+export const config = { timeoutMs: 20000 };
+const TARDE = Symbol('tarde');
+function conLimite(promesa) {
+  let t;
+  const limite = new Promise(res => { t = setTimeout(() => res(TARDE), config.timeoutMs); });
+  return Promise.race([Promise.resolve(promesa), limite]).finally(() => clearTimeout(t));
+}
+
+// Umbral de retiro del cliente de la fila (para «$ X por mm»). Sin dato, null: la columna no se muestra.
+const umbralDe=cid=>{ const c=clientes.find(x=>String(x.id)===String(cid)); return c?(c.umbral_retiro_mm??null):umbralCliente; };
 
 // Solo el administrador de la empresa escribe cubiertas (docs/17 PR 9); el equipo Neumet mira.
 const puedeGestionar=()=>esAdminEmpresa();
@@ -103,15 +119,19 @@ function renderCubiertas(){
       const cli=admin?(c.clientes&&c.clientes.nombre)||nombreCliente(c.cliente_id):'';
       const etq=c.numero_quema||'sin quema';
       const rd=rendimientoFila(rendKm.get(c.id),rendCosto.get(c.id),{conCostos:puedeVerCostos()});
+      // Medida y DOT bajo el modelo: son lo que el operario busca al recorrer el stock.
+      const det=[c.medida,c.dot?`DOT ${c.dot}`:''].filter(Boolean).join(' · ');
+      // Precio por mm de banda: solo con permiso de costos (el precio solo llega a quien lo ve).
+      const pm=puedeVerCostos()&&c.precio_unidad!==null?precioPorMm(c.precio_unidad,c.profundidad_inicial_mm,umbralDe(c.cliente_id)):null;
       return html`<li class="stk-fila" data-cubierta="${c.id}">
         <span class="stk-quema">${c.numero_quema||'—'}${cli?html`<span class="stk-sub">${cli}</span>`:''}</span>
-        <span class="stk-desc">${c.marca||'Sin marca'}${c.modelo?html` <span class="stk-sub">${c.modelo}</span>`:''}</span>
+        <span class="stk-desc">${c.marca||'Sin marca'}${c.modelo?html` <span class="stk-sub">${c.modelo}</span>`:''}${det?html`<span class="stk-sub">${det}</span>`:''}</span>
         <span class="stk-cond"><span class="badge ${claseCondicion(c.condicion)}">${etiquetaCondicion(c.condicion)}</span></span>
         <span class="stk-loc${c.sucursal_id===null&&!reca?' stk-sin':''}">${loc}</span>
-        <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}</span>
+        <span class="stk-compra">${c.fecha_compra?fmtFecha(new Date(c.fecha_compra+'T00:00:00')):'—'}${c.precio_unidad!==null?html`<span class="stk-sub">${fmtPesos(c.precio_unidad)}</span>`:''}${pm!==null?html`<span class="stk-sub">$ ${fmtNum(pm,2)} por mm</span>`:''}</span>
         <span class="stk-rend" title="${rd.kmNota||''}">${rd.kmTexto}${rd.cpkTexto!==null?html`<span class="stk-sub">${rd.cpkTexto}</span>`:''}</span>
         <span class="stk-acc">${alta?html`
-          ${reca||!puedeReca||(c.vida??0)>=VIDA_MAXIMA?'':html`<button type="button" class="btn stk-btn stk-primaria" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
+          ${reca||!puedeReca?'':html`<button type="button" class="btn stk-btn stk-primaria" data-action="recaEnviar" data-args="[${c.id}]" aria-label="Enviar a recauchutar la cubierta ${etq}">Enviar a recauchutar</button>`}
           ${menuMas({ etiqueta: `Más acciones de la cubierta ${etq}`, items: [
             { label: 'Editar', action: 'cubiertaEditar', args: [c.id], aria: `Editar la cubierta ${etq}` },
             ...(reca ? [] : [{ label: 'Cambiar sucursal', action: 'cubiertaMover', args: [c.id], aria: `Cambiar de sucursal la cubierta ${etq}` }]),
@@ -126,7 +146,7 @@ async function traerCubiertas(){
   // precio_unidad no se pide por select (privilegios por columna): se incorpora desde neumaticos_precios (admin y perfil global).
   const [r,p]=await Promise.all([fetchAll((from,to)=>{
     let q=db.from('neumaticos')
-      .select('id,cliente_id,numero_quema,marca,modelo,fecha_compra,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
+      .select('id,cliente_id,numero_quema,marca,modelo,medida,dot,profundidad_inicial_mm,fecha_compra,proveedor,factura,soporte,condicion,sucursal_id,vida,km_previos,idneumatico,clientes(nombre)')
       .is('vehiculo_id',null).eq('estado','almacenado').order('id').range(from,to);
     if(isClienteMode()) q=q.eq('cliente_id',currentClienteId);
     return q;
@@ -162,13 +182,16 @@ async function leerParaCsv(cid){
   },{pageSize:PAGE_SIZE,max});
   const sinDatos={rows:[],truncated:false,error:null};
   const ver=puedeVerCostos();
-  const [n,k,c,v]=await Promise.all([
-    pagina('neumaticos','id,numero_quema,idneumatico,marca,modelo,vida,estado,vehiculo_id,posicion,vehiculos(nombre,tipo_ruedas)',['id']),
+  const [n,k,c,v,p]=await Promise.all([
+    pagina('neumaticos','id,numero_quema,idneumatico,marca,modelo,medida,dot,profundidad_inicial_mm,fecha_compra,proveedor,factura,soporte,sucursal_id,vida,estado,vehiculo_id,posicion,vehiculos(nombre,tipo_ruedas)',['id']),
     pagina('v_km_cubierta',COLUMNAS_KM,['neumatico_id']),
     ver?pagina('v_costo_cubierta',COLUMNAS_COSTO,['neumatico_id']):Promise.resolve(sinDatos),
     // Hasta cuatro vidas por cubierta: el tope de filas es el de cubiertas por cuatro.
-    ver?pagina('v_costo_vida','neumatico_id,vida,moneda,moneda_mixta,km_recorridos,km_confiable,cpk',['neumatico_id','vida'],MAX_ROWS*4):Promise.resolve(sinDatos)]);
-  return {n,k,c,v};
+    ver?pagina('v_costo_vida','neumatico_id,vida,moneda,moneda_mixta,km_recorridos,km_confiable,cpk',['neumatico_id','vida'],MAX_ROWS*4):Promise.resolve(sinDatos),
+    // precio_unidad no viaja en el select (privilegios por columna): se incorpora como en la lista.
+    ver?traerPrecios({soloStock:true}):Promise.resolve({precios:[],error:null})]);
+  if(ver&&!p.error) n.rows=conValor(n.rows,p.precios,'precio_unidad');
+  return {n,k,c,v,p};
 }
 
 // Descarga local, igual que el resto de exportaciones (Reportes): el CSV ya lleva el BOM de buildCsv.
@@ -191,9 +214,11 @@ export async function loadStock(){
   if(isClienteMode()) sq=sq.eq('cliente_id',currentClienteId);
   let sucQ=db.from('sucursales').select('id,nombre,cliente_id').order('nombre');
   if(isClienteMode()) sucQ=sucQ.eq('cliente_id',currentClienteId);
-  const [rl,rc,rs,rcl,rr]=await Promise.all([sq,traerCubiertas(),sucQ,
-    esAdmin()?db.from('clientes').select('id,nombre').is('deleted_at',null).order('nombre'):Promise.resolve({data:[]}),
-    db.from('recauchutados').select('neumatico_id').in('estado',['enviado','apto'])]);
+  // El umbral de retiro se usa solo para «$ X por mm», que muestra quien ve costos.
+  const umbralQ=!esAdmin()&&isClienteMode()&&puedeVerCostos()?db.from('clientes').select('umbral_retiro_mm').eq('id',currentClienteId).maybeSingle():Promise.resolve({data:null});
+  const [rl,rc,rs,rcl,rr,ru]=await Promise.all([sq,traerCubiertas(),sucQ,
+    esAdmin()?db.from('clientes').select('id,nombre,umbral_retiro_mm').is('deleted_at',null).order('nombre'):Promise.resolve({data:[]}),
+    db.from('recauchutados').select('neumatico_id').in('estado',['enviado','apto']),umbralQ]);
   if(mio!==cargaN) return; // llegó una carga más nueva
   if(rl.error||rc.error){ showToast(userError(rl.error||rc.error),true); return; }
   stockItems=rl.data||[];
@@ -201,6 +226,7 @@ export async function loadStock(){
   enReca=new Set(rr.error?[]:(rr.data||[]).map(x=>x.neumatico_id));
   sucursales=rs.error?[]:(rs.data||[]);
   clientes=rcl.error?[]:(rcl.data||[]);
+  umbralCliente=ru&&!ru.error&&ru.data?(ru.data.umbral_retiro_mm??null):null;
   opcionesFiltros();
   // Valor inicial del filtro de sucursal: la elegida en la barra (Inicio, Vehículos...). Solo al cambiar esa elección;
   // después manda el filtro propio de Stock, que se puede volver a «Todas».
@@ -315,38 +341,148 @@ async function rpcStock(nombre,args,okMsg,campoError){
   return true;
 }
 
+// ── Alta por lote (modal-lote): los datos comunes van arriba y una fila por cubierta (Quema | DOT) ──────────────────
+const setLoteError=msg=>{ $('lote-error').textContent=msg||''; };
+const indiceQuemaLote=(filas,quema)=>{ const k=claveQuema(quema); const i=(filas||[]).findIndex(x=>claveQuema(x.quema)===k); return i<0?null:i; };
+
+function leerFilasLote(){
+  return [...$('lote-filas').querySelectorAll('.lote-fila')].map(el=>({
+    quema:el.querySelector('.lote-quema').value, dot:el.querySelector('.lote-dot').value
+  }));
+}
+function leerLote(){
+  const v=id=>$(id).value;
+  return {
+    filas:leerFilasLote(), clienteId:esAdmin()?v('lt-cliente'):null,
+    marca:v('lt-marca'), modelo:v('lt-modelo'), medida:v('lt-medida'), mmIniciales:v('lt-mm'), fechaCompra:v('lt-fecha'),
+    precio:puedeVerCostos()?v('lt-precio'):'', proveedor:v('lt-proveedor'), factura:v('lt-factura'), soporte:v('lt-soporte'),
+    sucursalId:v('lt-sucursal'),
+  };
+}
+// Pinta las filas. Los valores que están en pantalla se leen antes de llamar; `fila` marca la fila con error.
+function pintarFilasLote(filas,fila=null){
+  setHtml($('lote-filas'), joinHtml(filas.map((f,i)=>html`<div class="lote-fila${i===fila?' lote-fila-error':''}" data-fila="${i}">
+    <span class="lote-n">${i+1}</span>
+    <input type="text" class="lote-quema" maxlength="40" autocomplete="off" value="${f.quema}" aria-label="Número de quema, cubierta ${i+1}" aria-invalid="${i===fila?'true':'false'}"/>
+    <input type="text" class="lote-dot" maxlength="4" inputmode="numeric" placeholder="0825" autocomplete="off" value="${f.dot}" aria-label="DOT, cubierta ${i+1}"/>
+    <button type="button" class="btn ghost stk-btn" data-action="loteQuitarFila" data-args="[${i}]" aria-label="Quitar la cubierta ${i+1}">Quitar</button>
+  </div>`)));
+}
+function actualizarContadorLote(){
+  if(guardandoLote) return; // durante el envío el botón muestra «Guardando…»
+  const n=filasLote(leerFilasLote()).length;
+  const btn=$('lt-guardar');
+  btn.disabled=n===0;
+  btn.textContent=n?`Guardar ${plural(n,'cubierta')}`:'Guardar';
+}
+// Error de validación o de la base: el mensaje va al pie del diálogo y la fila afectada queda marcada, con el foco.
+function errorLoteUI(msg,fila=null,campo='quema'){
+  setLoteError(msg);
+  pintarFilasLote(leerFilasLote(),fila);
+  if(fila!==null){
+    const el=$('lote-filas').querySelectorAll('.lote-fila')[fila];
+    if(el) el.querySelector(campo==='dot'?'.lote-dot':'.lote-quema').focus();
+  }
+  actualizarContadorLote();
+}
+function agregarFilaLote(){
+  const filas=leerFilasLote();
+  if(filas.length>=MAX_LOTE){ setLoteError(`El lote admite hasta ${MAX_LOTE} cubiertas`); return; }
+  filas.push({quema:'',dot:''});
+  pintarFilasLote(filas);
+  setLoteError('');
+  actualizarContadorLote();
+  const quemas=$('lote-filas').querySelectorAll('.lote-quema');
+  quemas[quemas.length-1].focus();
+}
+// Enter: de la quema pasa al DOT; en el DOT abre una fila nueva; en una quema vacía guarda el lote.
+function teclaFilaLote(e){
+  if(e.key!=='Enter'||!(e.target instanceof HTMLInputElement)) return;
+  const fila=e.target.closest('.lote-fila'); if(!fila) return;
+  e.preventDefault(); // sin esto el Enter envía el formulario en medio de la carga
+  if(e.target.classList.contains('lote-quema')){
+    if(!e.target.value.trim()){ ACTIONS.loteGuardar(); return; }
+    fila.querySelector('.lote-dot').focus();
+    return;
+  }
+  agregarFilaLote();
+}
+
 ACTIONS.cubiertaNueva=function(){
   if(!puedeGestionar()) return;
-  cubiertaModal={modo:'crear'};
+  loteModal={};
   const admin=esAdmin();
-  $('cubierta-title').textContent='Agregar cubierta';
-  $('cb-cliente-wrap').style.display=admin?'':'none';
+  $('lt-cliente-wrap').style.display=admin?'':'none';
   if(admin){
-    setHtml($('cb-cliente'), joinHtml(clientes.map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
-    const f=$('filter-cliente-stock').value; if(f) $('cb-cliente').value=f;
+    setHtml($('lt-cliente'), joinHtml(clientes.map(c=>html`<option value="${c.id}">${c.nombre}</option>`)));
+    const f=$('filter-cliente-stock').value; if(f) $('lt-cliente').value=f;
   }
-  const cid=admin?$('cb-cliente').value:currentClienteId;
-  ['cb-quema','cb-marca','cb-modelo','cb-fecha','cb-precio'].forEach(id=>{ $(id).value=''; });
-  $('cb-quema').disabled=false; $('cb-quema-hint').textContent='Único por cliente.';
-  $('cb-sucursal-wrap').style.display=''; $('cb-condicion-wrap').style.display='none';
-  setHtml($('cb-sucursal'), opcionesSucursal(cid));
-  err('cb-error','');
-  $('cb-guardar').textContent='Guardar';
-  $('modal-cubierta').classList.add('show');
-  setTimeout(()=>$('cb-quema').focus(),60); // modal-a11y enfoca de forma asíncrona: el foco propio va después
+  const cid=admin?$('lt-cliente').value:currentClienteId;
+  ['lt-marca','lt-modelo','lt-medida','lt-mm','lt-fecha','lt-precio','lt-proveedor','lt-factura','lt-soporte'].forEach(id=>{ $(id).value=''; });
+  $('lt-precio-wrap').style.display=puedeVerCostos()?'':'none';
+  setHtml($('lt-sucursal'), opcionesSucursal(cid));
+  pintarFilasLote([{quema:'',dot:''}]);
+  setLoteError('');
+  $('lt-guardar').textContent='Guardar';
+  actualizarContadorLote();
+  $('modal-lote').classList.add('show');
+  setTimeout(()=>$('lt-marca').focus(),60); // modal-a11y enfoca de forma asíncrona: el foco propio va después
 };
-ACTIONS.cubiertaCliente=function(){ setHtml($('cb-sucursal'), opcionesSucursal($('cb-cliente').value)); };
+ACTIONS.loteCliente=function(){ setHtml($('lt-sucursal'), opcionesSucursal($('lt-cliente').value)); };
+ACTIONS.loteAgregarFila=function(){ agregarFilaLote(); };
+ACTIONS.loteQuitarFila=function(i){
+  const filas=leerFilasLote(); filas.splice(Number(i),1);
+  pintarFilasLote(filas.length?filas:[{quema:'',dot:''}]);
+  setLoteError('');
+  actualizarContadorLote();
+};
+ACTIONS.loteCerrar=function(){ $('modal-lote').classList.remove('show'); loteModal=null; };
+
+ACTIONS.loteGuardar=async function(){
+  if(!loteModal||guardandoLote||!puedeGestionar()) return; // guardandoLote: un segundo Enter no repite el envío
+  const f=leerLote();
+  const opts={esAdmin:esAdmin(),hoy:hoyISO(),conCostos:puedeVerCostos()};
+  const v=validarLote(f,opts);
+  if(!v.ok){ errorLoteUI(v.error,v.fila??null,/DOT/.test(v.error)?'dot':'quema'); return; }
+  const p=paramsLote(f,opts);
+  const btn=$('lt-guardar'); btn.disabled=true; btn.textContent='Guardando…'; guardandoLote=true;
+  try{
+    const res=await conLimite(db.rpc('stock_cubiertas_agregar_lote',p));
+    if(res===TARDE){
+      // No se reintenta: el lote pudo haberse aplicado igual. Se cierra y se recarga el stock para que lo vea.
+      ACTIONS.loteCerrar();
+      showToast('No se pudo confirmar el alta. Revisar Stock antes de reintentar',true);
+      await loadStock();
+      return;
+    }
+    const {error}=res;
+    if(error){
+      const e=errorLote(error);
+      if(e.mensaje===ERROR_GENERICO) console.error(error); // los rechazos de negocio (quema repetida, sin permiso...) no son fallos
+      errorLoteUI(e.mensaje,e.quema?indiceQuemaLote(f.filas,e.quema):null);
+      showToast(e.mensaje,true);
+      return;
+    }
+    const n=p.p_cubiertas.length;
+    showToast(`${plural(n,'cubierta')} ${n===1?'agregada':'agregadas'} al stock`);
+    notificar();
+    ACTIONS.loteCerrar();
+    await loadStock();
+  } finally { guardandoLote=false; actualizarContadorLote(); }
+};
 
 ACTIONS.cubiertaEditar=function(id){
   const c=cubiertas.find(x=>String(x.id)===String(id)); if(!c||!puedeGestionar()) return;
-  cubiertaModal={modo:'editar',cubierta:c};
+  cubiertaModal={cubierta:c};
   $('cubierta-title').textContent='Editar cubierta';
-  $('cb-cliente-wrap').style.display='none';
   $('cb-quema').value=c.numero_quema||''; $('cb-quema').disabled=true;
   $('cb-quema-hint').textContent='La quema identifica a la cubierta y no se edita.';
   $('cb-marca').value=c.marca||''; $('cb-modelo').value=c.modelo||'';
-  $('cb-fecha').value=c.fecha_compra||''; $('cb-precio').value=c.precio_unidad??'';
-  $('cb-sucursal-wrap').style.display='none'; $('cb-condicion-wrap').style.display='';
+  $('cb-medida').value=c.medida||''; $('cb-dot').value=c.dot||''; $('cb-mm').value=c.profundidad_inicial_mm??'';
+  $('cb-fecha').value=c.fecha_compra||'';
+  $('cb-precio-wrap').style.display=puedeVerCostos()?'':'none'; $('cb-precio').value=c.precio_unidad??'';
+  $('cb-proveedor').value=c.proveedor||''; $('cb-factura').value=c.factura||''; $('cb-soporte').value=c.soporte||'';
+  $('cb-condicion-wrap').style.display='';
   setHtml($('cb-condicion'), joinHtml([html`<option value="">${etiquetaCondicion(c.condicion)} (actual)</option>`,
     CONDICIONES_MANUALES.filter(x=>x.id!==c.condicion).map(x=>html`<option value="${x.id}">${x.label}</option>`)]));
   err('cb-error','');
@@ -359,20 +495,15 @@ ACTIONS.cubiertaCerrar=function(){ $('modal-cubierta').classList.remove('show');
 ACTIONS.cubiertaGuardar=async function(){
   if(!cubiertaModal||guardandoCb||!puedeGestionar()) return; // guardandoCb: un segundo Enter no repite el envío
   const btn=$('cb-guardar');
-  const campos={ marca:$('cb-marca').value, modelo:$('cb-modelo').value, fechaCompra:$('cb-fecha').value, precio:$('cb-precio').value };
-  let nombre,args,ok;
-  if(cubiertaModal.modo==='crear'){
-    const r=validarCubierta({...campos,quema:$('cb-quema').value,sucursalId:$('cb-sucursal').value,
-      clienteId:esAdmin()?$('cb-cliente').value:null},{esAdmin:esAdmin(),hoy:hoyISO()});
-    if(!r.ok){ err('cb-error',r.error); return; }
-    nombre='stock_cubierta_agregar'; args=r.args; ok='Cubierta agregada';
-  } else {
-    const r=validarEdicion(cubiertaModal.cubierta,{...campos,condicion:$('cb-condicion').value},{hoy:hoyISO()});
-    if(!r.ok){ err('cb-error',r.error); return; }
-    nombre='stock_cubierta_editar'; args=r.args; ok='Cubierta actualizada';
-  }
+  // Solo se envían los campos cambiados (validarEdicion); lo que se vacía va como null y la base lo borra.
+  const r=validarEdicion(cubiertaModal.cubierta,{
+    marca:$('cb-marca').value, modelo:$('cb-modelo').value, fechaCompra:$('cb-fecha').value,
+    precio:puedeVerCostos()?$('cb-precio').value:'', medida:$('cb-medida').value, dot:$('cb-dot').value,
+    mmIniciales:$('cb-mm').value, proveedor:$('cb-proveedor').value, factura:$('cb-factura').value,
+    soporte:$('cb-soporte').value, condicion:$('cb-condicion').value},{hoy:hoyISO()});
+  if(!r.ok){ err('cb-error',r.error); return; }
   btn.disabled=true; btn.textContent='Guardando…'; guardandoCb=true;
-  try{ if(await rpcStock(nombre,args,ok,'cb-error')) ACTIONS.cubiertaCerrar(); }
+  try{ if(await rpcStock('stock_cubierta_editar',r.args,'Cubierta actualizada','cb-error')) ACTIONS.cubiertaCerrar(); }
   finally{ btn.disabled=false; btn.textContent='Guardar'; guardandoCb=false; }
 };
 
@@ -424,19 +555,19 @@ ACTIONS.cubiertasCsv=async function(){
   if(!cid){ showToast('Elegir un cliente para exportar sus cubiertas',true); return; }
   exportando=true; const btn=$('btn-stock-csv'); btn.disabled=true;
   try{
-    const {n,k,c,v}=await leerParaCsv(cid);
-    const malo=[n,k,c,v].find(x=>x.error||x.truncated);
+    const {n,k,c,v,p}=await leerParaCsv(cid);
+    const malo=[n,k,c,v,p].find(x=>x.error||x.truncated);
     if(malo){
       showToast(malo.truncated?`Hay más de ${MAX_ROWS.toLocaleString('es-AR')} filas: el CSV no se genera completo`:'No se pudo leer las cubiertas para exportar',true);
       return;
     }
-    const texto=cubiertasCsv(n.rows,k.rows,c.rows,v.rows,{conCostos:puedeVerCostos(),enReca});
+    const texto=cubiertasCsv(n.rows,k.rows,c.rows,v.rows,{conCostos:puedeVerCostos(),enReca,sucursales,umbral:umbralDe(cid)});
     descargarCsv(texto,safeFilename(['neumet-cubiertas',nombreCliente(cid),new Date().toISOString().slice(0,10)],'csv'));
     showToast(`CSV exportado (${n.rows.length} filas)`);
   } finally { exportando=false; btn.disabled=false; }
 };
 
-onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubiertaModal=null; moverId=null; rendKm=new Map(); rendCosto=new Map(); $('search-stock').value=''; });
+onLogout(()=>{ cubiertas=[]; stockItems=[]; sucursales=[]; clientes=[]; cubiertaModal=null; loteModal=null; umbralCliente=null; moverId=null; rendKm=new Map(); rendCosto=new Map(); $('search-stock').value=''; });
 
 ACTIONS.loadStock=loadStock;
 export const load=loadStock;
@@ -445,6 +576,9 @@ registerView('stock','Neumáticos',loadStock); // pestaña Stock; la otra pesta�
 export function init(){
   // «Enter» en cualquier campo guarda (docs/14 §5, regla 3).
   $('cubierta-form').addEventListener('submit',e=>{ e.preventDefault(); ACTIONS.cubiertaGuardar(); });
+  $('lote-form').addEventListener('submit',e=>{ e.preventDefault(); ACTIONS.loteGuardar(); });
+  $('lote-form').addEventListener('input',actualizarContadorLote);
+  $('lote-filas').addEventListener('keydown',teclaFilaLote);
   $('search-stock').addEventListener('input',renderStock);
   // Cambiar el cliente reduce las sucursales ofrecidas en el filtro.
   $('filter-cliente-stock').addEventListener('change',()=>{ opcionesFiltros(); renderStock(); });

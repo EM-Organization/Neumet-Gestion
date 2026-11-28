@@ -53,6 +53,15 @@ window.visualScene = async function(name, w, d, sleep, fail, log){
     'cambio-cubierta': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); $('#cambio-confirmar').scrollIntoView(); },
     'cambio-almacenar': async function(){ await abrirDetalle(); rueda3(); await sleep(600); click('#vd-panel [data-action="neumatico-cambiar"]'); await sleep(900); click('input[name="cambio-destino"][value="almacenado"]'); await sleep(300); $('#cambio-retorno-wrap').scrollIntoView(); },
     'stock-alta': async function(){ nav('stock'); await sleep(800); click('#btn-cubierta-nueva'); await sleep(500); },
+    // Alta por lote con tres filas: la última sin quema para mostrar el error en su fila (aria-invalid y borde rojo).
+    'stock-lote': async function(){
+      nav('stock'); await sleep(800); click('#btn-cubierta-nueva'); await sleep(500);
+      $('#lt-marca').value = 'Pirelli'; $('#lt-medida').value = '205/55 R16'; $('#lt-mm').value = '16';
+      click('#modal-lote [data-action="loteAgregarFila"]'); click('#modal-lote [data-action="loteAgregarFila"]'); await sleep(100);
+      var quemas = $('#lote-filas').querySelectorAll('.lote-quema'), dots = $('#lote-filas').querySelectorAll('.lote-dot');
+      quemas[0].value = 'S-100'; dots[0].value = '0826'; quemas[1].value = 'S-101'; dots[1].value = '0826';
+      dots[2].value = '0827'; $('#lote-form').requestSubmit(); await sleep(400);
+    },
     'confirmar-intercambio': async function(){ await abrirDetalle(); rueda3(); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = '1'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(500); var m = $('#rotar-motivo'); if(!m){ fail('escena '+name+': sin diálogo de rotar'); return; } m.value = 'swap_20000'; m.dispatchEvent(new w.Event('change',{bubbles:true})); click('#rotar-confirmar'); await sleep(600); },
     'rotar-dialogo': async function(){ await abrirDetalle(); var r1 = $('#vd-diagrama .vd-rueda[data-pos="1"]'); if(r1) r1.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 1'); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = '2'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(700); },
     'rotar-disco': async function(){ await abrirDetalle(); var r1 = $('#vd-diagrama .vd-rueda[data-pos="1"]'); if(r1) r1.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); else fail('escena '+name+': sin rueda 1'); await sleep(700); var sel = $('#vd-rotar-destino'); var br = $('#vd-panel [data-action="neumatico-rotar-pos"]'); if(!sel || !br){ fail('escena '+name+': sin selector de rotar'); return; } sel.value = 'disco'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); br.click(); await sleep(700); },

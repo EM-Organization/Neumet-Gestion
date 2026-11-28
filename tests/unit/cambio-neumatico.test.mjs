@@ -10,7 +10,7 @@ const CAT = [
   { tipo: 'baja', codigo: 'desgaste', etiqueta: 'Desgaste', orden: 1, activo: true },
   { tipo: 'baja', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
   { tipo: 'cambio', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
-  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Primera rotación', orden: 1, activo: true },
 ];
 const base = { neum, destino: 'baja', catalogo: CAT, motivoCodigo: 'desgaste', motivoTexto: null, origen: 'stock', stockId: '1', stock, odometro: '', odometroActual: 1000, kmPrevios: '0', numeroQuema: '' };
 
@@ -43,7 +43,7 @@ test('validarCambio: rechazos', () => {
   assert.equal(validarCambio({ ...base, motivoCodigo: '' }).ok, false);             // baja exige motivo de la lista
   assert.equal(validarCambio({ ...base, destino: 'reparacion', motivoCodigo: 'otro', motivoTexto: 'Pinchazo' }).ok, true);
   assert.equal(validarCambio({ ...base, destino: 'reparacion', motivoCodigo: 'desgaste' }).ok, false, 'cambio solo admite «otro»');
-  assert.equal(validarCambio({ ...base, destino: 'reencauche', neum: { ...neum, vida: 3 } }).ok, false);
+  assert.equal(validarCambio({ ...base, destino: 'reencauche', motivoCodigo: 'otro', motivoTexto: 'Recauchutar', neum: { ...neum, vida: 3 } }).ok, true, 'sin tope de vida: reencauche con vida 3 ok');
   assert.equal(validarCambio({ ...base, stockId: '2' }).ok, false);               // lote sin unidades
   assert.equal(validarCambio({ ...base, stockId: '99' }).ok, false);
   assert.equal(validarCambio({ ...base, origen: 'nuevo', marca: '' }).ok, false);
@@ -62,7 +62,6 @@ test('traducirErrorCambio: mensajes comprensibles', () => {
   assert.match(traducirErrorCambio({ code: '55000', message: 'sin unidades en el stock seleccionado' }), /No quedan unidades/);
   assert.match(traducirErrorCambio({ code: 'P0002', message: 'stock inexistente' }), /stock/);
   assert.match(traducirErrorCambio({ code: 'P0002', message: 'no hay neumático en la posición 3' }), /posición/);
-  assert.match(traducirErrorCambio({ code: '23514', message: 'el neumático ya alcanzó la vida máxima (3 reencauches)' }), /vida máxima/);
   assert.match(traducirErrorCambio({ code: '23514', message: 'el kilometraje no puede ser menor al actual (5)' }), /Odómetro del vehículo inválido/);
   assert.equal(traducirErrorCambio({ code: '23514', message: 'el odómetro del vehículo no puede ser menor al actual (1500 km)' }),
     'El odómetro del vehículo no puede ser menor al actual (1500 km)');
@@ -217,7 +216,6 @@ test('otros destinos no devuelven al stock aunque se pida', () => {
 
 test('el destino «reencauche» se presenta como «Recauchutado»', () => {
   assert.equal(DESTINOS.find(d => d.id === 'reencauche').label, 'Recauchutado');
-  assert.match(traducirErrorCambio({ code: '23514', message: 'el neumático ya alcanzó la vida máxima (3 reencauches)' }), /3 recauchutados/);
 });
 
 test('traducirErrorCambio: cubierta y devolución al stock', () => {
@@ -308,7 +306,7 @@ test('validarRotacionDisco: la posición 98 es válida aunque no tenga neumátic
 const CAT_DISCO = [
   { tipo: 'rotacion_disco', codigo: 'desgaste_lateral', etiqueta: 'Desgaste lateral', orden: 1, activo: true },
   { tipo: 'rotacion_disco', codigo: 'otro', etiqueta: 'Otro', orden: 9, activo: true },
-  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Swap a 20.000 km', orden: 1, activo: true },
+  { tipo: 'rotacion', codigo: 'swap_20000', etiqueta: 'Primera rotación', orden: 1, activo: true },
   { tipo: 'alineacion', codigo: 'desvio', etiqueta: 'Desvío', orden: 1, activo: true },
 ];
 const baseDisco = { catalogo: CAT_DISCO, motivoCodigo: 'desgaste_lateral', motivoTexto: null, odometro: '', odometroActual: 1000, odometroObligatorio: false };
