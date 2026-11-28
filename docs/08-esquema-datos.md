@@ -1311,7 +1311,7 @@ Implementa RN-13 y G-13 (sección 4.5 del spec de reglas de negocio): la rueda d
 - E2E: `tests/e2e/specs/km-cubierta.mjs`, caso del auxilio (CA-13) leído por la API del rol global.
 - Regresión: la prueba falla con la implementación anterior (CA-13 devuelve 100.000 en vez de 50.000) y con dos mutaciones controladas (rotación a 99 que no cierra; `sin_medir` sin excepción del auxilio). Las mutaciones se restauraron con verificación de checksum.
 
-### Z.7 Migración sin aplicar
+### Z.7 Migración aplicada
 - `20261126010000_auxilio_tramos_km.sql` **aplicada en producción** (confirmada con `supabase migration list --remote`).
 - Depende de `20261126000000_huella_minima.sql`, que ya es la última de `main`.
 
@@ -1383,7 +1383,7 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 - `t_90` y `t_96` pasan sin cambios. `t_96` recorre todas las columnas de `clientes` (las nuevas son legibles y no escribibles por `authenticated`) y `t_90` las de `eventos_neumatico`.
 - La migración corre dos veces en `tests/sql/run.sh` (idempotencia).
 
-### AA.9 Migración sin aplicar
+### AA.9 Migración aplicada
 - `20261126020000_odometro_motivos.sql` **aplicada en producción** (confirmada con `supabase migration list --remote`). Depende de `20261126010000_auxilio_tramos_km.sql` (apéndice Z), también aplicada.
 
 ### AA.10 Interfaz: clics y pruebas (rotar y cambiar)
@@ -1410,7 +1410,7 @@ Es una propuesta que sale de lo que escriben las RPC: desmontar y cambiar con de
 Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el servicio del vehículo (D5) y los umbrales de dirección y de swap por cliente. Las decisiones D1 a D8 están en AB.2 y la migración las cita por número. El panel ya está en dev (diálogo «Distribución y servicio», alertas por tipo, aviso de umbrales), pero depende de esta migración para funcionar (AB.1).
 
 ### AB.1 Estado y orden de despliegue
-- **Pendiente de aplicar.** `20261126030000_ejes_direccion_alertas.sql` no está aplicada en producción. No se aplicó nada desde dev al redactar este apéndice.
+- **Aplicada en producción** (verificado el 2026-11-27, con las de hasta `20261126050000`): `20261126030000_ejes_direccion_alertas.sql`.
 - Depende de `20261126020000` (AA) y, en cadena, de `20261126010000` (Z), `20261126000000` (Y), `20261125500000`, `20261123000000` y `20261120500000`, cuyas definiciones reemplaza.
 - **Contradicción resuelta:** `20261126020000` y `20261126010000` están aplicadas en producción (confirmado con `supabase migration list --remote`); AA.9 y Z.7 ya lo dicen.
 - Orden: (1) confirmar la cadena; (2) `supabase db push --dry-run` limpio; (3) aplicar con el CLI, nunca con el MCP `apply_migration`; (4) verificar con la API real y el JWT de cada rol; (5) recién después fusionar dev → main. Fusionar antes rompe el panel: el diálogo llama a `vehiculo_fijar_servicio` y la vista de alertas pide `color` y `umbral_km` a `v_alertas`, que solo existen con la migración aplicada.
@@ -1459,7 +1459,7 @@ Implementa la base de la ola 2 de F8: RN-02, RN-05, RN-06 y RN-31 (docs/23), el 
 
 # Apéndice AC · Ola 3: rotación en disco, alineación y desgaste lateral (`20261126040000_disco_alineacion.sql`)
 
-Implementa RN-05 (cierre por rotación en disco), RN-15, RN-16 y RN-17 (docs/23). Depende de `20261126030000` (apéndice AB) y de `20261126020000` (apéndice AA, motivos y odómetro). **Pendiente de aplicar:** no está aplicada en producción; se aplica con el CLI (`neumet-aplicar-migracion`).
+Implementa RN-05 (cierre por rotación en disco), RN-15, RN-16 y RN-17 (docs/23). Depende de `20261126030000` (apéndice AB) y de `20261126020000` (apéndice AA, motivos y odómetro). **Aplicada en producción** (verificado el 2026-11-27).
 
 ## AC.1 Desgaste lateral (R1)
 - `lateral = round(|mm1 − mm3|, 1) >= irregularidad_mm` (2,0). Es la diferencia entre la huella interna y la externa, distinta del rango de las tres huellas de RN-06.
@@ -1510,7 +1510,7 @@ select tipo, estado, count(*) from public.alertas where tipo in ('irregular','la
 
 # Apéndice AD · Ola 4: caída brusca, corrección de mediciones y moneda por defecto (`20261126050000_calidad_moneda.sql`)
 
-Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de `20261126040000` (apéndice AC: `alerta_configurar` de 11 argumentos y el catálogo de motivos con `rotacion_disco` y `alineacion`) y de `20261120500000` (apéndice de cierre de escrituras: privilegios por columna de `clientes` y `costo_registrar` con moneda). **Pendiente de aplicar:** no está aplicada en producción; se aplica con el CLI (`neumet-aplicar-migracion`).
+Implementa RN-09 y RN-10 (docs/23) y la moneda por defecto de RN-28. Depende de `20261126040000` (apéndice AC: `alerta_configurar` de 11 argumentos y el catálogo de motivos con `rotacion_disco` y `alineacion`) y de `20261120500000` (apéndice de cierre de escrituras: privilegios por columna de `clientes` y `costo_registrar` con moneda). **Aplicada en producción** (verificado el 2026-11-27).
 
 ## AD.1 Concurrencia
 - `medicion_corregir` toma `for update` sobre la medición a través de `medicion_autorizar`. Dos correcciones simultáneas se serializan.
@@ -1638,3 +1638,60 @@ Implementa la cuota de 30 preguntas por usuario y día y el registro de uso del 
 ## AH.7 Riesgos de despliegue
 - Aplicar la migración con el CLI (`neumet-aplicar-migracion`) antes de desplegar la función `asistente-reportes` y de fusionar el panel que la llama. Sin la tabla, la función responde error de base.
 - No se modifica ninguna tabla existente: el efecto sobre datos previos es nulo.
+
+# Apéndice AE · Ola 5: compra por lote, vida sin tope y semanas (`20261126100000_compra_lote_vida.sql`)
+
+Implementa la compra por lote de stock (RN-29 y RN-30 de docs/23), la vida de la carcasa sin tope (RN-25, descartado el máximo de tres renovaciones) y las semanas hasta crítico y retiro por la huella mínima (G-04). Depende de `20261126050000` (apéndice AD: moneda y `costo_registrar`) y de `20261113000000` (apéndice de stock de cubiertas: `stock_cubierta_editar` y la política de stock). **Pendiente de aplicar:** se aplica con el CLI (`neumet-aplicar-migracion`), no con el MCP `apply_migration`.
+
+## AE.1 Columnas y privilegios
+- Columnas nuevas en `neumaticos`: `dot` (texto de 4 dígitos, semana y año), `medida`, `profundidad_inicial_mm` (numeric(4,1)), `proveedor`, `factura` y `soporte`. Los checks son `neumaticos_dot_ck` (`^(0[1-9]|[1-4][0-9]|5[0-3])[0-9]{2}$`), `neumaticos_medida_ck` (1 a 30 caracteres), `neumaticos_profundidad_inicial_ck` (mayor que 0 y hasta 30), `neumaticos_proveedor_ck` (hasta 80), `neumaticos_factura_ck` (hasta 60) y `neumaticos_soporte_ck` (hasta 200).
+- Privilegios por columna: `grant select (dot, medida, profundidad_inicial_mm, proveedor, factura, soporte) on neumaticos to authenticated`. La sucursal los lee en las cubiertas que ve; `precio_unidad` sigue sin privilegio para ella (42501).
+
+## AE.2 Validación: `stock_compra_validar(p_datos jsonb)`
+- Helper interno, sin ejecución para `public`, `anon` ni `authenticated`. Lo llaman `stock_cubiertas_agregar_lote` y `stock_cubierta_editar`.
+- DOT: el año se compara con la semana actual como `isoyear * 100 + week`; un DOT posterior a la semana actual se rechaza (22023).
+- Errores (22023 salvo que se indique): «DOT inválido: deben ser 4 dígitos, semana y año (por ejemplo 0825)»; «El DOT no puede ser posterior a la semana actual»; «Los mm iniciales deben estar entre 0,1 y 30»; «Dato desconocido: %» (clave fuera de la lista); «indicar la marca».
+
+## AE.3 Alta por lote: `stock_cubiertas_agregar_lote(p_comun jsonb, p_cubiertas jsonb, p_cliente_id bigint default null) returns jsonb`
+- Retorna `{cantidad, ids}`. Todo o nada: un error no deja filas.
+- Primera sentencia: `select * into v_aut from public.sucursal_autorizar_gestion(p_cliente_id)`. Solo el perfil global gestiona el stock; sucursal, sin perfil y `api` reciben 42501 antes de mirar el contenido del lote. Un global con `p_cliente_id` ajeno también recibe 42501.
+- Límites: entre 1 y 200 cubiertas (22023 «El lote debe tener entre 1 y 200 cubiertas»); «indicar el número de quema» (22023).
+- Quema repetida dentro del lote, comparada sin mayúsculas ni espacios: 23505 «Quema repetida en el lote: <primera aparición>».
+- Quema ya existente en el cliente: 23505 «Ya existe una cubierta con la quema <q>» (se atrapa `unique_violation` del índice único, así que dos envíos simultáneos dejan una sola fila).
+- Cada cubierta queda `almacenado`, condición `nuevo`, vida 0, en la sucursal indicada y con un evento `alta_stock`.
+
+## AE.4 Edición: `stock_cubierta_editar(p_id bigint, p_datos jsonb)`
+- Claves permitidas: `marca`, `modelo`, `fecha_compra`, `precio`, `condicion`, `dot`, `medida`, `profundidad_inicial_mm`, `proveedor`, `factura` y `soporte`. Una clave ajena devuelve 22023.
+- Los datos de compra pasan por `stock_compra_validar`. Un `dot` en blanco lo borra (queda nulo).
+
+## AE.5 Vida sin tope
+- Se quitan los checks de `vida` que tenían tope (un bloque `do` recorre `pg_get_constraintdef ~ '\mvida'` y excluye `recauchutados_vida_nueva_ck`, que se conserva).
+- Checks nuevos: `neumaticos_vida_ck` (vida >= 0), `costos_neumatico_vida_ck` (>= 0), `recauchutados_vida_origen_ck` (`vida_origen` >= 0), `recauchutados_vida_nueva_rango_ck` (`vida_nueva` nula o >= 1) y `neumatico_vidas_vida_ck` (>= 1). Una vida negativa viola el check (23514).
+- `recauchutado_enviar`, `recauchutado_aceptar`, `neumatico_montar` y `neumatico_cambiar` ya no comparan la vida con un máximo. Una cubierta de vida 7 se envía igual.
+
+## AE.6 Semanas hasta crítico y retiro
+- `v_estado_neumaticos.semanas_hasta_critico` y `semanas_hasta_retiro` usan la huella mínima `least(mm1, mm2, mm3)`, la misma que decide el estado (RN-01). Antes proyectaban con el promedio.
+- La tasa no cambia: `regr_slope(promedio, epoch)` sobre al menos 3 mediciones y 14 días. Sin tasa positiva o sin mediciones, las dos semanas son nulas; por debajo del umbral, 0.
+- Ejemplo verificado en `t_121`: mediciones de (10, 10, 10) hace 14 días, (9,5, 9,5, 9,5) hace 7 días y (10, 8, 9) hoy, con crítico 3 y retiro 2: 10 y 12 semanas (con promedio daría 12 y 14).
+
+## AE.7 Textos y catálogo
+- `v_alertas`: el mensaje ya no lleva el umbral entre paréntesis. «Desgaste límite: 2,8 mm»; swap: «Primera rotación: 38.000 km desde el montaje» (km del tramo desde el montaje, con el odómetro del vehículo).
+- Catálogo `motivos_movimiento`: las dos filas base de `swap_20000` (`cliente_id` nulo, en los tipos `rotacion` y `rotacion_disco`) pasan a «Primera rotación». Las filas de cada cliente no cambian.
+
+## AE.8 Consultas de verificación (solo lectura, tras aplicar)
+- Columnas: `select count(*) from information_schema.columns where table_name = 'neumaticos' and column_name in ('dot','medida','profundidad_inicial_mm','proveedor','factura','soporte')`: 6.
+- Checks de vida: `select conname from pg_constraint where conrelid = 'public.neumaticos'::regclass and pg_get_constraintdef(oid) ~ '\mvida'`: solo `neumaticos_vida_ck`.
+- Privilegios: `has_function_privilege('authenticated', 'public.stock_cubiertas_agregar_lote(jsonb,jsonb,bigint)', 'execute')` true; con `anon` false; `has_function_privilege('authenticated', 'public.stock_compra_validar(jsonb)', 'execute')` false.
+- Catálogo: `select count(*) from motivos_movimiento where cliente_id is null and codigo = 'swap_20000' and etiqueta = 'Primera rotación'`: 2 (`rotacion` y `rotacion_disco`).
+
+## AE.9 Pruebas
+- SQL: `tests/sql/t_121_ola5_compra_vida.sql` (autorización antes de validar, alta feliz, límites y duplicados, DOT, mm, longitudes, edición, privilegios por columna, vida sin tope, semanas y mensajes). Pruebas existentes ajustadas a la vida sin tope y a los mensajes nuevos: `t_10`, `t_70`, `t_87`, `t_91`, `t_92`, `t_96`, `t_103` y `t_107`.
+- `tests/sql/run.sh` aplica la migración dos veces (idempotencia).
+- E2E: `tests/e2e/specs/ola5-compra-vida.mjs` (filtro «ola 5»): lote solo del global (403 para sucursal y administrador), alta de dos cubiertas, lectura de DOT y medida con privilegios por columna, repetir la quema (409 sin filas nuevas), doble envío simultáneo (un 200 y un 409) y envío de una cubierta de vida 3.
+- Asistente: `prompt.ts` pasa a `PROMPT_VERSION` `v2` (vida sin tope, «Primera rotación», renovaciones sin tope) y `cpk_por_grupo` lo dice en la descripción de la tool.
+
+## AE.10 Riesgos de despliegue
+- **Orden.** Aplicar la migración con el CLI antes de fusionar el front que llama a `stock_cubiertas_agregar_lote` y antes de desplegar `asistente-reportes` (versión `v2`).
+- **Vidas altas.** Las cubiertas con vida mayor que 3 que ya existen no cambian; el check nuevo solo impide valores negativos.
+- **Semanas.** Las semanas de Stock y del panel cambian al aplicar, porque pasan a usar la huella mínima. Es el criterio pedido en G-04.
+- **Sucursal sin alta.** El usuario de sucursal recibe 42501 al dar de alta por lote, por diseño: la gestión del stock es del perfil global.

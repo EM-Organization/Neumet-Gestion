@@ -17,8 +17,8 @@ const SUCURSAL: Contexto = { ...base, rol: 'sucursal', sucursalId: 3, sucursalNo
 
 const EMOJI = /\p{Extended_Pictographic}/u;
 
-Deno.test('PROMPT_VERSION es v1', () => {
-  assertEquals(PROMPT_VERSION, 'v1');
+Deno.test('PROMPT_VERSION es v2', () => {
+  assertEquals(PROMPT_VERSION, 'v2');
 });
 
 Deno.test('el prompt global trae cliente, fecha, reglas clave y solo las tools recibidas', () => {

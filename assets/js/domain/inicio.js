@@ -15,8 +15,8 @@ const EN_CAMINO = ['nuevo', 'poco_desgaste', 'mayor_desgaste'];
 
 const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
 
-// Semanas hasta el desgaste límite de un neumático. Sale de la huella mínima (RN-01: el mínimo decide el estado), no del
-// promedio que proyecta v_estado_neumaticos.semanas_hasta_retiro: esa columna sobrestima el plazo (G-04, pendiente en docs/08).
+// Semanas hasta el desgaste límite de un neumático. Sale de la huella mínima (RN-01: el mínimo decide el estado). Desde la
+// migración de la ola 5, v_estado_neumaticos.semanas_hasta_retiro también proyecta con la mínima (G-04): esta función coincide con ella.
 export const semanasRetiroDe = f => semanasHasta(huellaMinima(f), f.umbral_retiro_mm, f.tasa_mm_semana);
 
 // El estado "sin datos" solo corresponde cuando NO hay vehículos registrados ni ninguna fila en las vistas derivadas

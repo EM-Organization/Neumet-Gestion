@@ -126,7 +126,7 @@ select test.eq('A1 T04 9/8/6,5: lateral 2,5 y sin irregular', test.m107_abiertas
 select test.eq('A1 T04: asimetría 2,5 y desgaste lateral', test.m107_vista('R107'), '2.5 true true');
 select test.eq('A1 T04: mensaje de la alerta lateral',
   (select mensaje from public.v_alertas where idneumatico = 'R107' and tipo = 'lateral'),
-  'Revisar alineación: 2,5 mm de diferencia entre la huella interna y la externa (máximo 2 mm)');
+  'Revisar alineación: 2,5 mm de diferencia entre la huella interna y la externa');
 rollback to savepoint s_a1;
 
 savepoint s_a2;
